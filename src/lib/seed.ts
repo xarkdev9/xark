@@ -267,6 +267,7 @@ export async function seedXarkGalaxy() {
       weighted_score: 2,
       is_locked: false,
       version: 0,
+      metadata: {},
     },
     {
       id: "item_teamlab",
@@ -280,6 +281,7 @@ export async function seedXarkGalaxy() {
       weighted_score: 11,
       is_locked: false,
       version: 0,
+      metadata: {},
     },
   ];
 

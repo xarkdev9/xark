@@ -1,15 +1,25 @@
 // XARK OS v2.0 — DEV AUTH ENDPOINT
-// POST /api/dev-auth — dev-mode login bypass
-// Calls the dev_login() Postgres RPC function.
+// POST /api/dev-auth — dev-mode login with password verification
+// Calls dev_verify_password() Postgres RPC for bcrypt check,
+// then signs JWT in Node.js via jose.
 // Gate: Returns 404 if DEV_MODE !== 'true'
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { SignJWT } from "jose";
 
 export async function POST(request: NextRequest) {
   // Gate: dev mode only
   if (process.env.DEV_MODE !== "true") {
     return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+  if (!jwtSecret) {
+    return NextResponse.json(
+      { error: "SUPABASE_JWT_SECRET not configured" },
+      { status: 500 }
+    );
   }
 
   let body: { username?: string; password?: string };
@@ -31,7 +41,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabaseAdmin.rpc("dev_login", {
+  // Verify password via Postgres RPC (bcrypt check in SQL)
+  const { data, error } = await supabaseAdmin.rpc("dev_verify_password", {
     p_username: username,
     p_password: password,
   });
@@ -45,8 +56,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg }, { status });
   }
 
+  // Sign JWT with jose
+  const secret = new TextEncoder().encode(jwtSecret);
+  const now = Math.floor(Date.now() / 1000);
+
+  const token = await new SignJWT({
+    sub: data.user_id,
+    role: "authenticated",
+    aud: "authenticated",
+    iss: "supabase",
+    iat: now,
+    exp: now + 86400, // 24h
+  })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .sign(secret);
+
   return NextResponse.json({
-    token: data.token,
+    token,
     user: {
       id: data.user_id,
       displayName: data.display_name,

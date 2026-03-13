@@ -1,6 +1,6 @@
 {
   "version": "2.0.0-omega",
-  "foveal_focus": "Phase 0 — Foundation: Database schema (spaces, users, space_members, decision_items, reactions, messages, tasks), environment variables (.env.local), user profile table + hook. Unblocks everything.",
+  "foveal_focus": "Architecture Blueprint approved. 9 services, event-driven, loosely coupled. Next: implementation plan (multi-agent, phased). Spec: docs/superpowers/specs/2026-03-13-xark-architecture-blueprint.md",
   "phase": "FIRST_REAL_TRIP",
   "algo_source": "/Users/ramchitturi/algo",
   "algo_record": "/Users/ramchitturi/algo/mar10_algo.md",

@@ -1,16 +1,25 @@
 // XARK OS v2.0 — DEV AUTO-LOGIN ENDPOINT
 // POST /api/dev-auto-login — passwordless dev login for URL name param flow.
-// Generates a JWT for a test user without password verification.
+// Generates a JWT via jose (Node.js) for a test user without password verification.
 // Gate: Returns 404 if DEV_MODE !== 'true'. NEVER enable in production.
 // Use /api/dev-auth for full username+password testing.
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { SignJWT } from "jose";
 
 export async function POST(request: NextRequest) {
   // Gate: dev mode only
   if (process.env.DEV_MODE !== "true") {
     return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+  if (!jwtSecret) {
+    return NextResponse.json(
+      { error: "SUPABASE_JWT_SECRET not configured" },
+      { status: 500 }
+    );
   }
 
   let body: { username?: string };
@@ -45,27 +54,26 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Generate JWT via dev_login RPC — need the password.
-  // Instead, we'll use a simple approach: call a custom RPC that generates
-  // a JWT for any user without password (dev mode only).
-  // For now, use the Supabase service role to sign a token.
-  // The JWT must have the same structure as dev_login output.
+  // Sign JWT with jose — same payload structure as Supabase expects
+  const secret = new TextEncoder().encode(jwtSecret);
+  const now = Math.floor(Date.now() / 1000);
 
-  // Since we can't easily sign JWTs from Next.js without the JWT secret,
-  // and the secret lives in Postgres, we'll call a helper function.
-  const { data, error } = await supabaseAdmin.rpc("dev_auto_login", {
-    p_username: username,
-  });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  const token = await new SignJWT({
+    sub: user.id,
+    role: "authenticated",
+    aud: "authenticated",
+    iss: "supabase",
+    iat: now,
+    exp: now + 86400, // 24h
+  })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .sign(secret);
 
   return NextResponse.json({
-    token: data.token,
+    token,
     user: {
-      id: data.user_id,
-      displayName: data.display_name,
+      id: user.id,
+      displayName: user.display_name,
     },
   });
 }
