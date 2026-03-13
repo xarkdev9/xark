@@ -391,19 +391,31 @@ export function Blueprint({ spaceId }: BlueprintProps) {
             </div>
           ))}
 
-          {/* ── Total spent ── */}
-          <p
-            className="mt-4"
-            style={{
-              fontSize: "0.6rem",
-              letterSpacing: "0.2em",
-              textTransform: "uppercase" as const,
-              color: colors.white,
-              opacity: 0.2,
-            }}
-          >
-            total committed — ${settlement.totalSpent}
-          </p>
+          {/* ── Total + Fair Share ── */}
+          <div className="mt-6">
+            <p
+              style={{
+                fontSize: "0.6rem",
+                letterSpacing: "0.2em",
+                textTransform: "uppercase" as const,
+                color: colors.white,
+                opacity: 0.2,
+              }}
+            >
+              total committed — ${settlement.totalSpent}
+            </p>
+            <p
+              className="mt-2"
+              style={{
+                fontSize: "0.6rem",
+                letterSpacing: "0.15em",
+                color: colors.white,
+                opacity: 0.15,
+              }}
+            >
+              {settlement.memberCount} members — ${Math.round(settlement.fairShare * 100) / 100} per person
+            </p>
+          </div>
         </motion.div>
       )}
     </div>
