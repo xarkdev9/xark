@@ -17,11 +17,11 @@ import {
   subscribeToMessages,
   unsubscribeFromMessages,
 } from "@/lib/messages";
-import { colors, opacity, timing, layout, text, fovealOpacity } from "@/lib/theme";
+import { colors, opacity, timing, layout, text, fovealOpacity, textColor } from "@/lib/theme";
 
 interface Message {
   id: string;
-  role: "user" | "xark";
+  role: "user" | "xark" | "system";
   content: string;
   timestamp: number;
   senderName?: string;
@@ -365,7 +365,36 @@ export function XarkChat({ spaceId, userId, spaceTitle }: XarkChatProps) {
         {/* ── Messages — Grouped by sender, WhatsApp-dense ── */}
         <AnimatePresence initial={false}>
           {messages.map((msg, index) => {
-            const msgOpacity = fovealOpacity(index, messages.length, msg.role);
+            // ── System messages — centered, subtle, no label/timestamp ──
+            if (msg.role === "system") {
+              const sysOpacity = Math.max(0.15, fovealOpacity(index, messages.length, "user") * 0.6);
+              return (
+                <motion.div
+                  key={msg.id}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    layout: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.3 },
+                  }}
+                  className="mt-3"
+                  style={{ maxWidth: "640px", margin: "0 auto", textAlign: "center" }}
+                >
+                  <p
+                    style={{
+                      ...text.subtitle,
+                      color: textColor(sysOpacity),
+                      transition: "opacity 0.6s ease",
+                    }}
+                  >
+                    {msg.content}
+                  </p>
+                </motion.div>
+              );
+            }
+
+            const msgOpacity = fovealOpacity(index, messages.length, msg.role as "user" | "xark");
             const label = senderLabel(msg);
             const isOtherUser = msg.role === "user" && !!msg.senderName;
             const canOpenSanctuary = isOtherUser && hasSanctuary(msg.senderName!);
@@ -731,7 +760,7 @@ export function XarkChat({ spaceId, userId, spaceTitle }: XarkChatProps) {
                     const msgOpacity = fovealOpacity(
                       index,
                       sanctuaryMessages.length,
-                      msg.role
+                      msg.role === "system" ? "user" : msg.role
                     );
                     const isOther = !!msg.senderName;
                     return (
