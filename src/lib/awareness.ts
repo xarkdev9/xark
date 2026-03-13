@@ -8,9 +8,9 @@ import { supabase } from "./supabase";
 
 export type AwarenessKind =
   | "needs_vote"
+  | "needs_flight"
   | "proposal"
   | "locked"
-  | "message"
   | "joined"
   | "ignited"
   | "assigned";
@@ -31,10 +31,10 @@ export interface AwarenessEvent {
 
 const PRIORITY_WEIGHTS: Record<AwarenessKind, number> = {
   needs_vote: 0.95,
+  needs_flight: 0.90,
   ignited: 0.90,
   proposal: 0.75,
   assigned: 0.70,
-  message: 0.50,
   locked: 0.40,
   joined: 0.30,
 };
@@ -78,14 +78,14 @@ function whisperText(kind: AwarenessKind, actorName: string, itemTitle?: string,
   switch (kind) {
     case "needs_vote":
       return `${itemTitle ?? "something"} needs your vote`;
+    case "needs_flight":
+      return `you still need a flight`;
     case "ignited":
       return `the group is leaning toward ${itemTitle ?? "a decision"}`;
     case "proposal":
       return `${actorName} proposed ${itemTitle ?? "something new"}`;
     case "assigned":
       return `${itemTitle ?? "a task"} was assigned to ${actorName}`;
-    case "message":
-      return `${actorName} said something in ${spaceTitle ?? "a space"}`;
     case "locked":
       return `${itemTitle ?? "a decision"} is locked`;
     case "joined":
@@ -107,10 +107,11 @@ export async function fetchAwareness(userId: string): Promise<AwarenessEvent[]> 
 
     const memberSpaceIds = memberRows?.map((r) => r.space_id) ?? [];
 
-    // Fetch space details — filter to user's spaces if memberships found
+    // Fetch space details — filter to user's spaces, exclude sanctuaries (private 1:1)
     const spacesQuery = supabase
       .from("spaces")
-      .select("id, title")
+      .select("id, title, atmosphere")
+      .neq("atmosphere", "sanctuary")
       .order("last_activity_at", { ascending: false, nullsFirst: false });
 
     if (memberSpaceIds.length > 0) {
@@ -180,32 +181,40 @@ export async function fetchAwareness(userId: string): Promise<AwarenessEvent[]> 
       }
     }
 
-    const oneDayAgo = new Date(Date.now() - 86_400_000).toISOString();
-    const { data: messages } = await supabase
-      .from("messages")
-      .select("id, space_id, sender_name, content, created_at, user_id")
-      .in("space_id", spaceIds)
-      .neq("user_id", userId)
-      .gt("created_at", oneDayAgo)
-      .order("created_at", { ascending: false })
-      .limit(5);
+    // ── needs_flight events from member_logistics ──
+    try {
+      const { data: logistics } = await supabase
+        .from("member_logistics")
+        .select("space_id, user_id, origin, destination, state, item_id")
+        .in("space_id", spaceIds)
+        .eq("user_id", userId)
+        .eq("state", "missing")
+        .not("origin", "is", null);
 
-    if (messages) {
-      for (const msg of messages) {
-        const spaceTitle = spaceMap.get(msg.space_id) ?? "";
-        const sender = msg.sender_name ?? "someone";
-        events.push({
-          id: `msg_${msg.id}`,
-          kind: "message",
-          spaceId: msg.space_id,
-          spaceTitle,
-          text: whisperText("message", sender, undefined, spaceTitle),
-          actorName: sender,
-          timestamp: new Date(msg.created_at).getTime(),
-          priority: 0,
-        });
+      if (logistics) {
+        for (const row of logistics) {
+          // Only surface if origin is known but no item linked yet
+          if (row.origin && !row.item_id) {
+            const spaceTitle = spaceMap.get(row.space_id) ?? "";
+            events.push({
+              id: `flight_${row.space_id}_${row.user_id}`,
+              kind: "needs_flight",
+              spaceId: row.space_id,
+              spaceTitle,
+              text: whisperText("needs_flight", "", undefined, spaceTitle),
+              actorName: "",
+              timestamp: Date.now(), // always fresh — this is current state
+              priority: 0,
+            });
+          }
+        }
       }
+    } catch {
+      // member_logistics table may not exist yet — silent fallback
     }
+
+    // No "said something" events — home screen shows actionable state only.
+    // Sanctuaries are excluded above. Messages are not awareness events.
 
     return sortAwareness(events);
   } catch {
@@ -221,7 +230,7 @@ export function getDemoAwareness(): AwarenessEvent[] {
     {
       id: "aw_1",
       kind: "needs_vote",
-      spaceId: "space_san-diego",
+      spaceId: "space_san-diego-trip",
       spaceTitle: "san diego trip",
       text: "surf lessons needs your vote",
       actorName: "ananya",
@@ -231,7 +240,7 @@ export function getDemoAwareness(): AwarenessEvent[] {
     {
       id: "aw_2",
       kind: "locked",
-      spaceId: "space_san-diego",
+      spaceId: "space_san-diego-trip",
       spaceTitle: "san diego trip",
       text: "hotel del coronado is locked",
       actorName: "ram",
@@ -240,17 +249,17 @@ export function getDemoAwareness(): AwarenessEvent[] {
     },
     {
       id: "aw_3",
-      kind: "message",
-      spaceId: "space_ananya",
-      spaceTitle: "ananya",
-      text: "ananya said something in ananya",
-      actorName: "ananya",
+      kind: "needs_flight",
+      spaceId: "space_san-diego-trip",
+      spaceTitle: "san diego trip",
+      text: "you still need a flight",
+      actorName: "",
       timestamp: now - 7_200_000,
     },
     {
       id: "aw_4",
       kind: "needs_vote",
-      spaceId: "space_tokyo",
+      spaceId: "space_tokyo-neon-nights",
       spaceTitle: "tokyo neon nights",
       text: "shibuya crossing tour needs your vote",
       actorName: "maya",
@@ -260,7 +269,7 @@ export function getDemoAwareness(): AwarenessEvent[] {
     {
       id: "aw_5",
       kind: "proposal",
-      spaceId: "space_tokyo",
+      spaceId: "space_tokyo-neon-nights",
       spaceTitle: "tokyo neon nights",
       text: "jake proposed teamlab borderless",
       actorName: "jake",
