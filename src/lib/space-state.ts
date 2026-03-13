@@ -1,66 +1,18 @@
 // XARK OS v2.0 — Emergent Space State
-// Pure function. No DB calls. Computed from items array.
-
-export type SpaceState =
-  | "empty"
-  | "exploring"
-  | "converging"
-  | "ready"
-  | "active"
-  | "settled";
+export type SpaceState = "empty" | "exploring" | "converging" | "ready" | "active" | "settled";
 
 export interface SpaceStateItem {
   state: string;
   is_locked: boolean;
-  category?: string;
-  metadata?: {
-    date?: string;
-    check_in?: string;
-    check_out?: string;
-    price?: string;
-  };
+  metadata?: { date?: string; check_in?: string; check_out?: string };
 }
 
 export function computeSpaceState(items: SpaceStateItem[]): SpaceState {
   if (items.length === 0) return "empty";
-
-  const hasLocked = items.some(
-    (i) => i.state === "locked" || i.state === "claimed" || i.state === "purchased"
-  );
-  const allSettled = items.every(
-    (i) => i.state === "purchased" || i.state === "chosen" || i.state === "decided"
-  );
-  const hasOpenItems = items.some(
-    (i) => !i.is_locked && i.state !== "purchased" && i.state !== "chosen" && i.state !== "decided"
-  );
-
-  // Check if trip dates have passed (settled)
-  if (allSettled) {
-    const now = new Date();
-    const hasPastDates = items.some((i) => {
-      const dateStr = i.metadata?.check_out || i.metadata?.date;
-      if (!dateStr) return false;
-      return new Date(dateStr) < now;
-    });
-    if (hasPastDates) return "settled";
-  }
-
-  // Check if in active trip (dates within range)
-  const now = new Date();
-  const hasActiveDates = items.some((i) => {
-    const checkIn = i.metadata?.check_in || i.metadata?.date;
-    const checkOut = i.metadata?.check_out || i.metadata?.date;
-    if (!checkIn) return false;
-    return new Date(checkIn) <= now && (!checkOut || new Date(checkOut) >= now);
-  });
-  if (hasActiveDates && hasLocked) return "active";
-
-  // v1 heuristic: ready when all items are settled. Full category coverage check is Gemini's job (blueprint Section 2 note).
-  if (hasLocked && !hasOpenItems) return "ready";
-
-  // Mixed: some locked, some still voting
-  if (hasLocked && hasOpenItems) return "converging";
-
-  // All items are proposed/voting, nothing locked
+  const locked = items.filter((i) => i.is_locked || ["purchased","chosen","decided","locked","claimed"].includes(i.state));
+  const allSettled = items.every((i) => ["purchased","chosen","decided"].includes(i.state));
+  if (allSettled && items.length > 0) return "settled";
+  if (locked.length > 0 && locked.length < items.length) return "converging";
+  if (locked.length === items.length) return "ready";
   return "exploring";
 }
