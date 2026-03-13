@@ -72,7 +72,7 @@ Core philosophy: "No gates. No votes. No clustering. Just signal -> act -> lock.
 - All computation functions are **pure**: no mutation, no side effects, always return new objects.
 
 ### 7c. State Machine (4 Preset Flows)
-- **BOOKING_FLOW** (default): `proposed` -> [reaction] -> `ranked` -> [commitment] -> `locked`.
+- **BOOKING_FLOW** (default, EXTENDED): `proposed` -> [reaction] -> `ranked` -> [consensus] -> `locked` -> [claim] -> `claimed` -> [purchase] -> `purchased`. `locked` = consensus reached, no owner. `claimed` = someone stepped up, owner stamped. `purchased` = proof + amount submitted (terminal). Feeds settlement.
 - **PURCHASE_FLOW**: `researching` -> [reaction] -> `shortlisted` -> [manual] -> `negotiating` -> [commitment] -> `purchased`.
 - **SIMPLE_VOTE_FLOW**: `nominated` -> [reaction] -> `ranked` -> [commitment] -> `chosen`.
 - **SOLO_DECISION_FLOW**: `considering` -> [reaction] -> `leaning` -> [commitment] -> `decided`.
@@ -80,6 +80,7 @@ Core philosophy: "No gates. No votes. No clustering. Just signal -> act -> lock.
 - Three trigger types: `"reaction"` (automated), `"commitment"` (intentional with proof), `"manual"` (explicit).
 - `DecisionItemState` is an open string for custom flows ("researching", "shortlisted", "negotiating", etc.).
 - Unknown transitions silently ignored (permissive design, prevents crashes).
+- **Shared module**: `src/lib/state-flows.ts` — `FLOW_TERMINAL_STATES`, `resolveTerminalState(state, flow?)`, `isTerminalState(state)`. Used by handshake.ts and claims.ts.
 
 ### 7d. Green-Lock Commitment Protocol
 - Lock = real-world commitment confirmation (booking, purchase, contract), NOT a vote.
@@ -199,7 +200,7 @@ Core philosophy: "No gates. No votes. No clustering. Just signal -> act -> lock.
 
 ## 14. THE NAVIGATION FLOW
 - **Login → Galaxy → Space**: The full state management chain.
-- **Login** (`src/app/login/page.tsx`): Brand identity screen. Wordmark "xark" (Inter 300). Brand line: "People. Plans. Memories." at `opacity: 0.45`. Sub-line: "All private, effortlessly in sync." at `opacity: 0.2`. Staggered fade-in (0.3s, 0.5s). Three phases — `arrive` (1.8s ambient orb), `input` (name entry with cyan underline), `transit` (welcome message, then `router.push('/galaxy')` after 1.2s).
+- **Login** (`src/app/login/page.tsx`): Brand identity screen. Wordmark "xark" (Inter 300). Brand line: "People. Plans. Memories." at `opacity: 0.45`. Sub-line: "All private, effortlessly in sync." at `opacity: 0.2`. Staggered fade-in (0.3s, 0.5s). Four phases — `arrive` (1.8s ambient orb), `input` (name entry with cyan underline), `photo` (profile photo upload or skip), `transit` (welcome message, then `router.push('/galaxy')` after 1.2s). Photo phase: "add a photo" (text.hint, 0.35) + "skip" (text.hint, 0.2). Uploads to Firebase Storage `profiles/{userId}/avatar`. Max 2MB.
 - **Galaxy** (`src/app/galaxy/page.tsx`): The Active Mind — awareness stream home. Hero "ready, [name]?" using `text.hero`. Awareness stream (src/lib/awareness.ts) shows priority-sorted cross-space events: needs_vote, ignited, proposal, locked, message, joined. Each event = whisper text + space context + recency label. Tap event → navigate to space. Amber swell intensifies when recent activity (<15 min). Mesh Pulse (15s breath). Empty state: "who are you planning with?" at `text.listTitle`. Input at 96px bottom. Manifestation Loop: optimistic `router.push()` via `getOptimisticSpaceId()` → `createSpace()` parallel. ControlCaret global via `layout.tsx`. UserMenu (profile + theme selector) visible on Galaxy only. Spectrum Wash.
 - **Space** (`src/app/space/[id]/page.tsx`): Individual space with `discuss` / `decide` / `share` as floating text (`text.label`, outline-none). discuss + decide = view toggle. share = action (navigator.share on mobile, clipboard copy on desktop with "link copied" whisper for 2s). Active = `colors.cyan` at 0.9. Inactive = `colors.white` at 0.4. `discuss` renders `XarkChat`. Fixed header (`text.spaceTitle`) with gradient fade. Demo data fallback. ControlCaret global via `layout.tsx`. No UserMenu on space pages.
 - **Seed Data** (`src/lib/seed.ts`): Populates Postgres with demo spaces, items, and messages. "san diego trip" (4 items: Hotel Del 92% locked, surf lessons 45%, balboa park 45%, gaslamp 92% locked; 10 group messages), "ananya" (sanctuary, 5 messages — last: "did you see the surf lesson proposal?"), "tokyo neon nights" (2 items), "summer 2026" (empty). Run via `npx tsx src/lib/seed.ts`.
@@ -288,7 +289,60 @@ The Xark OS backend is a locked hybrid of Firebase and Supabase. No substitution
 | Decision Engine | Supabase (Postgres) | SQL required for heart-sort ranking math |
 | Multimedia (E2EE) | Firebase Storage | High-performance binary delivery with bucket security |
 | Push Alerts | Firebase (FCM) | Native integration with iOS and Android |
-| Intelligence | Gemini 3.1 Ultra | @xark deep research and agentic planning |
+| Intelligence | Gemini 2.0 Flash | @xark deep research and agentic planning |
 
 - **BANNED**: Supabase Auth (`supabase/auth`, `@supabase/auth`, `createClient` with auth config for Supabase). All authentication flows use Firebase Auth exclusively.
 - If you detect a Supabase Auth import or scaffold, you must immediately stop and output: 'I HAVE VIOLATED THE CONSTITUTION. RESTARTING TURN.'
+
+## 20. THE INTELLIGENCE SERVICE
+- `src/lib/intelligence/orchestrator.ts` — Gemini 2.0 Flash orchestrator. Parses user intent via Gemini → routes to Apify tool → synthesizes response. Stateless — no state stored.
+- `src/lib/intelligence/tool-registry.ts` — Tool registry pattern. Default tools: hotel, flight, activity, restaurant, general. `registerTool(name, { actorId, description, paramMap })`.
+- `src/lib/intelligence/apify-client.ts` — Apify actor runner. `runActor(actorId, input)` → `ApifyResult[]`. Safe: returns empty array when `APIFY_API_TOKEN` missing.
+- `/api/xark` endpoint: POST. Silent mode (no @xark = null response). Strips prefix, builds grounding context, fetches last 15 messages, calls orchestrate(). Search results auto-upserted as decision_items in "proposed" state.
+- `src/lib/supabase-admin.ts` — Server-side Supabase client with `SUPABASE_SERVICE_ROLE_KEY`. Bypasses RLS. Used by `/api/xark` and `/api/notify`.
+
+## 21. THE CLAIM SHEET
+- `src/components/os/ClaimSheet.tsx` — Slide-up sheet for claiming a locked item.
+- "i'll handle this" (`colors.cyan`, `text.label`, 0.9 opacity) + "not yet" (`textColor(0.4)`, `text.label`).
+- On claim: whisper "[name] is on it", auto-close after 1.5s.
+- Sheet: `colors.void` bg, slides from bottom (Framer Motion tween), max-height 40vh.
+- Overlay: `colors.overlay` (#000) at `opacity.overlay` (0.8). NO blur.
+- **BANNED**: Buttons with borders/backgrounds. Actions are floating text only.
+
+## 22. THE PURCHASE SHEET
+- `src/components/os/PurchaseSheet.tsx` — Slide-up sheet for confirming purchase + entering amount.
+- Amount input: `$` prefix + `text.input` + accent underline. Unit toggle cycles through "total" / "per night" / "per person".
+- Proof input: placeholder "link to confirmation or drop receipt". Ghost opacity when empty.
+- "done" action: `colors.cyan`, `text.label`. Disabled (0.3 opacity) when amount empty.
+- State transition: `claimed` → `purchased` (terminal). Optimistic concurrency via version check.
+- Whisper on success: "[name] booked [title] for $[amount]". Auto-close after 2s.
+- Sheet: `colors.void` bg, max-height 50vh. Same overlay rules as ClaimSheet.
+- **BANNED**: Buttons, dropdowns, select elements. All interactions via floating text and accent underlines.
+
+## 23. THE MEDIA UPLOAD
+- `src/components/os/MediaUpload.tsx` — Floating "add photo" text (`text.hint`, opacity 0.35).
+- Hidden file picker triggered on tap. Optional caption input with accent underline.
+- Upload indicator: `colors.cyan` breathing dot at 4.5s cycle.
+- `src/lib/media.ts`: `uploadMedia(file, spaceId, userId, caption?)` → Firebase Storage blob + Supabase metadata row. `fetchMedia(spaceId)` → ordered list.
+- **BANNED**: File upload buttons with borders/backgrounds. The trigger is floating atmospheric text.
+
+## 24. THE NOTIFICATION SERVICE
+- `src/lib/notifications.ts` — Server-side FCM push via Firebase Admin SDK. Lazy initialization from `FIREBASE_SERVICE_ACCOUNT_JSON` env var. No-op when unconfigured.
+- `sendPush(tokens[], title, body, data?)` — Multicast push. webpush.fcmOptions.link for click-through.
+- `/api/notify` endpoint: POST. Accepts `{ event, spaceId, title, body, excludeUserId }`. Queries `space_members` → `user_devices` for FCM tokens. Returns `{ sent: number }`.
+- `src/components/os/ServiceWorkerRegistration.tsx` — Registers `/firebase-messaging-sw.js`, posts Firebase config via postMessage. Renders null. Only when API key exists.
+- `public/firebase-messaging-sw.js` — Background notification handler for PWA.
+
+## 25. THE VOICE INPUT
+- `src/hooks/useVoiceInput.ts` — On-device `SpeechRecognition` for dictation and @xark invocation.
+- Tap mic: `startListening()` — transcribes speech to text, no network required.
+- Long-press mic: `startXarkListening()` — auto-prefixes `@xark` to transcript for direct intelligence invocation.
+- Visual indicator: `colors.cyan` breathing dot when listening. `colors.amber` breathing dot when @xark listening.
+- Graceful fallback: sets error string when `SpeechRecognition` API unavailable.
+- **BANNED**: Microphone buttons with borders/backgrounds. Mic indicator is a breathing dot only.
+
+## 26. EMERGENT SPACE STATE
+- `src/lib/space-state.ts` — `computeSpaceState(items[])` pure function, no DB calls.
+- States: `empty` → `exploring` → `converging` → `ready` → `active` → `settled`.
+- `empty`: no items. `exploring`: all proposed/voting. `converging`: some locked + some open. `ready`: all items settled (v1 heuristic). `active`: dates within range + locked items. `settled`: all terminal + dates passed.
+- UI reacts to computed state for ambient atmosphere adjustments.
