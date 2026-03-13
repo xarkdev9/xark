@@ -286,7 +286,7 @@ export function PossibilityHorizon({
                 <div
                   className="pointer-events-none absolute inset-0"
                   style={{
-                    background: `linear-gradient(to top, ${amberWash(item.weightedScore)} 0%, transparent 50%)`,
+                    background: `linear-gradient(to top, rgba(var(--xark-amber-rgb), ${amberWash(item.weightedScore)}) 0%, transparent 50%)`,
                   }}
                 />
 
