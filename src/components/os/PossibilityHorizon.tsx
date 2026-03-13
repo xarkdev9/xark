@@ -224,13 +224,10 @@ function DecisionCard({
         )}
       </div>
 
-      {/* ── Action zone — distinct bottom strip inside the card ── */}
+      {/* ── Reactions — floating at card bottom, glow depth ── */}
       <div
-        className="absolute inset-x-0 bottom-0 flex items-center justify-between px-3"
-        style={{
-          height: "40px",
-          background: "rgba(var(--xark-white-rgb), 0.06)",
-        }}
+        className="absolute inset-x-0 bottom-0 flex items-center justify-between px-4"
+        style={{ height: "40px" }}
       >
         {SIGNALS.map((signal) => {
           const isActive = activeReaction === signal.type;
@@ -247,9 +244,12 @@ function DecisionCard({
               style={{
                 ...text.subtitle,
                 color: isActive ? signal.color : colors.white,
-                opacity: isActive ? 1 : activeReaction ? 0.2 : 0.55,
+                opacity: isActive ? 1 : activeReaction ? 0.15 : 0.55,
                 cursor: "pointer",
-                transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
+                textShadow: isActive
+                  ? `0 0 12px ${signal.color}, 0 0 4px ${signal.color}`
+                  : "0 1px 3px rgba(0,0,0,0.4)",
+                transition: `opacity ${timing.transition} ease, color ${timing.transition} ease, text-shadow ${timing.transition} ease`,
               }}
             >
               {signal.label}
