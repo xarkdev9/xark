@@ -150,7 +150,8 @@
   "component_registry": {
     "Theme": "active",
     "ThemeProvider": "active",
-    "UserMenu": "active",
+    "UserMenu": "verified",
+    "SettingsSheet": "verified",
     "Globals": "active",
     "Login": "active",
     "Blueprint": "verified",
@@ -161,7 +162,7 @@
     "LoginFlow": "verified",
     "SeedData": "verified",
     "ConsensusMark": "active",
-    "PossibilityHorizon": "active",
+    "PossibilityHorizon": "verified",
     "HeartSort": "active",
     "GroundingEngine": "verified",
     "XarkChat": "verified",

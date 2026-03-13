@@ -208,14 +208,16 @@ Core philosophy: "No gates. No votes. No clustering. Just signal -> act -> lock.
 - **Sanctuary Bridge** (in XarkChat): Tapping a sender name with SANCTUARY_MAP entry opens slide-up sheet. Sheet: `#0A0A0A` bg, slides from bottom, 80vh max. Foveal opacity on messages. Close text at opacity 0.4. Dark overlay `#000` at 0.8 — no blur.
 - **BANNED**: Cards, tab bars, bordered navigation, buttons with backgrounds, `backdrop-filter: blur`. All navigation is atmospheric floating text. All overlays use opaque `#000` — 60fps on $100 devices.
 
-## 15. THE POSSIBILITY HORIZON
-- `src/components/os/PossibilityHorizon.tsx` — Horizontal scroll stream.
-- Edge-to-edge images. Bottom-vignette overlays. No cards. No borders. No rounded corners.
-- Items ordered by `heartSort()` (weightedScore descending, locked items last).
-- Amber atmospheric wash intensity = `amberWash(weightedScore)`.
-- Snap-scroll: `snap-x snap-mandatory snap-center`. Hidden scrollbar.
-- Pointer-based drag for desktop. Native touch scroll for mobile.
-- Each item shows: title (`colors.white`, opacity: 0.9), ConsensusMark, percentage label (opacity: 0.4).
+## 15. THE POSSIBILITY HORIZON (DECIDE VIEW)
+- `src/components/os/PossibilityHorizon.tsx` — Netflix-style vertical scroll of horizontal card bands, one per category.
+- **Category Sections**: Each `category` from `decision_items` (Hotel, Activity, Flight, Dining, etc.) gets its own section. Header in `text.label` at `textColor(0.35)`. Conviction strip: 1px `colors.cyan` line, width = `max(maxAgreementScore * 100%, 3%)`, opacity 0.3.
+- **Decision Cards**: 280×360px. No border-radius. Image or gradient placeholder (`amber → accent`). Bottom vignette. Amber wash from `amberWash(weightedScore)`. Title (`text.listTitle`, 0.9). Price (`text.subtitle`, 0.5) + source (`text.recency`, 0.25). Static consensus label (`text.recency`, colored by state: amber/cyan/gold). Reaction signals as floating `text.label`.
+- **Self-Resolving**: When all items in a category are locked, section collapses to a settled row: 4px `colors.green` breathing dot + category name + locked title at `textColor(0.3)`.
+- **Input Zone**: Fixed bottom, identical to Discuss Thumb-Arc pattern. @xark-only — non-@xark messages silently ignored. Results arrive via Realtime INSERT.
+- **Data**: Single Supabase query (ALL items, no `is_locked` filter). Batch reaction fetch. Client-side grouping by `category` (memoized). Single Realtime channel (UPDATE + INSERT).
+- Items ordered by `heartSort()` within each category (weightedScore descending, locked items last).
+- Snap scroll: `scroll-snap-type: x mandatory`, `scroll-snap-align: start`. Hidden scrollbar. 12px gap between cards.
+- **BANNED**: Cards with border-radius, rounded corners, `ConsensusMark` animated SVG on cards (use static text label), buttons with borders/backgrounds.
 
 ## 16. THE HANDSHAKE PROTOCOL
 - `src/lib/handshake.ts` — The automated bridge between Consensus and Commitment.
@@ -340,6 +342,15 @@ The Xark OS backend is a locked hybrid of Firebase and Supabase. No substitution
 - Visual indicator: `colors.cyan` breathing dot when listening. `colors.amber` breathing dot when @xark listening.
 - Graceful fallback: sets error string when `SpeechRecognition` API unavailable.
 - **BANNED**: Microphone buttons with borders/backgrounds. Mic indicator is a breathing dot only.
+
+## 27. THE SETTINGS SHEET
+- `src/components/os/UserMenu.tsx` — Three-view drill-down navigation, all within a single file.
+- **Main view**: Avatar (28px) + name (`text.body`, `opacity.primary`). "profile" and "system" links (`text.body`, `textColor(0.5)` → `0.8` on hover). "log out" (`text.recency`, `opacity.quaternary`).
+- **Profile view**: "back" link (`text.recency`, `textColor(0.25)` → `0.4` on hover). Avatar preview (48px). "change photo" (`text.hint`, opacity 0.35) — hidden file input, Firebase Storage `profiles/{userId}/avatar`, max 2MB. Upload indicator: cyan breathing dot + "uploading" hint. Name input (`text.input`, bg-transparent, accent underline). On blur/Enter: saves to Supabase `users.display_name`. "saved" whisper (1.5s).
+- **System view**: "back" link (same as profile). 6-theme picker (hearth, cloud, sage, signal, noir, haze) — accent dot + label per theme. Active = accent color at 0.8. Inactive = `colors.white` at `opacity.tertiary`.
+- **Animation**: `AnimatePresence mode="wait"` with horizontal slide variants (x: ±60px, 0.2s tween, `timing.layoutEase`). Direction state tracks drill-in (1) vs back (-1). View resets to "main" on sheet close (300ms delay for exit animation).
+- **Sheet**: Slides from top (`y: -100% → 0`), `colors.void` bg, `overflow: hidden`. Overlay `colors.overlay` at `opacity.overlay`.
+- **BANNED**: Buttons with borders/backgrounds, cards, containers. All actions are floating text.
 
 ## 26. EMERGENT SPACE STATE
 - `src/lib/space-state.ts` — `computeSpaceState(items[])` pure function, no DB calls.
