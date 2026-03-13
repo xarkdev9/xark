@@ -15,6 +15,10 @@ interface UseReactionsResult {
     itemId: string,
     userId: string
   ) => Promise<ReactionType | null>;
+  batchGetUserReactions: (
+    itemIds: string[],
+    userId: string
+  ) => Promise<Record<string, ReactionType>>;
   isReacting: boolean;
 }
 
@@ -68,5 +72,32 @@ export function useReactions(): UseReactionsResult {
     []
   );
 
-  return { react, unreact, getUserReaction, isReacting };
+  const batchGetUserReactions = useCallback(
+    async (
+      itemIds: string[],
+      userId: string
+    ): Promise<Record<string, ReactionType>> => {
+      if (itemIds.length === 0) return {};
+      try {
+        const { data } = await supabase
+          .from("reactions")
+          .select("item_id, signal")
+          .eq("user_id", userId)
+          .in("item_id", itemIds);
+
+        const result: Record<string, ReactionType> = {};
+        if (data) {
+          for (const row of data) {
+            result[row.item_id] = row.signal as ReactionType;
+          }
+        }
+        return result;
+      } catch {
+        return {};
+      }
+    },
+    []
+  );
+
+  return { react, unreact, getUserReaction, batchGetUserReactions, isReacting };
 }
