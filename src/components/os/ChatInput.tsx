@@ -1,8 +1,8 @@
 "use client";
 
 // XARK OS v2.0 — Shared Chat Input
-// Textarea zone at inputBottom. Actions (attach · camera · mic) flanking the
-// ControlCaret dot at caretBottom — always visible, always in thumb range.
+// Textarea at inputBottom. Actions orbit the ControlCaret dot at caretBottom.
+// attach · camera · ● · mic — the dot is the nucleus, actions are its field.
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -74,21 +74,13 @@ export function ChatInput({
     else cameraRef.current?.click();
   };
 
-  // Shared action label style
-  const actionStyle = {
-    ...text.subtitle,
-    color: textColor(0.35),
-    cursor: "pointer" as const,
-    transition: `color ${timing.transition} ease`,
-  };
-
   return (
     <>
       {/* Hidden file inputs */}
       <input ref={fileRef} type="file" className="hidden" accept="*/*" />
       <input ref={cameraRef} type="file" className="hidden" accept="image/*" capture="environment" />
 
-      {/* ═══ TEXTAREA ZONE — at inputBottom level ═══ */}
+      {/* ═══ TEXTAREA ZONE ═══ */}
       <div
         className="fixed inset-x-0 z-20 px-6"
         style={{
@@ -98,7 +90,6 @@ export function ChatInput({
         }}
       >
         <div className="mx-auto" style={{ maxWidth: "640px" }}>
-          {/* ── Top ambient line — content boundary ── */}
           <div
             style={{
               height: "1px",
@@ -138,7 +129,6 @@ export function ChatInput({
             }}
           />
 
-          {/* ── Bottom accent underline ── */}
           <div
             style={{
               marginTop: "4px",
@@ -154,32 +144,39 @@ export function ChatInput({
         </div>
       </div>
 
-      {/* ═══ ACTION BAR — flanks the ControlCaret dot at caretBottom ═══ */}
+      {/* ═══ VOID FILL — solid bg between textarea zone and action bar ═══ */}
       <div
-        className="fixed inset-x-0 z-20 px-6"
+        className="fixed inset-x-0 z-[19]"
+        style={{
+          bottom: 0,
+          height: layout.inputBottom,
+          background: colors.void,
+        }}
+      />
+
+      {/* ═══ ACTION ORBIT — flanks the ControlCaret dot ═══ */}
+      <div
+        className="fixed z-20"
         style={{
           bottom: layout.caretBottom,
-          transform: "translateY(50%)",
-          pointerEvents: "none",
-          background: colors.void,
-          paddingTop: "8px",
-          paddingBottom: "8px",
+          left: "50%",
+          transform: "translate(-50%, 50%)",
         }}
       >
-        <div
-          className="mx-auto flex items-center justify-center gap-8"
-          style={{ maxWidth: "640px", pointerEvents: "auto" }}
-        >
-          {/* ── Left of dot: attach · camera ── */}
+        <div className="flex items-center" style={{ gap: "20px" }}>
           <span
             role="button"
             tabIndex={0}
             onClick={handleAttachClick}
             onKeyDown={(e) => { if (e.key === "Enter") handleAttachClick(); }}
             className="cursor-pointer outline-none"
-            style={actionStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.6); }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.35); }}
+            style={{
+              ...text.subtitle,
+              color: textColor(0.3),
+              transition: `color ${timing.transition} ease`,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.55); }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.3); }}
           >
             attach
           </span>
@@ -190,17 +187,20 @@ export function ChatInput({
             onClick={handleCameraClick}
             onKeyDown={(e) => { if (e.key === "Enter") handleCameraClick(); }}
             className="cursor-pointer outline-none"
-            style={actionStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.6); }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.35); }}
+            style={{
+              ...text.subtitle,
+              color: textColor(0.3),
+              transition: `color ${timing.transition} ease`,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.55); }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.3); }}
           >
             camera
           </span>
 
-          {/* ── Gap for the breathing dot (ControlCaret renders it independently) ── */}
-          <div style={{ width: layout.caretSize }} />
+          {/* ── Dot gap — ControlCaret renders independently ── */}
+          <div style={{ width: "24px" }} />
 
-          {/* ── Right of dot: mic ── */}
           <span
             role="button"
             tabIndex={0}
@@ -227,15 +227,15 @@ export function ChatInput({
             className="outline-none select-none"
             style={{
               ...text.subtitle,
-              color: isXarkListening ? colors.cyan : isListening ? colors.white : textColor(0.35),
+              color: isXarkListening ? colors.cyan : isListening ? colors.white : textColor(0.3),
               cursor: "pointer",
               transition: `color ${timing.transition} ease`,
             }}
             onMouseEnter={(e) => {
-              if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.6);
+              if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.55);
             }}
             onMouseLeave={(e) => {
-              if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.35);
+              if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.3);
             }}
           >
             {isListening || isXarkListening ? (
