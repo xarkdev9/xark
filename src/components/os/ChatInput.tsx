@@ -118,7 +118,7 @@ export function ChatInput({
       <div
         className="fixed inset-x-0 z-20 px-6"
         style={{
-          bottom: layout.inputBottom,
+          bottom: "56px",
           paddingBottom: "12px",
           background: colors.void,
         }}
@@ -232,23 +232,23 @@ export function ChatInput({
         </div>
       </div>
 
-      {/* ═══ VOID FILL — solid bg between textarea and bottom edge ═══ */}
+      {/* ═══ VOID FILL — reduced gap between textarea and bottom ═══ */}
       <div
         className="fixed inset-x-0 z-[19]"
         style={{
           bottom: 0,
-          height: layout.inputBottom,
+          height: "56px",
           background: colors.void,
         }}
       />
 
-      {/* ═══ ATTACH — left of dot at caretBottom ═══ */}
+      {/* ═══ ATTACH — left of dot, halfway to left edge ═══ */}
       <div
         className="fixed z-20"
         style={{
           bottom: layout.caretBottom,
-          left: "50%",
-          transform: "translate(calc(-50% - 32px), 50%)",
+          left: "25%",
+          transform: "translate(-50%, 50%)",
         }}
       >
         <span
@@ -268,13 +268,13 @@ export function ChatInput({
         </span>
       </div>
 
-      {/* ═══ CAMERA — right of dot at caretBottom ═══ */}
+      {/* ═══ CAMERA — right of dot, halfway to right edge ═══ */}
       <div
         className="fixed z-20"
         style={{
           bottom: layout.caretBottom,
-          left: "50%",
-          transform: "translate(calc(-50% + 24px), 50%)",
+          left: "75%",
+          transform: "translate(-50%, 50%)",
         }}
       >
         <span
