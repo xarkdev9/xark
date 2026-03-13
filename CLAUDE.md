@@ -45,7 +45,7 @@ The Xark OS infrastructure is a locked hybrid of Firebase and Supabase. Do not d
 - Decision Engine: Supabase Postgres. All heart-sort ranking math runs in SQL here.
 - Multimedia (E2EE): Firebase Storage. Binary blob delivery with bucket-level security rules.
 - Push Alerts: Firebase Cloud Messaging (FCM). Native iOS/Android push.
-- Intelligence: Gemini 3.1 Ultra. Powers @xark deep research and agentic planning.
+- Intelligence: Gemini 2.0 Flash (gemini-2.0-flash). Powers @xark deep research and agentic planning.
 FORBIDDEN: Any use of Supabase Auth (supabase/auth, @supabase/auth, createClient.*auth for Supabase). Auth is Firebase-only.
 
 ALGORITHM REFERENCE: Full technical decision record at /Users/ramchitturi/algo/mar10_algo.md (198 tests, 0 type errors, hexagonal architecture).
@@ -91,7 +91,10 @@ STATE MACHINE (4 Preset Flows):
 - All flows allow skipping to terminal state via direct [commitment] from initial state.
 - Triggers: "reaction" (automated), "commitment" (intentional with proof), "manual" (explicit).
 - DecisionItemState is an open string (not enum) for custom flows.
-- SHARED MODULE: FLOW_TERMINAL_STATES and resolveTerminalState() must live in src/lib/state-flows.ts (eliminates duplication between handshake.ts and claims.ts).
+- SHARED MODULE: FLOW_TERMINAL_STATES and resolveTerminalState(state, flow?) must live in src/lib/state-flows.ts (eliminates duplication between handshake.ts and claims.ts). The "ranked" state is intentionally omitted from the flat map because it appears in both BOOKING_FLOW (→ locked) and SIMPLE_VOTE_FLOW (→ chosen). resolveTerminalState() accepts an optional flow parameter to disambiguate.
+
+SOLO SPACE BEHAVIOR:
+Solo spaces (1 member): no consensus threshold. React = decide. "Ready to lock?" appears after any reaction. No handshake needed — user locks directly via claims flow.
 
 GREEN-LOCK COMMITMENT PROTOCOL:
 - Lock = real-world commitment confirmation, not a vote. Proof required (confirmation_number, screenshot, receipt, contract, verbal).
@@ -282,9 +285,12 @@ Manual item claim — locks an item outside the automated handshake flow.
 - ClaimResult: { success, itemId, lockedAt, proof, error? }.
 - Proof input: free-form text — "Link to confirmation or drop receipt." Owner-only in UI.
 
+EMERGENT SPACE STATE (src/lib/space-state.ts):
+computeSpaceState(items[]) returns empty/exploring/converging/ready/active/settled. Pure function, no DB calls. UI reacts to computed state. "ready" = all items settled (v1 heuristic; full category coverage check is Gemini's job).
+
 SETTLEMENT LEDGER (src/lib/ledger.ts):
 Financial settlement from locked decision items. The Subtle Settle.
-- fetchSettlement(spaceId): Fetches all locked items. Parses price from metadata.price (handles "$450/nt", "$95/person", "Free"). Groups by ownership.ownerId. Calculates fairShare = totalSpent / memberCount. Returns Settlement { entries, deltas, totalSpent, fairShare, memberCount }.
+- fetchSettlement(spaceId): Fetches all locked items. Parses price from metadata.price (handles "$450/nt", "$95/person", "Free"). Groups by ownership.ownerId. memberCount from space_members table (true group size, not just payers). fairShare = totalSpent / memberCount. Returns Settlement { entries, deltas, totalSpent, fairShare, memberCount }.
 - LedgerEntry: { userId, displayName, totalPaid, items[] }.
 - DebtDelta: { fromUser, fromName, toUser, toName, amount }. Who owes whom.
 - generateVenmoLink(recipientName, amount, note): Returns venmo://paycharge deep link.
@@ -300,6 +306,7 @@ The automated bridge between Consensus and Commitment. When agreementScore cross
 - HandshakeProposal: { itemId, title, category, agreementScore, spaceId, timestamp }.
 - HandshakeResult: { success, itemId, lockedAt, proof, error? }.
 - Flow terminal states: proposed/ranked->locked, nominated->chosen, researching/shortlisted/negotiating->purchased, considering/leaning->decided.
+- NOTE: In BOOKING_FLOW, locked is an intermediate state (no owner). The handshake confirms consensus but does NOT stamp an owner. Ownership is assigned at the claim step. Terminal state is purchased.
 - Visual reward: On successful lock, connected clients should trigger Social Gold burst (goldBloom from theme.ts).
 
 LOGIN FLOW (src/app/login/page.tsx):
@@ -342,6 +349,22 @@ Populates Supabase Postgres with high-signal demo data. Run via: npx tsx src/lib
 - "ananya" sanctuary space: 1:1 private stream. 5 messages seeded. Last message: "did you see the surf lesson proposal?"
 - "tokyo neon nights" space: 2 items (shibuya 15% seeking, teamlab 72% steady).
 - "summer 2026" space: Empty, seeking state.
+
+NEW DIRECTORIES (implementation plan):
+- src/lib/intelligence/orchestrator.ts — Gemini 2.0 Flash orchestrator. Strips "@xark" prefix, builds conversation, routes tool calls.
+- src/lib/intelligence/tool-registry.ts — Tool registry pattern. Registers Apify actors (hotel-search, flight-search, activity-search) as callable tools.
+- src/lib/intelligence/apify-client.ts — Apify actor runner. Handles hotel/flight/activity searches via Apify API.
+- src/lib/media.ts — Firebase Storage E2EE media upload/download.
+- src/lib/notifications.ts — FCM push notification service.
+- src/lib/state-flows.ts — FLOW_TERMINAL_STATES + resolveTerminalState(state, flow?). Shared by handshake.ts and claims.ts.
+- src/lib/space-state.ts — computeSpaceState(items[]) pure function.
+
+KNOWN BUGS (from architecture audit, addressed in implementation plan):
+- B1: ai-grounding.ts buildGroundingContext() fetches agreement_score but column may not exist in all environments. Fix: add column check or migration guard.
+- B2: ai-grounding.ts generateGroundingPrompt() doesn't include reaction details per item (user names + types). Fix: join reactions table in buildGroundingContext.
+- B3: ledger.ts fetchSettlement() uses entries.length for memberCount instead of space_members table. Fix: query space_members for true group size.
+- B4: spaces.ts createSpace() doesn't add creator as space member. Fix: insert into space_members after space creation.
+All four bugs are addressed in the implementation plan (Tasks 0.4, 2.5, 10.4).
 
 2. THE ENGINE-TO-PIXEL MAP
 Amber (#F5A623): Seeking/Anticipation. Wash intensity maps to weightedScore.

@@ -11,7 +11,7 @@
     "fonts": "Inter (body, 400), Syne (display/fallback, 400), Inter (wordmark, 300). Inter is primary in globals.css.",
     "layout": "Liquid Feed / Zero-Box. Focus outlines globally purged in globals.css.",
     "engine": "heart-sort.ts is SSOT. Source: /Users/ramchitturi/algo/src/engine/heart-sort.ts. App version simplified (Possibility type, 2 functions). Full port pending (Phase 4 of todo_mar12.md).",
-    "infrastructure": "Hybrid Stack: Firebase Auth (OTP), Supabase Postgres (decision engine), Firebase Storage (E2EE multimedia), Firebase FCM (push), Gemini 3.1 Ultra (intelligence). Supabase Auth is banned."
+    "infrastructure": "Hybrid Stack: Firebase Auth (OTP), Supabase Postgres (decision engine), Firebase Storage (E2EE multimedia), Firebase FCM (push), Gemini 2.0 Flash (intelligence). Supabase Auth is banned."
   },
   "engine_config": {
     "signals": {

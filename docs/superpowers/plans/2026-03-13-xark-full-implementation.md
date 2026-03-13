@@ -6,7 +6,7 @@
 
 **Architecture:** 9 loosely coupled domain services (Auth, Space, Intelligence, Decision Engine, Messaging, Media, Notification, Settlement, Itinerary) communicating via Supabase Realtime events. Hexagonal architecture. All state in Supabase Postgres. Stateless services where possible.
 
-**Tech Stack:** Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS 4, Framer Motion, Supabase (Postgres + Realtime), Firebase (Auth + Storage + FCM), Gemini 3.1 Ultra, Apify, jose (JWT)
+**Tech Stack:** Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS 4, Framer Motion, Supabase (Postgres + Realtime), Firebase (Auth + Storage + FCM), Gemini 2.0 Flash (gemini-2.0-flash), Apify, jose (JWT)
 
 **Spec:** `docs/superpowers/specs/2026-03-13-xark-architecture-blueprint.md`
 
@@ -249,7 +249,8 @@ git commit -m "feat: add PWA manifest, meta tags, and safe-area CSS"
 export const FLOW_TERMINAL_STATES: Record<string, string> = {
   // BOOKING_FLOW (extended)
   proposed: "locked",
-  ranked: "locked",
+  // NOTE: "ranked" is intentionally omitted — it appears in both BOOKING_FLOW (→ locked)
+  // and SIMPLE_VOTE_FLOW (→ chosen). Use resolveTerminalState(state, flow) to disambiguate.
   locked: "claimed",    // locked is intermediate in BOOKING_FLOW
   claimed: "purchased", // claimed is intermediate
   // PURCHASE_FLOW
@@ -263,7 +264,10 @@ export const FLOW_TERMINAL_STATES: Record<string, string> = {
   leaning: "decided",
 };
 
-export function resolveTerminalState(currentState: string): string {
+export function resolveTerminalState(currentState: string, flow?: string): string {
+  if (currentState === "ranked") {
+    return flow === "SIMPLE_VOTE_FLOW" ? "chosen" : "locked";
+  }
   return FLOW_TERMINAL_STATES[currentState] ?? "locked";
 }
 
@@ -371,7 +375,7 @@ export function computeSpaceState(items: SpaceStateItem[]): SpaceState {
   });
   if (hasActiveDates && hasLocked) return "active";
 
-  // Check if all core categories covered
+  // v1 heuristic: "ready" when all items are settled. Full category coverage check is Gemini's job (blueprint Section 2 note).
   if (hasLocked && !hasOpenItems) return "ready";
 
   // Mixed: some locked, some still voting
@@ -961,7 +965,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { orchestrate } from "@/lib/intelligence/orchestrator";
 import { buildGroundingContext, generateGroundingPrompt } from "@/lib/ai-grounding";
 import { fetchMessages } from "@/lib/messages";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -997,13 +1001,7 @@ export async function POST(req: NextRequest) {
 
   // If search results exist, insert as decision_items
   if (result.searchResults && result.searchResults.length > 0) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (supabaseUrl && serviceKey) {
-      const supabase = createClient(supabaseUrl, serviceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-
+    if (supabaseAdmin) {
       const items = result.searchResults.map((r) => ({
         id: `item_${crypto.randomUUID()}`,
         space_id: spaceId,
@@ -1025,7 +1023,7 @@ export async function POST(req: NextRequest) {
         },
       }));
 
-      await supabase.from("decision_items").upsert(items, { onConflict: "id" });
+      await supabaseAdmin.from("decision_items").upsert(items, { onConflict: "id" });
     }
   }
 
@@ -1103,6 +1101,8 @@ git commit -m "fix: lowercase state matching (B1) + state map grounding prompt (
 **Depends on:** Task 2.4 (/api/xark route)
 
 **Why:** Blueprint Section 3 — two voice paths: tap (on-device SpeechRecognition) and long-press (Gemini multimodal).
+
+> **v1 simplification:** Both tap and long-press use on-device SpeechRecognition. Long-press auto-prefixes "@xark" to route through intelligence. The Gemini multimodal path (sending audio blob directly to Gemini for transcription + reasoning in one hop) is deferred to a future phase when latency and quality can be properly tested.
 
 - [ ] **Step 1: Create useVoiceInput hook**
 
@@ -2268,23 +2268,17 @@ export async function registerDevice(
 
 import { NextRequest, NextResponse } from "next/server";
 import { sendPush } from "@/lib/notifications";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: NextRequest) {
   const { event, spaceId, title, body, excludeUserId } = await req.json();
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) {
+  if (!supabaseAdmin) {
     return NextResponse.json({ error: "not configured" }, { status: 500 });
   }
 
-  const supabase = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
   // Get space members' FCM tokens
-  const { data: members } = await supabase
+  const { data: members } = await supabaseAdmin
     .from("space_members")
     .select("user_id")
     .eq("space_id", spaceId);
@@ -2295,7 +2289,7 @@ export async function POST(req: NextRequest) {
     .map((m) => m.user_id)
     .filter((id) => id !== excludeUserId);
 
-  const { data: devices } = await supabase
+  const { data: devices } = await supabaseAdmin
     .from("user_devices")
     .select("fcm_token")
     .in("user_id", userIds);
