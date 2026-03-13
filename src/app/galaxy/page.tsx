@@ -13,11 +13,13 @@ import {
 import type { AwarenessEvent } from "@/lib/awareness";
 import { recencyLabel } from "@/lib/space-data";
 import { colors, opacity, timing, layout, text, textColor } from "@/lib/theme";
+import { useAuth } from "@/hooks/useAuth";
 
 function GalaxyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const userName = searchParams.get("name") ?? "";
+  const { user } = useAuth(userName || undefined);
   const [mounted, setMounted] = useState(false);
   const [events, setEvents] = useState<AwarenessEvent[]>([]);
   const [dream, setDream] = useState("");
@@ -26,11 +28,14 @@ function GalaxyContent() {
 
   useEffect(() => {
     setMounted(true);
-    const resolvedUserId = `name_${userName}`;
-    fetchAwareness(resolvedUserId)
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchAwareness(user.uid)
       .then((result) => setEvents(result.length > 0 ? result : getDemoAwareness()))
       .catch(() => setEvents(getDemoAwareness()));
-  }, [userName]);
+  }, [user]);
 
   const hasEvents = events.length > 0;
 
@@ -43,9 +48,10 @@ function GalaxyContent() {
     const txt = dream.trim();
     if (!txt || isCreating) return;
     setIsCreating(true);
+    const resolvedId = user?.uid ?? `name_${userName}`;
     const spaceId = getOptimisticSpaceId(txt);
     router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}`);
-    createSpace(txt, `name_${userName}`).catch(() => {});
+    createSpace(txt, resolvedId).catch(() => {});
   }, [dream, isCreating, router, userName]);
 
   return (
