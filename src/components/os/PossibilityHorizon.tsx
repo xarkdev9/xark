@@ -124,106 +124,114 @@ function DecisionCard({
   const cColor = consensusColor(consensusState);
 
   return (
-    <div className="flex-shrink-0 snap-start" style={{ width: "170px" }}>
-      {/* ── Visual card — portrait ratio ── */}
+    <div
+      className="relative flex-shrink-0 snap-start overflow-hidden"
+      style={{
+        width: "170px",
+        height: "260px",
+        borderRadius: "16px",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+      }}
+    >
+      {/* ── Image or gradient placeholder ── */}
       <div
-        className="relative"
-        style={{ width: "170px", height: "220px", overflow: "hidden" }}
-      >
-        {/* ── Image or gradient placeholder ── */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: imageUrl
-              ? `url(${imageUrl})`
-              : `linear-gradient(160deg, rgba(var(--xark-amber-rgb), 0.2) 0%, rgba(var(--xark-accent-rgb), 0.12) 50%, rgba(var(--xark-void-rgb), 0.4) 100%)`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+        className="absolute inset-0"
+        style={{
+          backgroundImage: imageUrl
+            ? `url(${imageUrl})`
+            : `linear-gradient(160deg, rgba(var(--xark-amber-rgb), 0.2) 0%, rgba(var(--xark-accent-rgb), 0.12) 50%, rgba(var(--xark-void-rgb), 0.4) 100%)`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
 
-        {/* ── Bottom vignette — stronger for readability ── */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(var(--xark-void-rgb), 0.98) 0%, rgba(var(--xark-void-rgb), 0.6) 45%, transparent 80%)",
-          }}
-        />
+      {/* ── Bottom vignette — covers lower 60% for content + action zone ── */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to top, rgba(var(--xark-void-rgb), 1) 0%, rgba(var(--xark-void-rgb), 0.95) 30%, rgba(var(--xark-void-rgb), 0.5) 55%, transparent 80%)",
+        }}
+      />
 
-        {/* ── Amber wash ── */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: `linear-gradient(to top, ${amberWash(weightedScore)} 0%, transparent 50%)`,
-          }}
-        />
+      {/* ── Amber wash ── */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `linear-gradient(to top, ${amberWash(weightedScore)} 0%, transparent 40%)`,
+        }}
+      />
 
-        {/* ── Content overlay ── */}
-        <div className="absolute inset-x-0 bottom-0 px-3 pb-3">
-          {/* ── Consensus hero ── */}
-          <div style={{ marginBottom: "4px" }}>
-            <span
+      {/* ── Content zone — info sits above action zone ── */}
+      <div className="absolute inset-x-0 bottom-0 px-3" style={{ paddingBottom: "48px" }}>
+        {/* ── Consensus hero ── */}
+        <div style={{ marginBottom: "4px" }}>
+          <span
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: 400,
+              lineHeight: 1,
+              letterSpacing: "-0.02em",
+              color: cColor,
+              opacity: consensusState === "ignited" ? 0.95 : 0.7,
+            }}
+          >
+            {pct}
+          </span>
+          <span
+            style={{
+              ...text.timestamp,
+              color: cColor,
+              opacity: 0.4,
+              marginLeft: "2px",
+              verticalAlign: "super",
+            }}
+          >
+            %
+          </span>
+          <div style={{ marginTop: "3px", height: "2px", position: "relative" }}>
+            <div
               style={{
-                fontSize: "1.5rem",
-                fontWeight: 400,
-                lineHeight: 1,
-                letterSpacing: "-0.02em",
-                color: cColor,
-                opacity: consensusState === "ignited" ? 0.95 : 0.7,
+                position: "absolute",
+                left: 0,
+                top: 0,
+                height: "2px",
+                width: `${pct}%`,
+                backgroundColor: cColor,
+                opacity: consensusState === "ignited" ? 0.8 : 0.35,
+                transition: "width 0.6s ease, opacity 0.6s ease",
               }}
-            >
-              {pct}
-            </span>
-            <span
-              style={{
-                ...text.timestamp,
-                color: cColor,
-                opacity: 0.4,
-                marginLeft: "2px",
-                verticalAlign: "super",
-              }}
-            >
-              %
-            </span>
-            <div style={{ marginTop: "3px", height: "2px", position: "relative" }}>
-              <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  height: "2px",
-                  width: `${pct}%`,
-                  backgroundColor: cColor,
-                  opacity: consensusState === "ignited" ? 0.8 : 0.35,
-                  transition: "width 0.6s ease, opacity 0.6s ease",
-                }}
-              />
-            </div>
+            />
           </div>
-
-          <p style={{ ...text.body, color: colors.white, opacity: 0.9, lineHeight: 1.3 }}>
-            {title}
-          </p>
-
-          {price && (
-            <span
-              style={{
-                ...text.recency,
-                color: colors.white,
-                opacity: 0.4,
-                display: "inline-block",
-                marginTop: "2px",
-              }}
-            >
-              {price}
-            </span>
-          )}
         </div>
+
+        <p style={{ ...text.body, color: colors.white, opacity: 0.9, lineHeight: 1.3 }}>
+          {title}
+        </p>
+
+        {price && (
+          <span
+            style={{
+              ...text.recency,
+              color: colors.white,
+              opacity: 0.4,
+              display: "inline-block",
+              marginTop: "2px",
+            }}
+          >
+            {price}
+          </span>
+        )}
       </div>
 
-      {/* ── Reactions — BELOW card, on void, full sunlight contrast ── */}
-      <div className="flex items-center gap-4" style={{ marginTop: "8px", paddingLeft: "3px" }}>
+      {/* ── Action zone — distinct bottom strip inside the card ── */}
+      <div
+        className="absolute inset-x-0 bottom-0 flex items-center justify-between px-3"
+        style={{
+          height: "40px",
+          background: "rgba(var(--xark-white-rgb), 0.06)",
+        }}
+      >
         {SIGNALS.map((signal) => {
           const isActive = activeReaction === signal.type;
           return (
@@ -237,11 +245,11 @@ function DecisionCard({
               }}
               className="outline-none"
               style={{
-                ...text.body,
-                color: signal.color,
-                opacity: isActive ? 1 : activeReaction ? 0.2 : 0.6,
+                ...text.subtitle,
+                color: isActive ? signal.color : colors.white,
+                opacity: isActive ? 1 : activeReaction ? 0.2 : 0.55,
                 cursor: "pointer",
-                transition: `opacity ${timing.transition} ease`,
+                transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
               }}
             >
               {signal.label}
