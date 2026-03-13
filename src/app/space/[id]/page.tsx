@@ -8,8 +8,11 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { XarkChat } from "@/components/os/XarkChat";
 import { PossibilityHorizon } from "@/components/os/PossibilityHorizon";
+import { ItineraryView } from "@/components/os/ItineraryView";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { computeSpaceState } from "@/lib/space-state";
+import type { SpaceStateItem } from "@/lib/space-state";
 import { colors, text, textColor, timing } from "@/lib/theme";
 
 // Demo space title map — used when Supabase is unreachable
@@ -20,7 +23,7 @@ const DEMO_TITLES: Record<string, string> = {
   space_summer: "summer 2026",
 };
 
-type ViewMode = "discuss" | "decide";
+type ViewMode = "discuss" | "decide" | "itinerary";
 
 function SpacePageInner() {
   const params = useParams();
@@ -35,6 +38,7 @@ function SpacePageInner() {
 
   const [view, setView] = useState<ViewMode>("discuss");
   const [spaceTitle, setSpaceTitle] = useState<string>("");
+  const [spaceItems, setSpaceItems] = useState<SpaceStateItem[]>([]);
   const [joining, setJoining] = useState(false);
   const [shareWhisper, setShareWhisper] = useState(false);
 
@@ -59,6 +63,25 @@ function SpacePageInner() {
     }
     loadTitle();
   }, [spaceId]);
+
+  // ── Fetch decision items for space state computation ──
+  useEffect(() => {
+    async function loadItems() {
+      try {
+        const { data } = await supabase
+          .from("decision_items")
+          .select("state, is_locked, category, metadata")
+          .eq("space_id", spaceId);
+        if (data) setSpaceItems(data as SpaceStateItem[]);
+      } catch {
+        // Silent — demo fallback stays empty
+      }
+    }
+    loadItems();
+  }, [spaceId]);
+
+  const spaceState = computeSpaceState(spaceItems);
+  const showItinerary = spaceState === "ready" || spaceState === "active" || spaceState === "settled";
 
   // ── Invite flow: redirect to login if not authenticated, then join ──
   useEffect(() => {
@@ -193,6 +216,26 @@ function SpacePageInner() {
               >
                 decide
               </span>
+              {showItinerary && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setView("itinerary")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") setView("itinerary");
+                  }}
+                  className="outline-none"
+                  style={{
+                    ...text.label,
+                    color: view === "itinerary" ? colors.cyan : colors.white,
+                    opacity: view === "itinerary" ? 0.9 : 0.4,
+                    cursor: "pointer",
+                    transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
+                  }}
+                >
+                  itinerary
+                </span>
+              )}
             </div>
 
             {/* ── Share ── */}
@@ -219,14 +262,18 @@ function SpacePageInner() {
       </div>
 
       {/* ── View content ── */}
-      {view === "discuss" ? (
+      {view === "discuss" && (
         <XarkChat
           spaceId={spaceId}
           userId={resolvedUserId}
           spaceTitle={spaceTitle}
         />
-      ) : (
+      )}
+      {view === "decide" && (
         <PossibilityHorizon spaceId={spaceId} userId={resolvedUserId} />
+      )}
+      {view === "itinerary" && (
+        <ItineraryView spaceId={spaceId} />
       )}
     </div>
   );
