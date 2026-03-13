@@ -1,8 +1,7 @@
 "use client";
 
 // XARK OS v2.0 — Shared Chat Input
-// Textarea at inputBottom. Actions orbit the ControlCaret dot at caretBottom.
-// attach · camera · ● · mic — the dot is the nucleus, actions are its field.
+// Textarea + mic at inputBottom. Attach/Camera icons flank the dot at caretBottom.
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -15,6 +14,35 @@ interface ChatInputProps {
   isThinking?: boolean;
   onAttach?: () => void;
   onCamera?: () => void;
+}
+
+// ── Minimal SVG icons — thin stroke, atmospheric ──
+function AttachIcon({ color }: { color: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function CameraIcon({ color }: { color: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
+function MicIcon({ color, size = 14 }: { color: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="1" width="6" height="11" rx="3" />
+      <path d="M19 10v2a7 7 0 01-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
 }
 
 export function ChatInput({
@@ -74,13 +102,19 @@ export function ChatInput({
     else cameraRef.current?.click();
   };
 
+  const micColor = isXarkListening
+    ? colors.cyan
+    : isListening
+      ? colors.white
+      : textColor(0.3);
+
   return (
     <>
       {/* Hidden file inputs */}
       <input ref={fileRef} type="file" className="hidden" accept="*/*" />
       <input ref={cameraRef} type="file" className="hidden" accept="image/*" capture="environment" />
 
-      {/* ═══ TEXTAREA ZONE ═══ */}
+      {/* ═══ TEXTAREA ZONE + MIC — at inputBottom ═══ */}
       <div
         className="fixed inset-x-0 z-20 px-6"
         style={{
@@ -99,35 +133,89 @@ export function ChatInput({
             }}
           />
 
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              isXarkListening
-                ? "@xark is listening..."
-                : isListening
-                  ? "listening..."
-                  : "message, or @xark for ideas"
-            }
-            disabled={isThinking}
-            spellCheck={false}
-            autoComplete="off"
-            rows={1}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-            className="w-full resize-none bg-transparent outline-none"
-            style={{
-              ...text.body,
-              color: colors.white,
-              caretColor: colors.cyan,
-              opacity: isThinking ? 0.3 : 1,
-              lineHeight: 1.5,
-              maxHeight: "120px",
-              overflow: "hidden",
-            }}
-          />
+          <div className="flex items-start gap-3">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => onInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                isXarkListening
+                  ? "@xark is listening..."
+                  : isListening
+                    ? "listening..."
+                    : "message, or @xark for ideas"
+              }
+              disabled={isThinking}
+              spellCheck={false}
+              autoComplete="off"
+              rows={1}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              className="w-full resize-none bg-transparent outline-none"
+              style={{
+                ...text.body,
+                color: colors.white,
+                caretColor: colors.cyan,
+                opacity: isThinking ? 0.3 : 1,
+                lineHeight: 1.5,
+                maxHeight: "120px",
+                overflow: "hidden",
+              }}
+            />
+
+            {/* ── Mic icon — fixed in text field ── */}
+            <span
+              role="button"
+              tabIndex={0}
+              onPointerDown={() => {
+                longPressRef.current = setTimeout(() => {
+                  startXarkListening();
+                  longPressRef.current = null;
+                }, 500);
+              }}
+              onPointerUp={() => {
+                if (longPressRef.current) {
+                  clearTimeout(longPressRef.current);
+                  longPressRef.current = null;
+                  if (isListening || isXarkListening) stopListening();
+                  else startListening();
+                }
+              }}
+              onPointerLeave={() => {
+                if (longPressRef.current) {
+                  clearTimeout(longPressRef.current);
+                  longPressRef.current = null;
+                }
+              }}
+              className="outline-none select-none cursor-pointer"
+              style={{
+                flexShrink: 0,
+                marginTop: "1px",
+                opacity: isListening || isXarkListening ? 1 : 0.6,
+                transition: `opacity ${timing.transition} ease`,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+              onMouseLeave={(e) => {
+                if (!isListening && !isXarkListening) e.currentTarget.style.opacity = "0.6";
+              }}
+            >
+              {isListening || isXarkListening ? (
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    backgroundColor: isXarkListening ? colors.cyan : colors.white,
+                    animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+                  }}
+                />
+              ) : (
+                <MicIcon color={micColor} />
+              )}
+            </span>
+          </div>
 
           <div
             style={{
@@ -144,7 +232,7 @@ export function ChatInput({
         </div>
       </div>
 
-      {/* ═══ VOID FILL — solid bg between textarea zone and action bar ═══ */}
+      {/* ═══ VOID FILL — solid bg between textarea and bottom edge ═══ */}
       <div
         className="fixed inset-x-0 z-[19]"
         style={{
@@ -154,108 +242,56 @@ export function ChatInput({
         }}
       />
 
-      {/* ═══ ACTION ORBIT — flanks the ControlCaret dot ═══ */}
+      {/* ═══ ATTACH — left of dot at caretBottom ═══ */}
       <div
         className="fixed z-20"
         style={{
           bottom: layout.caretBottom,
           left: "50%",
-          transform: "translate(-50%, 50%)",
+          transform: "translate(calc(-50% - 32px), 50%)",
         }}
       >
-        <div className="flex items-center" style={{ gap: "20px" }}>
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={handleAttachClick}
-            onKeyDown={(e) => { if (e.key === "Enter") handleAttachClick(); }}
-            className="cursor-pointer outline-none"
-            style={{
-              ...text.subtitle,
-              color: textColor(0.3),
-              transition: `color ${timing.transition} ease`,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.55); }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.3); }}
-          >
-            attach
-          </span>
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={handleAttachClick}
+          onKeyDown={(e) => { if (e.key === "Enter") handleAttachClick(); }}
+          className="cursor-pointer outline-none"
+          style={{
+            opacity: 0.5,
+            transition: `opacity ${timing.transition} ease`,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.8"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.5"; }}
+        >
+          <AttachIcon color={colors.white} />
+        </span>
+      </div>
 
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={handleCameraClick}
-            onKeyDown={(e) => { if (e.key === "Enter") handleCameraClick(); }}
-            className="cursor-pointer outline-none"
-            style={{
-              ...text.subtitle,
-              color: textColor(0.3),
-              transition: `color ${timing.transition} ease`,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.55); }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.3); }}
-          >
-            camera
-          </span>
-
-          {/* ── Dot gap — ControlCaret renders independently ── */}
-          <div style={{ width: "24px" }} />
-
-          <span
-            role="button"
-            tabIndex={0}
-            onPointerDown={() => {
-              longPressRef.current = setTimeout(() => {
-                startXarkListening();
-                longPressRef.current = null;
-              }, 500);
-            }}
-            onPointerUp={() => {
-              if (longPressRef.current) {
-                clearTimeout(longPressRef.current);
-                longPressRef.current = null;
-                if (isListening || isXarkListening) stopListening();
-                else startListening();
-              }
-            }}
-            onPointerLeave={() => {
-              if (longPressRef.current) {
-                clearTimeout(longPressRef.current);
-                longPressRef.current = null;
-              }
-            }}
-            className="outline-none select-none"
-            style={{
-              ...text.subtitle,
-              color: isXarkListening ? colors.cyan : isListening ? colors.white : textColor(0.3),
-              cursor: "pointer",
-              transition: `color ${timing.transition} ease`,
-            }}
-            onMouseEnter={(e) => {
-              if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.55);
-            }}
-            onMouseLeave={(e) => {
-              if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.3);
-            }}
-          >
-            {isListening || isXarkListening ? (
-              <span className="flex items-center gap-2">
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: "5px",
-                    height: "5px",
-                    borderRadius: "50%",
-                    backgroundColor: isXarkListening ? colors.cyan : colors.white,
-                    animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
-                  }}
-                />
-              </span>
-            ) : (
-              "mic"
-            )}
-          </span>
-        </div>
+      {/* ═══ CAMERA — right of dot at caretBottom ═══ */}
+      <div
+        className="fixed z-20"
+        style={{
+          bottom: layout.caretBottom,
+          left: "50%",
+          transform: "translate(calc(-50% + 24px), 50%)",
+        }}
+      >
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={handleCameraClick}
+          onKeyDown={(e) => { if (e.key === "Enter") handleCameraClick(); }}
+          className="cursor-pointer outline-none"
+          style={{
+            opacity: 0.5,
+            transition: `opacity ${timing.transition} ease`,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.8"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.5"; }}
+        >
+          <CameraIcon color={colors.white} />
+        </span>
       </div>
 
       <style jsx>{`
