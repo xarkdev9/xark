@@ -79,7 +79,7 @@ function GalaxyContent() {
       {/* ── Content ── */}
       <motion.div
         className="flex-1 overflow-y-auto px-6"
-        style={{ paddingTop: "80px", paddingBottom: "140px" }}
+        style={{ paddingTop: "80px", paddingBottom: "120px" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
@@ -163,11 +163,12 @@ function GalaxyContent() {
         </div>
       </motion.div>
 
-      {/* ── Input Zone — 96px from bottom, solid void ── */}
+      {/* ── Input Zone — matches ChatInput layout ── */}
       <div
-        className="fixed inset-x-0 bottom-0 px-6 pt-4"
+        className="fixed inset-x-0 z-20 px-6"
         style={{
-          paddingBottom: layout.inputBottom,
+          bottom: "56px",
+          paddingBottom: "12px",
           background: colors.void,
         }}
       >
@@ -178,42 +179,51 @@ function GalaxyContent() {
               height: "1px",
               background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
               opacity: 0.15,
-              marginBottom: "12px",
+              marginBottom: "10px",
             }}
           />
-          <div className="relative">
-            <input
-              type="text"
-              value={dream}
-              onChange={(e) => setDream(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") manifestDream();
-              }}
-              placeholder="a trip, a dinner, an idea..."
-              disabled={isCreating}
-              spellCheck={false}
-              autoComplete="off"
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              className="w-full bg-transparent outline-none"
-              style={{
-                ...text.body,
-                color: colors.white,
-                caretColor: colors.cyan,
-                opacity: isCreating ? 0.3 : 1,
-              }}
-            />
-            <div
-              className="absolute -bottom-2 left-0 h-px w-full"
-              style={{
-                background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
-                opacity: inputFocused ? opacity.focusUnderline : opacity.rule,
-                transition: `opacity ${timing.transition} ease`,
-              }}
-            />
-          </div>
+          <input
+            type="text"
+            value={dream}
+            onChange={(e) => setDream(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") manifestDream();
+            }}
+            placeholder="a trip, a dinner, an idea..."
+            disabled={isCreating}
+            spellCheck={false}
+            autoComplete="off"
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            className="w-full bg-transparent outline-none"
+            style={{
+              ...text.body,
+              color: colors.white,
+              caretColor: colors.cyan,
+              opacity: isCreating ? 0.3 : 1,
+            }}
+          />
+          {/* ── Living ambient line — grows with text ── */}
+          <div
+            style={{
+              marginTop: "4px",
+              height: "1px",
+              width: dream.length > 0
+                ? `min(${Math.max(dream.length * 6, 40)}px, 100%)`
+                : inputFocused ? "60px" : "0px",
+              background: `linear-gradient(90deg, ${colors.cyan}, transparent)`,
+              opacity: dream.length > 0 ? 0.4 : 0.2,
+              animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+              transition: `width 0.3s ease, opacity ${timing.transition} ease`,
+            }}
+          />
         </div>
       </div>
+      {/* ── Void fill below input ── */}
+      <div
+        className="fixed inset-x-0 z-[19]"
+        style={{ bottom: 0, height: "56px", background: colors.void }}
+      />
 
       <style jsx>{`
         input::placeholder {
