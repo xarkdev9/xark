@@ -7,7 +7,7 @@
   "algo_status": "198 tests, 0 type errors, hexagonal architecture",
   "architectural_locks": {
     "typography": "Weights 300/400 only. Bold banned.",
-    "color": "Theme-aware CSS variables (--xark-white, --xark-void, --xark-accent). Three themes: hearth (light, default), signal (dark), ember (warm dark). textColor(alpha) from theme.ts is the approved opacity method.",
+    "color": "Theme-aware CSS variables (--xark-white, --xark-void, --xark-accent). Six themes: 3 light (hearth default, cloud, sage) + 3 dark (signal, noir, haze). textColor(alpha) from theme.ts is the approved opacity method.",
     "fonts": "Inter (body, 400), Syne (display/fallback, 400), Inter (wordmark, 300). Inter is primary in globals.css.",
     "layout": "Liquid Feed / Zero-Box. Focus outlines globally purged in globals.css.",
     "engine": "heart-sort.ts is SSOT. Source: /Users/ramchitturi/algo/src/engine/heart-sort.ts. Full port complete (DecisionItem, calculateWeightedScore, addReaction, removeReaction, calculateAgreementScore, getRankedSummary).",
@@ -111,7 +111,7 @@
     "supabase_admin": "src/lib/supabase-admin.ts — Service-role client for /api/xark and /api/notify. Bypasses RLS."
   },
   "theme_system": {
-    "themes": ["hearth (light, default)", "signal (dark)", "ember (warm dark)"],
+    "themes": ["hearth (light, default)", "cloud (light)", "sage (light)", "signal (dark)", "noir (dark)", "haze (dark)"],
     "provider": "src/components/ThemeProvider.tsx — sets CSS variables on :root",
     "tokens": "src/lib/theme.ts — colors, opacity, timing, text, layout, foveal, neuro, reactions objects",
     "css_variables": "--xark-white, --xark-void, --xark-accent, --xark-amber, --xark-gold, --xark-green, --xark-orange, --xark-gray (plus -rgb variants)",
@@ -188,6 +188,9 @@
     "ClaimSheet": "verified",
     "PurchaseSheet": "verified",
     "VoiceInput": "verified",
+    "ChatInput": "verified",
+    "ItineraryView": "verified",
+    "MemoriesView": "verified",
     "ServiceWorkerRegistration": "verified",
     "SupabaseAdmin": "verified"
   },

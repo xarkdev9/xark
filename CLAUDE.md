@@ -24,10 +24,10 @@ PWA: manifest.json in public/, standalone display, safe-area padding, service wo
 1. THE ARCHITECTURAL LOCKS (NON-NEGOTIABLE)
 NO-BOLD MANDATE: Hierarchy is achieved through Scale, Spacing, and Opacity alone. Use font-weight: 400 for primary text. Use font-weight: 300 for secondary/metadata. FORBIDDEN: 500, 600, 700, 800, 900. Bold is banned. If you need emphasis, use SIZE or OPACITY — never weight.
 
-THEME SYSTEM (3 Themes): Xark OS ships with three themes — hearth (light, default), signal (dark), ember (warm dark). All colors are CSS variables set by ThemeProvider. No hardcoded hex colors in components.
-- Text color: `var(--xark-white)` via `colors.white`. In hearth mode this is #141414 (ink), in signal mode #B2EBF2 (cyan-white), in ember mode #FFF4EC (warm cream).
-- Background: `var(--xark-void)` via `colors.void`. In hearth mode #F0EEE9 (warm paper), in signal/ember dark canvases.
-- Accent: `var(--xark-accent)` via `colors.cyan`. Hearth = #FF6B35 (warm orange), Signal = #40E0FF (cyan), Ember = #FF8C42.
+THEME SYSTEM (6 Themes): Xark OS ships with six themes — 3 light (hearth default, cloud, sage) + 3 dark (signal, noir, haze). All colors are CSS variables set by ThemeProvider. No hardcoded hex colors in components.
+- Text color: `var(--xark-white)` via `colors.white`. Light modes use dark ink, dark modes use light text.
+- Background: `var(--xark-void)` via `colors.void`. Light modes use warm/cool paper, dark modes use deep canvases.
+- Accent: `var(--xark-accent)` via `colors.cyan`. Hearth = #FF6B35, Cloud = #4F46E5, Sage = #166534, Signal = #40E0FF, Noir = #E8C47C, Haze = #A78BFA.
 - Engine signals (amber, gold, green, orange, gray) are all CSS variables — adjusted per theme for contrast.
 - `textColor(alpha)` from theme.ts returns `rgba(var(--xark-white-rgb), alpha)` — the APPROVED method for applying opacity to text. This is NOT an rgba violation; it reads from CSS variables and is theme-aware.
 - `accentColor(alpha)` works the same way for accent color with opacity.
@@ -125,7 +125,10 @@ KEY MODULE MAP (read the source for implementation details):
 - src/components/os/ClaimSheet.tsx — Slide-up for claiming locked items. "i'll handle this" stamps owner.
 - src/components/os/PurchaseSheet.tsx — Slide-up for purchase confirmation + amount entry. claimed → purchased.
 - src/components/os/UserMenu.tsx — Settings sheet: three-view drill-down (main → profile, main → system). Profile: avatar preview (48px) + "change photo" (Firebase Storage profiles/{userId}/avatar) + name input (Supabase users.display_name). System: 6-theme picker (hearth, cloud, sage, signal, noir, haze). Navigation: floating text links, horizontal slide animation (AnimatePresence, 0.2s tween). Actions: floating text only, no buttons/boxes.
-- src/components/os/PossibilityHorizon.tsx — Decide view: Netflix-style category sections (vertical scroll) with horizontal card bands per category. DecisionCard (280×360, image/gradient, vignette, amber wash, consensus label, reaction signals). CategorySection (header + conviction strip + card scroll, settled row when all locked). InputZone (shared bottom, @xark-only, POST to /api/xark, results via Realtime INSERT). Batch reaction fetch via batchGetUserReactions. Single Supabase query + client-side grouping (useMemo). Self-resolving: locked categories collapse to green dot + title whisper.
+- src/components/os/PossibilityHorizon.tsx — Decide view: Netflix-style category sections (vertical scroll) with horizontal card bands per category. DecisionCard (200×260, image/gradient, vignette, amber wash, consensus hero: 1.5rem % number + 2px bar colored by state, compact reactions "love/okay/pass" in text.recency). CategorySection (pluralized header label, no conviction strip, card scroll, settled row when all locked). Batch reaction fetch via batchGetUserReactions. Single Supabase query + client-side grouping (useMemo). Self-resolving: locked categories collapse to green dot + title whisper.
+- src/components/os/ChatInput.tsx — Shared input component, always visible across all Space views. Controlled by Space page (input/onInputChange/onSend/isThinking props). Accent underline, mic with voice input, placeholder styling. Persists draft across discuss/decide view switches.
+- src/components/os/ItineraryView.tsx — Committed items timeline view for ready/active spaces.
+- src/components/os/MemoriesView.tsx — Photo stream view, default for settled spaces.
 
 KNOWN BUGS (from architecture audit, addressed in implementation plan):
 - B1: ai-grounding.ts buildGroundingContext() — agreement_score column may not exist in all environments.
