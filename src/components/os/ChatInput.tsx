@@ -1,18 +1,20 @@
 "use client";
 
 // XARK OS v2.0 — Shared Chat Input
-// Lives in Space page, persists across Discuss/Decide view switches.
-// Auto-expanding textarea. Owns: input, mic, accent underline. Controlled by parent.
+// Auto-expanding textarea + fixed action row (attach · camera · mic).
+// Textarea grows upward. Actions stay pinned below it, always in same position.
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
-import { colors, text, timing, layout, opacity } from "@/lib/theme";
+import { colors, text, timing, layout, opacity, textColor } from "@/lib/theme";
 
 interface ChatInputProps {
   input: string;
   onInputChange: (value: string) => void;
   onSend: () => void;
   isThinking?: boolean;
+  onAttach?: () => void;
+  onCamera?: () => void;
 }
 
 export function ChatInput({
@@ -20,11 +22,15 @@ export function ChatInput({
   onInputChange,
   onSend,
   isThinking,
+  onAttach,
+  onCamera,
 }: ChatInputProps) {
   const [inputFocused, setInputFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
-  // ── Voice Input — tap: on-device, long-press: @xark mode ──
+  // ── Voice Input ──
   const {
     isListening,
     isXarkListening,
@@ -39,7 +45,7 @@ export function ChatInput({
     if (transcript) onInputChange(transcript);
   }, [transcript, onInputChange]);
 
-  // ── Auto-resize textarea to content (max ~6 lines) ──
+  // ── Auto-resize textarea (max ~6 lines) ──
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -58,8 +64,28 @@ export function ChatInput({
     }
   };
 
+  const handleAttachClick = () => {
+    if (onAttach) {
+      onAttach();
+    } else {
+      fileRef.current?.click();
+    }
+  };
+
+  const handleCameraClick = () => {
+    if (onCamera) {
+      onCamera();
+    } else {
+      cameraRef.current?.click();
+    }
+  };
+
   return (
     <>
+      {/* Hidden file inputs */}
+      <input ref={fileRef} type="file" className="hidden" accept="*/*" />
+      <input ref={cameraRef} type="file" className="hidden" accept="image/*" capture="environment" />
+
       <div
         className="fixed inset-x-0 bottom-0 z-20 px-6 pt-4"
         style={{
@@ -77,37 +103,78 @@ export function ChatInput({
               marginBottom: "10px",
             }}
           />
-          <div className="relative flex items-start gap-3">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => onInputChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                isXarkListening
-                  ? "@xark is listening..."
-                  : isListening
-                    ? "listening..."
-                    : "message, or @xark for ideas"
-              }
-              disabled={isThinking}
-              spellCheck={false}
-              autoComplete="off"
-              rows={1}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              className="w-full resize-none bg-transparent outline-none"
+
+          {/* ── Textarea — grows upward ── */}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => onInputChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              isXarkListening
+                ? "@xark is listening..."
+                : isListening
+                  ? "listening..."
+                  : "message, or @xark for ideas"
+            }
+            disabled={isThinking}
+            spellCheck={false}
+            autoComplete="off"
+            rows={1}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            className="w-full resize-none bg-transparent outline-none"
+            style={{
+              ...text.body,
+              color: colors.white,
+              caretColor: colors.cyan,
+              opacity: isThinking ? 0.3 : 1,
+              lineHeight: 1.5,
+              maxHeight: "120px",
+              overflow: "hidden",
+            }}
+          />
+
+          {/* ── Action row — fixed below textarea, never moves ── */}
+          <div
+            className="flex items-center justify-end gap-5"
+            style={{ marginTop: "8px" }}
+          >
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleAttachClick}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAttachClick(); }}
+              className="cursor-pointer outline-none"
               style={{
-                ...text.body,
-                color: colors.white,
-                caretColor: colors.cyan,
-                opacity: isThinking ? 0.3 : 1,
-                lineHeight: 1.5,
-                maxHeight: "120px",
-                overflow: "hidden",
+                ...text.recency,
+                color: textColor(0.3),
+                transition: `color ${timing.transition} ease`,
               }}
-            />
-            {/* ── Mic — tap: listen, long-press 500ms: @xark mode ── */}
+              onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.5); }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.3); }}
+            >
+              attach
+            </span>
+
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleCameraClick}
+              onKeyDown={(e) => { if (e.key === "Enter") handleCameraClick(); }}
+              className="cursor-pointer outline-none"
+              style={{
+                ...text.recency,
+                color: textColor(0.3),
+                transition: `color ${timing.transition} ease`,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.5); }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.3); }}
+            >
+              camera
+            </span>
+
+            {/* ── Mic — tap: listen, long-press: @xark mode ── */}
             <span
               role="button"
               tabIndex={0}
@@ -121,11 +188,8 @@ export function ChatInput({
                 if (longPressRef.current) {
                   clearTimeout(longPressRef.current);
                   longPressRef.current = null;
-                  if (isListening || isXarkListening) {
-                    stopListening();
-                  } else {
-                    startListening();
-                  }
+                  if (isListening || isXarkListening) stopListening();
+                  else startListening();
                 }
               }}
               onPointerLeave={() => {
@@ -137,12 +201,16 @@ export function ChatInput({
               className="outline-none select-none"
               style={{
                 ...text.recency,
-                color: isXarkListening ? colors.cyan : colors.white,
-                opacity: isListening || isXarkListening ? 0.9 : 0.3,
+                color: isXarkListening ? colors.cyan : textColor(0.3),
+                opacity: isListening || isXarkListening ? 0.9 : 1,
                 cursor: "pointer",
                 transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
-                flexShrink: 0,
-                marginTop: "2px",
+              }}
+              onMouseEnter={(e) => {
+                if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.5);
+              }}
+              onMouseLeave={(e) => {
+                if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.3);
               }}
             >
               {isListening || isXarkListening ? (
@@ -150,8 +218,8 @@ export function ChatInput({
                   <span
                     style={{
                       display: "inline-block",
-                      width: "6px",
-                      height: "6px",
+                      width: "5px",
+                      height: "5px",
                       borderRadius: "50%",
                       backgroundColor: isXarkListening ? colors.cyan : colors.white,
                       animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
@@ -162,18 +230,21 @@ export function ChatInput({
                 "mic"
               )}
             </span>
-            <div
-              className="absolute -bottom-2 left-0 h-px w-full"
-              style={{
-                background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
-                opacity: inputFocused ? 1 : 0.15,
-                animation: inputFocused
-                  ? `ambientBreath ${timing.breath} ease-in-out infinite`
-                  : "none",
-                transition: `opacity ${timing.transition} ease`,
-              }}
-            />
           </div>
+
+          {/* ── Bottom accent underline ── */}
+          <div
+            style={{
+              marginTop: "6px",
+              height: "1px",
+              background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
+              opacity: inputFocused ? 1 : 0.15,
+              animation: inputFocused
+                ? `ambientBreath ${timing.breath} ease-in-out infinite`
+                : "none",
+              transition: `opacity ${timing.transition} ease`,
+            }}
+          />
         </div>
       </div>
 

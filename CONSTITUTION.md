@@ -146,8 +146,8 @@ Core philosophy: "No gates. No votes. No clustering. Just signal -> act -> lock.
 - Thinking state: `colors.cyan` dot breathing at 4.5s + "thinking" `text.hint` at opacity 0.4.
 - **Greeting**: Shows when message stream is empty. `getGreeting(context, spaceTitle)` or descriptive fallback. `text.body` at opacity 0.9 with @xark accent label.
 - **Display-only**: XarkChat no longer contains input or send logic. All chat state (messages, input, isThinking, sendMessage) lives in the Space page (`src/app/space/[id]/page.tsx`). XarkChat receives `messages` and `isThinking` as props.
-- **ChatInput** (`src/components/os/ChatInput.tsx`): Shared input component, always visible at `layout.inputBottom` across all Space views. bg-transparent. Accent underline on focus. Mic with voice input (long-press = @xark mode). Draft persists across discuss/decide view switches.
-- Bottom zone: Atmospheric gradient fade (void -> transparent). Not a box.
+- **ChatInput** (`src/components/os/ChatInput.tsx`): Shared input, always visible at `layout.inputBottom` across all Space views. Auto-expanding textarea (text.body) grows upward, max ~6 lines (120px). Enter sends, Shift+Enter newline. Fixed action row below textarea: "attach" · "camera" · "mic" as `text.recency` floating labels at `textColor(0.3)`, right-aligned. Actions never move — textarea grows above them. Top ambient accent line (content boundary). Bottom accent underline. Solid `colors.void` background.
+- **BANNED in ChatInput**: Icons, buttons with backgrounds, action items that shift position as textarea grows.
 - Grounding-aware: Loads `GroundingContext` on mount.
 - Grounding whisper: "grounded: [categories] locked" at opacity 0.2 when locked categories exist.
 - **Handshake integration**: `useHandshake(spaceId)` from `src/hooks/useHandshake.ts`.
