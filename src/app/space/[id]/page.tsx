@@ -9,6 +9,7 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { XarkChat } from "@/components/os/XarkChat";
 import { PossibilityHorizon } from "@/components/os/PossibilityHorizon";
 import { ItineraryView } from "@/components/os/ItineraryView";
+import { MemoriesView } from "@/components/os/MemoriesView";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { computeSpaceState } from "@/lib/space-state";
@@ -23,7 +24,7 @@ const DEMO_TITLES: Record<string, string> = {
   space_summer: "summer 2026",
 };
 
-type ViewMode = "discuss" | "decide" | "itinerary";
+type ViewMode = "discuss" | "decide" | "itinerary" | "memories";
 
 function SpacePageInner() {
   const params = useParams();
@@ -82,6 +83,12 @@ function SpacePageInner() {
 
   const spaceState = computeSpaceState(spaceItems);
   const showItinerary = spaceState === "ready" || spaceState === "active" || spaceState === "settled";
+  const isSettled = spaceState === "settled";
+
+  // ── Default to memories view when settled ──
+  useEffect(() => {
+    if (isSettled) setView("memories");
+  }, [isSettled]);
 
   // ── Invite flow: redirect to login if not authenticated, then join ──
   useEffect(() => {
@@ -216,7 +223,7 @@ function SpacePageInner() {
               >
                 decide
               </span>
-              {showItinerary && (
+              {showItinerary && !isSettled && (
                 <span
                   role="button"
                   tabIndex={0}
@@ -234,6 +241,26 @@ function SpacePageInner() {
                   }}
                 >
                   itinerary
+                </span>
+              )}
+              {isSettled && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setView("memories")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") setView("memories");
+                  }}
+                  className="outline-none"
+                  style={{
+                    ...text.label,
+                    color: view === "memories" ? colors.cyan : colors.white,
+                    opacity: view === "memories" ? 0.9 : 0.4,
+                    cursor: "pointer",
+                    transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
+                  }}
+                >
+                  memories
                 </span>
               )}
             </div>
@@ -274,6 +301,9 @@ function SpacePageInner() {
       )}
       {view === "itinerary" && (
         <ItineraryView spaceId={spaceId} />
+      )}
+      {view === "memories" && (
+        <MemoriesView spaceId={spaceId} />
       )}
     </div>
   );
