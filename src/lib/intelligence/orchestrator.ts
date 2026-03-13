@@ -20,8 +20,17 @@ export interface OrchestratorInput {
 export interface OrchestratorResult {
   response: string;
   searchResults?: ApifyResult[];
-  action?: "search" | "reason" | "propose";
+  action?: "search" | "reason" | "propose" | "set_dates" | "populate_logistics";
   tool?: string;
+  pendingConfirmation?: boolean;
+  payload?: Record<string, unknown>;
+  extractions?: Array<{
+    user_name: string;
+    category?: string;
+    origin?: string;
+    destination?: string;
+    confidence: number;
+  }>;
 }
 
 export async function orchestrate(input: OrchestratorInput): Promise<OrchestratorResult> {
@@ -36,7 +45,16 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
   const intentResult = await model.generateContent(intentPrompt);
   const intentText = intentResult.response.text();
 
-  let parsed: { action: string; tool?: string; params?: Record<string, string>; directResponse?: string };
+  let parsed: {
+    action: string;
+    tool?: string;
+    params?: Record<string, string>;
+    directResponse?: string;
+    start_date?: string;
+    end_date?: string;
+    label?: string;
+    extractions?: Array<{ user_name: string; category?: string; origin?: string; destination?: string; confidence: number }>;
+  };
   try {
     parsed = JSON.parse(intentText);
   } catch {
@@ -74,6 +92,36 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     return { response: parsed.directResponse, action: "propose" };
   }
 
+  if (parsed.action === "set_dates") {
+    const startDate = parsed.start_date as string;
+    const endDate = parsed.end_date as string;
+    const label = parsed.label as string | undefined;
+    return {
+      response: `set dates to ${startDate} – ${endDate}?`,
+      action: "set_dates" as const,
+      pendingConfirmation: true,
+      payload: { start_date: startDate, end_date: endDate, label },
+    };
+  }
+
+  if (parsed.action === "populate_logistics") {
+    const extractions = (parsed.extractions ?? []) as OrchestratorResult["extractions"];
+    const validExtractions = (extractions ?? []).filter(
+      (e) => e.confidence > 0.8
+    );
+    if (validExtractions.length > 0) {
+      const names = validExtractions
+        .map((e) => `${e.user_name} from ${e.origin}`)
+        .join(", ");
+      return {
+        response: `got it — ${names}. correct?`,
+        action: "populate_logistics" as const,
+        pendingConfirmation: true,
+        extractions: validExtractions,
+      };
+    }
+  }
+
   // Default: reasoning response
   if (parsed.directResponse) {
     return { response: parsed.directResponse, action: "reason" };
@@ -100,10 +148,14 @@ Respond with JSON only. Choose one action:
 1. {"action": "search", "tool": "<tool-name>", "params": {<tool-specific params>}}
 2. {"action": "reason", "directResponse": "<your response to the user>"}
 3. {"action": "propose", "directResponse": "<your response>"}
+4. {"action": "set_dates", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "label": "optional"}
+5. {"action": "populate_logistics", "extractions": [{"user_name": "name", "origin": "AIRPORT", "confidence": 0.95}]}
 
 If the user asks to find/search/look for something, use action "search" with the right tool.
 If the user asks a question about group state, voting, or consensus, use action "reason".
 If the user asks to add an item directly, use action "propose".
+If the user wants to set, change, or confirm trip dates, use action "set_dates". Extract start_date (YYYY-MM-DD), end_date (YYYY-MM-DD), and optional label.
+If you detect member travel origins/destinations in the message, use action "populate_logistics". Extract user_name, origin (airport code or city), and confidence (0-1). Only extract when confidence > 0.8.
 Respond only with the JSON object, nothing else.`;
 }
 
