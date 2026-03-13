@@ -2,27 +2,43 @@
 
 // XARK OS v2.0 — Space View
 // Discuss (chat) + Decide (visual stream) toggle.
-// Share generates invite link. Invite flow: check auth, join via RPC, remove param.
+// Chat state (messages, draft input) lives HERE — persists across view switches.
+// ChatInput is always visible. XarkChat is display-only.
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { XarkChat } from "@/components/os/XarkChat";
 import { PossibilityHorizon } from "@/components/os/PossibilityHorizon";
 import { ItineraryView } from "@/components/os/ItineraryView";
 import { MemoriesView } from "@/components/os/MemoriesView";
+import { ChatInput } from "@/components/os/ChatInput";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import {
+  fetchMessages,
+  saveMessage,
+  subscribeToMessages,
+  unsubscribeFromMessages,
+} from "@/lib/messages";
 import { computeSpaceState } from "@/lib/space-state";
 import type { SpaceStateItem } from "@/lib/space-state";
 import { colors, text, textColor, timing } from "@/lib/theme";
 
 // Demo space title map — used when Supabase is unreachable
 const DEMO_TITLES: Record<string, string> = {
-  "space_san-diego": "san diego trip",
+  "space_san-diego-trip": "san diego trip",
   space_ananya: "ananya",
-  "space_tokyo": "tokyo neon nights",
-  space_summer: "summer 2026",
+  "space_tokyo-neon-nights": "tokyo neon nights",
+  "space_summer-2026": "summer 2026",
 };
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "xark" | "system";
+  content: string;
+  timestamp: number;
+  senderName?: string;
+}
 
 type ViewMode = "discuss" | "decide" | "itinerary" | "memories";
 
@@ -35,13 +51,158 @@ function SpacePageInner() {
   const isInvite = searchParams.get("invite") === "true";
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth(userName);
-  const resolvedUserId = ((user?.uid ?? userName) || undefined) as string | undefined;
+  const resolvedUserId = ((user?.uid ?? userName) || undefined) as
+    | string
+    | undefined;
 
   const [view, setView] = useState<ViewMode>("discuss");
   const [spaceTitle, setSpaceTitle] = useState<string>("");
   const [spaceItems, setSpaceItems] = useState<SpaceStateItem[]>([]);
   const [joining, setJoining] = useState(false);
   const [shareWhisper, setShareWhisper] = useState(false);
+
+  // ═══════════════════════════════════════════
+  // CHAT STATE — lives here, shared across views
+  // ═══════════════════════════════════════════
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const messagesLoaded = useRef(false);
+
+  // ── Fetch persisted messages AFTER auth resolves ──
+  useEffect(() => {
+    if (authLoading || messagesLoaded.current) return;
+
+    fetchMessages(spaceId)
+      .then((persisted) => {
+        if (persisted.length > 0) {
+          setMessages(
+            persisted.map((m) => ({
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              timestamp: new Date(m.created_at).getTime(),
+              senderName: m.sender_name ?? undefined,
+            }))
+          );
+        }
+        messagesLoaded.current = true;
+      })
+      .catch(() => {
+        messagesLoaded.current = true;
+      });
+  }, [spaceId, authLoading]);
+
+  // ── Supabase Realtime — live message sync across devices ──
+  useEffect(() => {
+    const channel = subscribeToMessages(spaceId, (incoming) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === incoming.id)) return prev;
+        return [
+          ...prev,
+          {
+            id: incoming.id,
+            role: incoming.role,
+            content: incoming.content,
+            timestamp: new Date(incoming.created_at).getTime(),
+            senderName: incoming.sender_name ?? undefined,
+          },
+        ];
+      });
+    });
+
+    return () => unsubscribeFromMessages(channel);
+  }, [spaceId]);
+
+  // ── Send message — works from any view ──
+  const sendMessage = useCallback(async () => {
+    const txt = input.trim();
+    if (!txt || isThinking) return;
+
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: txt,
+      timestamp: Date.now(),
+      senderName: user?.displayName ?? userName,
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsThinking(true);
+
+    // Persist user message client-side (RLS-aware)
+    saveMessage({
+      id: userMsg.id,
+      spaceId,
+      role: "user",
+      content: userMsg.content,
+      userId: resolvedUserId,
+      senderName: user?.displayName ?? userName,
+    }).catch(() => {});
+
+    try {
+      const response = await fetch("/api/xark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: txt,
+          spaceId,
+          userId: resolvedUserId,
+        }),
+      });
+
+      const data = await response.json();
+
+      // Surface server errors
+      if (!response.ok && data.response) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "xark",
+            content: data.response,
+            timestamp: Date.now(),
+          },
+        ]);
+        setIsThinking(false);
+        return;
+      }
+
+      // Silent mode: @xark returns null when not invoked
+      if (data.response === null) {
+        setIsThinking(false);
+        return;
+      }
+
+      // @xark response (persisted server-side via supabaseAdmin)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: data.messageId ?? crypto.randomUUID(),
+          role: "xark",
+          content: data.response ?? "i could not generate a response.",
+          timestamp: Date.now(),
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "xark",
+          content: "connection interrupted. try again.",
+          timestamp: Date.now(),
+        },
+      ]);
+    } finally {
+      setIsThinking(false);
+    }
+  }, [input, isThinking, spaceId, resolvedUserId, user, userName]);
+
+  // ═══════════════════════════════════════════
+  // SPACE METADATA
+  // ═══════════════════════════════════════════
 
   // ── Fetch space title ──
   useEffect(() => {
@@ -59,8 +220,10 @@ function SpacePageInner() {
       } catch {
         // fallthrough
       }
-      // Demo fallback
-      setSpaceTitle(DEMO_TITLES[spaceId] ?? spaceId.replace(/^space_/, "").replace(/-/g, " "));
+      setSpaceTitle(
+        DEMO_TITLES[spaceId] ??
+          spaceId.replace(/^space_/, "").replace(/-/g, " ")
+      );
     }
     loadTitle();
   }, [spaceId]);
@@ -82,26 +245,26 @@ function SpacePageInner() {
   }, [spaceId]);
 
   const spaceState = computeSpaceState(spaceItems);
-  const showItinerary = spaceState === "ready" || spaceState === "active" || spaceState === "settled";
+  const showItinerary =
+    spaceState === "ready" ||
+    spaceState === "active" ||
+    spaceState === "settled";
   const isSettled = spaceState === "settled";
 
-  // ── Default to memories view when settled ──
   useEffect(() => {
     if (isSettled) setView("memories");
   }, [isSettled]);
 
-  // ── Invite flow: redirect to login if not authenticated, then join ──
+  // ── Invite flow ──
   useEffect(() => {
     if (!isInvite || authLoading) return;
 
     if (!isAuthenticated) {
-      // Redirect to login with return URL
       const returnUrl = `/space/${spaceId}?invite=true${userName ? `&name=${userName}` : ""}`;
       router.replace(`/login?returnTo=${encodeURIComponent(returnUrl)}`);
       return;
     }
 
-    // Authenticated — join via RPC
     async function joinSpace() {
       setJoining(true);
       try {
@@ -110,15 +273,24 @@ function SpacePageInner() {
         // Silently handle — user may already be a member
       } finally {
         setJoining(false);
-        // Remove invite param
         const newParams = new URLSearchParams(searchParams.toString());
         newParams.delete("invite");
         const remaining = newParams.toString();
-        router.replace(`/space/${spaceId}${remaining ? `?${remaining}` : ""}`);
+        router.replace(
+          `/space/${spaceId}${remaining ? `?${remaining}` : ""}`
+        );
       }
     }
     joinSpace();
-  }, [isInvite, isAuthenticated, authLoading, spaceId, userName, router, searchParams]);
+  }, [
+    isInvite,
+    isAuthenticated,
+    authLoading,
+    spaceId,
+    userName,
+    router,
+    searchParams,
+  ]);
 
   // ── Share action ──
   const handleShare = useCallback(async () => {
@@ -134,11 +306,10 @@ function SpacePageInner() {
         await navigator.share(shareData);
         return;
       } catch {
-        // User cancelled or share API failed — fall through to clipboard
+        // User cancelled — fall through to clipboard
       }
     }
 
-    // Desktop fallback: clipboard
     try {
       await navigator.clipboard.writeText(shareUrl);
       setShareWhisper(true);
@@ -166,14 +337,12 @@ function SpacePageInner() {
     <div className="relative min-h-svh" style={{ background: colors.void }}>
       {/* ── Header: title + view toggle + share ── */}
       <div
-        className="fixed inset-x-0 top-0 z-30 px-6 pt-14 pb-4"
+        className="fixed inset-x-0 top-0 z-30 px-6 pt-14 pb-0"
         style={{
-          background:
-            "linear-gradient(to bottom, rgba(var(--xark-void-rgb), 1) 0%, rgba(var(--xark-void-rgb), 0.9) 60%, transparent 100%)",
+          background: colors.void,
         }}
       >
         <div className="mx-auto" style={{ maxWidth: "640px" }}>
-          {/* ── Space title ── */}
           <p
             style={{
               ...text.spaceTitle,
@@ -184,8 +353,7 @@ function SpacePageInner() {
             {spaceTitle}
           </p>
 
-          {/* ── Toggle + share ── */}
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-3 flex items-center justify-between relative">
             <div className="flex items-center gap-6">
               <span
                 role="button"
@@ -265,7 +433,6 @@ function SpacePageInner() {
               )}
             </div>
 
-            {/* ── Share ── */}
             <span
               role="button"
               tabIndex={0}
@@ -285,6 +452,15 @@ function SpacePageInner() {
               {shareWhisper ? "link copied" : "share"}
             </span>
           </div>
+
+          <div
+            className="mt-3"
+            style={{
+              height: "1px",
+              background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
+              opacity: 0.15,
+            }}
+          />
         </div>
       </div>
 
@@ -292,19 +468,24 @@ function SpacePageInner() {
       {view === "discuss" && (
         <XarkChat
           spaceId={spaceId}
-          userId={resolvedUserId}
           spaceTitle={spaceTitle}
+          messages={messages}
+          isThinking={isThinking}
         />
       )}
       {view === "decide" && (
         <PossibilityHorizon spaceId={spaceId} userId={resolvedUserId} />
       )}
-      {view === "itinerary" && (
-        <ItineraryView spaceId={spaceId} />
-      )}
-      {view === "memories" && (
-        <MemoriesView spaceId={spaceId} />
-      )}
+      {view === "itinerary" && <ItineraryView spaceId={spaceId} />}
+      {view === "memories" && <MemoriesView spaceId={spaceId} />}
+
+      {/* ── ChatInput — always visible, draft persists across views ── */}
+      <ChatInput
+        input={input}
+        onInputChange={setInput}
+        onSend={sendMessage}
+        isThinking={isThinking}
+      />
     </div>
   );
 }

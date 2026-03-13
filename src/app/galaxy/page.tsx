@@ -78,29 +78,16 @@ function GalaxyContent() {
 
       {/* ── Content ── */}
       <motion.div
-        className="flex-1 overflow-y-auto px-6 pt-6"
-        style={{ paddingBottom: "160px" }}
+        className="flex-1 overflow-y-auto px-6"
+        style={{ paddingTop: "80px", paddingBottom: "140px" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
         <div className="mx-auto" style={{ maxWidth: layout.maxWidth }}>
-          {/* ── Hero ── */}
-          <p
-            style={{
-              ...text.hero,
-              color: colors.white,
-              opacity: mounted ? opacity.primary : 0,
-              transition: "opacity 1s ease",
-              marginLeft: "44px",
-            }}
-          >
-            {userName ? `ready, ${userName}?` : "ready?"}
-          </p>
-
           {/* ── Awareness Stream — living feed of cross-space activity ── */}
           {hasEvents && (
-            <div className="mt-10">
+            <div>
               {events.map((event, index) => {
                 const eventOpacity = awarenessOpacity(event.priority);
 
@@ -176,16 +163,24 @@ function GalaxyContent() {
         </div>
       </motion.div>
 
-      {/* ── Input Zone — 96px from bottom ── */}
+      {/* ── Input Zone — 96px from bottom, solid void ── */}
       <div
-        className="fixed inset-x-0 bottom-0 px-6 pt-8"
+        className="fixed inset-x-0 bottom-0 px-6 pt-4"
         style={{
           paddingBottom: layout.inputBottom,
-          background:
-            "linear-gradient(to top, rgba(var(--xark-void-rgb), 0.98) 0%, rgba(var(--xark-void-rgb), 0.7) 50%, transparent 100%)",
+          background: colors.void,
         }}
       >
         <div className="mx-auto" style={{ maxWidth: layout.maxWidth }}>
+          {/* ── Top ambient line — content boundary ── */}
+          <div
+            style={{
+              height: "1px",
+              background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
+              opacity: 0.15,
+              marginBottom: "12px",
+            }}
+          />
           <div className="relative">
             <input
               type="text"

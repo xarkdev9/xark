@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { heartSort } from "@/lib/heart-sort";
 import type { ConsensusState } from "@/lib/heart-sort";
 import { getConsensusState } from "@/lib/heart-sort";
 import { useReactions } from "@/hooks/useReactions";
 import type { ReactionType } from "@/hooks/useReactions";
-import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { supabase } from "@/lib/supabase";
 import {
   colors,
@@ -15,8 +14,6 @@ import {
   amberWash,
   reactions as reactionTokens,
   timing,
-  layout,
-  opacity,
 } from "@/lib/theme";
 
 // ══════════════════════════════════════════════════
@@ -346,20 +343,8 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
   const [items, setItems] = useState<DecisionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeReactions, setActiveReactions] = useState<Record<string, ReactionType>>({});
-  const [input, setInput] = useState("");
-  const [inputFocused, setInputFocused] = useState(false);
-  const [errorWhisper, setErrorWhisper] = useState(false);
 
   const { react, unreact, batchGetUserReactions, isReacting } = useReactions();
-
-  // ── Voice input ──
-  const { isListening, isXarkListening, transcript, startListening, startXarkListening, stopListening } =
-    useVoiceInput();
-  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (transcript) setInput(transcript);
-  }, [transcript]);
 
   // ── Fetch ALL decision items (locked + unlocked) ──
   useEffect(() => {
@@ -466,29 +451,6 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
     [activeReactions, isReacting, react, unreact]
   );
 
-  // ── @xark send (Decide input is @xark-only — silently ignore non-@xark messages) ──
-  const handleSend = useCallback(async () => {
-    const txt = input.trim();
-    if (!txt) return;
-    if (!txt.includes("@xark")) return;
-    setInput("");
-
-    try {
-      const response = await fetch("/api/xark", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: txt, spaceId }),
-      });
-      if (!response.ok) {
-        setErrorWhisper(true);
-        setTimeout(() => setErrorWhisper(false), 2000);
-      }
-    } catch {
-      setErrorWhisper(true);
-      setTimeout(() => setErrorWhisper(false), 2000);
-    }
-  }, [input, spaceId]);
-
   const categoryNames = Object.keys(grouped);
   const hasItems = categoryNames.length > 0;
 
@@ -517,8 +479,8 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
       <div
         className="flex-1 overflow-y-auto px-6"
         style={{
-          paddingTop: "160px",
-          paddingBottom: "30vh",
+          paddingTop: "140px",
+          paddingBottom: "160px",
           display: "flex",
           flexDirection: "column",
           gap: "28px",
@@ -549,116 +511,9 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
         )}
       </div>
 
-      {/* ── Input Zone — fixed bottom, @xark-only ── */}
-      <div
-        className="fixed inset-x-0 bottom-0 px-6 pt-12"
-        style={{
-          paddingBottom: layout.inputBottom,
-          background:
-            "linear-gradient(to top, rgba(var(--xark-void-rgb), 1) 0%, rgba(var(--xark-void-rgb), 1) 40%, rgba(var(--xark-void-rgb), 0.8) 70%, transparent 100%)",
-        }}
-      >
-        <div className="mx-auto" style={{ maxWidth: "640px" }}>
-          <div className="relative flex items-center gap-3">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
-              placeholder={
-                isXarkListening
-                  ? "@xark is listening..."
-                  : isListening
-                    ? "listening..."
-                    : "message, or @xark for ideas"
-              }
-              spellCheck={false}
-              autoComplete="off"
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              className="w-full bg-transparent outline-none"
-              style={{ ...text.input, color: colors.white, caretColor: colors.cyan }}
-            />
-            {/* ── Mic ── */}
-            <span
-              role="button"
-              tabIndex={0}
-              onPointerDown={() => {
-                longPressRef.current = setTimeout(() => {
-                  startXarkListening();
-                  longPressRef.current = null;
-                }, 500);
-              }}
-              onPointerUp={() => {
-                if (longPressRef.current) {
-                  clearTimeout(longPressRef.current);
-                  longPressRef.current = null;
-                  if (isListening || isXarkListening) stopListening();
-                  else startListening();
-                }
-              }}
-              onPointerLeave={() => {
-                if (longPressRef.current) {
-                  clearTimeout(longPressRef.current);
-                  longPressRef.current = null;
-                }
-              }}
-              className="outline-none select-none"
-              style={{
-                ...text.label,
-                color: isXarkListening ? colors.cyan : colors.white,
-                opacity: isListening || isXarkListening ? 0.9 : 0.3,
-                cursor: "pointer",
-                transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
-                flexShrink: 0,
-              }}
-            >
-              {isListening || isXarkListening ? (
-                <span className="flex items-center gap-2">
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: "6px",
-                      height: "6px",
-                      borderRadius: "50%",
-                      backgroundColor: isXarkListening ? colors.cyan : colors.white,
-                      animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
-                    }}
-                  />
-                </span>
-              ) : (
-                "mic"
-              )}
-            </span>
-            {/* ── Accent underline ── */}
-            <div
-              className="absolute -bottom-2 left-0 h-px w-full"
-              style={{
-                background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
-                opacity: inputFocused ? 1 : 0.15,
-                animation: inputFocused ? `ambientBreath ${timing.breath} ease-in-out infinite` : "none",
-                transition: `opacity ${timing.transition} ease`,
-              }}
-            />
-          </div>
-
-          {/* ── Error whisper ── */}
-          {errorWhisper && (
-            <p className="mt-2" style={{ ...text.hint, color: textColor(0.3) }}>
-              couldn't reach @xark — try again
-            </p>
-          )}
-        </div>
-      </div>
-
       <style jsx>{`
         .horizon-scroll::-webkit-scrollbar { display: none; }
         .horizon-scroll { scrollbar-width: none; -ms-overflow-style: none; }
-        input::placeholder {
-          color: ${colors.white};
-          opacity: ${opacity.ghost};
-          letter-spacing: 0.12em;
-        }
       `}</style>
     </div>
   );
