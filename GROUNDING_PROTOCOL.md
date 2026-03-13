@@ -59,8 +59,9 @@ You are SILENT by default. You exist in the background. You do not have a person
 ### /api/xark ENDPOINT BEHAVIOR:
 1. Receive message from client
 2. Check if message contains "@xark" — if not, return `{ response: null }` (silent mode)
-3. If "@xark" prefix: strip prefix, build grounding prompt, call Gemini 3.1 Ultra
-4. Return `{ response: string }`
+3. If "@xark" prefix: strip prefix, build grounding prompt, fetch last 15 messages, call Intelligence Orchestrator (Gemini 2.0 Flash + Apify tool routing)
+4. If search results: auto-upsert as decision_items in "proposed" state
+5. Return `{ response: string }`
 
 ## 3. SOCIAL REASONING PROTOCOL
 
@@ -134,13 +135,15 @@ Firebase Auth (phone OTP) with fallback to URL name parameter. `resolvedUserId` 
 
 When you see an ignited item, prepare to propose a handshake. The group is ready.
 
-## 8. VOICE INPUT (Future)
+## 8. VOICE INPUT (Implemented)
 
-- Gemini multimodal: audio → understanding → grounded response (one hop, no transcription step)
-- Mic button next to text input (atmospheric, no box)
-- Handles Indian English, British English, American English
-- Text responses even for voice input (searchable, scrollable)
-- Priority: AFTER core text flow works
+Implementation: `src/hooks/useVoiceInput.ts`
+
+- **Tap mic**: On-device `SpeechRecognition` for dictation. No network required.
+- **Long-press mic**: Auto-prefixes `@xark` to transcript — direct intelligence invocation via voice.
+- Mic indicator next to text input (breathing cyan dot, atmospheric, no box).
+- Text responses even for voice input (searchable, scrollable).
+- Handles any language supported by browser SpeechRecognition API.
 
 ## 9. INFRASTRUCTURE AWARENESS
 
@@ -148,5 +151,8 @@ When you see an ignited item, prepare to propose a handshake. The group is ready
 - **Authentication**: Firebase Auth (phone OTP). No Supabase Auth.
 - **Multimedia**: Firebase Storage (E2EE binary blobs).
 - **Push**: Firebase Cloud Messaging (FCM).
-- **Intelligence**: Gemini 3.1 Ultra powers your deep research and agentic planning.
-- **API Endpoint**: `/api/xark` — receives messages array, grounding prompt, and spaceId.
+- **Intelligence**: Gemini 2.0 Flash powers your deep research and agentic planning. Orchestrated via `src/lib/intelligence/orchestrator.ts`. Tool routing via `src/lib/intelligence/tool-registry.ts` (hotel, flight, activity, restaurant, general Apify actors).
+- **API Endpoint**: `/api/xark` — receives message and spaceId. Strips @xark prefix, builds grounding prompt, fetches last 15 messages, routes through Intelligence Orchestrator. Search results auto-upserted as decision_items.
+- **Notifications**: Firebase Admin SDK (`src/lib/notifications.ts`). `/api/notify` endpoint for server-side push. Queries space_members → user_devices for FCM tokens.
+- **Media**: Firebase Storage (`src/lib/media.ts`). Upload blobs + Supabase metadata. Profile photos in `profiles/{userId}/avatar`.
+- **Supabase Admin**: `src/lib/supabase-admin.ts` — service-role client for server-side API routes. Bypasses RLS.

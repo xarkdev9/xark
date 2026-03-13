@@ -18,10 +18,12 @@ export function MediaUpload({ spaceId, userId, onUpload }: MediaUploadProps) {
   const pendingFile = useRef<File | null>(null);
 
   async function handleFile(file: File) {
+    // Max 5MB
     if (file.size > 5 * 1024 * 1024) {
       console.warn("File too large (max 5MB)");
       return;
     }
+
     pendingFile.current = file;
     setShowCaption(true);
   }
@@ -29,6 +31,7 @@ export function MediaUpload({ spaceId, userId, onUpload }: MediaUploadProps) {
   async function handleUpload() {
     const file = pendingFile.current;
     if (!file) return;
+
     setUploading(true);
     await uploadMedia(file, spaceId, userId, caption || undefined);
     setUploading(false);
