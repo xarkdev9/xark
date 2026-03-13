@@ -59,7 +59,6 @@ interface DecisionCardProps extends DecisionCardItem {
 interface CategorySectionProps {
   category: string;
   items: DecisionCardItem[];
-  maxConviction: number;
   activeReactions: Record<string, ReactionType>;
   onReact: (itemId: string, signal: ReactionType) => void;
 }
@@ -80,18 +79,33 @@ const DEMO_ITEMS: Record<string, DecisionItem[]> = {
   ],
 };
 
-// ── Signal definitions ──
+// ── Signal definitions — compact labels for single-line fit ──
 const SIGNALS: { type: ReactionType; label: string; color: string }[] = [
-  { type: "love_it", label: "Love it", color: reactionTokens.loveIt.color },
-  { type: "works_for_me", label: "Works for me", color: reactionTokens.worksForMe.color },
-  { type: "not_for_me", label: "Not for me", color: reactionTokens.notForMe.color },
+  { type: "love_it", label: "love", color: reactionTokens.loveIt.color },
+  { type: "works_for_me", label: "okay", color: reactionTokens.worksForMe.color },
+  { type: "not_for_me", label: "pass", color: reactionTokens.notForMe.color },
 ];
 
-// ── Consensus state → color mapping (static, no animation) ──
+// ── Consensus state → color mapping ──
 function consensusColor(state: ConsensusState): string {
   if (state === "ignited") return colors.gold;
   if (state === "steady") return colors.cyan;
   return colors.amber;
+}
+
+// ── Pluralize category names ──
+const PLURAL_MAP: Record<string, string> = {
+  hotel: "hotels",
+  activity: "activities",
+  flight: "flights",
+  dining: "dining",
+  experience: "experiences",
+  restaurant: "restaurants",
+  general: "general",
+};
+
+function pluralizeCategory(cat: string): string {
+  return PLURAL_MAP[cat.toLowerCase()] ?? cat.toLowerCase() + "s";
 }
 
 // ══════════════════════════════════════════════════
@@ -110,11 +124,13 @@ function DecisionCard({
   onReact,
 }: DecisionCardProps) {
   const consensusState = getConsensusState(agreementScore);
+  const pct = Math.round(agreementScore * 100);
+  const cColor = consensusColor(consensusState);
 
   return (
     <div
       className="relative flex-shrink-0 snap-start"
-      style={{ width: "280px", height: "360px" }}
+      style={{ width: "200px", height: "260px" }}
     >
       {/* ── Image or gradient placeholder ── */}
       <div
@@ -133,7 +149,7 @@ function DecisionCard({
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(to top, rgba(var(--xark-void-rgb), 0.95) 0%, rgba(var(--xark-void-rgb), 0.4) 40%, transparent 70%)",
+            "linear-gradient(to top, rgba(var(--xark-void-rgb), 0.95) 0%, rgba(var(--xark-void-rgb), 0.5) 50%, transparent 75%)",
         }}
       />
 
@@ -146,42 +162,83 @@ function DecisionCard({
       />
 
       {/* ── Content overlay ── */}
-      <div className="absolute inset-x-0 bottom-0 px-4 pb-4">
-        <p style={{ ...text.listTitle, color: colors.white, opacity: 0.9 }}>
+      <div className="absolute inset-x-0 bottom-0 px-3 pb-3">
+        {/* ── Consensus — THE HERO: large number + progress bar ── */}
+        <div style={{ marginBottom: "6px" }}>
+          <span
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: 400,
+              lineHeight: 1,
+              letterSpacing: "-0.02em",
+              color: cColor,
+              opacity: consensusState === "ignited" ? 0.95 : 0.7,
+            }}
+          >
+            {pct}
+          </span>
+          <span
+            style={{
+              ...text.timestamp,
+              color: cColor,
+              opacity: 0.4,
+              marginLeft: "2px",
+              verticalAlign: "super",
+            }}
+          >
+            %
+          </span>
+          {/* ── Consensus bar — fills with agreement ── */}
+          <div
+            style={{
+              marginTop: "4px",
+              height: "2px",
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                height: "2px",
+                width: `${pct}%`,
+                backgroundColor: cColor,
+                opacity: consensusState === "ignited" ? 0.8 : 0.35,
+                transition: `width 0.6s ease, opacity 0.6s ease`,
+              }}
+            />
+          </div>
+        </div>
+
+        <p
+          style={{
+            ...text.body,
+            color: colors.white,
+            opacity: 0.9,
+            lineHeight: 1.3,
+          }}
+        >
           {title}
         </p>
 
-        {(price || source) && (
-          <div className="mt-1 flex items-center gap-3">
-            {price && (
-              <span style={{ ...text.subtitle, color: colors.white, opacity: 0.5 }}>
-                {price}
-              </span>
-            )}
-            {source && (
-              <span style={{ ...text.recency, color: colors.white, opacity: 0.25 }}>
-                {source}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* ── Static consensus label (no animated ConsensusMark) ── */}
-        <div className="mt-2">
+        {price && (
           <span
             style={{
               ...text.recency,
-              color: consensusColor(consensusState),
-              opacity: 0.5,
-              textTransform: "uppercase",
+              color: colors.white,
+              opacity: 0.4,
+              display: "inline-block",
+              marginTop: "2px",
             }}
           >
-            {Math.round(agreementScore * 100)}% consensus
+            {price}
           </span>
-        </div>
+        )}
 
-        {/* ── Reaction signals ── */}
-        <div className="mt-3 flex items-center gap-4">
+        {/* ── Reaction signals — compact single line ── */}
+        <div className="flex items-center gap-3" style={{ marginTop: "8px" }}>
           {SIGNALS.map((signal) => {
             const isActive = activeReaction === signal.type;
             return (
@@ -195,9 +252,9 @@ function DecisionCard({
                 }}
                 className="outline-none"
                 style={{
-                  ...text.label,
+                  ...text.recency,
                   color: signal.color,
-                  opacity: isActive ? 0.9 : activeReaction ? 0.2 : 0.5,
+                  opacity: isActive ? 0.9 : activeReaction ? 0.15 : 0.4,
                   cursor: "pointer",
                   transition: `opacity ${timing.transition} ease`,
                 }}
@@ -219,11 +276,11 @@ function DecisionCard({
 function CategorySection({
   category,
   items,
-  maxConviction,
   activeReactions,
   onReact,
 }: CategorySectionProps) {
   const allLocked = items.length > 0 && items.every((i) => i.isLocked);
+  const displayName = pluralizeCategory(category);
 
   // ── Settled row — all items locked ──
   if (allLocked) {
@@ -241,7 +298,7 @@ function CategorySection({
           }}
         />
         <span style={{ ...text.label, color: textColor(0.3) }}>
-          {category}
+          {displayName}
         </span>
         <span style={{ ...text.recency, color: textColor(0.25) }}>
           {lockedTitle}
@@ -251,35 +308,18 @@ function CategorySection({
     );
   }
 
-  // ── Open section — header + conviction strip + card scroll ──
+  // ── Open section — header + card scroll ──
   return (
     <div>
-      {/* ── Header + conviction strip ── */}
-      <div className="flex items-center gap-3">
-        <span style={{ ...text.label, color: textColor(0.35), flexShrink: 0 }}>
-          {category}
-        </span>
-        <div style={{ flex: 1, height: "1px", position: "relative" }}>
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              height: "1px",
-              width: `${Math.max(maxConviction * 100, 3)}%`,
-              backgroundColor: colors.cyan,
-              opacity: 0.3,
-              transition: `width ${timing.transition} ease`,
-            }}
-          />
-        </div>
-      </div>
+      <span style={{ ...text.label, color: textColor(0.35) }}>
+        {displayName}
+      </span>
 
       {/* ── Horizontal card scroll ── */}
       <div
         className="horizon-scroll flex snap-x snap-mandatory overflow-x-auto"
         style={{
-          marginTop: "12px",
+          marginTop: "10px",
           gap: "12px",
           paddingRight: "24px",
           WebkitOverflowScrolling: "touch",
@@ -387,7 +427,7 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
 
     const sorted = heartSort(sortable);
     const metaMap = new Map(items.map((i) => [i.id, i]));
-    const groups: Record<string, { items: DecisionCardItem[]; maxConviction: number }> = {};
+    const groups: Record<string, DecisionCardItem[]> = {};
 
     for (const item of sorted) {
       const full = metaMap.get(item.id);
@@ -399,13 +439,9 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
       };
 
       if (!groups[category]) {
-        groups[category] = { items: [], maxConviction: 0 };
+        groups[category] = [];
       }
-      groups[category].items.push(cardItem);
-      groups[category].maxConviction = Math.max(
-        groups[category].maxConviction,
-        item.agreementScore
-      );
+      groups[category].push(cardItem);
     }
 
     return groups;
@@ -485,7 +521,7 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
           paddingBottom: "30vh",
           display: "flex",
           flexDirection: "column",
-          gap: "40px",
+          gap: "28px",
         }}
       >
         {hasItems ? (
@@ -493,8 +529,7 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
             <CategorySection
               key={category}
               category={category}
-              items={grouped[category].items}
-              maxConviction={grouped[category].maxConviction}
+              items={grouped[category]}
               activeReactions={activeReactions}
               onReact={handleReaction}
             />
