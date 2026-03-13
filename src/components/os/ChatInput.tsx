@@ -217,16 +217,18 @@ export function ChatInput({
             </span>
           </div>
 
+          {/* ── Ambient line — lives below text only, breathes when focused ── */}
           <div
             style={{
               marginTop: "4px",
               height: "1px",
-              background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
-              opacity: inputFocused ? 1 : 0.15,
-              animation: inputFocused
-                ? `ambientBreath ${timing.breath} ease-in-out infinite`
-                : "none",
-              transition: `opacity ${timing.transition} ease`,
+              width: input.length > 0
+                ? `min(${Math.max(input.length * 6, 40)}px, 100%)`
+                : inputFocused ? "60px" : "0px",
+              background: `linear-gradient(90deg, ${colors.cyan}, transparent)`,
+              opacity: input.length > 0 ? 0.4 : 0.2,
+              animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+              transition: `width 0.3s ease, opacity ${timing.transition} ease`,
             }}
           />
         </div>
