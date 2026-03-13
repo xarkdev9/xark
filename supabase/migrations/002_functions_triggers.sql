@@ -130,7 +130,7 @@ BEGIN
   END IF;
 
   -- For authenticated users, force proposed_by to their ID
-  NEW.proposed_by := auth.uid();
+  NEW.proposed_by := auth.uid()::text;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -188,14 +188,14 @@ BEGIN
   -- Verify membership
   IF NOT EXISTS (
     SELECT 1 FROM space_members
-    WHERE space_id = v_space_id AND user_id = auth.uid()
+    WHERE space_id = v_space_id AND user_id = auth.uid()::text
   ) THEN
     RAISE EXCEPTION 'not_a_member: you are not a member of this space';
   END IF;
 
   -- Upsert reaction
   INSERT INTO reactions (item_id, user_id, signal, weight, created_at)
-  VALUES (p_item_id, auth.uid(), p_signal, v_weight, now())
+  VALUES (p_item_id, auth.uid()::text, p_signal, v_weight, now())
   ON CONFLICT (item_id, user_id)
   DO UPDATE SET signal = EXCLUDED.signal, weight = EXCLUDED.weight, created_at = now();
 
@@ -252,7 +252,7 @@ BEGIN
   -- Verify membership
   IF NOT EXISTS (
     SELECT 1 FROM space_members
-    WHERE space_id = v_item.space_id AND user_id = auth.uid()
+    WHERE space_id = v_item.space_id AND user_id = auth.uid()::text
   ) THEN
     RAISE EXCEPTION 'not_a_member';
   END IF;
@@ -293,7 +293,7 @@ BEGIN
     commitment_proof = jsonb_build_object(
       'type', p_proof_type,
       'value', p_proof_value,
-      'submittedBy', auth.uid(),
+      'submittedBy', auth.uid()::text,
       'submittedAt', now()::text
     ),
     ownership_history = CASE
@@ -301,7 +301,7 @@ BEGIN
       ELSE ownership_history
     END,
     ownership = jsonb_build_object(
-      'ownerId', auth.uid(),
+      'ownerId', auth.uid()::text,
       'assignedAt', now()::text,
       'reason', 'booker'
     ),
@@ -337,12 +337,12 @@ BEGIN
   END IF;
 
   -- Verify caller is current owner
-  IF (v_item.ownership->>'ownerId') IS DISTINCT FROM auth.uid() THEN
+  IF (v_item.ownership->>'ownerId') IS DISTINCT FROM auth.uid()::text THEN
     RAISE EXCEPTION 'not_owner: only the current owner can transfer';
   END IF;
 
   -- Verify different owner
-  IF p_new_owner_id = auth.uid() THEN
+  IF p_new_owner_id = auth.uid()::text THEN
     RAISE EXCEPTION 'self_transfer: cannot transfer to yourself';
   END IF;
 
@@ -384,7 +384,7 @@ BEGIN
   -- Verify caller is space owner
   IF NOT EXISTS (
     SELECT 1 FROM spaces
-    WHERE id = p_space_id AND owner_id = auth.uid()
+    WHERE id = p_space_id AND owner_id = auth.uid()::text
   ) THEN
     RAISE EXCEPTION 'not_space_owner: only the space owner can invite members';
   END IF;

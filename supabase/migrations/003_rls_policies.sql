@@ -34,9 +34,9 @@ AS $$
     SELECT sm.user_id FROM space_members sm
     WHERE sm.space_id IN (
       SELECT sm2.space_id FROM space_members sm2
-      WHERE sm2.user_id = auth.uid()
+      WHERE sm2.user_id = auth.uid()::text
     )
-  ) AND u.id != auth.uid();
+  ) AND u.id != auth.uid()::text;
 $$;
 
 -- ══════════════════════════════════════
@@ -97,7 +97,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  NEW.owner_id := auth.uid();
+  NEW.owner_id := auth.uid()::text;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -116,12 +116,12 @@ CREATE TRIGGER trg_force_space_owner
 -- For co-members, use get_visible_users() RPC which returns safe columns only.
 -- NO co-member SELECT policy on users table — this prevents phone/password_hash leakage.
 CREATE POLICY users_select_self ON users
-  FOR SELECT USING (id = auth.uid());
+  FOR SELECT USING (id = auth.uid()::text);
 
 -- Update own profile only (column restriction via trigger above)
 CREATE POLICY users_update_self ON users
-  FOR UPDATE USING (id = auth.uid())
-  WITH CHECK (id = auth.uid());
+  FOR UPDATE USING (id = auth.uid()::text)
+  WITH CHECK (id = auth.uid()::text);
 
 -- ══════════════════════════════════════
 -- SPACES
@@ -129,16 +129,16 @@ CREATE POLICY users_update_self ON users
 
 CREATE POLICY spaces_select_member ON spaces
   FOR SELECT USING (
-    id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
+    id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
   );
 
 -- owner_id is forced to auth.uid() by trg_force_space_owner trigger
 CREATE POLICY spaces_insert_auth ON spaces
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (auth.uid()::text IS NOT NULL);
 
 CREATE POLICY spaces_update_owner ON spaces
-  FOR UPDATE USING (owner_id = auth.uid())
-  WITH CHECK (owner_id = auth.uid());
+  FOR UPDATE USING (owner_id = auth.uid()::text)
+  WITH CHECK (owner_id = auth.uid()::text);
 
 -- ══════════════════════════════════════
 -- SPACE_MEMBERS
@@ -146,7 +146,7 @@ CREATE POLICY spaces_update_owner ON spaces
 
 CREATE POLICY space_members_select ON space_members
   FOR SELECT USING (
-    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
+    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
   );
 
 -- INSERT via SECURITY DEFINER functions only (invite_member, fn_auto_add_space_owner).
@@ -157,10 +157,10 @@ CREATE POLICY space_members_insert_system ON space_members
 CREATE POLICY space_members_delete ON space_members
   FOR DELETE USING (
     -- Space owner can remove anyone
-    space_id IN (SELECT id FROM spaces WHERE owner_id = auth.uid())
+    space_id IN (SELECT id FROM spaces WHERE owner_id = auth.uid()::text)
     OR
     -- Self-leave
-    user_id = auth.uid()
+    user_id = auth.uid()::text
   );
 
 -- ══════════════════════════════════════
@@ -169,12 +169,12 @@ CREATE POLICY space_members_delete ON space_members
 
 CREATE POLICY items_select_member ON decision_items
   FOR SELECT USING (
-    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
+    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
   );
 
 CREATE POLICY items_insert_member ON decision_items
   FOR INSERT WITH CHECK (
-    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
+    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
   );
 
 -- No direct UPDATE — all via SECURITY DEFINER RPCs (react_to_item, lock_item, transfer_ownership)
@@ -188,7 +188,7 @@ CREATE POLICY reactions_select_member ON reactions
   FOR SELECT USING (
     item_id IN (
       SELECT id FROM decision_items
-      WHERE space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
+      WHERE space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
     )
   );
 
@@ -205,15 +205,15 @@ CREATE POLICY reactions_update_system ON reactions
 
 CREATE POLICY messages_select_member ON messages
   FOR SELECT USING (
-    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
+    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
   );
 
 -- Only user messages from authenticated members
 -- @xark messages are inserted via service_role key (bypasses RLS)
 CREATE POLICY messages_insert_user ON messages
   FOR INSERT WITH CHECK (
-    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
-    AND user_id = auth.uid()
+    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
+    AND user_id = auth.uid()::text
     AND role = 'user'
   );
 
@@ -225,18 +225,18 @@ CREATE POLICY messages_insert_user ON messages
 
 CREATE POLICY tasks_select_member ON tasks
   FOR SELECT USING (
-    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
+    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
   );
 
 CREATE POLICY tasks_insert_member ON tasks
   FOR INSERT WITH CHECK (
-    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
+    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
   );
 
 -- Column restriction via trg_restrict_task_update (only assignee_id mutable)
 CREATE POLICY tasks_update_member ON tasks
   FOR UPDATE USING (
-    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid())
+    space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.uid()::text)
   );
 
 -- No DELETE

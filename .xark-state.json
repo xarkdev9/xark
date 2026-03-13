@@ -1,23 +1,23 @@
 {
   "version": "2.0.0-omega",
-  "foveal_focus": "Tier 15 — The Awareness Stream: Heart-sort applied to life. Priority-sorted, opacity-ranked home screen. No list, no sections, no flood. Position = priority, brightness = urgency.",
-  "phase": "TIER_15",
+  "foveal_focus": "Phase 0 — Foundation: Database schema (spaces, users, space_members, decision_items, reactions, messages, tasks), environment variables (.env.local), user profile table + hook. Unblocks everything.",
+  "phase": "FIRST_REAL_TRIP",
   "algo_source": "/Users/ramchitturi/algo",
   "algo_record": "/Users/ramchitturi/algo/mar10_algo.md",
   "algo_status": "198 tests, 0 type errors, hexagonal architecture",
   "architectural_locks": {
     "typography": "Weights 300/400 only. Bold banned.",
-    "color": "One white only: #F0EEE9. Hierarchy via opacity.",
-    "fonts": "Syne (body, 400), Inter (wordmark, 300).",
+    "color": "Theme-aware CSS variables (--xark-white, --xark-void, --xark-accent). Three themes: hearth (light, default), signal (dark), ember (warm dark). textColor(alpha) from theme.ts is the approved opacity method.",
+    "fonts": "Inter (body, 400), Syne (display/fallback, 400), Inter (wordmark, 300). Inter is primary in globals.css.",
     "layout": "Liquid Feed / Zero-Box. Focus outlines globally purged in globals.css.",
-    "engine": "heart-sort.ts is SSOT. Source: /Users/ramchitturi/algo/src/engine/heart-sort.ts",
+    "engine": "heart-sort.ts is SSOT. Source: /Users/ramchitturi/algo/src/engine/heart-sort.ts. App version simplified (Possibility type, 2 functions). Full port pending (Phase 4 of todo_mar12.md).",
     "infrastructure": "Hybrid Stack: Firebase Auth (OTP), Supabase Postgres (decision engine), Firebase Storage (E2EE multimedia), Firebase FCM (push), Gemini 3.1 Ultra (intelligence). Supabase Auth is banned."
   },
   "engine_config": {
     "signals": {
-      "love_it": { "weight": 5, "color": "#F5A623", "label": "Love it" },
-      "works_for_me": { "weight": 1, "color": "#8888a0", "label": "Works for me" },
-      "not_for_me": { "weight": -3, "color": "#e8590c", "label": "Not for me" }
+      "love_it": { "weight": 5, "color": "var(--xark-amber)", "label": "Love it" },
+      "works_for_me": { "weight": 1, "color": "var(--xark-gray)", "label": "Works for me" },
+      "not_for_me": { "weight": -3, "color": "var(--xark-orange)", "label": "Not for me" }
     },
     "group_favorite_threshold": 0.80,
     "group_favorite_comparison": "strictly_greater_than",
@@ -28,14 +28,7 @@
       "steady": "0.3-0.8 agreementScore",
       "ignited": "0.8+ agreementScore"
     },
-    "neuro_colors": {
-      "seeking_amber": "#F5A623",
-      "neutral_gray": "#8888a0",
-      "action_orange": "#e8590c",
-      "lock_green": "#2ecc40",
-      "social_gold": "#FFD700",
-      "xark_cyan": "#40E0FF"
-    }
+    "neuro_colors": "All CSS variables via theme.ts. Hearth adjusts for light contrast. Signal/Ember use vivid dark-mode values."
   },
   "state_flows": {
     "BOOKING_FLOW": "proposed -> ranked -> locked (default)",
@@ -55,10 +48,22 @@
     "CachePort": "Redis (optional, TTL 60s)",
     "MessagingPort": "Slack / Discord / Telegram"
   },
+  "xark_behavior": {
+    "default_mode": "silent — never responds unless message contains '@xark'",
+    "never": ["reacts to messages", "summarizes unprompted", "inserts into banter", "proactive suggestions", "emoji or personality"],
+    "one_exception": "handshake whisper at >80% consensus (automated)",
+    "passive_display": "decision state subtitles, grounding constraints when asked",
+    "social_reasoning": {
+      "names_for_advocacy": "nina and raj aren't feeling italian — want to explore other options?",
+      "counts_for_opposition": "3 people voted not for me (never name opponents)",
+      "never_assume_why": true,
+      "test": "would the named person feel INCLUDED or EXPOSED?"
+    }
+  },
   "xark_intelligence": {
     "supabase_client": "src/lib/supabase.ts — DB-only, no auth. Env: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY. Placeholder fallback for local dev.",
-    "firebase_client": "src/lib/firebase.ts — Phone OTP (auth) + E2EE multimedia (storage). No Firestore. Safe-init: exports null when API key is missing. Prevents SSR crash.",
-    "grounding_engine": "src/lib/ai-grounding.ts — buildGroundingContext(), generateGroundingPrompt(), generateGroundingManifest(), checkSuggestionConflicts(items, category) -> {hasConflict, reason, conflictingItemId}, checkContextConflicts(), getGreeting(context, spaceTitle?) -> deterministic greeting string (3 logic paths: ignited consensus >0.8 / recently locked with owner name / fallback, no AI call). GroundingContext includes topIgnitedTitle, recentlyLocked {title, ownerName}. SpaceItem includes agreementScore.",
+    "firebase_client": "src/lib/firebase.ts — Phone OTP (auth) + E2EE multimedia (storage). No Firestore. Safe-init: exports null when API key is missing.",
+    "grounding_engine": "src/lib/ai-grounding.ts — State map approach (replaces forbidden categories). buildGroundingContext() fetches all items grouped by state. generateGroundingPrompt() produces full state map with reaction counts. checkSuggestionConflicts() is pre-call guard before Gemini. getGreeting(context, spaceTitle?) deterministic (3 logic paths). GroundingContext includes topIgnitedTitle, recentlyLocked {title, ownerName}.",
     "reaction_weights_in_grounding": "-3 (Not for me), +1 (Works for me), +5 (Love it). Embedded in all grounding prompts.",
     "grounding_tables": {
       "decision_items": "id, title, category, description, ownership, space_id, is_locked, agreement_score, weighted_score, locked_at",
@@ -68,35 +73,49 @@
     "blueprint_view": "src/components/os/Blueprint.tsx — Vertical timeline of Green-Lock settled decisions + Settlement Ledger. Fetches locked items from Supabase Postgres ordered by locked_at. 1px timeline line at opacity 0.1. ConsensusMark ignited state. Finality wash via currentColor at opacity 0.05. Framer Motion staggered entrance. Settlement strip at bottom: per-user totals, debt deltas, venmo:// and upi:// deep links as floating cyan text.",
     "claims_engine": "src/lib/claims.ts — claimItem(itemId, userId, proofValue?) manual Green-Lock. Flow-aware terminal states. Optimistic concurrency. Proof: receipt text or verbal fallback.",
     "settlement_ledger": "src/lib/ledger.ts — fetchSettlement(spaceId) sums locked item prices per owner. parsePrice() handles $450/nt, $95/person, Free. DebtDelta calculates who owes whom. generateVenmoLink() and generateUPILink() produce payment deep links.",
-    "space_creation": "src/lib/spaces.ts — createSpace(dream, ownerId) optimistic creation engine. Generates slug-based spaceId, inserts space + seed DecisionItem + @xark welcome message in parallel. getOptimisticSpaceId(dream) returns spaceId for immediate navigation before DB confirms. Seed item: 'sunset at [destination]' or 'explore [dream]'. Kills cold-start problem.",
-    "handshake_protocol": "src/lib/handshake.ts — Consensus-to-Commitment bridge. subscribeToConsensus() monitors Supabase Realtime for agreement_score > 0.80. generateHandshakeWhisper() produces @xark lock proposal. confirmHandshake() executes Green-Lock with verbal proof, flow-aware terminal state, optimistic concurrency, owner stamp. unsubscribeFromConsensus() cleanup.",
-    "handshake_hook": "src/hooks/useHandshake.ts — React hook wrapping handshake.ts. Returns { proposal, whisper, confirm, dismiss, isCommitting, goldBurst }. Subscribes to Supabase Realtime on mount. goldBurst fires for 3s after successful lock.",
-    "chat_handshake_integration": "XarkChat uses useHandshake(spaceId). Whisper injected into message stream. confirm (Gold #FFD700 opacity 0.9) and wait (White opacity 0.4) as floating text. Gold breathing dot during commit. Social Gold burst (goldBurstPulse 3s) on success.",
-    "navigation_flow": "Login (/login) -> transit phase 1.2s -> Galaxy (/galaxy?name=) -> tap space -> Space (/space/[id]?name=). Full state chain wired via next/navigation router.push(). Login establishes brand: 'People. Plans. Memories.' (opacity 0.45) + 'All private, effortlessly in sync.' (opacity 0.2).",
-    "galaxy_view": "src/app/galaxy/page.tsx — Awareness Stream home screen. Hero 'ready, [name]?' + awareness feed (priority-sorted events from all spaces, opacity = awarenessOpacity(priority), tap = navigate to space) + Mesh Pulse (15s breath) + creation input at 96px bottom. Imports from awareness.ts. No space list (moved to ControlCaret). No avatars. No sections. Atmospheric text only.",
-    "space_view": "src/app/space/[id]/page.tsx — discuss/decide view toggle as floating text (outline-none). Human-action labels, not system internals. Active: opacity 0.9, inactive: 0.4. Demo fallback for space titles. Renders XarkChat or PossibilityHorizon placeholder. ControlCaret removed (now global via layout).",
-    "seed_data": "src/lib/seed.ts — san diego trip (4 items: Hotel Del 92% locked, surf lessons 45% steady, balboa park 45%, gaslamp 92% locked, 10 group messages), ananya sanctuary (5 messages, last: 'did you see the surf lesson proposal?'), tokyo neon nights (2 items), summer 2026 (empty). Run: npx tsx src/lib/seed.ts.",
-    "control_caret": "src/components/os/ControlCaret.tsx — Fixed cyan dot (#40E0FF) 32px from bottom edge, 4.5s breath. GLOBAL via GlobalCaret.tsx in layout.tsx (hidden on /login). Tap slides up galaxy list with Presence Ember (4px cyan dot when friend online) + 'invite a person' initiation seed (opacity 0.4 whisper). #000 opacity 0.8 overlay (no blur). ConsensusMark per space. Sanctuary spaces get small cyan dot. Supabase Realtime Presence wired.",
-    "sanctuary_bridge": "XarkChat.tsx — Tapping a sender name with a mapped sanctuary opens a slide-up sheet. SANCTUARY_MAP maps names to space IDs. Sheet: #0A0A0A bg, slides from bottom, 80vh max. Foveal opacity on sanctuary messages. Close text at opacity 0.4. No blur, no borders.",
-    "chat_interface": "src/components/os/XarkChat.tsx — Atmospheric, no bubbles, no boxes. MeshGradientBg. Hierarchy via text-2xl scale, never weight. Foveal Opacity: newest message 0.9, recedes to 0.2 at index 5+. Framer Motion layout. Thumb-Arc Action Zone: input 96px from bottom (above ControlCaret zone), floating hints ('suggest a plan', 'add a task' at 0.3), 30vh bottom padding for eye-level centering. Cyan underline only glows on input focus. Sanctuary Greeting: fallback greeting shows even when Supabase unreachable. Infrastructure: Firebase Auth via useAuth hook, Supabase Postgres persistence, Realtime sync.",
-    "messages_layer": "src/lib/messages.ts — fetchMessages(spaceId), saveMessage({id,spaceId,role,content,userId}), subscribeToMessages(spaceId,onMessage), unsubscribeFromMessages(channel). Table: messages (id, space_id, role, content, user_id, created_at). Graceful fallback when Supabase unreachable.",
-    "auth_hook": "src/hooks/useAuth.ts — useAuth(fallbackName?) returns {user: {uid, displayName}, isAuthenticated, isLoading}. Firebase onAuthStateChanged with fallback to URL name param. Firebase-only. No Supabase Auth.",
-    "chat_api_endpoint": "/api/xark",
+    "space_creation": "src/lib/spaces.ts — createSpace(dream, ownerId) optimistic creation engine. getOptimisticSpaceId(dream) for instant navigation. Seed item: 'sunset at [destination]' or 'explore [dream]'.",
+    "handshake_protocol": "src/lib/handshake.ts — subscribeToConsensus() monitors agreement_score > 0.80. confirmHandshake() executes Green-Lock. unsubscribeFromConsensus() cleanup.",
+    "handshake_hook": "src/hooks/useHandshake.ts — Returns { proposal, whisper, confirm, dismiss, isCommitting, goldBurst }. Subscribes on mount.",
+    "chat_handshake_integration": "XarkChat uses useHandshake(spaceId). Whisper injected into stream. confirm (colors.gold) and wait (colors.white) as floating text.label. Gold burst on success.",
+    "navigation_flow": "Login (/login) -> Galaxy (/galaxy?name=) -> Space (/space/[id]?name=). router.push() chain.",
+    "galaxy_view": "src/app/galaxy/page.tsx — Awareness Stream home. Hero 'ready, [name]?' (text.hero). Awareness feed from src/lib/awareness.ts: priority-sorted cross-space events (needs_vote, ignited, proposal, locked, message, joined). awarenessOpacity(priority) for visual weight. Amber swell on recent activity. Mesh Pulse. Empty: 'who are you planning with?'. Input at 96px. Manifestation Loop. UserMenu visible here only.",
+    "awareness_stream": "src/lib/awareness.ts — fetchAwareness(userId) aggregates events from all spaces. AwarenessKind types with priority weights. Time decay via exponential function. sortAwareness() by scored priority. awarenessOpacity() maps priority to 0.9/0.7/0.5/0.35/0.25. Demo fallback: getDemoAwareness().",
+    "space_data": "src/lib/space-data.ts — SpaceListItem type (id, title, atmosphere, members, decisionSummary, lastMessage, lastActivityAt). fetchSpaceList() enriches with members + decision summary + last message. recencyLabel(), recencyOpacity(), decisionStateLabel(). DEMO_SPACES fallback.",
+    "space_view": "src/app/space/[id]/page.tsx — discuss/decide toggle + share action as floating text.label. Active: colors.cyan at 0.9, inactive: colors.white at 0.4. Share: navigator.share or clipboard copy. Renders XarkChat or PossibilityHorizon placeholder. No UserMenu.",
+    "seed_data": "src/lib/seed.ts — san diego (4 items, 10 msgs), ananya sanctuary (5 msgs), tokyo (2 items), summer (empty). Run: npx tsx src/lib/seed.ts.",
+    "control_caret": "src/components/os/ControlCaret.tsx — colors.cyan dot (10px) at 32px from bottom, 4.5s breath. GLOBAL via GlobalCaret.tsx. Context-aware tap: inside space -> Galaxy, on Galaxy -> toggle slide-up. Slide-up: Avatar (28px) + text.listTitle name + text.subtitle members/decision state + text.recency timestamps. recencyOpacity() drives title opacity. Presence Ember (4px colors.cyan on avatar). 'invite a person' seed. fetchSpaceList() from space-data.ts, DEMO_SPACES fallback.",
+    "sanctuary_bridge": "XarkChat.tsx — SANCTUARY_MAP maps sender names to space IDs. Slide-up sheet: colors.void bg, 80vh max. Foveal opacity. #000 overlay at 0.8. No blur.",
+    "chat_interface": "src/components/os/XarkChat.tsx — Atmospheric, no bubbles/boxes. All sizes from theme.ts text tokens (text.body for messages, text.label for roles, text.timestamp inline). fovealOpacity from theme.ts. WhatsApp-dense grouping. Thumb-Arc: input at layout.inputBottom. Accent underline on focus. Greeting via getGreeting().",
+    "messages_layer": "src/lib/messages.ts — fetchMessages, saveMessage, subscribeToMessages, unsubscribeFromMessages. Realtime sync. Graceful fallback.",
+    "auth_hook": "src/hooks/useAuth.ts — Firebase onAuthStateChanged with URL name fallback. Firebase-only. No Supabase Auth.",
+    "chat_api_endpoint": "/api/xark — check for '@xark' prefix before calling Gemini. Silent mode if absent.",
     "chat_opacity_hierarchy": {
       "xark_response": 0.9,
       "user_message": 0.6,
-      "role_label": 0.4,
+      "role_label": 0.35,
       "timestamp": 0.25,
       "grounding_whisper": 0.2,
       "empty_state": 0.2,
       "placeholder": 0.12
     },
-    "thinking_indicator": "Cyan dot (#40E0FF) breathing at 4.5s + 'thinking' label",
+    "thinking_indicator": "colors.cyan dot breathing at 4.5s + 'thinking' text.hint",
     "banned_in_chat": ["chat bubbles", "message containers", "border on messages", "bg-color on messages", "robot icons", "emojis"]
   },
+  "theme_system": {
+    "themes": ["hearth (light, default)", "signal (dark)", "ember (warm dark)"],
+    "provider": "src/components/ThemeProvider.tsx — sets CSS variables on :root",
+    "tokens": "src/lib/theme.ts — colors, opacity, timing, text, layout, foveal, neuro, reactions objects",
+    "css_variables": "--xark-white, --xark-void, --xark-accent, --xark-amber, --xark-gold, --xark-green, --xark-orange, --xark-gray (plus -rgb variants)",
+    "helpers": "textColor(alpha), accentColor(alpha), amberWash(score), goldBloom(score), fovealOpacity(index, total, role)"
+  },
+  "type_scale": {
+    "source": "text object in src/lib/theme.ts",
+    "tokens": "hero (1.5rem), spaceTitle (clamp), listTitle (1rem), body (0.75rem), subtitle (0.65rem), label (0.6rem), recency (0.5rem), timestamp (0.45rem), input (clamp), hint (0.6rem)",
+    "usage": "style={{ ...text.body }} — no Tailwind text-size classes"
+  },
   "type_system": {
-    "primary": "DecisionItem",
-    "backwards_compat": "BookableItem (type alias, adds groupId + bookingProof)",
+    "primary": "DecisionItem (full, in /algo) / Possibility (simplified, in app)",
+    "backwards_compat": "BookableItem (type alias, in /algo only)",
     "id_format": "crypto.randomUUID() with prefix (item_, space_, task_)",
     "state_type": "open string (not enum) for custom flows",
     "concurrency": "optimistic versioning, VersionConflictError on stale writes"
@@ -109,8 +128,6 @@
     "font-weight: 500",
     "font-weight: 600",
     "font-weight: 700",
-    "rgba(240, 238, 233",
-    "rgba(240,238,233",
     "border-1",
     "bg-white",
     "rounded-lg",
@@ -123,6 +140,8 @@
   ],
   "component_registry": {
     "Theme": "active",
+    "ThemeProvider": "active",
+    "UserMenu": "active",
     "Globals": "active",
     "Login": "active",
     "Blueprint": "verified",
@@ -146,7 +165,8 @@
     "SpaceCreation": "verified",
     "PresencePulse": "verified",
     "GlobalCaret": "verified",
-    "AwarenessStream": "verified"
+    "AwarenessStream": "verified",
+    "SpaceData": "verified"
   },
   "port": 3000
 }
