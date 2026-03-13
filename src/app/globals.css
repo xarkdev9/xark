@@ -1,0 +1,142 @@
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+/* ═══════════════════════════════════════════
+   XARK OS v2.0 — CONSTITUTIONAL CSS
+   No-Bold Mandate · Zero-Box Doctrine · Atmospheric Space
+   Hierarchy = Scale + Spacing + Opacity
+   ═══════════════════════════════════════════ */
+
+/* ── THEME CSS VARIABLES — Hearth (light) defaults. Overridden by ThemeProvider. ── */
+:root {
+  --xark-accent: #FF6B35;
+  --xark-accent-rgb: 255, 107, 53;
+  --xark-white: #141414;
+  --xark-white-rgb: 20, 20, 20;
+  --xark-void: #F0EEE9;
+  --xark-void-rgb: 240, 238, 233;
+  --xark-amber: #9E6A06;
+  --xark-amber-rgb: 158, 106, 6;
+  --xark-gold: #8B6914;
+  --xark-gold-rgb: 139, 105, 20;
+  --xark-green: #047857;
+  --xark-green-rgb: 4, 120, 87;
+  --xark-orange: #C43D08;
+  --xark-orange-rgb: 196, 61, 8;
+  --xark-gray: #57576A;
+  --xark-gray-rgb: 87, 87, 106;
+}
+
+@theme inline {
+  --color-background: var(--xark-void);
+  --color-foreground: var(--xark-white);
+  --color-amber: var(--xark-amber);
+  --color-gold: var(--xark-gold);
+  --color-green: var(--xark-green);
+  --color-cyan: var(--xark-accent);
+  --color-cloud-dancer: var(--xark-white);
+  --font-syne: var(--font-syne);
+}
+
+/* ── NO-BOLD GLOBAL LOCK ── */
+* {
+  font-family: var(--font-inter), var(--font-syne), sans-serif;
+}
+
+/* ── ZERO-BOX: PURGE FOCUS OUTLINES ──
+   Browser default focus rings are borders.
+   Borders violate Zero-Box. Purge globally. */
+*:focus {
+  outline: none !important;
+}
+[role="button"]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ── BASE ── */
+body {
+  background: var(--xark-void);
+  color: var(--xark-white);
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Secondary labels: weight 300, opacity baked into color to prevent descender vanishing */
+.text-secondary {
+  font-weight: 300 !important;
+  color: rgba(var(--xark-white-rgb), 0.45) !important;
+  opacity: 1 !important;
+  display: inline-block;
+  vertical-align: top;
+  overflow: visible !important;
+  padding-bottom: 0.15em;
+  line-height: 1.5;
+}
+
+/* ── ZERO-BOX DOCTRINE ──
+   Feed items float in atmospheric space.
+   No containment. No borders. No boxes.
+   Separation = Vertical Distance. */
+.feed-item {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding-bottom: 4px; /* Essential for deep descenders like Syne */
+}
+
+/* ── ACCENT CARET — 4.5s AMBIENT BREATH ── */
+@keyframes ambientBreath {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.caret-breath {
+  animation: ambientBreath 4.5s ease-in-out infinite;
+  color: var(--xark-accent);
+}
+
+/* ── GOLD RADIAL BLOOM ── */
+@keyframes goldBloom {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.gold-bloom {
+  background: radial-gradient(circle, rgba(var(--xark-gold-rgb), 0.3) 0%, transparent 70%);
+}
+
+/* ── TITLE BREATH — The Digital Heartbeat ──
+   If it breathes, the user knows it is a door. */
+@keyframes titleBreath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.005); }
+}
+
+/* ── GREEN SETTLE TO CLOUD DANCER ── */
+.settle-locked {
+  transition: color 1.2s ease-out, background 1.2s ease-out;
+  color: var(--xark-white);
+}
+
+/* ── PWA: disable web behaviors for native feel ── */
+body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior-y: contain;
+}
+
+/* Allow text selection in input fields */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* ── PWA: safe area padding for notch devices ── */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
