@@ -114,7 +114,6 @@ function DecisionCard({
   title,
   imageUrl,
   price,
-  source,
   weightedScore,
   agreementScore,
   activeReaction,
@@ -125,142 +124,130 @@ function DecisionCard({
   const cColor = consensusColor(consensusState);
 
   return (
-    <div
-      className="relative flex-shrink-0 snap-start"
-      style={{ width: "200px", height: "260px" }}
-    >
-      {/* ── Image or gradient placeholder ── */}
+    <div className="flex-shrink-0 snap-start" style={{ width: "170px" }}>
+      {/* ── Visual card — portrait ratio ── */}
       <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: imageUrl
-            ? `url(${imageUrl})`
-            : `linear-gradient(135deg, rgba(var(--xark-amber-rgb), 0.15) 0%, rgba(var(--xark-accent-rgb), 0.08) 100%)`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      />
-
-      {/* ── Bottom vignette ── */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to top, rgba(var(--xark-void-rgb), 0.95) 0%, rgba(var(--xark-void-rgb), 0.5) 50%, transparent 75%)",
-        }}
-      />
-
-      {/* ── Amber wash from weightedScore ── */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: `linear-gradient(to top, ${amberWash(weightedScore)} 0%, transparent 50%)`,
-        }}
-      />
-
-      {/* ── Content overlay ── */}
-      <div className="absolute inset-x-0 bottom-0 px-3 pb-3">
-        {/* ── Consensus — THE HERO: large number + progress bar ── */}
-        <div style={{ marginBottom: "6px" }}>
-          <span
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: 400,
-              lineHeight: 1,
-              letterSpacing: "-0.02em",
-              color: cColor,
-              opacity: consensusState === "ignited" ? 0.95 : 0.7,
-            }}
-          >
-            {pct}
-          </span>
-          <span
-            style={{
-              ...text.timestamp,
-              color: cColor,
-              opacity: 0.4,
-              marginLeft: "2px",
-              verticalAlign: "super",
-            }}
-          >
-            %
-          </span>
-          {/* ── Consensus bar — fills with agreement ── */}
-          <div
-            style={{
-              marginTop: "4px",
-              height: "2px",
-              width: "100%",
-              position: "relative",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                height: "2px",
-                width: `${pct}%`,
-                backgroundColor: cColor,
-                opacity: consensusState === "ignited" ? 0.8 : 0.35,
-                transition: `width 0.6s ease, opacity 0.6s ease`,
-              }}
-            />
-          </div>
-        </div>
-
-        <p
+        className="relative"
+        style={{ width: "170px", height: "220px", overflow: "hidden" }}
+      >
+        {/* ── Image or gradient placeholder ── */}
+        <div
+          className="absolute inset-0"
           style={{
-            ...text.body,
-            color: colors.white,
-            opacity: 0.9,
-            lineHeight: 1.3,
+            backgroundImage: imageUrl
+              ? `url(${imageUrl})`
+              : `linear-gradient(160deg, rgba(var(--xark-amber-rgb), 0.2) 0%, rgba(var(--xark-accent-rgb), 0.12) 50%, rgba(var(--xark-void-rgb), 0.4) 100%)`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
           }}
-        >
-          {title}
-        </p>
+        />
 
-        {price && (
-          <span
-            style={{
-              ...text.recency,
-              color: colors.white,
-              opacity: 0.4,
-              display: "inline-block",
-              marginTop: "2px",
-            }}
-          >
-            {price}
-          </span>
-        )}
+        {/* ── Bottom vignette — stronger for readability ── */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(var(--xark-void-rgb), 0.98) 0%, rgba(var(--xark-void-rgb), 0.6) 45%, transparent 80%)",
+          }}
+        />
 
-        {/* ── Reaction signals — compact single line ── */}
-        <div className="flex items-center gap-3" style={{ marginTop: "8px" }}>
-          {SIGNALS.map((signal) => {
-            const isActive = activeReaction === signal.type;
-            return (
-              <span
-                key={signal.type}
-                role="button"
-                tabIndex={0}
-                onClick={() => onReact(id, signal.type)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onReact(id, signal.type);
-                }}
-                className="outline-none"
+        {/* ── Amber wash ── */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `linear-gradient(to top, ${amberWash(weightedScore)} 0%, transparent 50%)`,
+          }}
+        />
+
+        {/* ── Content overlay ── */}
+        <div className="absolute inset-x-0 bottom-0 px-3 pb-3">
+          {/* ── Consensus hero ── */}
+          <div style={{ marginBottom: "4px" }}>
+            <span
+              style={{
+                fontSize: "1.5rem",
+                fontWeight: 400,
+                lineHeight: 1,
+                letterSpacing: "-0.02em",
+                color: cColor,
+                opacity: consensusState === "ignited" ? 0.95 : 0.7,
+              }}
+            >
+              {pct}
+            </span>
+            <span
+              style={{
+                ...text.timestamp,
+                color: cColor,
+                opacity: 0.4,
+                marginLeft: "2px",
+                verticalAlign: "super",
+              }}
+            >
+              %
+            </span>
+            <div style={{ marginTop: "3px", height: "2px", position: "relative" }}>
+              <div
                 style={{
-                  ...text.recency,
-                  color: signal.color,
-                  opacity: isActive ? 0.9 : activeReaction ? 0.15 : 0.4,
-                  cursor: "pointer",
-                  transition: `opacity ${timing.transition} ease`,
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  height: "2px",
+                  width: `${pct}%`,
+                  backgroundColor: cColor,
+                  opacity: consensusState === "ignited" ? 0.8 : 0.35,
+                  transition: "width 0.6s ease, opacity 0.6s ease",
                 }}
-              >
-                {signal.label}
-              </span>
-            );
-          })}
+              />
+            </div>
+          </div>
+
+          <p style={{ ...text.body, color: colors.white, opacity: 0.9, lineHeight: 1.3 }}>
+            {title}
+          </p>
+
+          {price && (
+            <span
+              style={{
+                ...text.recency,
+                color: colors.white,
+                opacity: 0.4,
+                display: "inline-block",
+                marginTop: "2px",
+              }}
+            >
+              {price}
+            </span>
+          )}
         </div>
+      </div>
+
+      {/* ── Reactions — BELOW card, on void, full sunlight contrast ── */}
+      <div className="flex items-center gap-4" style={{ marginTop: "8px", paddingLeft: "3px" }}>
+        {SIGNALS.map((signal) => {
+          const isActive = activeReaction === signal.type;
+          return (
+            <span
+              key={signal.type}
+              role="button"
+              tabIndex={0}
+              onClick={() => onReact(id, signal.type)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onReact(id, signal.type);
+              }}
+              className="outline-none"
+              style={{
+                ...text.body,
+                color: signal.color,
+                opacity: isActive ? 1 : activeReaction ? 0.2 : 0.6,
+                cursor: "pointer",
+                transition: `opacity ${timing.transition} ease`,
+              }}
+            >
+              {signal.label}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
