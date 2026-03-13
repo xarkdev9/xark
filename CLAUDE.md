@@ -310,11 +310,12 @@ The automated bridge between Consensus and Commitment. When agreementScore cross
 - Visual reward: On successful lock, connected clients should trigger Social Gold burst (goldBloom from theme.ts).
 
 LOGIN FLOW (src/app/login/page.tsx):
-The "First Breath" — atmospheric login with wordmark, brand identity, name input, and transition.
+The "First Breath" — atmospheric login with wordmark, brand identity, name input, profile photo, and transition.
 - Wordmark: "xark" in Inter weight 300, scale hierarchy via clamp(3.5rem, 8vw, 6rem), opacity 0.9.
 - Brand line: "People. Plans. Memories." at opacity 0.45, clamp(0.95rem, 2.2vw, 1.15rem), letterSpacing 0.08em. Fades in at 0.3s delay.
 - Sub-line: "All private, effortlessly in sync." at opacity 0.2, clamp(0.65rem, 1.5vw, 0.8rem), letterSpacing 0.15em. Fades in at 0.5s delay.
-- Three phases: arrive (orb breathes in), input (name field with cyan underline), transit (welcome message + redirect).
+- Four phases: arrive (orb breathes in), input (name field with cyan underline), photo (profile photo upload or skip), transit (welcome message + redirect).
+- Photo phase: "add a photo" (text.hint, opacity 0.35) + "skip" (text.hint, opacity 0.2). Uploads to Firebase Storage at profiles/{userId}/avatar. Max 2MB. Saves photo_url to Supabase users table.
 - The Exhale: After 1.2s transit phase, router.push('/galaxy?name=...') sends user to Galaxy View.
 - Privacy signal: Shield icon + "end-to-end encrypted" at opacity 0.2.
 
@@ -350,14 +351,20 @@ Populates Supabase Postgres with high-signal demo data. Run via: npx tsx src/lib
 - "tokyo neon nights" space: 2 items (shibuya 15% seeking, teamlab 72% steady).
 - "summer 2026" space: Empty, seeking state.
 
-NEW DIRECTORIES (implementation plan):
-- src/lib/intelligence/orchestrator.ts — Gemini 2.0 Flash orchestrator. Strips "@xark" prefix, builds conversation, routes tool calls.
-- src/lib/intelligence/tool-registry.ts — Tool registry pattern. Registers Apify actors (hotel-search, flight-search, activity-search) as callable tools.
-- src/lib/intelligence/apify-client.ts — Apify actor runner. Handles hotel/flight/activity searches via Apify API.
-- src/lib/media.ts — Firebase Storage E2EE media upload/download.
-- src/lib/notifications.ts — FCM push notification service.
-- src/lib/state-flows.ts — FLOW_TERMINAL_STATES + resolveTerminalState(state, flow?). Shared by handshake.ts and claims.ts.
-- src/lib/space-state.ts — computeSpaceState(items[]) pure function.
+IMPLEMENTED SERVICES (all operational):
+- src/lib/intelligence/orchestrator.ts — Gemini 2.0 Flash orchestrator (see INTELLIGENCE SERVICE above).
+- src/lib/intelligence/tool-registry.ts — Apify tool registry (see INTELLIGENCE SERVICE above).
+- src/lib/intelligence/apify-client.ts — Apify actor runner (see INTELLIGENCE SERVICE above).
+- src/lib/media.ts — Firebase Storage media upload/download (see MEDIA SERVICE above).
+- src/lib/notifications.ts — FCM push notification service (see NOTIFICATION SERVICE above).
+- src/lib/state-flows.ts — Shared flow terminal states (see STATE FLOWS MODULE above).
+- src/lib/space-state.ts — Emergent space state pure function (see EMERGENT SPACE STATE above).
+- src/lib/supabase-admin.ts — Server-side Supabase client (see SUPABASE ADMIN CLIENT above).
+- src/hooks/useVoiceInput.ts — Voice dictation + @xark invocation (see VOICE INPUT above).
+- src/components/os/ClaimSheet.tsx — Item claim UI (see CLAIM SHEET above).
+- src/components/os/PurchaseSheet.tsx — Purchase confirmation UI (see PURCHASE SHEET above).
+- src/components/os/MediaUpload.tsx — Photo upload UI (see MEDIA SERVICE above).
+- src/components/os/ServiceWorkerRegistration.tsx — FCM service worker registration (see NOTIFICATION SERVICE above).
 
 KNOWN BUGS (from architecture audit, addressed in implementation plan):
 - B1: ai-grounding.ts buildGroundingContext() fetches agreement_score but column may not exist in all environments. Fix: add column check or migration guard.
@@ -365,6 +372,75 @@ KNOWN BUGS (from architecture audit, addressed in implementation plan):
 - B3: ledger.ts fetchSettlement() uses entries.length for memberCount instead of space_members table. Fix: query space_members for true group size.
 - B4: spaces.ts createSpace() doesn't add creator as space member. Fix: insert into space_members after space creation.
 All four bugs are addressed in the implementation plan (Tasks 0.4, 2.5, 10.4).
+
+INTELLIGENCE SERVICE (src/lib/intelligence/):
+@xark's brain (Gemini 2.0 Flash) + hands (Apify actors). Stateless orchestration — no state stored.
+- orchestrator.ts: orchestrate(input) parses intent via Gemini → routes to Apify tool → synthesizes response. OrchestratorInput: { userMessage (stripped of "@xark"), groundingPrompt, recentMessages (last 15), spaceId }. OrchestratorResult: { response, searchResults?, action ("search"|"reason"|"propose"), tool? }. Intent parsing returns JSON with action type. Search results auto-inserted as decision_items via /api/xark.
+- tool-registry.ts: registerTool(name, { actorId, description, paramMap }). Default tools: hotel, flight, activity, restaurant, general. paramMap transforms user params to Apify input format. getTool(name) returns ToolDefinition or null. listTools() returns registered tool names.
+- apify-client.ts: runActor(actorId, input) executes Apify actor and normalizes results to ApifyResult { title, price?, imageUrl?, description?, externalUrl?, rating?, source }. Safe: returns [] when APIFY_API_TOKEN is missing.
+- /api/xark endpoint (src/app/api/xark/route.ts): POST handler. Silent mode: returns { response: null } if message doesn't contain "@xark". Strips prefix, builds grounding context, fetches last 15 messages, calls orchestrate(). Search results auto-upserted into decision_items as "proposed" state items. Uses supabaseAdmin for server-side writes.
+
+STATE FLOWS MODULE (src/lib/state-flows.ts):
+Shared state flow definitions. Single source of truth for terminal state resolution.
+- FLOW_TERMINAL_STATES: Record<string, string>. Maps current state to terminal state. "ranked" intentionally omitted (ambiguous between BOOKING_FLOW and SIMPLE_VOTE_FLOW).
+- resolveTerminalState(currentState, flow?): Resolves "ranked" based on optional flow parameter. Defaults to "locked" for unknown states.
+- isTerminalState(state): Returns true for "purchased", "chosen", "decided".
+- Imported by handshake.ts and claims.ts — eliminates duplication.
+
+MEDIA SERVICE (src/lib/media.ts):
+Firebase Storage for blobs, Supabase Postgres for metadata.
+- uploadMedia(file, spaceId, userId, caption?): Uploads to Firebase Storage at `spaces/{spaceId}/media/{mediaId}`, saves metadata to Supabase `media` table. Returns MediaItem or null when Storage is unconfigured.
+- fetchMedia(spaceId): Returns all media items for a space ordered by created_at ascending.
+- MediaItem: { id, spaceId, uploadedBy, storagePath, thumbnailUrl?, caption?, createdAt }.
+- MediaUpload component (src/components/os/MediaUpload.tsx): "add photo" floating text (text.hint, opacity 0.35), hidden file picker, optional caption input, cyan breathing dot during upload. Zero-Box compliant.
+
+NOTIFICATION SERVICE (src/lib/notifications.ts):
+Server-side FCM push via Firebase Admin SDK. Lazy initialization — no-op when unconfigured.
+- getAdmin(): Dynamically imports firebase-admin, initializes once from FIREBASE_SERVICE_ACCOUNT_JSON env var. Singleton pattern.
+- sendPush(tokens[], title, body, data?): Sends multicast push via FCM. No-op when tokens empty or Admin not configured. webpush.fcmOptions.link defaults to "/galaxy".
+- /api/notify endpoint (src/app/api/notify/route.ts): POST handler. Accepts { event, spaceId, title, body, excludeUserId }. Queries space_members → user_devices for FCM tokens. Uses supabaseAdmin for service-role access. Returns { sent: number }.
+- ServiceWorkerRegistration (src/components/os/ServiceWorkerRegistration.tsx): Client component. Registers /firebase-messaging-sw.js, posts Firebase config to service worker via postMessage. Renders null. Only registers when NEXT_PUBLIC_FIREBASE_API_KEY exists.
+- firebase-messaging-sw.js (public/): Background notification handler. Receives Firebase config via postMessage from main thread.
+
+VOICE INPUT (src/hooks/useVoiceInput.ts):
+On-device SpeechRecognition for dictation and @xark invocation.
+- useVoiceInput(): Returns { isListening, isXarkListening, transcript, startListening, startXarkListening, stopListening, error }.
+- startListening(): Tap mic — on-device speech-to-text, no network required. Sets transcript.
+- startXarkListening(): Long-press — auto-prefixes "@xark " to transcript for direct intelligence invocation.
+- Graceful fallback: sets error when SpeechRecognition API unavailable.
+
+CLAIM SHEET (src/components/os/ClaimSheet.tsx):
+Slide-up sheet for claiming a locked item. "i'll handle this" — stamps owner on BOOKING_FLOW locked items.
+- Props: { isOpen, onClose, itemId, itemTitle, userId, onClaimed? }.
+- Actions: "i'll handle this" (colors.cyan, text.label) + "not yet" (textColor(0.4), text.label). No buttons, no boxes.
+- Uses claimItem() from claims.ts. On success: whisper "[name] is on it", auto-close after 1.5s.
+- Constitutional: #000 overlay at opacity 0.8, colors.void bg, no blur.
+
+PURCHASE SHEET (src/components/os/PurchaseSheet.tsx):
+Slide-up sheet for confirming purchase + entering amount. Appears when user taps a claimed item they own.
+- Props: { isOpen, onClose, itemId, itemTitle, userId, currentVersion, onPurchased? }.
+- Amount input with $ prefix + unit cycle toggle (total / per night / per person). Proof input (link/receipt, optional — falls back to verbal).
+- State: claimed → purchased (terminal). Optimistic concurrency via version check.
+- "done" action (colors.cyan, text.label). Whisper on success: "[name] booked [title] for $[amount]".
+- Constitutional: accent underline on inputs, no buttons, no boxes.
+
+PROFILE PHOTO UPLOAD (Login Flow):
+- Login page has 4 phases: arrive → input → photo → transit (was 3 phases before).
+- Photo phase: "add a photo" (text.hint, opacity 0.35) + "skip" (text.hint, opacity 0.2) floating text.
+- handlePhotoSelect: Uploads to Firebase Storage at `profiles/{userId}/avatar`, saves URL to users.photo_url in Supabase. Max 2MB.
+- UserMenu.tsx: Fetches photo_url from Supabase users table. Shows profile photo in both small (32px) and large (48px) avatars. Falls back to letter initial.
+
+SUPABASE ADMIN CLIENT (src/lib/supabase-admin.ts):
+Server-side Supabase client with service-role key for API routes.
+- Uses SUPABASE_SERVICE_ROLE_KEY (not the anon key). Bypasses RLS for server-side operations.
+- Used by: /api/xark (insert decision_items from search), /api/notify (query space_members + user_devices).
+- Exports null when env vars are missing. Consumers must null-check.
+
+PWA MANIFEST (public/manifest.json):
+Progressive Web App configuration for homescreen installation.
+- name: "xark", display: "standalone", theme_color matches void.
+- Safe-area padding handled in globals.css (env(safe-area-inset-*)).
+- Service worker registered via ServiceWorkerRegistration component in layout.tsx.
 
 2. THE ENGINE-TO-PIXEL MAP
 Amber (#F5A623): Seeking/Anticipation. Wash intensity maps to weightedScore.

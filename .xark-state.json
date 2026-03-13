@@ -1,6 +1,6 @@
 {
   "version": "2.0.0-omega",
-  "foveal_focus": "Architecture Blueprint approved. 9 services, event-driven, loosely coupled. Next: implementation plan (multi-agent, phased). Spec: docs/superpowers/specs/2026-03-13-xark-architecture-blueprint.md",
+  "foveal_focus": "Full implementation complete. 9 services operational. Intelligence (Gemini + Apify), Media (Firebase Storage), Notifications (FCM), Commitment (Claim + Purchase sheets), Voice Input, State Flows, Settlement Ledger. All guardrails synced.",
   "phase": "FIRST_REAL_TRIP",
   "algo_source": "/Users/ramchitturi/algo",
   "algo_record": "/Users/ramchitturi/algo/mar10_algo.md",
@@ -10,7 +10,7 @@
     "color": "Theme-aware CSS variables (--xark-white, --xark-void, --xark-accent). Three themes: hearth (light, default), signal (dark), ember (warm dark). textColor(alpha) from theme.ts is the approved opacity method.",
     "fonts": "Inter (body, 400), Syne (display/fallback, 400), Inter (wordmark, 300). Inter is primary in globals.css.",
     "layout": "Liquid Feed / Zero-Box. Focus outlines globally purged in globals.css.",
-    "engine": "heart-sort.ts is SSOT. Source: /Users/ramchitturi/algo/src/engine/heart-sort.ts. App version simplified (Possibility type, 2 functions). Full port pending (Phase 4 of todo_mar12.md).",
+    "engine": "heart-sort.ts is SSOT. Source: /Users/ramchitturi/algo/src/engine/heart-sort.ts. Full port complete (DecisionItem, calculateWeightedScore, addReaction, removeReaction, calculateAgreementScore, getRankedSummary).",
     "infrastructure": "Hybrid Stack: Firebase Auth (OTP), Supabase Postgres (decision engine), Firebase Storage (E2EE multimedia), Firebase FCM (push), Gemini 2.0 Flash (intelligence). Supabase Auth is banned."
   },
   "engine_config": {
@@ -31,7 +31,7 @@
     "neuro_colors": "All CSS variables via theme.ts. Hearth adjusts for light contrast. Signal/Ember use vivid dark-mode values."
   },
   "state_flows": {
-    "BOOKING_FLOW": "proposed -> ranked -> locked (default)",
+    "BOOKING_FLOW": "proposed -> ranked -> locked -> claimed -> purchased (default, extended)",
     "PURCHASE_FLOW": "researching -> shortlisted -> negotiating -> purchased",
     "SIMPLE_VOTE_FLOW": "nominated -> ranked -> chosen",
     "SOLO_DECISION_FLOW": "considering -> leaning -> decided"
@@ -99,7 +99,16 @@
       "placeholder": 0.12
     },
     "thinking_indicator": "colors.cyan dot breathing at 4.5s + 'thinking' text.hint",
-    "banned_in_chat": ["chat bubbles", "message containers", "border on messages", "bg-color on messages", "robot icons", "emojis"]
+    "banned_in_chat": ["chat bubbles", "message containers", "border on messages", "bg-color on messages", "robot icons", "emojis"],
+    "intelligence_orchestrator": "src/lib/intelligence/orchestrator.ts — Gemini 2.0 Flash + Apify tool routing. Stateless. OrchestratorInput → OrchestratorResult.",
+    "tool_registry": "src/lib/intelligence/tool-registry.ts — hotel, flight, activity, restaurant, general. registerTool/getTool/listTools.",
+    "apify_client": "src/lib/intelligence/apify-client.ts — runActor(actorId, input) → ApifyResult[]. Safe: empty when unconfigured.",
+    "notifications_service": "src/lib/notifications.ts — Firebase Admin SDK, sendPush(tokens, title, body, data?). Lazy init. /api/notify route.",
+    "media_service": "src/lib/media.ts — uploadMedia(file, spaceId, userId, caption?) + fetchMedia(spaceId). Firebase Storage + Supabase metadata.",
+    "state_flows": "src/lib/state-flows.ts — FLOW_TERMINAL_STATES + resolveTerminalState(state, flow?) + isTerminalState(state). Shared module.",
+    "space_state": "src/lib/space-state.ts — computeSpaceState(items[]) → empty/exploring/converging/ready/active/settled. Pure function.",
+    "voice_input": "src/hooks/useVoiceInput.ts — on-device SpeechRecognition. Tap = dictation. Long-press = @xark prefix.",
+    "supabase_admin": "src/lib/supabase-admin.ts — Service-role client for /api/xark and /api/notify. Bypasses RLS."
   },
   "theme_system": {
     "themes": ["hearth (light, default)", "signal (dark)", "ember (warm dark)"],
@@ -166,7 +175,20 @@
     "PresencePulse": "verified",
     "GlobalCaret": "verified",
     "AwarenessStream": "verified",
-    "SpaceData": "verified"
+    "SpaceData": "verified",
+    "IntelligenceOrchestrator": "verified",
+    "ToolRegistry": "verified",
+    "ApifyClient": "verified",
+    "StateFlows": "verified",
+    "SpaceState": "verified",
+    "MediaUpload": "verified",
+    "MediaService": "verified",
+    "NotificationService": "verified",
+    "ClaimSheet": "verified",
+    "PurchaseSheet": "verified",
+    "VoiceInput": "verified",
+    "ServiceWorkerRegistration": "verified",
+    "SupabaseAdmin": "verified"
   },
   "port": 3000
 }
