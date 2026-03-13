@@ -1,6 +1,7 @@
 // XARK OS v2.0 — CLAIM ENGINE
 // Manual item claim: lock an item with proof, outside the automated handshake.
 // Source of truth: mar10_algo.md Section 7d (Green-Lock Commitment Protocol)
+// Two-step BOOKING_FLOW: locked items transition to "claimed" (not terminal).
 
 import { supabase } from "./supabase";
 import { resolveTerminalState } from "./state-flows";
@@ -23,9 +24,9 @@ export interface ClaimResult {
 }
 
 // ── claimItem ──
-// Locks an item and assigns ownership to the claiming user.
-// proof: "Link to confirmation or drop receipt." — free-form text.
-// If no proof is provided, defaults to verbal confirmation.
+// For items in "locked" state (BOOKING_FLOW): transitions to "claimed", stamps owner.
+// No proof required at claim step — proof comes at purchase step.
+// For other states: full lock with proof as before.
 
 export async function claimItem(
   itemId: string,
@@ -51,7 +52,51 @@ export async function claimItem(
     };
   }
 
-  // 2. Guard: cannot claim already-locked item
+  // 2. BOOKING_FLOW claim: item is in "locked" state (no owner yet)
+  if (current.state === "locked" && current.is_locked) {
+    const claimedState = resolveTerminalState(current.state); // locked → claimed
+
+    const proof: ClaimProof = {
+      type: "verbal",
+      value: `claimed by ${userId}`,
+      submittedBy: userId,
+      submittedAt: now,
+    };
+
+    const { error: updateError } = await supabase
+      .from("decision_items")
+      .update({
+        state: claimedState,
+        ownership: {
+          ownerId: userId,
+          assignedAt: now,
+          reason: "booker",
+        },
+        commitment_proof: proof,
+        version: (current.version ?? 0) + 1,
+      })
+      .eq("id", itemId)
+      .eq("version", current.version ?? 0);
+
+    if (updateError) {
+      return {
+        success: false,
+        itemId,
+        lockedAt: "",
+        proof,
+        error: `Claim failed (version conflict?): ${updateError.message}`,
+      };
+    }
+
+    return {
+      success: true,
+      itemId,
+      lockedAt: now,
+      proof,
+    };
+  }
+
+  // 3. Standard claim: guard against already-locked items (not in "locked" waiting state)
   if (current.is_locked) {
     return {
       success: false,
@@ -62,7 +107,7 @@ export async function claimItem(
     };
   }
 
-  // 3. Build claim proof
+  // 4. Build claim proof for non-BOOKING_FLOW items
   const proofType = proofValue ? "receipt" : "verbal";
   const proof: ClaimProof = {
     type: proofType,
@@ -71,10 +116,10 @@ export async function claimItem(
     submittedAt: now,
   };
 
-  // 4. Resolve terminal state from current flow
+  // 5. Resolve terminal state from current flow
   const lockedState = resolveTerminalState(current.state);
 
-  // 5. Commit with optimistic concurrency
+  // 6. Commit with optimistic concurrency
   const { error: updateError } = await supabase
     .from("decision_items")
     .update({

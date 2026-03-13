@@ -1,14 +1,11 @@
 // XARK OS v2.0 — HANDSHAKE PROTOCOL
-// The bridge between Consensus and Commitment.
-// When agreementScore crosses 80% (ignited), @xark proposes a lock.
-// On confirmation, the item enters the Green-Lock Commitment Protocol.
-// Source of truth: /Users/ramchitturi/algo/mar10_algo.md (Section 7d)
+// Two-step commitment for BOOKING_FLOW:
+//   Step 1 (this): consensus lock — sets is_locked=true, state="locked", NO owner.
+//   Step 2 (ClaimSheet): someone claims it — stamps owner.
 
 import { supabase } from "./supabase";
 import { resolveTerminalState } from "./state-flows";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-
-// ── Types ──
 
 export interface HandshakeProposal {
   itemId: string;
@@ -34,22 +31,14 @@ export interface HandshakeResult {
   error?: string;
 }
 
-// ── @xark Handshake Message ──
-// The whisper that bridges consensus to commitment.
-
 export function generateHandshakeWhisper(proposal: HandshakeProposal): string {
   return `consensus reached on ${proposal.title}. shall i lock this in for the group?`;
 }
-
-// ── Consensus Detection via Supabase Realtime ──
-// Subscribes to decision_items changes and fires when an item crosses
-// the ignited threshold (agreementScore > 0.80, strictly greater than).
 
 export function subscribeToConsensus(
   spaceId: string,
   onHandshake: (proposal: HandshakeProposal) => void
 ): RealtimeChannel {
-  // Track items that have already triggered a handshake to prevent duplicates
   const triggered = new Set<string>();
 
   const channel = supabase
@@ -73,14 +62,11 @@ export function subscribeToConsensus(
           state: string;
         };
 
-        // Guard: already locked or already triggered
         if (item.is_locked) return;
         if (triggered.has(item.id)) return;
 
-        // Ignited threshold: strictly > 0.80 per mar10_algo.md
         if (item.agreement_score > 0.8) {
           triggered.add(item.id);
-
           onHandshake({
             itemId: item.id,
             title: item.title,
@@ -97,9 +83,7 @@ export function subscribeToConsensus(
   return channel;
 }
 
-// ── Confirm Handshake — Green-Lock Commitment ──
-// Locks the item with "verbal" proof type per mar10_algo.md Section 7d.
-// On lock: committer stamped as owner { ownerId, assignedAt, reason: "booker" }.
+const BOOKING_FLOW_LOCKED_STATES = new Set(["proposed", "ranked"]);
 
 export async function confirmHandshake(
   itemId: string,
@@ -107,7 +91,6 @@ export async function confirmHandshake(
 ): Promise<HandshakeResult> {
   const now = new Date().toISOString();
 
-  // 1. Fetch current item state + version for optimistic concurrency
   const { data: current, error: fetchError } = await supabase
     .from("decision_items")
     .select("id, title, state, is_locked, version")
@@ -124,7 +107,6 @@ export async function confirmHandshake(
     };
   }
 
-  // 2. Guard: cannot lock already-locked item (GreenLockError)
   if (current.is_locked) {
     return {
       success: false,
@@ -135,7 +117,6 @@ export async function confirmHandshake(
     };
   }
 
-  // 3. Build commitment proof
   const proof: CommitmentProof = {
     type: "verbal",
     value: "group consensus confirmed via @xark handshake",
@@ -143,24 +124,28 @@ export async function confirmHandshake(
     submittedAt: now,
   };
 
-  // 4. Resolve the terminal state based on current flow
   const lockedState = resolveTerminalState(current.state);
+  const isBookingFlow = BOOKING_FLOW_LOCKED_STATES.has(current.state) && lockedState === "locked";
 
-  // 5. Commit — optimistic concurrency via version check
+  const updatePayload: Record<string, unknown> = {
+    state: lockedState,
+    is_locked: true,
+    locked_at: now,
+    commitment_proof: proof,
+    version: (current.version ?? 0) + 1,
+  };
+
+  if (!isBookingFlow) {
+    updatePayload.ownership = {
+      ownerId: confirmerId,
+      assignedAt: now,
+      reason: "booker",
+    };
+  }
+
   const { error: updateError } = await supabase
     .from("decision_items")
-    .update({
-      state: lockedState,
-      is_locked: true,
-      locked_at: now,
-      commitment_proof: proof,
-      ownership: {
-        ownerId: confirmerId,
-        assignedAt: now,
-        reason: "booker",
-      },
-      version: (current.version ?? 0) + 1,
-    })
+    .update(updatePayload)
     .eq("id", itemId)
     .eq("version", current.version ?? 0);
 
@@ -181,8 +166,6 @@ export async function confirmHandshake(
     proof,
   };
 }
-
-// ── Unsubscribe ──
 
 export function unsubscribeFromConsensus(channel: RealtimeChannel): void {
   supabase.removeChannel(channel);

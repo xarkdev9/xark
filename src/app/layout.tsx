@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/os/ThemeProvider";
 import { GlobalCaret } from "@/components/os/GlobalCaret";
 import { GlobalUserMenu } from "@/components/os/GlobalUserMenu";
+import { ServiceWorkerRegistration } from "@/components/os/ServiceWorkerRegistration";
 
 const syne = Syne({
   variable: "--font-syne",
@@ -48,6 +49,7 @@ export default function RootLayout({
           {children}
           <GlobalUserMenu />
           <GlobalCaret />
+          <ServiceWorkerRegistration />
         </ThemeProvider>
       </body>
     </html>
