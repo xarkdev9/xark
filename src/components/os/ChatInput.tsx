@@ -1,8 +1,8 @@
 "use client";
 
 // XARK OS v2.0 — Shared Chat Input
-// Auto-expanding textarea + fixed action row (attach · camera · mic).
-// Textarea grows upward. Actions stay pinned below it, always in same position.
+// Textarea zone at inputBottom. Actions (attach · camera · mic) flanking the
+// ControlCaret dot at caretBottom — always visible, always in thumb range.
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -65,19 +65,21 @@ export function ChatInput({
   };
 
   const handleAttachClick = () => {
-    if (onAttach) {
-      onAttach();
-    } else {
-      fileRef.current?.click();
-    }
+    if (onAttach) onAttach();
+    else fileRef.current?.click();
   };
 
   const handleCameraClick = () => {
-    if (onCamera) {
-      onCamera();
-    } else {
-      cameraRef.current?.click();
-    }
+    if (onCamera) onCamera();
+    else cameraRef.current?.click();
+  };
+
+  // Shared action label style
+  const actionStyle = {
+    ...text.subtitle,
+    color: textColor(0.35),
+    cursor: "pointer" as const,
+    transition: `color ${timing.transition} ease`,
   };
 
   return (
@@ -86,10 +88,12 @@ export function ChatInput({
       <input ref={fileRef} type="file" className="hidden" accept="*/*" />
       <input ref={cameraRef} type="file" className="hidden" accept="image/*" capture="environment" />
 
+      {/* ═══ TEXTAREA ZONE — at inputBottom level ═══ */}
       <div
-        className="fixed inset-x-0 bottom-0 z-20 px-6 pt-4"
+        className="fixed inset-x-0 z-20 px-6"
         style={{
-          paddingBottom: layout.inputBottom,
+          bottom: layout.inputBottom,
+          paddingBottom: "12px",
           background: colors.void,
         }}
       >
@@ -104,7 +108,6 @@ export function ChatInput({
             }}
           />
 
-          {/* ── Textarea — grows upward ── */}
           <textarea
             ref={textareaRef}
             value={input}
@@ -135,107 +138,10 @@ export function ChatInput({
             }}
           />
 
-          {/* ── Action row — fixed below textarea, never moves ── */}
-          <div
-            className="flex items-center justify-end gap-5"
-            style={{ marginTop: "8px" }}
-          >
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={handleAttachClick}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAttachClick(); }}
-              className="cursor-pointer outline-none"
-              style={{
-                ...text.recency,
-                color: textColor(0.3),
-                transition: `color ${timing.transition} ease`,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.5); }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.3); }}
-            >
-              attach
-            </span>
-
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={handleCameraClick}
-              onKeyDown={(e) => { if (e.key === "Enter") handleCameraClick(); }}
-              className="cursor-pointer outline-none"
-              style={{
-                ...text.recency,
-                color: textColor(0.3),
-                transition: `color ${timing.transition} ease`,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.5); }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.3); }}
-            >
-              camera
-            </span>
-
-            {/* ── Mic — tap: listen, long-press: @xark mode ── */}
-            <span
-              role="button"
-              tabIndex={0}
-              onPointerDown={() => {
-                longPressRef.current = setTimeout(() => {
-                  startXarkListening();
-                  longPressRef.current = null;
-                }, 500);
-              }}
-              onPointerUp={() => {
-                if (longPressRef.current) {
-                  clearTimeout(longPressRef.current);
-                  longPressRef.current = null;
-                  if (isListening || isXarkListening) stopListening();
-                  else startListening();
-                }
-              }}
-              onPointerLeave={() => {
-                if (longPressRef.current) {
-                  clearTimeout(longPressRef.current);
-                  longPressRef.current = null;
-                }
-              }}
-              className="outline-none select-none"
-              style={{
-                ...text.recency,
-                color: isXarkListening ? colors.cyan : textColor(0.3),
-                opacity: isListening || isXarkListening ? 0.9 : 1,
-                cursor: "pointer",
-                transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
-              }}
-              onMouseEnter={(e) => {
-                if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.5);
-              }}
-              onMouseLeave={(e) => {
-                if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.3);
-              }}
-            >
-              {isListening || isXarkListening ? (
-                <span className="flex items-center gap-2">
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: "5px",
-                      height: "5px",
-                      borderRadius: "50%",
-                      backgroundColor: isXarkListening ? colors.cyan : colors.white,
-                      animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
-                    }}
-                  />
-                </span>
-              ) : (
-                "mic"
-              )}
-            </span>
-          </div>
-
           {/* ── Bottom accent underline ── */}
           <div
             style={{
-              marginTop: "6px",
+              marginTop: "4px",
               height: "1px",
               background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
               opacity: inputFocused ? 1 : 0.15,
@@ -245,6 +151,110 @@ export function ChatInput({
               transition: `opacity ${timing.transition} ease`,
             }}
           />
+        </div>
+      </div>
+
+      {/* ═══ ACTION BAR — flanks the ControlCaret dot at caretBottom ═══ */}
+      <div
+        className="fixed inset-x-0 z-20 px-6"
+        style={{
+          bottom: layout.caretBottom,
+          transform: "translateY(50%)",
+          pointerEvents: "none",
+          background: colors.void,
+          paddingTop: "8px",
+          paddingBottom: "8px",
+        }}
+      >
+        <div
+          className="mx-auto flex items-center justify-center gap-8"
+          style={{ maxWidth: "640px", pointerEvents: "auto" }}
+        >
+          {/* ── Left of dot: attach · camera ── */}
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={handleAttachClick}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAttachClick(); }}
+            className="cursor-pointer outline-none"
+            style={actionStyle}
+            onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.6); }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.35); }}
+          >
+            attach
+          </span>
+
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={handleCameraClick}
+            onKeyDown={(e) => { if (e.key === "Enter") handleCameraClick(); }}
+            className="cursor-pointer outline-none"
+            style={actionStyle}
+            onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.6); }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.35); }}
+          >
+            camera
+          </span>
+
+          {/* ── Gap for the breathing dot (ControlCaret renders it independently) ── */}
+          <div style={{ width: layout.caretSize }} />
+
+          {/* ── Right of dot: mic ── */}
+          <span
+            role="button"
+            tabIndex={0}
+            onPointerDown={() => {
+              longPressRef.current = setTimeout(() => {
+                startXarkListening();
+                longPressRef.current = null;
+              }, 500);
+            }}
+            onPointerUp={() => {
+              if (longPressRef.current) {
+                clearTimeout(longPressRef.current);
+                longPressRef.current = null;
+                if (isListening || isXarkListening) stopListening();
+                else startListening();
+              }
+            }}
+            onPointerLeave={() => {
+              if (longPressRef.current) {
+                clearTimeout(longPressRef.current);
+                longPressRef.current = null;
+              }
+            }}
+            className="outline-none select-none"
+            style={{
+              ...text.subtitle,
+              color: isXarkListening ? colors.cyan : isListening ? colors.white : textColor(0.35),
+              cursor: "pointer",
+              transition: `color ${timing.transition} ease`,
+            }}
+            onMouseEnter={(e) => {
+              if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.6);
+            }}
+            onMouseLeave={(e) => {
+              if (!isListening && !isXarkListening) e.currentTarget.style.color = textColor(0.35);
+            }}
+          >
+            {isListening || isXarkListening ? (
+              <span className="flex items-center gap-2">
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "5px",
+                    height: "5px",
+                    borderRadius: "50%",
+                    backgroundColor: isXarkListening ? colors.cyan : colors.white,
+                    animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+                  }}
+                />
+              </span>
+            ) : (
+              "mic"
+            )}
+          </span>
         </div>
       </div>
 
