@@ -45,7 +45,7 @@ The Xark OS infrastructure is a locked hybrid of Firebase and Supabase. Do not d
 - Decision Engine: Supabase Postgres. All heart-sort ranking math runs in SQL here.
 - Multimedia (E2EE): Firebase Storage. Binary blob delivery with bucket-level security rules.
 - Push Alerts: Firebase Cloud Messaging (FCM). Native iOS/Android push.
-- Intelligence: Gemini 2.0 Flash (gemini-2.0-flash). Powers @xark deep research and agentic planning.
+- Intelligence: Gemini 2.5 Flash (gemini-2.5-flash). Powers @xark deep research and agentic planning.
 FORBIDDEN: Any use of Supabase Auth (supabase/auth, @supabase/auth, createClient.*auth for Supabase). Auth is Firebase-only.
 
 GLOBAL TYPE SCALE: src/lib/theme.ts `text` object is the single source of truth for all typography. Every component spreads these into style={{}}. No Tailwind text-size classes. Read theme.ts for exact values.
@@ -80,7 +80,7 @@ Full spec in GROUNDING_PROTOCOL.md. Key rules:
 - STATE MAP APPROACH: @xark receives full state map (Locked/Voting/Proposed/Empty). Reasons about scope, not rigid category bans.
 - SOCIAL REASONING: Use names when advocating FOR someone. Use counts for opposition. Never assume why someone voted.
 - getGreeting(): Deterministic, no AI call. See ai-grounding.ts for logic.
-- /api/xark: Check for "@xark" prefix before calling Gemini. If absent, return { response: null }.
+- /api/xark: Check for "@xark" prefix before calling Gemini. If absent, return { response: null }. Fetches space title for location context. Persists @xark response messages server-side via supabaseAdmin (returns messageId to client for deduplication).
 
 SUPABASE POSTGRES CLIENT (src/lib/supabase.ts):
 DB queries ONLY. Import @supabase/supabase-js (NOT @supabase/auth). Do not add auth configuration.
@@ -116,7 +116,7 @@ KEY MODULE MAP (read the source for implementation details):
 - src/lib/spaces.ts — createSpace() + getOptimisticSpaceId() for instant navigation (Manifestation Loop).
 - src/lib/ledger.ts — Settlement math. fetchSettlement(). memberCount from space_members (true group size). venmo/upi deep links.
 - src/lib/space-state.ts — computeSpaceState(items[]) → empty/exploring/converging/ready/active/settled. Pure function.
-- src/lib/intelligence/ — orchestrator.ts (Gemini 2.0 Flash), tool-registry.ts (Apify tools), apify-client.ts.
+- src/lib/intelligence/ — orchestrator.ts (Gemini 2.5 Flash), tool-registry.ts (Apify tools: voyager/booking-scraper, etc.), apify-client.ts.
 - src/lib/media.ts — Firebase Storage upload/download + Supabase metadata.
 - src/lib/notifications.ts — Server-side FCM push. Lazy init from FIREBASE_SERVICE_ACCOUNT_JSON.
 - src/lib/seed.ts — Demo data: san diego trip (4 items, 10 msgs), ananya sanctuary (5 msgs), tokyo neon nights (2 items), summer 2026 (empty). Run: npx tsx src/lib/seed.ts
@@ -125,10 +125,12 @@ KEY MODULE MAP (read the source for implementation details):
 - src/components/os/ClaimSheet.tsx — Slide-up for claiming locked items. "i'll handle this" stamps owner.
 - src/components/os/PurchaseSheet.tsx — Slide-up for purchase confirmation + amount entry. claimed → purchased.
 - src/components/os/UserMenu.tsx — Settings sheet: three-view drill-down (main → profile, main → system). Profile: avatar preview (48px) + "change photo" (Firebase Storage profiles/{userId}/avatar) + name input (Supabase users.display_name). System: 6-theme picker (hearth, cloud, sage, signal, noir, haze). Navigation: floating text links, horizontal slide animation (AnimatePresence, 0.2s tween). Actions: floating text only, no buttons/boxes.
-- src/components/os/PossibilityHorizon.tsx — Decide view: Netflix-style category sections (vertical scroll) with horizontal card bands per category. DecisionCard (200×260, image/gradient, vignette, amber wash, consensus hero: 1.5rem % number + 2px bar colored by state, compact reactions "love/okay/pass" in text.recency). CategorySection (pluralized header label, no conviction strip, card scroll, settled row when all locked). Batch reaction fetch via batchGetUserReactions. Single Supabase query + client-side grouping (useMemo). Self-resolving: locked categories collapse to green dot + title whisper.
-- src/components/os/ChatInput.tsx — Shared input component, always visible across all Space views. Controlled by Space page (input/onInputChange/onSend/isThinking props). Accent underline, mic with voice input, placeholder styling. Persists draft across discuss/decide view switches.
+- src/components/os/PossibilityHorizon.tsx — Decide view: Netflix-style category sections with horizontal card bands. No input — shared ChatInput from Space page. DecisionCard (200×260, consensus hero, compact reactions). Self-resolving: locked categories collapse to green dot.
+- src/components/os/XarkChat.tsx — Display-only chat stream. Receives messages and isThinking as props from Space page. No input, no send, no fetch. Handshake protocol, sanctuary bridge, greeting.
+- src/components/os/ChatInput.tsx — Shared input component, always visible across all Space views. Auto-expanding textarea (text.body, 0.75rem) that grows to ~6 lines max (120px). Enter sends, Shift+Enter newline. Controlled by Space page (input/onInputChange/onSend/isThinking props). Top ambient accent line (content boundary), bottom accent underline, mic with voice input. Persists draft across view switches.
 - src/components/os/ItineraryView.tsx — Committed items timeline view for ready/active spaces.
 - src/components/os/MemoriesView.tsx — Photo stream view, default for settled spaces.
+- next.config.ts — serverExternalPackages: ["apify-client"] to fix dynamic require bundling issue.
 
 KNOWN BUGS (from architecture audit, addressed in implementation plan):
 - B1: ai-grounding.ts buildGroundingContext() — agreement_score column may not exist in all environments.

@@ -197,7 +197,7 @@ function GalaxyContent() {
               onBlur={() => setInputFocused(false)}
               className="w-full bg-transparent outline-none"
               style={{
-                ...text.input,
+                ...text.body,
                 color: colors.white,
                 caretColor: colors.cyan,
                 opacity: isCreating ? 0.3 : 1,

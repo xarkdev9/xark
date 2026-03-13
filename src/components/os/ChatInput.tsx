@@ -2,9 +2,9 @@
 
 // XARK OS v2.0 — Shared Chat Input
 // Lives in Space page, persists across Discuss/Decide view switches.
-// Owns: input field, mic, accent underline. Stateless — controlled by parent.
+// Auto-expanding textarea. Owns: input, mic, accent underline. Controlled by parent.
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { colors, text, timing, layout, opacity } from "@/lib/theme";
 
@@ -22,6 +22,7 @@ export function ChatInput({
   isThinking,
 }: ChatInputProps) {
   const [inputFocused, setInputFocused] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Voice Input — tap: on-device, long-press: @xark mode ──
   const {
@@ -37,6 +38,25 @@ export function ChatInput({
   useEffect(() => {
     if (transcript) onInputChange(transcript);
   }, [transcript, onInputChange]);
+
+  // ── Auto-resize textarea to content (max ~6 lines) ──
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, []);
+
+  useEffect(() => {
+    autoResize();
+  }, [input, autoResize]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onSend();
+    }
+  };
 
   return (
     <>
@@ -54,17 +74,15 @@ export function ChatInput({
               height: "1px",
               background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
               opacity: 0.15,
-              marginBottom: "12px",
+              marginBottom: "10px",
             }}
           />
-          <div className="relative flex items-center gap-3">
-            <input
-              type="text"
+          <div className="relative flex items-start gap-3">
+            <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onSend();
-              }}
+              onKeyDown={handleKeyDown}
               placeholder={
                 isXarkListening
                   ? "@xark is listening..."
@@ -75,14 +93,18 @@ export function ChatInput({
               disabled={isThinking}
               spellCheck={false}
               autoComplete="off"
+              rows={1}
               onFocus={() => setInputFocused(true)}
               onBlur={() => setInputFocused(false)}
-              className="w-full bg-transparent outline-none"
+              className="w-full resize-none bg-transparent outline-none"
               style={{
-                ...text.input,
+                ...text.body,
                 color: colors.white,
                 caretColor: colors.cyan,
                 opacity: isThinking ? 0.3 : 1,
+                lineHeight: 1.5,
+                maxHeight: "120px",
+                overflow: "hidden",
               }}
             />
             {/* ── Mic — tap: listen, long-press 500ms: @xark mode ── */}
@@ -114,12 +136,13 @@ export function ChatInput({
               }}
               className="outline-none select-none"
               style={{
-                ...text.label,
+                ...text.recency,
                 color: isXarkListening ? colors.cyan : colors.white,
                 opacity: isListening || isXarkListening ? 0.9 : 0.3,
                 cursor: "pointer",
                 transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
                 flexShrink: 0,
+                marginTop: "2px",
               }}
             >
               {isListening || isXarkListening ? (
@@ -155,10 +178,10 @@ export function ChatInput({
       </div>
 
       <style jsx>{`
-        input::placeholder {
+        textarea::placeholder {
           color: ${colors.white};
           opacity: ${opacity.ghost};
-          letter-spacing: 0.12em;
+          letter-spacing: 0.08em;
         }
       `}</style>
     </>
