@@ -99,11 +99,25 @@ export async function fetchAwareness(userId: string): Promise<AwarenessEvent[]> 
   const events: AwarenessEvent[] = [];
 
   try {
-    // TODO: filter to user's spaces once members table / RLS is wired
-    const { data: spaces } = await supabase
+    // Get spaces the user belongs to via space_members
+    const { data: memberRows } = await supabase
+      .from("space_members")
+      .select("space_id")
+      .eq("user_id", userId);
+
+    const memberSpaceIds = memberRows?.map((r) => r.space_id) ?? [];
+
+    // Fetch space details — filter to user's spaces if memberships found
+    const spacesQuery = supabase
       .from("spaces")
       .select("id, title")
       .order("last_activity_at", { ascending: false, nullsFirst: false });
+
+    if (memberSpaceIds.length > 0) {
+      spacesQuery.in("id", memberSpaceIds);
+    }
+
+    const { data: spaces } = await spacesQuery;
 
     if (!spaces || spaces.length === 0) return [];
 

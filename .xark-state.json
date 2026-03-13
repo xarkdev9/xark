@@ -1,6 +1,6 @@
 {
   "version": "2.0.0-omega",
-  "foveal_focus": "Architecture Blueprint approved. 9 services, event-driven, loosely coupled. Next: implementation plan (multi-agent, phased). Spec: docs/superpowers/specs/2026-03-13-xark-architecture-blueprint.md",
+  "foveal_focus": "Full implementation complete. 9 services operational. Media, notifications, settlement enhanced. Next: production hardening.",
   "phase": "FIRST_REAL_TRIP",
   "algo_source": "/Users/ramchitturi/algo",
   "algo_record": "/Users/ramchitturi/algo/mar10_algo.md",
@@ -31,7 +31,7 @@
     "neuro_colors": "All CSS variables via theme.ts. Hearth adjusts for light contrast. Signal/Ember use vivid dark-mode values."
   },
   "state_flows": {
-    "BOOKING_FLOW": "proposed -> ranked -> locked (default)",
+    "BOOKING_FLOW": "proposed -> ranked -> locked -> claimed -> purchased (extended)",
     "PURCHASE_FLOW": "researching -> shortlisted -> negotiating -> purchased",
     "SIMPLE_VOTE_FLOW": "nominated -> ranked -> chosen",
     "SOLO_DECISION_FLOW": "considering -> leaning -> decided"
@@ -99,7 +99,14 @@
       "placeholder": 0.12
     },
     "thinking_indicator": "colors.cyan dot breathing at 4.5s + 'thinking' text.hint",
-    "banned_in_chat": ["chat bubbles", "message containers", "border on messages", "bg-color on messages", "robot icons", "emojis"]
+    "banned_in_chat": ["chat bubbles", "message containers", "border on messages", "bg-color on messages", "robot icons", "emojis"],
+    "intelligence_orchestrator": "src/lib/intelligence/orchestrator.ts — Gemini 2.0 Flash orchestrator. Strips @xark prefix, builds conversation, routes tool calls.",
+    "tool_registry": "src/lib/intelligence/tool-registry.ts — Tool registry pattern. Registers Apify actors as callable tools.",
+    "apify_client": "src/lib/intelligence/apify-client.ts — Apify actor runner for hotel/flight/activity search.",
+    "notifications_service": "src/lib/notifications.ts — Firebase Admin FCM push. sendPush(tokens, title, body, data). Safe no-op when unconfigured.",
+    "media_service": "src/lib/media.ts — Firebase Storage upload + Supabase metadata. uploadMedia(), fetchMedia().",
+    "state_flows": "src/lib/state-flows.ts — FLOW_TERMINAL_STATES + resolveTerminalState(state, flow?). Shared by handshake.ts and claims.ts.",
+    "space_state": "src/lib/space-state.ts — computeSpaceState(items[]) pure function. Returns empty/exploring/converging/ready/active/settled."
   },
   "theme_system": {
     "themes": ["hearth (light, default)", "signal (dark)", "ember (warm dark)"],
@@ -166,7 +173,13 @@
     "PresencePulse": "verified",
     "GlobalCaret": "verified",
     "AwarenessStream": "verified",
-    "SpaceData": "verified"
+    "SpaceData": "verified",
+    "ClaimSheet": "active",
+    "PurchaseSheet": "active",
+    "MediaUpload": "active",
+    "ItineraryView": "active",
+    "MemoriesView": "active",
+    "VoiceInput": "active"
   },
   "port": 3000
 }
