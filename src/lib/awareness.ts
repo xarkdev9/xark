@@ -99,6 +99,7 @@ export async function fetchAwareness(userId: string): Promise<AwarenessEvent[]> 
   const events: AwarenessEvent[] = [];
 
   try {
+    // TODO: filter to user's spaces once members table / RLS is wired
     const { data: spaces } = await supabase
       .from("spaces")
       .select("id, title")
@@ -134,6 +135,7 @@ export async function fetchAwareness(userId: string): Promise<AwarenessEvent[]> 
           continue;
         }
 
+        // TODO: also exclude items the user has already reacted to
         if (item.proposed_by !== userId) {
           events.push({
             id: `vote_${item.id}`,
