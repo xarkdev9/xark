@@ -54,7 +54,13 @@ export async function createSpace(
     atmosphere: "cyan_horizon",
   });
 
-  // 2. Insert the seed item — one "seeking" possibility so Decide is never empty
+  // 2. Explicitly add creator as owner in space_members (bug B4 fix)
+  await supabase.from("space_members").upsert(
+    { space_id: spaceId, user_id: ownerId, role: "owner" },
+    { onConflict: "space_id,user_id" }
+  );
+
+  // 3. Insert the seed item — one "seeking" possibility so Decide is never empty
   // proposed_by is forced to auth.uid() by the trg_force_proposed_by trigger
   await supabase.from("decision_items").insert({
     id: `item_${crypto.randomUUID()}`,
@@ -66,7 +72,7 @@ export async function createSpace(
     is_locked: false,
   });
 
-  // 3. Insert creator's first message — the space is born with a voice
+  // 4. Insert creator's first message — the space is born with a voice
   // Using role='user' because RLS blocks client-side xark messages.
   // @xark messages are inserted server-side via /api/xark with service_role key.
   await supabase.from("messages").insert({
