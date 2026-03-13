@@ -64,13 +64,13 @@ A vertically scrolling page of **horizontal card bands**, one per category. Lock
 │  ▓▓▓▓ vignette ▓▓▓▓▓▓  │
 │  Hotel Del Coronado     │  text.listTitle, opacity 0.9
 │  $450/nt · booking.com  │  text.subtitle + text.recency
-│  ◎ 92% consensus        │  ConsensusMark + text.recency
+│  92% consensus           │  text.recency, color by state
 │  Love it  Works  Not    │  text.label, floating signal text
 └─────────────────────────┘
 ```
 
 - **Fixed dimensions**: 280px × 360px. Consistent across all categories.
-- **Border radius**: 12px. Subtle thumbnail rounding — not `rounded-lg`.
+- **No border radius**. Zero-Box compliant — edges are sharp. Visual separation is achieved through the 12px gap between cards and the vignette gradient, not rounded corners.
 - **Image**: `object-fit: cover`. Gradient placeholder when no image (`amber-rgb 0.15 → accent-rgb 0.08`).
 - **Vignette**: bottom-up void gradient for text legibility.
 - **Amber wash**: `amberWash(weightedScore)` intensity overlay.
@@ -108,6 +108,9 @@ Shared bottom input, identical to Discuss view's Thumb-Arc pattern:
 - Gradient fade: `void 1.0 → 1.0 at 40% → 0.8 at 70% → transparent`.
 - On send: POST to `/api/xark` with `{ message, spaceId }`. Response items appear via Realtime subscription. Category routing is automatic (API returns `category` from tool registry).
 - Empty state greeting anchored near input: `try "@xark find hotels near the beach"` pattern.
+- **Non-@xark messages**: silently ignored (no save to messages table). The Decide input is @xark-only — general chat belongs in Discuss.
+- **Error handling**: On network error or non-200 response, show a whisper near the input: `"couldn't reach @xark — try again"` at `textColor(0.3)`, auto-dismiss after 2s. No thinking indicator needed — results arrive asynchronously via Realtime subscription, not inline.
+- **Loading state**: No spinner. The input returns to idle immediately after POST. Items materialize in their category section when the Realtime INSERT fires.
 
 ## Data Flow
 
@@ -133,8 +136,30 @@ PossibilityHorizon (orchestrator)
 
 ### Key Data Decisions
 
-- **One query, client-side grouping**. No per-category queries. Grouping is O(n) and memoized.
-- **Batch reaction fetch**. Replace the current sequential `getUserReaction` loop with a single query: `SELECT * FROM reactions WHERE user_id = $1 AND item_id = ANY($2)`. One roundtrip for all items.
+- **One query, client-side grouping**. Fetch ALL `decision_items` for the space — **remove the existing `is_locked = false` filter**. Locked items are required to detect settled categories and render collapsed rows. Grouping is O(n) and memoized.
+- **Add `category` to local interface**. The current `PossibilityHorizon.tsx` `DecisionItem` interface omits `category`. Add it and include `category` in the Supabase `.select()` clause. Updated interface:
+  ```typescript
+  interface DecisionItem {
+    id: string;
+    title: string;
+    category: string;  // ← added: "Hotel", "Activity", "Flight", etc.
+    weighted_score: number;
+    agreement_score: number;
+    is_locked: boolean;
+    state: string;
+    metadata: { image_url?: string; price?: string; source?: string } | null;
+    created_at: string;
+  }
+  ```
+- **Sort then group**. Apply `heartSort()` to the full item list first, then partition by `category`. This preserves within-category sort order (weightedScore descending, locked items naturally group at end).
+- **Batch reaction fetch**. Replace the current sequential `getUserReaction` loop with a single batch method:
+  ```typescript
+  // Added to useReactions hook return value
+  batchGetUserReactions(itemIds: string[], userId: string): Promise<Record<string, ReactionType>>
+  // Implementation: supabase.from("reactions").select("item_id, signal").eq("user_id", userId).in("item_id", itemIds)
+  // Returns: { [itemId]: reactionType } — maps directly to activeReactions state shape
+  ```
+  One roundtrip for all items.
 - **Reactions managed at orchestrator level**. PossibilityHorizon holds `activeReactions` state, passes `activeReaction` and `onReact` callback as props to each DecisionCard. No per-card hook instances.
 - **Single Realtime channel** per space. UPDATE events flow through the grouping memo. Only affected sections re-render.
 - **No shared mutable state** between sections. Each section is a pure render of its items slice.
@@ -160,7 +185,7 @@ PossibilityHorizon → CategorySection → DecisionCard
 ## Constitutional Compliance
 
 - **No bold**: All text uses `text.*` tokens (weight 300/400 only).
-- **Zero-box**: Cards use 12px radius for thumbnail feel. No `rounded-lg`, no `border`, no `bg-white`. Information floats.
+- **Zero-box**: No `rounded-lg`, no `border`, no `bg-white`, no border-radius. Sharp edges. Information floats.
 - **Theme-aware**: All colors via `colors.*`, `textColor()`, `accentColor()`. No hardcoded hex.
 - **No blur**: Gradient overlays only. No `backdrop-filter`.
 - **Font scale**: All typography from `text` object in theme.ts. No Tailwind text-size classes.
@@ -169,8 +194,11 @@ PossibilityHorizon → CategorySection → DecisionCard
 
 - **Scope**: Solo + Small Group (2-15 members). Item counts per space bounded (~50 max realistic). All optimizations target this range — no premature infrastructure.
 - **Re-render blast radius**: Realtime UPDATE → `setItems` map → `useMemo` re-groups → only changed section's cards re-render. React reconciliation handles this via stable keys.
+- **No animated ConsensusMark on cards**. The full `ConsensusMark` component uses Framer Motion rotation/breathing/flare animations. Placing one per card (N cards × M sections) would create excessive concurrent animations. Instead, cards show a **static consensus label** (`text.recency`): the percentage text colored by consensus state (`colors.amber` for seeking, `colors.cyan` for steady, `colors.gold` for ignited). Zero animation cost.
 - **Image loading**: Native `<img>` with `loading="lazy"` for offscreen cards. No next/image dependency (cards are fixed-size, no layout shift).
+- **Conviction strip minimum**: `max(maxConviction * 100%, 3%)` ensures a sliver is always visible for sections with low agreement, preventing invisible 1px-wide strips.
 - **External image privacy**: `metadata.image_url` from Apify exposes user IP to image host. Pre-existing in current code. Future mitigation: proxy through Next.js image route. Not blocking for this iteration.
+- **Demo data fallback**: Seed data (`seed.ts`) has no `image_url` in metadata — gradient placeholders will always render during local testing. Categories ("Hotel", "Activity", "Dining", "Experience") are populated and will group correctly. Add demo fallback path matching existing pattern in XarkChat/ControlCaret.
 
 ## Files Modified
 
