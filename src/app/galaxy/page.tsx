@@ -27,7 +27,9 @@ function GalaxyContent() {
   useEffect(() => {
     setMounted(true);
     const resolvedUserId = `name_${userName}`;
-    fetchAwareness(resolvedUserId).then(setEvents).catch(() => setEvents(getDemoAwareness()));
+    fetchAwareness(resolvedUserId)
+      .then((result) => setEvents(result.length > 0 ? result : getDemoAwareness()))
+      .catch(() => setEvents(getDemoAwareness()));
   }, [userName]);
 
   const hasEvents = events.length > 0;
