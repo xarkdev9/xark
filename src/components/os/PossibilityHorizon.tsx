@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { heartSort } from "@/lib/heart-sort";
-import { getConsensusState } from "@/lib/heart-sort";
 import { useReactions } from "@/hooks/useReactions";
 import type { ReactionType } from "@/hooks/useReactions";
 import { supabase } from "@/lib/supabase";
@@ -54,7 +53,7 @@ interface PossibilityHorizonProps {
   authLoading?: boolean;
 }
 
-// ── Demo items — used when Supabase is unreachable ──
+// ── Demo items ──
 const DEMO_ITEMS: Record<string, DecisionItem[]> = {
   "space_san-diego-trip": [
     { id: "demo_h1", title: "Hotel Del Coronado", category: "Hotel", weighted_score: 10, agreement_score: 0.92, is_locked: true, state: "locked", metadata: { price: "$450/nt", source: "booking.com" }, created_at: new Date().toISOString() },
@@ -65,7 +64,6 @@ const DEMO_ITEMS: Record<string, DecisionItem[]> = {
   ],
 };
 
-// ── Pluralize category names ──
 const PLURAL_MAP: Record<string, string> = {
   hotel: "hotels", activity: "activities", flight: "flights",
   dining: "dining", experience: "experiences", restaurant: "restaurants", general: "general",
@@ -75,7 +73,6 @@ function pluralizeCategory(cat: string): string {
   return PLURAL_MAP[cat.toLowerCase()] ?? cat.toLowerCase() + "s";
 }
 
-// ── Category vital stat ──
 function categoryVital(items: DecisionCardItem[]): { text: string; color: string } {
   const total = items.length;
   const rated = items.filter((i) => i.agreementScore > 0).length;
@@ -83,31 +80,32 @@ function categoryVital(items: DecisionCardItem[]): { text: string; color: string
 
   if (topItem && topItem.agreementScore >= 0.8) {
     const pct = Math.round(topItem.agreementScore * 100);
-    return { text: `${pct}% on #1 · ${rated} of ${total} rated`, color: colors.gold };
+    return { text: `${pct}% on #1 · ${rated} of ${total}`, color: colors.gold };
   }
-  if (rated === 0) {
-    return { text: "needs votes", color: colors.amber };
-  }
+  if (rated === 0) return { text: "needs votes", color: colors.amber };
   return { text: `${rated} of ${total} rated`, color: colors.cyan };
 }
 
 // ══════════════════════════════════════════════
-// SHIMMER PLACEHOLDER
+// SHIMMER
 // ══════════════════════════════════════════════
 
-function ShimmerCard() {
+function ShimmerCard({ delay = 0 }: { delay?: number }) {
   return (
-    <div
-      className="flex-shrink-0 snap-start"
+    <motion.div
+      className="flex-shrink-0"
       style={{
-        width: "130px",
-        height: "195px",
-        borderRadius: "14px",
+        width: "135px",
+        height: "200px",
+        borderRadius: "16px",
         background:
           "linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 100%)",
         backgroundSize: "200px 100%",
         animation: "shimmer 1.5s ease-in-out infinite",
       }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay, duration: 0.4 }}
     />
   );
 }
@@ -132,58 +130,55 @@ function CategorySection({
   const allLocked = items.length > 0 && items.every((i) => i.isLocked);
   const displayName = pluralizeCategory(category);
   const vital = categoryVital(items);
-  const baseDelay = 0.2 + categoryIndex * 0.2;
+  const baseDelay = 0.15 + categoryIndex * 0.15;
 
-  // Settled row — all items locked
   if (allLocked) {
     const lockedTitle = items[0]?.title ?? "";
     return (
       <motion.div
         className="flex items-center gap-3"
-        style={{ padding: "4px 0" }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        style={{ padding: "6px 0" }}
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
         transition={{ delay: baseDelay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
         <div
           style={{
-            width: "4px",
-            height: "4px",
-            borderRadius: "50%",
+            width: "5px", height: "5px", borderRadius: "50%",
             backgroundColor: colors.green,
             animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
             flexShrink: 0,
           }}
         />
         <span style={{ ...text.label, color: textColor(0.3) }}>{displayName}</span>
-        <span style={{ ...text.recency, color: textColor(0.25) }}>
-          {lockedTitle}
-          {items.length > 1 ? ` + ${items.length - 1} more` : ""}
+        <span style={{ ...text.recency, color: textColor(0.2) }}>
+          {lockedTitle}{items.length > 1 ? ` + ${items.length - 1} more` : ""}
         </span>
       </motion.div>
     );
   }
 
-  // Open section — header + card scroll
   return (
     <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.1 }}
       transition={{ delay: baseDelay, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
     >
       {/* Rail header */}
-      <div className="flex items-baseline justify-between">
-        <span style={{ ...text.label, color: textColor(0.35) }}>{displayName}</span>
-        <span style={{ ...text.recency, color: vital.color, opacity: 0.5 }}>{vital.text}</span>
+      <div className="flex items-baseline justify-between" style={{ marginBottom: "14px" }}>
+        <span style={{ ...text.label, color: textColor(0.3) }}>{displayName}</span>
+        <span style={{ ...text.recency, color: vital.color, opacity: 0.4 }}>{vital.text}</span>
       </div>
 
-      {/* Horizontal card rail */}
+      {/* Horizontal card rail — NO snap for buttery smooth scroll */}
       <div
-        className="horizon-scroll flex snap-x snap-mandatory overflow-x-auto"
+        className="horizon-scroll flex overflow-x-auto"
         style={{
-          marginTop: "10px",
-          gap: "12px",
-          paddingRight: "24px",
+          gap: "14px",
+          paddingRight: "40px",
+          paddingBottom: "4px",
           WebkitOverflowScrolling: "touch",
         }}
       >
@@ -202,20 +197,20 @@ function CategorySection({
             size={idx === 0 ? "hero" : "standard"}
             activeReaction={activeReactions[item.id]}
             onReact={onReact}
-            entranceDelay={baseDelay + 0.15 + idx * 0.1}
+            entranceDelay={baseDelay + 0.1 + idx * 0.08}
           />
         ))}
 
-        {/* Compressed tail */}
         {items.length > 8 && (
           <motion.div
             className="flex flex-shrink-0 items-center justify-center"
-            style={{ width: "50px" }}
+            style={{ width: "50px", minHeight: "200px" }}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: baseDelay + 1.0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: baseDelay + 0.8 }}
           >
-            <span style={{ ...text.recency, color: textColor(0.2) }}>+{items.length - 8}</span>
+            <span style={{ ...text.recency, color: textColor(0.15) }}>+{items.length - 8}</span>
           </motion.div>
         )}
       </div>
@@ -224,18 +219,19 @@ function CategorySection({
 }
 
 // ══════════════════════════════════════════════
-// POSSIBILITY HORIZON — ORCHESTRATOR
+// POSSIBILITY HORIZON
 // ══════════════════════════════════════════════
 
 export function PossibilityHorizon({ spaceId, userId, authLoading }: PossibilityHorizonProps) {
   const [items, setItems] = useState<DecisionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
+  const [heroLoaded, setHeroLoaded] = useState(false);
   const [activeReactions, setActiveReactions] = useState<Record<string, ReactionType>>({});
 
   const { react, unreact, batchGetUserReactions, isReacting } = useReactions();
 
-  // ── Fetch hero image from space metadata ──
+  // ── Fetch hero image ──
   useEffect(() => {
     supabase
       .from("spaces")
@@ -247,7 +243,7 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
       });
   }, [spaceId]);
 
-  // ── Fetch ALL decision items ──
+  // ── Fetch decision items ──
   useEffect(() => {
     if (authLoading) return;
     async function fetchItems() {
@@ -271,7 +267,7 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
     fetchItems();
   }, [spaceId, userId, batchGetUserReactions, authLoading]);
 
-  // ── Realtime: UPDATE + INSERT ──
+  // ── Realtime ──
   useEffect(() => {
     const channel = supabase
       .channel(`horizon:${spaceId}`)
@@ -299,7 +295,7 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
     return () => { supabase.removeChannel(channel); };
   }, [spaceId]);
 
-  // ── Sort + group by category ──
+  // ── Sort + group ──
   const grouped = useMemo(() => {
     const sortable = items.map((item) => ({
       id: item.id,
@@ -318,23 +314,18 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
     for (const item of sorted) {
       const full = metaMap.get(item.id);
       const category = full?.category || "general";
-      const cardItem: DecisionCardItem = {
+      if (!groups[category]) groups[category] = [];
+      groups[category].push({
         ...item,
         category,
         price: full?.metadata?.price ?? "",
         source: full?.metadata?.source ?? "",
-      };
-
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(cardItem);
+      });
     }
-
     return groups;
   }, [items]);
 
-  // ── Reaction handler ──
+  // ── Reactions ──
   const handleReaction = useCallback(
     async (itemId: string, signal: ReactionType) => {
       if (isReacting) return;
@@ -356,22 +347,23 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
   const categoryNames = Object.keys(grouped);
   const hasItems = categoryNames.length > 0;
 
-  // ── Loading: shimmer placeholders ──
+  // ── Loading ──
   if (loading) {
     return (
       <div className="relative flex min-h-svh flex-col">
-        <div
-          className="flex-1 overflow-y-auto px-6"
-          style={{ paddingTop: "140px", paddingBottom: "160px" }}
-        >
-          <div style={{ marginBottom: "28px" }}>
-            <div style={{ ...text.label, color: textColor(0.2), marginBottom: "10px" }}>loading</div>
-            <div className="flex gap-3">
-              <ShimmerCard />
-              <ShimmerCard />
-              <ShimmerCard />
+        <div className="flex-1 px-6" style={{ paddingTop: "160px", paddingBottom: "160px" }}>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div style={{ ...text.label, color: textColor(0.15), marginBottom: "14px" }}>loading</div>
+            <div className="flex gap-3.5">
+              <ShimmerCard delay={0} />
+              <ShimmerCard delay={0.1} />
+              <ShimmerCard delay={0.2} />
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     );
@@ -379,34 +371,44 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
 
   return (
     <div className="relative flex min-h-svh flex-col">
-      {/* ── Hero image ── */}
-      {heroUrl && (
-        <div className="absolute inset-x-0 top-0" style={{ height: "45%", zIndex: 0 }}>
-          <img
-            src={heroUrl}
-            alt=""
-            className="h-full w-full object-cover"
-            loading="eager"
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, transparent 30%, rgba(var(--xark-void-rgb),0.7) 65%, var(--xark-void) 85%)",
-            }}
-          />
-        </div>
-      )}
+      {/* ── Hero image with fade-in ── */}
+      <AnimatePresence>
+        {heroUrl && (
+          <motion.div
+            className="absolute inset-x-0 top-0"
+            style={{ height: "50%", zIndex: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: heroLoaded ? 1 : 0 }}
+            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <img
+              src={heroUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="eager"
+              onLoad={() => setHeroLoaded(true)}
+            />
+            {/* Single progressive scrim — hero fades to void */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.05) 25%, rgba(var(--xark-void-rgb),0.5) 55%, rgba(var(--xark-void-rgb),0.85) 72%, var(--xark-void) 88%)",
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Category Rails ── */}
       <div
         className="flex-1 overflow-y-auto px-6"
         style={{
-          paddingTop: heroUrl ? "280px" : "140px",
+          paddingTop: heroUrl ? "300px" : "150px",
           paddingBottom: "160px",
           display: "flex",
           flexDirection: "column",
-          gap: "28px",
+          gap: "36px",
           position: "relative",
           zIndex: 1,
         }}

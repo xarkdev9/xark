@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { motion } from "framer-motion";
 import { getConsensusState } from "@/lib/heart-sort";
 import type { ConsensusState } from "@/lib/heart-sort";
-import { colors, text, amberWash, timing } from "@/lib/theme";
+import { colors, text, timing } from "@/lib/theme";
 import type { ReactionType } from "@/hooks/useReactions";
 
 type CardSize = "hero" | "standard" | "mini";
@@ -13,19 +13,19 @@ const DIMENSIONS: Record<
   CardSize,
   { w: number; h: number; pctSize: number; titleSize: string; showReactions: boolean }
 > = {
-  hero: { w: 150, h: 220, pctSize: 28, titleSize: "12px", showReactions: true },
-  standard: { w: 130, h: 195, pctSize: 20, titleSize: "11px", showReactions: true },
+  hero: { w: 160, h: 230, pctSize: 30, titleSize: "13px", showReactions: true },
+  standard: { w: 135, h: 200, pctSize: 20, titleSize: "11px", showReactions: true },
   mini: { w: 100, h: 130, pctSize: 16, titleSize: "9px", showReactions: false },
 };
 
 const CATEGORY_GRADIENTS: Record<string, string> = {
-  hotel: "linear-gradient(160deg, #8a6a4a 0%, #5a4030 50%, #2a1a10 100%)",
-  flight: "linear-gradient(180deg, #1a2940 0%, #0d1520 60%, #060a10 100%)",
-  dining: "linear-gradient(180deg, #2a1215 0%, #1a0a0c 60%, #0a0405 100%)",
-  restaurant: "linear-gradient(180deg, #2a1215 0%, #1a0a0c 60%, #0a0405 100%)",
-  activity: "linear-gradient(160deg, #1a3a2a 0%, #0a2015 60%, #050f0a 100%)",
-  experience: "linear-gradient(160deg, #1a3a2a 0%, #0a2015 60%, #050f0a 100%)",
-  general: "linear-gradient(160deg, #2a2a3a 0%, #1a1a28 60%, #0a0a14 100%)",
+  hotel: "linear-gradient(160deg, #8a6a4a 0%, #3a2818 100%)",
+  flight: "linear-gradient(180deg, #1a2940 0%, #060a10 100%)",
+  dining: "linear-gradient(180deg, #2a1215 0%, #0a0405 100%)",
+  restaurant: "linear-gradient(180deg, #2a1215 0%, #0a0405 100%)",
+  activity: "linear-gradient(160deg, #1a3a2a 0%, #050f0a 100%)",
+  experience: "linear-gradient(160deg, #1a3a2a 0%, #050f0a 100%)",
+  general: "linear-gradient(160deg, #2a2a3a 0%, #0a0a14 100%)",
 };
 
 function consensusColor(state: ConsensusState): string {
@@ -64,7 +64,6 @@ export function DecisionCard({
   category = "general",
   price,
   source,
-  weightedScore,
   agreementScore,
   size = "standard",
   activeReaction,
@@ -88,73 +87,64 @@ export function DecisionCard({
 
   return (
     <motion.div
-      className="relative flex-shrink-0 snap-start overflow-hidden"
+      className="relative flex-shrink-0 overflow-hidden"
       style={{
         width: `${dim.w}px`,
         height: `${dim.h}px`,
-        borderRadius: "14px",
+        borderRadius: "16px",
         boxShadow:
           size === "hero"
-            ? "0 0 28px rgba(255,207,64,0.08), 0 4px 24px rgba(0,0,0,0.15)"
-            : "0 4px 24px rgba(0,0,0,0.12)",
+            ? `0 0 40px rgba(255,207,64,0.06), 0 8px 32px rgba(0,0,0,0.25)`
+            : "0 8px 28px rgba(0,0,0,0.2)",
         cursor: onClick ? "pointer" : "default",
-        willChange: "transform",
       }}
-      initial={{ opacity: 0, x: 60, scale: 0.92 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
+      initial={{ opacity: 0, x: 80, scale: 0.88 }}
+      whileInView={{ opacity: 1, x: 0, scale: 1 }}
+      viewport={{ once: true, amount: 0.3 }}
       transition={{
         delay: entranceDelay,
-        duration: 0.5,
+        duration: 0.6,
         ease: [0.22, 1, 0.36, 1],
       }}
-      whileHover={{ scale: 1.08, y: -6 }}
       onClick={onClick}
     >
-      {/* Photo zone — top 42% */}
+      {/* Full card background — single combined gradient over photo/fallback */}
       <div
-        className="absolute left-0 right-0 top-0"
+        className="absolute inset-0"
         style={{
-          height: "42%",
           backgroundImage: imageUrl ? `url(${imageUrl})` : fallbackGradient,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       />
-
-      {/* Gradient bridge */}
+      {/* Single scrim — replaces 3 separate gradient layers */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(180deg, transparent 30%, rgba(10,10,16,0.85) 48%, #0a0a10 58%)",
-        }}
-      />
-
-      {/* Amber wash */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: `linear-gradient(to top, ${amberWash(weightedScore)} 0%, transparent 40%)`,
+            "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 25%, rgba(10,10,16,0.75) 45%, rgba(10,10,16,0.95) 60%, #0a0a10 72%)",
         }}
       />
 
       {/* Data zone */}
       <div
-        className="absolute inset-x-0 bottom-0 px-2.5"
-        style={{ paddingBottom: dim.showReactions ? "34px" : "8px" }}
+        className="absolute inset-x-0 bottom-0 px-3"
+        style={{ paddingBottom: dim.showReactions ? "36px" : "10px" }}
       >
-        {/* Consensus % */}
-        <div style={{ marginBottom: "4px" }}>
+        {/* Consensus % — the brightest thing */}
+        <div style={{ marginBottom: "6px" }}>
           <span
             style={{
               fontSize: `${dim.pctSize}px`,
               fontWeight: 400,
               lineHeight: 1,
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.04em",
               color: cColor,
               textShadow:
-                size === "hero" ? `0 0 30px ${cColor}40` : "none",
-              opacity: consensusState === "ignited" ? 0.95 : 0.7,
+                consensusState === "ignited"
+                  ? `0 0 40px ${cColor}, 0 0 12px ${cColor}`
+                  : "none",
+              opacity: consensusState === "ignited" ? 1 : 0.75,
             }}
           >
             {pct > 0 ? pct : "—"}
@@ -162,9 +152,9 @@ export function DecisionCard({
           {pct > 0 && (
             <span
               style={{
-                fontSize: `${Math.round(dim.pctSize * 0.4)}px`,
+                fontSize: `${Math.round(dim.pctSize * 0.38)}px`,
                 color: cColor,
-                opacity: 0.35,
+                opacity: 0.3,
                 verticalAlign: "super",
                 marginLeft: "1px",
               }}
@@ -172,19 +162,27 @@ export function DecisionCard({
               %
             </span>
           )}
-          <div style={{ marginTop: "3px", height: "2px", position: "relative" }}>
-            <div
+          {/* Consensus bar */}
+          <div
+            style={{
+              marginTop: "4px",
+              height: "2px",
+              background: "rgba(255,255,255,0.04)",
+              borderRadius: "1px",
+              overflow: "hidden",
+            }}
+          >
+            <motion.div
               style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                height: "2px",
-                width: `${pct}%`,
+                height: "100%",
                 backgroundColor: cColor,
-                opacity: consensusState === "ignited" ? 0.6 : 0.3,
+                opacity: consensusState === "ignited" ? 0.7 : 0.3,
                 borderRadius: "1px",
-                transition: "width 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
               }}
+              initial={{ width: "0%" }}
+              whileInView={{ width: `${pct}%` }}
+              viewport={{ once: true }}
+              transition={{ delay: entranceDelay + 0.3, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             />
           </div>
         </div>
@@ -195,7 +193,7 @@ export function DecisionCard({
             fontSize: dim.titleSize,
             fontWeight: 400,
             color: colors.white,
-            opacity: 0.85,
+            opacity: 0.9,
             lineHeight: 1.3,
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -212,9 +210,9 @@ export function DecisionCard({
               fontSize: "9px",
               fontWeight: 300,
               color: colors.white,
-              opacity: 0.3,
+              opacity: 0.25,
               display: "inline-block",
-              marginTop: "2px",
+              marginTop: "3px",
             }}
           >
             {price}
@@ -227,9 +225,9 @@ export function DecisionCard({
               fontSize: "8px",
               fontWeight: 300,
               color: colors.white,
-              opacity: 0.25,
+              opacity: 0.2,
               display: "inline-block",
-              marginTop: "1px",
+              marginTop: "2px",
             }}
           >
             {price}
@@ -240,8 +238,8 @@ export function DecisionCard({
       {/* Reactions — hero + standard only */}
       {dim.showReactions && (
         <div
-          className="absolute inset-x-0 bottom-0 flex items-center justify-between px-2.5"
-          style={{ height: "30px" }}
+          className="absolute inset-x-0 bottom-0 flex items-center justify-between px-3"
+          style={{ height: "32px" }}
         >
           {SIGNALS.map((signal) => {
             const isActive = activeReaction === signal.type;
@@ -263,13 +261,13 @@ export function DecisionCard({
                 className="outline-none"
                 style={{
                   ...text.subtitle,
-                  fontSize: size === "hero" ? "11px" : "10px",
+                  fontSize: size === "hero" ? "12px" : "10px",
                   color: isActive ? signal.color : colors.white,
-                  opacity: isActive ? 1 : activeReaction ? 0.12 : 0.4,
+                  opacity: isActive ? 1 : activeReaction ? 0.1 : 0.35,
                   cursor: "pointer",
                   textShadow: isActive
-                    ? `0 0 12px ${signal.color}, 0 0 4px ${signal.color}`
-                    : "0 1px 3px rgba(0,0,0,0.4)",
+                    ? `0 0 16px ${signal.color}, 0 0 6px ${signal.color}`
+                    : "none",
                   transition: `opacity ${timing.transition} ease, color ${timing.transition} ease, text-shadow ${timing.transition} ease`,
                 }}
               >
