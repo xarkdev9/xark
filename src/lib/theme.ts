@@ -27,13 +27,13 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     label: "hearth",
     mode: "light",
     accent: "#FF6B35",
-    text: "#141414",
-    bg: "#F0EEE9",
+    text: "#111111",
+    bg: "#F8F7F4",
     amber: "#9E6A06",
     gold: "#8B6914",
     green: "#047857",
     orange: "#C43D08",
-    gray: "#57576A",
+    gray: "#8A8A94",
   },
 };
 

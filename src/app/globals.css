@@ -11,10 +11,10 @@
 :root {
   --xark-accent: #FF6B35;
   --xark-accent-rgb: 255, 107, 53;
-  --xark-white: #141414;
-  --xark-white-rgb: 20, 20, 20;
-  --xark-void: #F0EEE9;
-  --xark-void-rgb: 240, 238, 233;
+  --xark-white: #111111;
+  --xark-white-rgb: 17, 17, 17;
+  --xark-void: #F8F7F4;
+  --xark-void-rgb: 248, 247, 244;
   --xark-amber: #9E6A06;
   --xark-amber-rgb: 158, 106, 6;
   --xark-gold: #8B6914;
@@ -23,8 +23,8 @@
   --xark-green-rgb: 4, 120, 87;
   --xark-orange: #C43D08;
   --xark-orange-rgb: 196, 61, 8;
-  --xark-gray: #57576A;
-  --xark-gray-rgb: 87, 87, 106;
+  --xark-gray: #8A8A94;
+  --xark-gray-rgb: 138, 138, 148;
 }
 
 @theme inline {
