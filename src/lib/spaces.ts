@@ -5,6 +5,16 @@
 import { supabase } from "./supabase";
 import { fetchDestinationPhoto } from "./unsplash";
 
+function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 export interface CreateSpaceResult {
   spaceId: string;
   title: string;
@@ -87,7 +97,7 @@ export async function createSpace(
   // Skip for sanctuary (personal chats don't need decision items)
   if (!isPersonalChat) {
     await supabase.from("decision_items").insert({
-      id: `item_${crypto.randomUUID()}`,
+      id: `item_${generateId()}`,
       space_id: spaceId,
       title: seedItemTitle,
       category: "experience",
@@ -99,7 +109,7 @@ export async function createSpace(
 
   // 5. Insert creator's first message — the space is born with a voice
   await supabase.from("messages").insert({
-    id: crypto.randomUUID(),
+    id: generateId(),
     space_id: spaceId,
     role: "user",
     content: isPersonalChat
