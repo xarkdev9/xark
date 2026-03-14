@@ -106,127 +106,41 @@ function heroConsensusColor(score: number): string {
 // ══════════════════════════════════════════════
 
 function HeroBanner({
-  item,
-  activeReaction,
-  onReact,
+  heroUrl,
+  spaceTitle,
 }: {
-  item: DecisionCardItem;
-  activeReaction?: ReactionType;
-  onReact: (itemId: string, signal: ReactionType) => void;
+  heroUrl: string;
+  spaceTitle: string;
 }) {
-  const pct = Math.round(item.agreementScore * 100);
-  const cColor = heroConsensusColor(item.agreementScore);
   const [imgLoaded, setImgLoaded] = useState(false);
 
   return (
     <motion.div
       className="relative overflow-hidden"
-      style={{ width: "100%", height: "360px" }}
+      style={{ width: "100%", height: "340px" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Photo — full bleed */}
-      {item.imageUrl && (
-        <motion.img
-          src={item.imageUrl}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-          loading="eager"
-          onLoad={() => setImgLoaded(true)}
-          initial={{ scale: 1.08 }}
-          animate={{ scale: imgLoaded ? 1 : 1.08 }}
-          transition={{ duration: 1.8, ease: [0.22, 1, 0.36, 1] }}
-        />
-      )}
-      {!item.imageUrl && (
-        <div className="absolute inset-0" style={{
-          background: "linear-gradient(160deg, #8a6a4a 0%, #3a2818 100%)",
-        }} />
-      )}
+      {/* Destination photo — full bleed, Ken Burns zoom */}
+      <motion.img
+        src={heroUrl}
+        alt={spaceTitle}
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="eager"
+        onLoad={() => setImgLoaded(true)}
+        initial={{ scale: 1.1 }}
+        animate={{ scale: imgLoaded ? 1 : 1.1 }}
+        transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] }}
+      />
 
-      {/* Scrim — heavy at bottom for text */}
+      {/* Progressive scrim — readable title at bottom, photo breathes at top */}
       <div
         className="absolute inset-0"
         style={{
-          background: "linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.85) 85%, rgba(0,0,0,0.95) 100%)",
+          background: "linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.02) 35%, rgba(var(--xark-void-rgb),0.4) 65%, rgba(var(--xark-void-rgb),0.85) 82%, var(--xark-void) 95%)",
         }}
       />
-
-      {/* Content overlay — bottom-left */}
-      <div className="absolute inset-x-0 bottom-0 px-6 pb-6">
-        {/* Category */}
-        <motion.span
-          style={{ fontSize: "10px", fontWeight: 300, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.35)" }}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-        >
-          {item.category}
-        </motion.span>
-
-        {/* Title */}
-        <motion.h2
-          style={{ fontSize: "24px", fontWeight: 400, color: "#fff", opacity: 0.95, lineHeight: 1.25, marginTop: "6px", letterSpacing: "-0.01em" }}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {item.title}
-        </motion.h2>
-
-        {/* Meta row: price + consensus */}
-        <motion.div
-          className="flex items-center gap-4"
-          style={{ marginTop: "10px" }}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.6 }}
-        >
-          {item.price && (
-            <span style={{ fontSize: "12px", fontWeight: 300, color: "rgba(255,255,255,0.4)" }}>
-              {item.price}{item.source ? ` · ${item.source}` : ""}
-            </span>
-          )}
-          <span style={{ fontSize: "18px", fontWeight: 400, color: cColor, letterSpacing: "-0.02em" }}>
-            {pct > 0 ? `${pct}%` : "—"}
-          </span>
-        </motion.div>
-
-        {/* Reactions */}
-        <motion.div
-          className="flex gap-6"
-          style={{ marginTop: "16px" }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.0, duration: 0.6 }}
-        >
-          {(["love_it", "works_for_me", "not_for_me"] as ReactionType[]).map((signal) => {
-            const isActive = activeReaction === signal;
-            const label = signal === "love_it" ? "love" : signal === "works_for_me" ? "okay" : "pass";
-            const signalColor = signal === "love_it" ? CARD_AMBER : signal === "not_for_me" ? "#F0652A" : "#9CA3AF";
-            return (
-              <span
-                key={signal}
-                role="button"
-                tabIndex={0}
-                onClick={() => onReact(item.id, signal)}
-                onKeyDown={(e) => { if (e.key === "Enter") onReact(item.id, signal); }}
-                className="outline-none"
-                style={{
-                  fontSize: "13px", fontWeight: 400, letterSpacing: "0.04em",
-                  color: isActive ? signalColor : "rgba(255,255,255,0.45)",
-                  cursor: "pointer",
-                  textShadow: isActive ? `0 0 16px ${signalColor}` : "none",
-                  transition: `color ${timing.transition} ease, text-shadow ${timing.transition} ease`,
-                }}
-              >
-                {label}
-              </span>
-            );
-          })}
-        </motion.div>
-      </div>
     </motion.div>
   );
 }
@@ -358,10 +272,25 @@ function CategoryRail({
 export function PossibilityHorizon({ spaceId, userId, authLoading }: PossibilityHorizonProps) {
   const [items, setItems] = useState<DecisionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [heroUrl, setHeroUrl] = useState<string | null>(null);
+  const [spaceTitle, setSpaceTitle] = useState("");
   const [activeReactions, setActiveReactions] = useState<Record<string, ReactionType>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { react, unreact, batchGetUserReactions, isReacting } = useReactions();
+
+  // ── Fetch space metadata (hero photo + title) ──
+  useEffect(() => {
+    supabase
+      .from("spaces")
+      .select("title, metadata")
+      .eq("id", spaceId)
+      .single()
+      .then(({ data }) => {
+        if (data?.metadata?.hero_url) setHeroUrl(data.metadata.hero_url);
+        if (data?.title) setSpaceTitle(data.title);
+      });
+  }, [spaceId]);
 
   // ── Fetch decision items ──
   useEffect(() => {
@@ -415,8 +344,8 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
     return () => { supabase.removeChannel(channel); };
   }, [spaceId]);
 
-  // ── Sort + group ──
-  const { heroItem, grouped } = useMemo(() => {
+  // ── Sort + group — ALL items go into rails, hero is the destination photo ──
+  const grouped = useMemo(() => {
     const sortable = items.map((item) => ({
       id: item.id,
       title: item.title,
@@ -429,33 +358,21 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
 
     const sorted = heartSort(sortable);
     const metaMap = new Map(items.map((i) => [i.id, i]));
-
-    // Hero = top item overall (highest weighted score)
-    let hero: DecisionCardItem | null = null;
     const groups: Record<string, DecisionCardItem[]> = {};
 
-    for (let i = 0; i < sorted.length; i++) {
-      const item = sorted[i];
+    for (const item of sorted) {
       const full = metaMap.get(item.id);
       const category = full?.category || "general";
-      const cardItem: DecisionCardItem = {
+      if (!groups[category]) groups[category] = [];
+      groups[category].push({
         ...item,
         category,
         price: full?.metadata?.price ?? "",
         source: full?.metadata?.source ?? "",
-      };
-
-      // First item with an image becomes the hero
-      if (!hero && cardItem.imageUrl) {
-        hero = cardItem;
-        continue; // don't add hero to rails
-      }
-
-      if (!groups[category]) groups[category] = [];
-      groups[category].push(cardItem);
+      });
     }
 
-    return { heroItem: hero, grouped: groups };
+    return groups;
   }, [items]);
 
   // ── Reactions ──
@@ -478,15 +395,15 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
   );
 
   const categoryNames = Object.keys(grouped);
-  const hasItems = categoryNames.length > 0 || heroItem !== null;
+  const hasItems = categoryNames.length > 0;
 
   // ── Loading ──
   if (loading) {
     return (
       <div className="relative flex min-h-svh flex-col">
-        {/* Shimmer hero */}
+        {/* Shimmer hero area */}
         <motion.div
-          style={{ width: "100%", height: "360px", background: "linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.08) 100%)" }}
+          style={{ width: "100%", height: "340px", background: "linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.08) 100%)" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4 }}
@@ -506,27 +423,15 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
   return (
     <div ref={scrollRef} className="relative flex min-h-svh flex-col">
 
-      {/* ── HERO BANNER — top item, full-width cinematic ── */}
-      {heroItem && (
-        <HeroBanner
-          item={heroItem}
-          activeReaction={activeReactions[heroItem.id]}
-          onReact={handleReaction}
-        />
-      )}
-
-      {/* ── Fade from hero into content ── */}
-      {heroItem && (
-        <div style={{
-          height: "32px", marginTop: "-32px", position: "relative", zIndex: 2,
-          background: `linear-gradient(180deg, transparent 0%, var(--xark-void) 100%)`,
-        }} />
+      {/* ── HERO BANNER — destination photo from Unsplash ── */}
+      {heroUrl && (
+        <HeroBanner heroUrl={heroUrl} spaceTitle={spaceTitle} />
       )}
 
       {/* ── Category Rails ── */}
       <div
         style={{
-          paddingTop: heroItem ? "16px" : "140px",
+          paddingTop: heroUrl ? "16px" : "140px",
           paddingBottom: "160px",
           display: "flex",
           flexDirection: "column",
