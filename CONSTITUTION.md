@@ -8,11 +8,11 @@
 - If you need emphasis, use SIZE or OPACITY — never weight.
 
 ## 2. THE THEME SYSTEM (Replaces One-White)
-- Xark OS ships SIX themes: 3 light (hearth default, cloud, sage) + 3 dark (signal, noir, haze).
+- Xark OS ships with ONE theme: hearth (light, default).
 - All colors are CSS variables (`--xark-white`, `--xark-void`, `--xark-accent`, etc.) set by ThemeProvider.
-- Text color: `var(--xark-white)` via `colors.white`. Light modes use dark ink, dark modes use light text.
-- Background: `var(--xark-void)` via `colors.void`. Light modes use warm/cool paper, dark modes use deep canvases.
-- Accent: `var(--xark-accent)` via `colors.cyan`. Hearth = `#FF6B35`, Cloud = `#4F46E5`, Sage = `#166534`, Signal = `#40E0FF`, Noir = `#E8C47C`, Haze = `#A78BFA`.
+- Text color: `var(--xark-white)` via `colors.white`. Dark ink (#141414) on warm paper.
+- Background: `var(--xark-void)` via `colors.void`. Warm off-white (#F0EEE9).
+- Accent: `var(--xark-accent)` via `colors.cyan`. Hearth = `#FF6B35` (Action Orange).
 - `textColor(alpha)` from `theme.ts` returns `rgba(var(--xark-white-rgb), alpha)` — the APPROVED method for applying opacity to text. This bakes opacity into the color for correct antialiasing.
 - `accentColor(alpha)` works the same for accent color.
 - All hierarchy expressed via opacity, never font-weight. `textColor(0.9)` for primary, `textColor(0.4)` for tertiary.
@@ -349,7 +349,7 @@ The Xark OS backend is a locked hybrid of Firebase and Supabase. No substitution
 - `src/components/os/UserMenu.tsx` — Three-view drill-down navigation, all within a single file.
 - **Main view**: Avatar (28px) + name (`text.body`, `opacity.primary`). "profile" and "system" links (`text.body`, `textColor(0.5)` → `0.8` on hover). "log out" (`text.recency`, `opacity.quaternary`).
 - **Profile view**: "back" link (`text.recency`, `textColor(0.25)` → `0.4` on hover). Avatar preview (48px). "change photo" (`text.hint`, opacity 0.35) — hidden file input, Firebase Storage `profiles/{userId}/avatar`, max 2MB. Upload indicator: cyan breathing dot + "uploading" hint. Name input (`text.input`, bg-transparent, accent underline). On blur/Enter: saves to Supabase `users.display_name`. "saved" whisper (1.5s).
-- **System view**: "back" link (same as profile). 6-theme picker (hearth, cloud, sage, signal, noir, haze) — accent dot + label per theme. Active = accent color at 0.8. Inactive = `colors.white` at `opacity.tertiary`.
+- **System view**: "back" link (same as profile). Single theme (hearth) — accent dot + label. Active = accent color at 0.8.
 - **Animation**: `AnimatePresence mode="wait"` with horizontal slide variants (x: ±60px, 0.2s tween, `timing.layoutEase`). Direction state tracks drill-in (1) vs back (-1). View resets to "main" on sheet close (300ms delay for exit animation).
 - **Sheet**: Slides from top (`y: -100% → 0`), `colors.void` bg, `overflow: hidden`. Overlay `colors.overlay` at `opacity.overlay`.
 - **BANNED**: Buttons with borders/backgrounds, cards, containers. All actions are floating text.

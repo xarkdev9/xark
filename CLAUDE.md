@@ -24,11 +24,11 @@ PWA: manifest.json in public/, standalone display, safe-area padding, service wo
 1. THE ARCHITECTURAL LOCKS (NON-NEGOTIABLE)
 NO-BOLD MANDATE: Hierarchy is achieved through Scale, Spacing, and Opacity alone. Use font-weight: 400 for primary text. Use font-weight: 300 for secondary/metadata. FORBIDDEN: 500, 600, 700, 800, 900. Bold is banned. If you need emphasis, use SIZE or OPACITY — never weight.
 
-THEME SYSTEM (6 Themes): Xark OS ships with six themes — 3 light (hearth default, cloud, sage) + 3 dark (signal, noir, haze). All colors are CSS variables set by ThemeProvider. No hardcoded hex colors in components.
-- Text color: `var(--xark-white)` via `colors.white`. Light modes use dark ink, dark modes use light text.
-- Background: `var(--xark-void)` via `colors.void`. Light modes use warm/cool paper, dark modes use deep canvases.
-- Accent: `var(--xark-accent)` via `colors.cyan`. Hearth = #FF6B35, Cloud = #4F46E5, Sage = #166534, Signal = #40E0FF, Noir = #E8C47C, Haze = #A78BFA.
-- Engine signals (amber, gold, green, orange, gray) are all CSS variables — adjusted per theme for contrast.
+THEME SYSTEM (1 Theme): Xark OS ships with hearth (light, default). Single theme. All colors are CSS variables set by ThemeProvider. No hardcoded hex colors in components.
+- Text color: `var(--xark-white)` via `colors.white`. Dark ink (#141414) on warm paper.
+- Background: `var(--xark-void)` via `colors.void`. Warm off-white (#F0EEE9).
+- Accent: `var(--xark-accent)` via `colors.cyan`. Hearth = #FF6B35 (Action Orange).
+- Engine signals (amber, gold, green, orange, gray) are all CSS variables.
 - `textColor(alpha)` from theme.ts returns `rgba(var(--xark-white-rgb), alpha)` — the APPROVED method for applying opacity to text. This is NOT an rgba violation; it reads from CSS variables and is theme-aware.
 - `accentColor(alpha)` works the same way for accent color with opacity.
 - Hierarchy is always expressed through opacity, never font-weight. Use `textColor(0.9)` for primary, `textColor(0.4)` for tertiary, etc.
@@ -124,8 +124,13 @@ KEY MODULE MAP (read the source for implementation details):
 - src/hooks/useVoiceInput.ts — On-device SpeechRecognition. Long-press auto-prefixes "@xark ".
 - src/components/os/ClaimSheet.tsx — Slide-up for claiming locked items. "i'll handle this" stamps owner.
 - src/components/os/PurchaseSheet.tsx — Slide-up for purchase confirmation + amount entry. claimed → purchased.
-- src/components/os/UserMenu.tsx — Settings sheet: three-view drill-down (main → profile, main → system). Profile: avatar preview (48px) + "change photo" (Firebase Storage profiles/{userId}/avatar) + name input (Supabase users.display_name). System: 6-theme picker (hearth, cloud, sage, signal, noir, haze). Navigation: floating text links, horizontal slide animation (AnimatePresence, 0.2s tween). Actions: floating text only, no buttons/boxes.
-- src/components/os/PossibilityHorizon.tsx — Decide view: Netflix-style category sections with horizontal card bands. No input — shared ChatInput from Space page. DecisionCard (170×260 portrait, 16px radius, box-shadow depth, action zone inside card). Self-resolving: locked categories collapse to green dot.
+- src/components/os/UserMenu.tsx — Settings sheet: three-view drill-down (main → profile, main → system). Profile: avatar preview (48px) + "change photo" (Firebase Storage profiles/{userId}/avatar) + name input (Supabase users.display_name). System: hearth theme (single theme). Navigation: floating text links, horizontal slide animation (AnimatePresence, 0.2s tween). Actions: floating text only, no buttons/boxes.
+- src/components/os/PossibilityHorizon.tsx — Decide view: Netflix-style fluid horizontal card rails with Framer Motion entrance choreography (whileInView, staggered). DecisionCard component (3 sizes: hero 200×280, standard 165×240, mini 110×150). Unsplash hero image at top with fade-in. Category vitals in rail headers. Shimmer placeholders during load. Smooth momentum scroll (no snap). Self-resolving: locked categories collapse to green dot. No input — shared ChatInput from Space page.
+- src/components/os/DecisionCard.tsx — Shared decision card component. 3 size variants (hero/standard/mini). No borders. Photo top 40%, single scrim gradient, solid dark data zone. Consensus % is brightest element. Fixed light text colors (theme-independent card surfaces). Framer Motion whileInView entrance + consensus bar animation.
+- src/lib/unsplash.ts — Unsplash API client. fetchDestinationPhoto(query) returns imageUrl + photographer attribution. Called at space creation, stored in spaces.metadata.hero_url.
+- src/hooks/useDeviceTier.ts — Detects low-end devices (deviceMemory ≤ 2, hardwareConcurrency ≤ 4, prefers-reduced-motion). Returns "high" or "low".
+- src/components/os/Avatar.tsx — Reusable avatar component for space/user avatars.
+- src/components/os/OnboardingWhispers.tsx — Gentle onboarding hints that dismiss after first interaction.
 - src/components/os/XarkChat.tsx — Display-only chat stream. Receives messages and isThinking as props from Space page. No input, no send, no fetch. Handshake protocol, sanctuary bridge, greeting.
 - src/components/os/ChatInput.tsx — Three-element layout. TEXTAREA + MIC: fixed at 56px from bottom, auto-expanding textarea (text.body) + mic icon (SVG, 14px) in the input row. Top ambient line + bottom ambient line (grows with text width, breathes, fades from cyan to transparent), solid void bg. ATTACH ICON: 16px paperclip SVG at left 25% (halfway dot-to-left-edge), caretBottom level. CAMERA ICON: 16px camera SVG at left 75% (halfway dot-to-right-edge), caretBottom level. Icons at colors.white opacity 0.5→0.8 hover, thin 1.5px stroke. Mic: tap=dictate, long-press=@xark mode. Reduced void (56px).
 - src/components/os/ItineraryView.tsx — Committed items timeline view for ready/active spaces.

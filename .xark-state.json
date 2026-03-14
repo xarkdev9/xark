@@ -7,7 +7,7 @@
   "algo_status": "198 tests, 0 type errors, hexagonal architecture",
   "architectural_locks": {
     "typography": "Weights 300/400 only. Bold banned.",
-    "color": "Theme-aware CSS variables (--xark-white, --xark-void, --xark-accent). Six themes: 3 light (hearth default, cloud, sage) + 3 dark (signal, noir, haze). textColor(alpha) from theme.ts is the approved opacity method.",
+    "color": "Theme-aware CSS variables (--xark-white, --xark-void, --xark-accent). Single theme: hearth (light). textColor(alpha) from theme.ts is the approved opacity method.",
     "fonts": "Inter (body, 400), Syne (display/fallback, 400), Inter (wordmark, 300). Inter is primary in globals.css.",
     "layout": "Liquid Feed / Zero-Box. Focus outlines globally purged in globals.css.",
     "engine": "heart-sort.ts is SSOT. Source: /Users/ramchitturi/algo/src/engine/heart-sort.ts. Full port complete (DecisionItem, calculateWeightedScore, addReaction, removeReaction, calculateAgreementScore, getRankedSummary).",
@@ -112,17 +112,11 @@
     "supabase_admin": "src/lib/supabase-admin.ts — Service-role client for /api/xark and /api/notify. Bypasses RLS."
   },
   "theme_system": {
-    "themes": ["hearth (light, default)", "aurora (dark, northern lights video)", "coast (light, california beach video)"],
+    "themes": ["hearth (light, default, only theme)"],
     "provider": "src/components/os/ThemeProvider.tsx — sets CSS variables on :root",
     "tokens": "src/lib/theme.ts — colors, opacity, timing, text, layout, foveal, neuro, reactions objects",
     "css_variables": "--xark-white, --xark-void, --xark-accent, --xark-amber, --xark-gold, --xark-green, --xark-orange, --xark-gray (plus -rgb variants)",
-    "helpers": "textColor(alpha), accentColor(alpha), amberWash(score), goldBloom(score), fovealOpacity(index, total, role)",
-    "video_backgrounds": {
-      "aurora": "/themes/aurora-loop.mp4 (northern lights, dark theme)",
-      "coast": "/themes/coast-loop.mp4 (california beach, light theme)",
-      "component": "src/components/os/VideoBackground.tsx — HTML5 video with poster fallback, device tier + battery checks",
-      "fallback": "static WebP poster when video cannot play or device is low-end"
-    }
+    "helpers": "textColor(alpha), accentColor(alpha), amberWash(score), goldBloom(score), fovealOpacity(index, total, role)"
   },
   "type_scale": {
     "source": "text object in src/lib/theme.ts",
@@ -201,9 +195,10 @@
     "ServiceWorkerRegistration": "verified",
     "SupabaseAdmin": "verified",
     "DecisionCard": "verified",
-    "VideoBackground": "verified",
     "useDeviceTier": "verified",
-    "UnsplashClient": "verified"
+    "UnsplashClient": "verified",
+    "Avatar": "verified",
+    "OnboardingWhispers": "verified"
   },
   "port": 3000
 }
