@@ -3,6 +3,7 @@
 // Optimistic: UI navigates immediately, DB write is parallel.
 
 import { supabase } from "./supabase";
+import { fetchDestinationPhoto } from "./unsplash";
 
 export interface CreateSpaceResult {
   spaceId: string;
@@ -38,20 +39,26 @@ function generateSeedTitle(dream: string): string {
 
 // ── Create a space with one seed item — fire and forget ──
 // The UI has ALREADY navigated. This runs in parallel.
+// inviteUsername: if provided, looks up user by display_name and adds as member.
 export async function createSpace(
   dream: string,
-  ownerId: string
+  ownerId: string,
+  inviteUsername?: string
 ): Promise<CreateSpaceResult> {
   const title = dream.toLowerCase().trim();
   const spaceId = generateSpaceId(title);
   const seedItemTitle = generateSeedTitle(dream);
+
+  // Personal chat (just "@name", no other content) → sanctuary atmosphere
+  const isPersonalChat = inviteUsername && title === `chat with ${inviteUsername.toLowerCase()}`;
+  const atmosphere = isPersonalChat ? "sanctuary" : "cyan_horizon";
 
   // 1. Insert the space
   await supabase.from("spaces").insert({
     id: spaceId,
     title,
     owner_id: ownerId,
-    atmosphere: "cyan_horizon",
+    atmosphere,
   });
 
   // 2. Explicitly add creator as owner in space_members (bug B4 fix)
@@ -60,28 +67,63 @@ export async function createSpace(
     { onConflict: "space_id,user_id" }
   );
 
-  // 3. Insert the seed item — one "seeking" possibility so Decide is never empty
-  // proposed_by is forced to auth.uid() by the trg_force_proposed_by trigger
-  await supabase.from("decision_items").insert({
-    id: `item_${crypto.randomUUID()}`,
-    space_id: spaceId,
-    title: seedItemTitle,
-    category: "experience",
-    description: "",
-    state: "proposed",
-    is_locked: false,
-  });
+  // 3. If inviting someone, look them up and add as member
+  if (inviteUsername) {
+    const { data: invitedUser } = await supabase
+      .from("users")
+      .select("id")
+      .ilike("display_name", inviteUsername)
+      .single();
 
-  // 4. Insert creator's first message — the space is born with a voice
-  // Using role='user' because RLS blocks client-side xark messages.
-  // @xark messages are inserted server-side via /api/xark with service_role key.
+    if (invitedUser) {
+      await supabase.from("space_members").upsert(
+        { space_id: spaceId, user_id: invitedUser.id, role: "member" },
+        { onConflict: "space_id,user_id" }
+      );
+    }
+  }
+
+  // 4. Insert the seed item — one "seeking" possibility so Decide is never empty
+  // Skip for sanctuary (personal chats don't need decision items)
+  if (!isPersonalChat) {
+    await supabase.from("decision_items").insert({
+      id: `item_${crypto.randomUUID()}`,
+      space_id: spaceId,
+      title: seedItemTitle,
+      category: "experience",
+      description: "",
+      state: "proposed",
+      is_locked: false,
+    });
+  }
+
+  // 5. Insert creator's first message — the space is born with a voice
   await supabase.from("messages").insert({
     id: crypto.randomUUID(),
     space_id: spaceId,
     role: "user",
-    content: `started planning ${title}. first idea: ${seedItemTitle}`,
+    content: isPersonalChat
+      ? `hey ${inviteUsername}`
+      : `started planning ${title}. first idea: ${seedItemTitle}`,
     user_id: ownerId,
   });
+
+  // 6. Fetch Unsplash hero photo (fire-and-forget, non-blocking)
+  fetchDestinationPhoto(title).then((photo) => {
+    if (photo) {
+      supabase
+        .from("spaces")
+        .update({
+          metadata: {
+            hero_url: photo.imageUrl,
+            hero_photographer: photo.photographerName,
+            hero_photographer_url: photo.photographerUrl,
+          },
+        })
+        .eq("id", spaceId)
+        .then(() => {});
+    }
+  }).catch(() => {});
 
   return { spaceId, title, seedItemTitle };
 }

@@ -112,11 +112,17 @@
     "supabase_admin": "src/lib/supabase-admin.ts — Service-role client for /api/xark and /api/notify. Bypasses RLS."
   },
   "theme_system": {
-    "themes": ["hearth (light, default)", "cloud (light)", "sage (light)", "signal (dark)", "noir (dark)", "haze (dark)"],
-    "provider": "src/components/ThemeProvider.tsx — sets CSS variables on :root",
+    "themes": ["hearth (light, default)", "aurora (dark, northern lights video)", "coast (light, california beach video)"],
+    "provider": "src/components/os/ThemeProvider.tsx — sets CSS variables on :root",
     "tokens": "src/lib/theme.ts — colors, opacity, timing, text, layout, foveal, neuro, reactions objects",
     "css_variables": "--xark-white, --xark-void, --xark-accent, --xark-amber, --xark-gold, --xark-green, --xark-orange, --xark-gray (plus -rgb variants)",
-    "helpers": "textColor(alpha), accentColor(alpha), amberWash(score), goldBloom(score), fovealOpacity(index, total, role)"
+    "helpers": "textColor(alpha), accentColor(alpha), amberWash(score), goldBloom(score), fovealOpacity(index, total, role)",
+    "video_backgrounds": {
+      "aurora": "/themes/aurora-loop.mp4 (northern lights, dark theme)",
+      "coast": "/themes/coast-loop.mp4 (california beach, light theme)",
+      "component": "src/components/os/VideoBackground.tsx — HTML5 video with poster fallback, device tier + battery checks",
+      "fallback": "static WebP poster when video cannot play or device is low-end"
+    }
   },
   "type_scale": {
     "source": "text object in src/lib/theme.ts",
@@ -193,7 +199,11 @@
     "ItineraryView": "verified",
     "MemoriesView": "verified",
     "ServiceWorkerRegistration": "verified",
-    "SupabaseAdmin": "verified"
+    "SupabaseAdmin": "verified",
+    "DecisionCard": "verified",
+    "VideoBackground": "verified",
+    "useDeviceTier": "verified",
+    "UnsplashClient": "verified"
   },
   "port": 3000
 }

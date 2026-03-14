@@ -140,3 +140,13 @@ input, textarea, [contenteditable] {
 /* ── PWA: safe area padding for notch devices ── */
 .safe-top { padding-top: env(safe-area-inset-top); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ── SHIMMER — Loading placeholder for cards ── */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+/* ── HORIZON SCROLL — Hide scrollbar for card rails ── */
+.horizon-scroll::-webkit-scrollbar { display: none; }
+.horizon-scroll { scrollbar-width: none; -ms-overflow-style: none; }

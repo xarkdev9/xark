@@ -1,24 +1,23 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { motion } from "framer-motion";
 import { heartSort } from "@/lib/heart-sort";
-import type { ConsensusState } from "@/lib/heart-sort";
 import { getConsensusState } from "@/lib/heart-sort";
 import { useReactions } from "@/hooks/useReactions";
 import type { ReactionType } from "@/hooks/useReactions";
 import { supabase } from "@/lib/supabase";
+import { DecisionCard } from "@/components/os/DecisionCard";
 import {
   colors,
   text,
   textColor,
-  amberWash,
-  reactions as reactionTokens,
   timing,
 } from "@/lib/theme";
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 // TYPES
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 
 interface DecisionItem {
   id: string;
@@ -42,27 +41,17 @@ interface DecisionCardItem {
   imageUrl: string;
   price: string;
   source: string;
+  category: string;
   weightedScore: number;
   agreementScore: number;
   isLocked: boolean;
   createdAt: number;
 }
 
-interface DecisionCardProps extends DecisionCardItem {
-  activeReaction?: ReactionType;
-  onReact: (itemId: string, signal: ReactionType) => void;
-}
-
-interface CategorySectionProps {
-  category: string;
-  items: DecisionCardItem[];
-  activeReactions: Record<string, ReactionType>;
-  onReact: (itemId: string, signal: ReactionType) => void;
-}
-
 interface PossibilityHorizonProps {
   spaceId: string;
   userId?: string;
+  authLoading?: boolean;
 }
 
 // ── Demo items — used when Supabase is unreachable ──
@@ -76,209 +65,86 @@ const DEMO_ITEMS: Record<string, DecisionItem[]> = {
   ],
 };
 
-// ── Signal definitions — compact labels for single-line fit ──
-const SIGNALS: { type: ReactionType; label: string; color: string }[] = [
-  { type: "love_it", label: "love", color: reactionTokens.loveIt.color },
-  { type: "works_for_me", label: "okay", color: reactionTokens.worksForMe.color },
-  { type: "not_for_me", label: "pass", color: reactionTokens.notForMe.color },
-];
-
-// ── Consensus state → color mapping ──
-function consensusColor(state: ConsensusState): string {
-  if (state === "ignited") return colors.gold;
-  if (state === "steady") return colors.cyan;
-  return colors.amber;
-}
-
 // ── Pluralize category names ──
 const PLURAL_MAP: Record<string, string> = {
-  hotel: "hotels",
-  activity: "activities",
-  flight: "flights",
-  dining: "dining",
-  experience: "experiences",
-  restaurant: "restaurants",
-  general: "general",
+  hotel: "hotels", activity: "activities", flight: "flights",
+  dining: "dining", experience: "experiences", restaurant: "restaurants", general: "general",
 };
 
 function pluralizeCategory(cat: string): string {
   return PLURAL_MAP[cat.toLowerCase()] ?? cat.toLowerCase() + "s";
 }
 
-// ══════════════════════════════════════════════════
-// DECISION CARD
-// ══════════════════════════════════════════════════
+// ── Category vital stat ──
+function categoryVital(items: DecisionCardItem[]): { text: string; color: string } {
+  const total = items.length;
+  const rated = items.filter((i) => i.agreementScore > 0).length;
+  const topItem = items[0];
 
-function DecisionCard({
-  id,
-  title,
-  imageUrl,
-  price,
-  weightedScore,
-  agreementScore,
-  activeReaction,
-  onReact,
-}: DecisionCardProps) {
-  const consensusState = getConsensusState(agreementScore);
-  const pct = Math.round(agreementScore * 100);
-  const cColor = consensusColor(consensusState);
+  if (topItem && topItem.agreementScore >= 0.8) {
+    const pct = Math.round(topItem.agreementScore * 100);
+    return { text: `${pct}% on #1 · ${rated} of ${total} rated`, color: colors.gold };
+  }
+  if (rated === 0) {
+    return { text: "needs votes", color: colors.amber };
+  }
+  return { text: `${rated} of ${total} rated`, color: colors.cyan };
+}
 
+// ══════════════════════════════════════════════
+// SHIMMER PLACEHOLDER
+// ══════════════════════════════════════════════
+
+function ShimmerCard() {
   return (
     <div
-      className="relative flex-shrink-0 snap-start overflow-hidden"
+      className="flex-shrink-0 snap-start"
       style={{
-        width: "170px",
-        height: "260px",
-        borderRadius: "16px",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+        width: "130px",
+        height: "195px",
+        borderRadius: "14px",
+        background:
+          "linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 100%)",
+        backgroundSize: "200px 100%",
+        animation: "shimmer 1.5s ease-in-out infinite",
       }}
-    >
-      {/* ── Image or gradient placeholder ── */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: imageUrl
-            ? `url(${imageUrl})`
-            : `linear-gradient(160deg, rgba(var(--xark-amber-rgb), 0.2) 0%, rgba(var(--xark-accent-rgb), 0.12) 50%, rgba(var(--xark-void-rgb), 0.4) 100%)`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      />
-
-      {/* ── Bottom vignette — covers lower 60% for content + action zone ── */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to top, rgba(var(--xark-void-rgb), 1) 0%, rgba(var(--xark-void-rgb), 0.95) 30%, rgba(var(--xark-void-rgb), 0.5) 55%, transparent 80%)",
-        }}
-      />
-
-      {/* ── Amber wash ── */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: `linear-gradient(to top, ${amberWash(weightedScore)} 0%, transparent 40%)`,
-        }}
-      />
-
-      {/* ── Content zone — info sits above action zone ── */}
-      <div className="absolute inset-x-0 bottom-0 px-3" style={{ paddingBottom: "48px" }}>
-        {/* ── Consensus hero ── */}
-        <div style={{ marginBottom: "4px" }}>
-          <span
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: 400,
-              lineHeight: 1,
-              letterSpacing: "-0.02em",
-              color: cColor,
-              opacity: consensusState === "ignited" ? 0.95 : 0.7,
-            }}
-          >
-            {pct}
-          </span>
-          <span
-            style={{
-              ...text.timestamp,
-              color: cColor,
-              opacity: 0.4,
-              marginLeft: "2px",
-              verticalAlign: "super",
-            }}
-          >
-            %
-          </span>
-          <div style={{ marginTop: "3px", height: "2px", position: "relative" }}>
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                height: "2px",
-                width: `${pct}%`,
-                backgroundColor: cColor,
-                opacity: consensusState === "ignited" ? 0.8 : 0.35,
-                transition: "width 0.6s ease, opacity 0.6s ease",
-              }}
-            />
-          </div>
-        </div>
-
-        <p style={{ ...text.body, color: colors.white, opacity: 0.9, lineHeight: 1.3 }}>
-          {title}
-        </p>
-
-        {price && (
-          <span
-            style={{
-              ...text.recency,
-              color: colors.white,
-              opacity: 0.4,
-              display: "inline-block",
-              marginTop: "2px",
-            }}
-          >
-            {price}
-          </span>
-        )}
-      </div>
-
-      {/* ── Reactions — floating at card bottom, glow depth ── */}
-      <div
-        className="absolute inset-x-0 bottom-0 flex items-center justify-between px-4"
-        style={{ height: "40px" }}
-      >
-        {SIGNALS.map((signal) => {
-          const isActive = activeReaction === signal.type;
-          return (
-            <span
-              key={signal.type}
-              role="button"
-              tabIndex={0}
-              onClick={() => onReact(id, signal.type)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onReact(id, signal.type);
-              }}
-              className="outline-none"
-              style={{
-                ...text.subtitle,
-                color: isActive ? signal.color : colors.white,
-                opacity: isActive ? 1 : activeReaction ? 0.15 : 0.55,
-                cursor: "pointer",
-                textShadow: isActive
-                  ? `0 0 12px ${signal.color}, 0 0 4px ${signal.color}`
-                  : "0 1px 3px rgba(0,0,0,0.4)",
-                transition: `opacity ${timing.transition} ease, color ${timing.transition} ease, text-shadow ${timing.transition} ease`,
-              }}
-            >
-              {signal.label}
-            </span>
-          );
-        })}
-      </div>
-    </div>
+    />
   );
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 // CATEGORY SECTION
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 
 function CategorySection({
   category,
   items,
   activeReactions,
   onReact,
-}: CategorySectionProps) {
+  categoryIndex,
+}: {
+  category: string;
+  items: DecisionCardItem[];
+  activeReactions: Record<string, ReactionType>;
+  onReact: (itemId: string, signal: ReactionType) => void;
+  categoryIndex: number;
+}) {
   const allLocked = items.length > 0 && items.every((i) => i.isLocked);
   const displayName = pluralizeCategory(category);
+  const vital = categoryVital(items);
+  const baseDelay = 0.2 + categoryIndex * 0.2;
 
-  // ── Settled row — all items locked ──
+  // Settled row — all items locked
   if (allLocked) {
     const lockedTitle = items[0]?.title ?? "";
     return (
-      <div className="flex items-center gap-3" style={{ padding: "4px 0" }}>
+      <motion.div
+        className="flex items-center gap-3"
+        style={{ padding: "4px 0" }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: baseDelay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div
           style={{
             width: "4px",
@@ -289,25 +155,29 @@ function CategorySection({
             flexShrink: 0,
           }}
         />
-        <span style={{ ...text.label, color: textColor(0.3) }}>
-          {displayName}
-        </span>
+        <span style={{ ...text.label, color: textColor(0.3) }}>{displayName}</span>
         <span style={{ ...text.recency, color: textColor(0.25) }}>
           {lockedTitle}
           {items.length > 1 ? ` + ${items.length - 1} more` : ""}
         </span>
-      </div>
+      </motion.div>
     );
   }
 
-  // ── Open section — header + card scroll ──
+  // Open section — header + card scroll
   return (
-    <div>
-      <span style={{ ...text.label, color: textColor(0.35) }}>
-        {displayName}
-      </span>
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: baseDelay, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {/* Rail header */}
+      <div className="flex items-baseline justify-between">
+        <span style={{ ...text.label, color: textColor(0.35) }}>{displayName}</span>
+        <span style={{ ...text.recency, color: vital.color, opacity: 0.5 }}>{vital.text}</span>
+      </div>
 
-      {/* ── Horizontal card scroll ── */}
+      {/* Horizontal card rail */}
       <div
         className="horizon-scroll flex snap-x snap-mandatory overflow-x-auto"
         style={{
@@ -317,32 +187,69 @@ function CategorySection({
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {items.map((item) => (
+        {items.slice(0, 8).map((item, idx) => (
           <DecisionCard
             key={item.id}
-            {...item}
+            id={item.id}
+            title={item.title}
+            imageUrl={item.imageUrl || undefined}
+            category={item.category}
+            price={item.price}
+            source={item.source}
+            weightedScore={item.weightedScore}
+            agreementScore={item.agreementScore}
+            isLocked={item.isLocked}
+            size={idx === 0 ? "hero" : "standard"}
             activeReaction={activeReactions[item.id]}
             onReact={onReact}
+            entranceDelay={baseDelay + 0.15 + idx * 0.1}
           />
         ))}
+
+        {/* Compressed tail */}
+        {items.length > 8 && (
+          <motion.div
+            className="flex flex-shrink-0 items-center justify-center"
+            style={{ width: "50px" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: baseDelay + 1.0 }}
+          >
+            <span style={{ ...text.recency, color: textColor(0.2) }}>+{items.length - 8}</span>
+          </motion.div>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 // POSSIBILITY HORIZON — ORCHESTRATOR
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════
 
-export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps) {
+export function PossibilityHorizon({ spaceId, userId, authLoading }: PossibilityHorizonProps) {
   const [items, setItems] = useState<DecisionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [heroUrl, setHeroUrl] = useState<string | null>(null);
   const [activeReactions, setActiveReactions] = useState<Record<string, ReactionType>>({});
 
   const { react, unreact, batchGetUserReactions, isReacting } = useReactions();
 
-  // ── Fetch ALL decision items (locked + unlocked) ──
+  // ── Fetch hero image from space metadata ──
   useEffect(() => {
+    supabase
+      .from("spaces")
+      .select("metadata")
+      .eq("id", spaceId)
+      .single()
+      .then(({ data }) => {
+        if (data?.metadata?.hero_url) setHeroUrl(data.metadata.hero_url);
+      });
+  }, [spaceId]);
+
+  // ── Fetch ALL decision items ──
+  useEffect(() => {
+    if (authLoading) return;
     async function fetchItems() {
       const { data } = await supabase
         .from("decision_items")
@@ -357,13 +264,12 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
           setActiveReactions(reactions);
         }
       } else {
-        // Demo fallback when Supabase is unreachable or empty
         setItems(DEMO_ITEMS[spaceId] ?? []);
       }
       setLoading(false);
     }
     fetchItems();
-  }, [spaceId, userId, batchGetUserReactions]);
+  }, [spaceId, userId, batchGetUserReactions, authLoading]);
 
   // ── Realtime: UPDATE + INSERT ──
   useEffect(() => {
@@ -393,7 +299,7 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
     return () => { supabase.removeChannel(channel); };
   }, [spaceId]);
 
-  // ── Sort + group by category (memoized) ──
+  // ── Sort + group by category ──
   const grouped = useMemo(() => {
     const sortable = items.map((item) => ({
       id: item.id,
@@ -414,6 +320,7 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
       const category = full?.category || "general";
       const cardItem: DecisionCardItem = {
         ...item,
+        category,
         price: full?.metadata?.price ?? "",
         source: full?.metadata?.source ?? "",
       };
@@ -449,67 +356,89 @@ export function PossibilityHorizon({ spaceId, userId }: PossibilityHorizonProps)
   const categoryNames = Object.keys(grouped);
   const hasItems = categoryNames.length > 0;
 
+  // ── Loading: shimmer placeholders ──
   if (loading) {
     return (
-      <div className="flex items-center justify-center" style={{ paddingTop: "200px", opacity: 0.2 }}>
+      <div className="relative flex min-h-svh flex-col">
         <div
-          style={{
-            width: "6px",
-            height: "6px",
-            borderRadius: "50%",
-            backgroundColor: colors.cyan,
-            animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
-          }}
-        />
-        <p className="ml-4" style={{ ...text.label, color: colors.white }}>
-          loading
-        </p>
+          className="flex-1 overflow-y-auto px-6"
+          style={{ paddingTop: "140px", paddingBottom: "160px" }}
+        >
+          <div style={{ marginBottom: "28px" }}>
+            <div style={{ ...text.label, color: textColor(0.2), marginBottom: "10px" }}>loading</div>
+            <div className="flex gap-3">
+              <ShimmerCard />
+              <ShimmerCard />
+              <ShimmerCard />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="relative flex min-h-svh flex-col">
-      {/* ── Category Sections ── */}
+      {/* ── Hero image ── */}
+      {heroUrl && (
+        <div className="absolute inset-x-0 top-0" style={{ height: "45%", zIndex: 0 }}>
+          <img
+            src={heroUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="eager"
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, transparent 30%, rgba(var(--xark-void-rgb),0.7) 65%, var(--xark-void) 85%)",
+            }}
+          />
+        </div>
+      )}
+
+      {/* ── Category Rails ── */}
       <div
         className="flex-1 overflow-y-auto px-6"
         style={{
-          paddingTop: "140px",
+          paddingTop: heroUrl ? "280px" : "140px",
           paddingBottom: "160px",
           display: "flex",
           flexDirection: "column",
           gap: "28px",
+          position: "relative",
+          zIndex: 1,
         }}
       >
         {hasItems ? (
-          categoryNames.map((category) => (
+          categoryNames.map((category, idx) => (
             <CategorySection
               key={category}
               category={category}
               items={grouped[category]}
               activeReactions={activeReactions}
               onReact={handleReaction}
+              categoryIndex={idx}
             />
           ))
         ) : (
           <>
             <div style={{ flex: 1 }} />
-            <div style={{ maxWidth: "640px", marginBottom: "16px" }}>
-              <span style={{ ...text.label, color: colors.cyan, opacity: 0.4 }}>
-                @xark
-              </span>
+            <motion.div
+              style={{ maxWidth: "640px", marginBottom: "16px" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+            >
+              <span style={{ ...text.label, color: colors.cyan, opacity: 0.4 }}>@xark</span>
               <p className="mt-1" style={{ ...text.hint, color: colors.white, opacity: 0.35 }}>
                 {`try "@xark find hotels near the beach" or "@xark add dates aug 15–25"`}
               </p>
-            </div>
+            </motion.div>
           </>
         )}
       </div>
-
-      <style jsx>{`
-        .horizon-scroll::-webkit-scrollbar { display: none; }
-        .horizon-scroll { scrollbar-width: none; -ms-overflow-style: none; }
-      `}</style>
     </div>
   );
 }
