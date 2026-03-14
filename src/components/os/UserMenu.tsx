@@ -10,7 +10,7 @@ import { auth, storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { ThemeName } from "@/lib/theme";
 
-const THEME_NAMES: ThemeName[] = ["hearth", "cloud", "sage", "signal", "noir", "haze"];
+const THEME_NAMES: ThemeName[] = ["hearth", "aurora", "coast"];
 
 type SettingsView = "main" | "profile" | "system";
 

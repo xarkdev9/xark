@@ -4,9 +4,9 @@
 // Font: Inter globally. No per-theme fonts. Consistency = quality.
 
 // ── THEME PRESETS ───────────────────────────────────────────────────────────
-// 3 light + 3 dark. Hearth is default.
+// 2 light + 1 dark. Hearth is default.
 
-export type ThemeName = "hearth" | "cloud" | "sage" | "signal" | "noir" | "haze";
+export type ThemeName = "hearth" | "aurora" | "coast";
 
 export interface ThemeConfig {
   label: string;
@@ -26,74 +26,38 @@ export const themes: Record<ThemeName, ThemeConfig> = {
   hearth: {
     label: "hearth",
     mode: "light",
-    accent: "#FF6B35",      // Action Orange — warm hearth glow
-    text: "#141414",         // Ink on paper
-    bg: "#F0EEE9",          // Warm off-white canvas (Low Cortisol Canvas)
-    amber: "#9E6A06",       // ~5:1 contrast on #F0EEE9
-    gold: "#8B6914",
-    green: "#047857",
-    orange: "#C43D08",
-    gray: "#57576A",
-  },
-  cloud: {
-    label: "cloud",
-    mode: "light",
-    accent: "#4F46E5",      // Indigo — clean, professional
-    text: "#1E293B",         // Slate-800
-    bg: "#F8FAFC",          // Slate-50 — cool clean white
-    amber: "#92600A",       // Darkened for brighter bg
-    gold: "#7D5A10",
-    green: "#047857",
-    orange: "#B53808",
-    gray: "#4E4E62",
-  },
-  sage: {
-    label: "sage",
-    mode: "light",
-    accent: "#166534",      // Deep forest green — natural, earthy
-    text: "#1C1917",         // Stone-900 — warm ink
-    bg: "#F5F5F0",          // Natural linen
+    accent: "#FF6B35",
+    text: "#141414",
+    bg: "#F0EEE9",
     amber: "#9E6A06",
     gold: "#8B6914",
     green: "#047857",
     orange: "#C43D08",
     gray: "#57576A",
   },
-  signal: {
-    label: "signal",
+  aurora: {
+    label: "aurora",
     mode: "dark",
-    accent: "#40E0FF",      // Intelligence Cyan
-    text: "#E0E8F0",        // Cool silver — desaturated, premium readability
-    bg: "#080C14",          // Midnight navy — atmospheric depth for cyan
+    accent: "#34D399",
+    text: "#E0EEF0",
+    bg: "#040810",
     amber: "#F5A623",
-    gold: "#FFCF40",        // Rich gold
-    green: "#34D399",       // Bright emerald
-    orange: "#F0652A",
-    gray: "#7E8C9A",        // Blue-steel neutral
-  },
-  noir: {
-    label: "noir",
-    mode: "dark",
-    accent: "#E8C47C",      // Champagne gold — spotlight warmth
-    text: "#EDE8E0",        // Warm cream parchment
-    bg: "#0A0908",          // Warm near-black
-    amber: "#F5A623",
-    gold: "#FFD040",
+    gold: "#FFCF40",
     green: "#34D399",
     orange: "#F0652A",
-    gray: "#9A9488",        // Warm earthy neutral
+    gray: "#7E8C9A",
   },
-  haze: {
-    label: "haze",
-    mode: "dark",
-    accent: "#A78BFA",      // Gen-Z violet
-    text: "#E4E0EE",        // Lavender-white
-    bg: "#0A0812",          // Deep indigo-black
-    amber: "#F5A623",
-    gold: "#E8C840",        // Soft gold
-    green: "#34D399",
-    orange: "#F0652A",
-    gray: "#8A82A0",        // Violet-neutral
+  coast: {
+    label: "coast",
+    mode: "light",
+    accent: "#C88A3C",
+    text: "#1C1812",
+    bg: "#F0E8DA",
+    amber: "#9E6A06",
+    gold: "#8B6914",
+    green: "#047857",
+    orange: "#C43D08",
+    gray: "#57576A",
   },
 };
 
@@ -155,60 +119,60 @@ export const text = {
   hero: {
     fontSize: "1.5rem",
     fontWeight: 400 as const,
-    lineHeight: 1.6,
+    lineHeight: 1.4,
     letterSpacing: "-0.01em",
   },
   spaceTitle: {
     fontSize: "clamp(1.25rem, 3vw, 1.5rem)",
     fontWeight: 400 as const,
-    lineHeight: 1.6,
+    lineHeight: 1.4,
     letterSpacing: "-0.01em",
   },
   listTitle: {
-    fontSize: "1rem",
+    fontSize: "1.0625rem",
     fontWeight: 400 as const,
-    lineHeight: 1.6,
+    lineHeight: 1.4,
     letterSpacing: "-0.01em",
   },
   body: {
-    fontSize: "0.75rem",
+    fontSize: "1rem",
     fontWeight: 400 as const,
-    lineHeight: 1.5,
+    lineHeight: 1.45,
     letterSpacing: "0.01em",
   },
   subtitle: {
-    fontSize: "0.65rem",
+    fontSize: "0.875rem",
     fontWeight: 300 as const,
-    lineHeight: 1.5,
-    letterSpacing: "0.02em",
+    lineHeight: 1.45,
+    letterSpacing: "0.01em",
   },
   label: {
-    fontSize: "0.6rem",
+    fontSize: "0.75rem",
     fontWeight: 300 as const,
     lineHeight: 1.4,
-    letterSpacing: "0.2em",
+    letterSpacing: "0.12em",
     textTransform: "uppercase" as const,
   },
   recency: {
-    fontSize: "0.5rem",
+    fontSize: "0.6875rem",
     fontWeight: 300 as const,
     lineHeight: 1.4,
-    letterSpacing: "0.15em",
+    letterSpacing: "0.08em",
   },
   timestamp: {
-    fontSize: "0.45rem",
+    fontSize: "0.625rem",
     fontWeight: 300 as const,
     lineHeight: 1.4,
   },
   input: {
-    fontSize: "clamp(0.9rem, 2vw, 1.05rem)",
+    fontSize: "1rem",
     fontWeight: 400 as const,
-    letterSpacing: "0.04em",
+    letterSpacing: "0.02em",
   },
   hint: {
-    fontSize: "0.6rem",
+    fontSize: "0.75rem",
     fontWeight: 300 as const,
-    letterSpacing: "0.15em",
+    letterSpacing: "0.08em",
   },
 } as const;
 
