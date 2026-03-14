@@ -2,6 +2,8 @@
 // The "Manifestation Loop": Dream → Space → Seed Item → Transit
 // Optimistic: UI navigates immediately, DB write is parallel.
 
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "./firebase";
 import { supabase } from "./supabase";
 import { fetchDestinationPhoto } from "./unsplash";
 
@@ -118,21 +120,36 @@ export async function createSpace(
     user_id: ownerId,
   });
 
-  // 6. Fetch Unsplash hero photo (fire-and-forget, non-blocking)
-  fetchDestinationPhoto(title).then((photo) => {
-    if (photo) {
-      supabase
-        .from("spaces")
-        .update({
-          metadata: {
-            hero_url: photo.imageUrl,
-            hero_photographer: photo.photographerName,
-            hero_photographer_url: photo.photographerUrl,
-          },
-        })
-        .eq("id", spaceId)
-        .then(() => {});
+  // 6. Fetch Unsplash hero → upload to Firebase Storage → store Firebase CDN URL
+  // Fire-and-forget. Non-blocking. Space is already navigable.
+  fetchDestinationPhoto(title).then(async (photo) => {
+    if (!photo) return;
+
+    let heroUrl = photo.imageUrl; // Fallback: Unsplash CDN URL
+
+    // Upload to Firebase Storage if available — eliminates Unsplash dependency
+    if (storage) {
+      try {
+        const storagePath = `heroes/${spaceId}/hero.jpg`;
+        const storageRef = ref(storage, storagePath);
+        await uploadBytes(storageRef, photo.imageBlob, { contentType: "image/jpeg" });
+        heroUrl = await getDownloadURL(storageRef);
+      } catch {
+        // Firebase upload failed — fall back to Unsplash URL
+      }
     }
+
+    supabase
+      .from("spaces")
+      .update({
+        metadata: {
+          hero_url: heroUrl,
+          hero_photographer: photo.photographerName,
+          hero_photographer_url: photo.photographerUrl,
+        },
+      })
+      .eq("id", spaceId)
+      .then(() => {});
   }).catch(() => {});
 
   return { spaceId, title, seedItemTitle };
