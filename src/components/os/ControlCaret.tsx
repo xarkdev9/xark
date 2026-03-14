@@ -63,7 +63,7 @@ function Avatar({ name, photoUrl, size = 32 }: { name: string; photoUrl?: string
 
 // ── Demo presence — used when Supabase Realtime is unreachable ──
 const DEMO_PRESENCE: Record<string, number> = {
-  "space_san-diego": 2,
+  "space_san-diego-trip": 2,
   "space_ananya": 1,
 };
 

@@ -67,7 +67,7 @@ export function decisionStateLabel(summary: DecisionSummary): string {
 
 const DEMO_SPACES: SpaceListItem[] = [
   {
-    id: "space_san-diego",
+    id: "space_san-diego-trip",
     title: "san diego trip",
     atmosphere: "cyan_horizon",
     members: [
@@ -89,7 +89,7 @@ const DEMO_SPACES: SpaceListItem[] = [
     lastActivityAt: new Date(Date.now() - 7200000), // 2 hours ago
   },
   {
-    id: "space_tokyo",
+    id: "space_tokyo-neon-nights",
     title: "tokyo neon nights",
     atmosphere: "amber_glow",
     members: [
@@ -101,7 +101,7 @@ const DEMO_SPACES: SpaceListItem[] = [
     lastActivityAt: new Date(Date.now() - 259200000), // 3 days ago
   },
   {
-    id: "space_summer",
+    id: "space_summer-2026",
     title: "summer 2026",
     atmosphere: "gold_warmth",
     members: [

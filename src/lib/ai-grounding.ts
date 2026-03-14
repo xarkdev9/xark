@@ -191,19 +191,19 @@ function getContextualExamples(spaceTitle?: string): [string, string] {
   const t = (spaceTitle ?? "").toLowerCase();
 
   if (/trip|travel|vacation|getaway|visit|weekend/.test(t))
-    return ["find a good hotel near the beach", "what should we do on day one"];
+    return ["@xark find hotels near the beach", "@xark add dates aug 15–25"];
 
   if (/dinner|food|eat|restaurant|lunch|brunch/.test(t))
-    return ["find a good spot nearby", "what's everyone in the mood for"];
+    return ["@xark find a good spot nearby", "@xark compare top 3 options"];
 
   if (/party|birthday|celebration|event|wedding/.test(t))
-    return ["find a venue for us", "what should we plan first"];
+    return ["@xark find a venue for us", "@xark add a budget"];
 
   if (/buy|purchase|shop|gift/.test(t))
-    return ["find the best option", "compare a few choices for me"];
+    return ["@xark find the best option", "@xark compare a few choices"];
 
   // Generic — works for any planning context
-  return ["look into a few options for us", "add an idea to the list"];
+  return ["@xark find a few options", "@xark add an idea to the list"];
 }
 
 export function getGreeting(context: GroundingContext, spaceTitle?: string): string {
@@ -220,7 +220,7 @@ export function getGreeting(context: GroundingContext, spaceTitle?: string): str
   // Logic C — warm onboarding with contextual examples
   const name = spaceTitle ?? "this";
   const [ex1, ex2] = getContextualExamples(spaceTitle);
-  return `what are we thinking for ${name}? just type what's on your mind — something like "${ex1}" or "${ex2}"`;
+  return `try "${ex1}" or "${ex2}"`;
 }
 
 // ── Conflict Checker (Section 8 of mar10_algo.md) ──

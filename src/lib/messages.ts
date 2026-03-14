@@ -35,6 +35,7 @@ export async function saveMessage(msg: {
   role: "user" | "xark";
   content: string;
   userId?: string;
+  senderName?: string;
 }): Promise<void> {
   await supabase.from("messages").insert({
     id: msg.id,
@@ -42,6 +43,7 @@ export async function saveMessage(msg: {
     role: msg.role,
     content: msg.content,
     user_id: msg.userId ?? null,
+    sender_name: msg.senderName ?? null,
   });
 }
 

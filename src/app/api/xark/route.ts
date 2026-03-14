@@ -9,6 +9,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { applyLogisticsExtractions, flagStaleLogistics } from "@/lib/member-logistics";
 
 export async function POST(req: NextRequest) {
+  try {
   const body = await req.json();
   const { message, spaceId: reqSpaceId, userId, confirm_action, payload } = body;
 
@@ -76,6 +77,14 @@ export async function POST(req: NextRequest) {
   // Strip "@xark" prefix
   const userMessage = message.replace(/@xark\s*/i, "").trim();
 
+  // Fetch space title for location context
+  const { data: spaceRow } = await supabaseAdmin
+    .from("spaces")
+    .select("title")
+    .eq("id", spaceId)
+    .single();
+  const spaceTitle = spaceRow?.title ?? "";
+
   // Build grounding context (Tier 1 — always available)
   const groundingContext = await buildGroundingContext(spaceId);
   const groundingPrompt = generateGroundingPrompt(groundingContext);
@@ -94,6 +103,7 @@ export async function POST(req: NextRequest) {
     groundingPrompt,
     recentMessages,
     spaceId,
+    spaceTitle,
   });
 
   // If pending confirmation, return to client without side effects
@@ -133,5 +143,25 @@ export async function POST(req: NextRequest) {
     await supabaseAdmin.from("decision_items").upsert(items, { onConflict: "id" });
   }
 
-  return NextResponse.json({ response: result.response });
+  // Persist @xark response message server-side (RLS blocks role='xark' from client)
+  const xarkMsgId = `msg_${crypto.randomUUID()}`;
+  await supabaseAdmin.from("messages").insert({
+    id: xarkMsgId,
+    space_id: spaceId,
+    role: "xark",
+    content: result.response,
+    user_id: null,
+    sender_name: null,
+  });
+
+  return NextResponse.json({ response: result.response, messageId: xarkMsgId });
+
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[/api/xark] error:", message);
+    return NextResponse.json(
+      { response: `something went wrong: ${message}` },
+      { status: 500 }
+    );
+  }
 }

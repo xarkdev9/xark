@@ -15,6 +15,7 @@ export interface OrchestratorInput {
   groundingPrompt: string;    // from generateGroundingPrompt()
   recentMessages: Array<{ role: string; content: string; sender_name?: string }>;
   spaceId: string;
+  spaceTitle?: string;
 }
 
 export interface OrchestratorResult {
@@ -38,12 +39,18 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     return { response: "intelligence service is not configured." };
   }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   // Step 1: Parse intent via Gemini
   const intentPrompt = buildIntentPrompt(input);
   const intentResult = await model.generateContent(intentPrompt);
   const intentText = intentResult.response.text();
+
+  // Strip markdown code fences if Gemini wraps JSON in ```json ... ```
+  const jsonText = intentText
+    .replace(/^```(?:json)?\s*\n?/i, "")
+    .replace(/\n?```\s*$/i, "")
+    .trim();
 
   let parsed: {
     action: string;
@@ -56,7 +63,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     extractions?: Array<{ user_name: string; category?: string; origin?: string; destination?: string; confidence: number }>;
   };
   try {
-    parsed = JSON.parse(intentText);
+    parsed = JSON.parse(jsonText);
   } catch {
     // Gemini didn't return JSON — treat as direct reasoning response
     return { response: intentText, action: "reason" };
@@ -134,29 +141,37 @@ function buildIntentPrompt(input: OrchestratorInput): string {
   const tools = listTools();
   return `You are @xark, a group coordination assistant. You are silent, precise, and never use emojis.
 
+SPACE: "${input.spaceTitle || "untitled"}"
+
 GROUNDING CONTEXT (current decision state):
 ${input.groundingPrompt}
 
 RECENT MESSAGES (last 15):
 ${input.recentMessages.map((m) => `${m.sender_name || m.role}: ${m.content}`).join("\n")}
 
-AVAILABLE TOOLS: ${tools.join(", ")}
+AVAILABLE TOOLS (with required params):
+- hotel: {location, checkIn?, checkOut?, maxPrice?}
+- flight: {origin, destination, date, returnDate?}
+- activity: {location, category?}
+- restaurant: {location, cuisine?}
+- general: {query}
 
 USER REQUEST: ${input.userMessage}
 
-Respond with JSON only. Choose one action:
-1. {"action": "search", "tool": "<tool-name>", "params": {<tool-specific params>}}
+Respond with a single JSON object only (no markdown, no code fences). Choose one action:
+1. {"action": "search", "tool": "<tool-name>", "params": {<params — location is REQUIRED for hotel/activity/restaurant>}}
 2. {"action": "reason", "directResponse": "<your response to the user>"}
 3. {"action": "propose", "directResponse": "<your response>"}
 4. {"action": "set_dates", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "label": "optional"}
 5. {"action": "populate_logistics", "extractions": [{"user_name": "name", "origin": "AIRPORT", "confidence": 0.95}]}
 
-If the user asks to find/search/look for something, use action "search" with the right tool.
-If the user asks a question about group state, voting, or consensus, use action "reason".
-If the user asks to add an item directly, use action "propose".
-If the user wants to set, change, or confirm trip dates, use action "set_dates". Extract start_date (YYYY-MM-DD), end_date (YYYY-MM-DD), and optional label.
-If you detect member travel origins/destinations in the message, use action "populate_logistics". Extract user_name, origin (airport code or city), and confidence (0-1). Only extract when confidence > 0.8.
-Respond only with the JSON object, nothing else.`;
+Rules:
+- If the user asks to find/search/look for something, use "search". Infer location from the space context or conversation.
+- If the user asks about group state, voting, or consensus, use "reason".
+- If the user asks to add an item, use "propose".
+- For trip dates, use "set_dates" with YYYY-MM-DD format.
+- For travel origins, use "populate_logistics" only when confidence > 0.8.
+- Output raw JSON only. No markdown fences. No explanation.`;
 }
 
 function buildSynthesisPrompt(input: OrchestratorInput, results: ApifyResult[]): string {

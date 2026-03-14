@@ -21,50 +21,71 @@ export function listTools(): string[] {
   return Object.keys(registry);
 }
 
-// Register default tools
+// Register default tools — real Apify actor IDs
+
 registerTool("hotel", {
-  actorId: "apify/hotel-scraper",
+  actorId: "voyager/booking-scraper",
   description: "Search hotels by location, dates, and price range",
   paramMap: (p) => ({
-    location: p.location,
-    checkIn: p.checkIn,
-    checkOut: p.checkOut,
-    maxPrice: p.maxPrice ? Number(p.maxPrice) : undefined,
+    search: p.location,
+    checkIn: p.checkIn || undefined,
+    checkOut: p.checkOut || undefined,
+    currency: "USD",
+    language: "en-us",
+    maxItems: 10,
+    minScore: p.maxPrice ? undefined : "7",
+    // "review_score_and_price" requires dates; "bayesian_review_score" works without
+    sortBy: p.checkIn && p.checkOut ? "review_score_and_price" : "bayesian_review_score",
   }),
 });
 
 registerTool("flight", {
-  actorId: "apify/flight-scraper",
+  actorId: "johnvc/Google-Flights-Data-Scraper-Flight-and-Price-Search",
   description: "Search flights by origin, destination, and dates",
   paramMap: (p) => ({
-    origin: p.origin,
-    destination: p.destination,
-    date: p.date,
-    returnDate: p.returnDate,
+    departure_id: p.origin,
+    arrival_id: p.destination,
+    outbound_date: p.date,
+    return_date: p.returnDate || undefined,
+    currency: p.currency || "USD",
+    max_pages: 1,
   }),
 });
 
 registerTool("activity", {
-  actorId: "apify/activity-finder",
+  actorId: "compass/crawler-google-places",
   description: "Find activities and experiences by location",
   paramMap: (p) => ({
-    location: p.location,
-    category: p.category,
+    searchStringsArray: [
+      p.category
+        ? `${p.category} in ${p.location}`
+        : `things to do in ${p.location}`,
+    ],
+    maxCrawledPlacesPerSearch: 10,
+    language: "en",
   }),
 });
 
 registerTool("restaurant", {
-  actorId: "apify/restaurant-search",
+  actorId: "compass/crawler-google-places",
   description: "Search restaurants by location and cuisine",
   paramMap: (p) => ({
-    location: p.location,
-    cuisine: p.cuisine,
-    maxPrice: p.maxPrice ? Number(p.maxPrice) : undefined,
+    searchStringsArray: [
+      p.cuisine
+        ? `${p.cuisine} restaurants in ${p.location}`
+        : `restaurants in ${p.location}`,
+    ],
+    maxCrawledPlacesPerSearch: 10,
+    language: "en",
   }),
 });
 
 registerTool("general", {
-  actorId: "apify/web-scraper",
+  actorId: "apify/google-search-scraper",
   description: "General web search for any topic",
-  paramMap: (p) => ({ query: p.query }),
+  paramMap: (p) => ({
+    queries: p.query,
+    maxPagesPerQuery: 1,
+    resultsPerPage: 10,
+  }),
 });

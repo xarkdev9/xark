@@ -1,12 +1,12 @@
 // XARK OS v2.0 — SINGLE SOURCE OF TRUTH FOR ALL VISUAL TOKENS
 // Every component imports from here. No local color/timing/opacity constants.
 // ALL colors are CSS variables — changed by ThemeProvider per theme.
+// Font: Inter globally. No per-theme fonts. Consistency = quality.
 
 // ── THEME PRESETS ───────────────────────────────────────────────────────────
-// Day 1: Three themes. Hearth is default (readable in daylight).
-// Hearth = light, warm, oxytocin. Signal = dark, technical, dopamine. Ember = warm dark.
+// 3 light + 3 dark. Hearth is default.
 
-export type ThemeName = "hearth" | "signal" | "ember";
+export type ThemeName = "hearth" | "cloud" | "sage" | "signal" | "noir" | "haze";
 
 export interface ThemeConfig {
   label: string;
@@ -29,36 +29,71 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     accent: "#FF6B35",      // Action Orange — warm hearth glow
     text: "#141414",         // Ink on paper
     bg: "#F0EEE9",          // Warm off-white canvas (Low Cortisol Canvas)
-    // Darkened for contrast on light canvas
     amber: "#9E6A06",       // ~5:1 contrast on #F0EEE9
-    gold: "#8B6914",        // ~4:1 contrast
-    green: "#047857",       // ~4.5:1 contrast
-    orange: "#C43D08",      // ~5:1 contrast
-    gray: "#57576A",        // ~4.5:1 contrast
+    gold: "#8B6914",
+    green: "#047857",
+    orange: "#C43D08",
+    gray: "#57576A",
+  },
+  cloud: {
+    label: "cloud",
+    mode: "light",
+    accent: "#4F46E5",      // Indigo — clean, professional
+    text: "#1E293B",         // Slate-800
+    bg: "#F8FAFC",          // Slate-50 — cool clean white
+    amber: "#92600A",       // Darkened for brighter bg
+    gold: "#7D5A10",
+    green: "#047857",
+    orange: "#B53808",
+    gray: "#4E4E62",
+  },
+  sage: {
+    label: "sage",
+    mode: "light",
+    accent: "#166534",      // Deep forest green — natural, earthy
+    text: "#1C1917",         // Stone-900 — warm ink
+    bg: "#F5F5F0",          // Natural linen
+    amber: "#9E6A06",
+    gold: "#8B6914",
+    green: "#047857",
+    orange: "#C43D08",
+    gray: "#57576A",
   },
   signal: {
     label: "signal",
     mode: "dark",
     accent: "#40E0FF",      // Intelligence Cyan
-    text: "#B2EBF2",        // Signal cyan-white
-    bg: "#05070A",          // Deep navy-black
+    text: "#E0E8F0",        // Cool silver — desaturated, premium readability
+    bg: "#080C14",          // Midnight navy — atmospheric depth for cyan
     amber: "#F5A623",
-    gold: "#FFD700",
-    green: "#10B981",
-    orange: "#e8590c",
-    gray: "#8888a0",
+    gold: "#FFCF40",        // Rich gold
+    green: "#34D399",       // Bright emerald
+    orange: "#F0652A",
+    gray: "#7E8C9A",        // Blue-steel neutral
   },
-  ember: {
-    label: "ember",
+  noir: {
+    label: "noir",
     mode: "dark",
-    accent: "#FF8C42",      // Warm orange
-    text: "#FFF4EC",        // Warm cream
-    bg: "#0F0805",          // Warm dark
+    accent: "#E8C47C",      // Champagne gold — spotlight warmth
+    text: "#EDE8E0",        // Warm cream parchment
+    bg: "#0A0908",          // Warm near-black
     amber: "#F5A623",
-    gold: "#FFD700",
-    green: "#10B981",
-    orange: "#e8590c",
-    gray: "#8888a0",
+    gold: "#FFD040",
+    green: "#34D399",
+    orange: "#F0652A",
+    gray: "#9A9488",        // Warm earthy neutral
+  },
+  haze: {
+    label: "haze",
+    mode: "dark",
+    accent: "#A78BFA",      // Gen-Z violet
+    text: "#E4E0EE",        // Lavender-white
+    bg: "#0A0812",          // Deep indigo-black
+    amber: "#F5A623",
+    gold: "#E8C840",        // Soft gold
+    green: "#34D399",
+    orange: "#F0652A",
+    gray: "#8A82A0",        // Violet-neutral
   },
 };
 
@@ -238,9 +273,6 @@ export function fovealOpacity(index: number, total: number, role: "user" | "xark
 }
 
 // ── TEXT COLOR WITH BAKED OPACITY ─────────────────────────────────────────────
-// Use instead of `color: colors.white; opacity: X;` to prevent descender
-// vanishing on thin strokes. Bakes opacity into the color so the browser
-// antialiaser sees one layer, not two stacked.
 export function textColor(alpha: number): string {
   return `rgba(var(--xark-white-rgb), ${alpha})`;
 }
