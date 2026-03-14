@@ -6,6 +6,7 @@ import { heartSort } from "@/lib/heart-sort";
 import { getConsensusState } from "@/lib/heart-sort";
 import { useReactions } from "@/hooks/useReactions";
 import type { ReactionType } from "@/hooks/useReactions";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { DecisionCard } from "@/components/os/DecisionCard";
 import {
@@ -122,17 +123,23 @@ function HeroBanner({
       animate={{ opacity: 1 }}
       transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Destination photo — full bleed, Ken Burns zoom */}
-      <motion.img
-        src={heroUrl}
-        alt={spaceTitle}
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="eager"
-        onLoad={() => setImgLoaded(true)}
+      {/* Destination photo — full bleed, Ken Burns zoom via wrapper */}
+      <motion.div
+        className="absolute inset-0"
         initial={{ scale: 1.1 }}
         animate={{ scale: imgLoaded ? 1 : 1.1 }}
-        transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] }}
-      />
+        transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] as const }}
+      >
+        <Image
+          src={heroUrl}
+          alt={spaceTitle}
+          fill
+          sizes="100vw"
+          priority
+          className="object-cover"
+          onLoad={() => setImgLoaded(true)}
+        />
+      </motion.div>
 
       {/* Progressive scrim — readable title at bottom, photo breathes at top */}
       <div
@@ -279,17 +286,32 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
 
   const { react, unreact, batchGetUserReactions, isReacting } = useReactions();
 
+  // ── Demo hero images — fallback when no Unsplash key configured ──
+  const DEMO_HEROES: Record<string, string> = {
+    "space_san-diego-trip": "https://images.unsplash.com/photo-1538097304804-2a1b932466a9?w=800&h=500&fit=crop",
+    "space_tokyo-neon-nights": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=500&fit=crop",
+    "space_bali-retreat": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&h=500&fit=crop",
+    "space_summer-2026": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop",
+  };
+
   // ── Fetch space metadata (hero photo + title) ──
   useEffect(() => {
-    supabase
-      .from("spaces")
-      .select("title, metadata")
-      .eq("id", spaceId)
-      .single()
-      .then(({ data }) => {
-        if (data?.metadata?.hero_url) setHeroUrl(data.metadata.hero_url);
-        if (data?.title) setSpaceTitle(data.title);
-      });
+    const fallback = DEMO_HEROES[spaceId] ?? "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop";
+    const fallbackTitle = spaceId.replace(/^space_/, "").replace(/-/g, " ");
+
+    Promise.resolve(
+      supabase
+        .from("spaces")
+        .select("title, metadata")
+        .eq("id", spaceId)
+        .single()
+    ).then(({ data }) => {
+      setHeroUrl(data?.metadata?.hero_url ?? fallback);
+      setSpaceTitle(data?.title ?? fallbackTitle);
+    }).catch(() => {
+      setHeroUrl(fallback);
+      setSpaceTitle(fallbackTitle);
+    });
   }, [spaceId]);
 
   // ── Fetch decision items ──
