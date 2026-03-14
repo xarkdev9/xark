@@ -9,13 +9,15 @@ import type { ReactionType } from "@/hooks/useReactions";
 
 type CardSize = "hero" | "standard" | "mini";
 
+// Sized so 2.5 standard cards visible on 375px mobile (with 24px padding + 12px gaps)
+// (375 - 24 - 48) / 2.5 = ~121px per card + gap → 140px card shows 2.3 with peek
 const DIMENSIONS: Record<
   CardSize,
   { w: number; h: number; pctSize: number; titleSize: string; showReactions: boolean }
 > = {
-  hero: { w: 200, h: 280, pctSize: 34, titleSize: "15px", showReactions: true },
-  standard: { w: 165, h: 240, pctSize: 24, titleSize: "13px", showReactions: true },
-  mini: { w: 110, h: 150, pctSize: 18, titleSize: "10px", showReactions: false },
+  hero: { w: 180, h: 260, pctSize: 30, titleSize: "14px", showReactions: true },
+  standard: { w: 140, h: 200, pctSize: 20, titleSize: "12px", showReactions: true },
+  mini: { w: 100, h: 140, pctSize: 16, titleSize: "10px", showReactions: false },
 };
 
 // Card surfaces are always dark regardless of theme — use fixed light text
