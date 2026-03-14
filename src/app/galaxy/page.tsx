@@ -41,7 +41,7 @@ function GalaxyContent() {
   const { theme } = useThemeContext();
   const isVideoTheme = theme === "aurora" || theme === "coast";
   const videoSrc = theme === "aurora" ? "/themes/aurora-loop.mp4" : "/themes/coast-loop.mp4";
-  const posterSrc = theme === "aurora" ? "/themes/aurora-poster.webp" : "/themes/coast-poster.webp";
+  const posterSrc = theme === "aurora" ? "/themes/aurora-poster.jpg" : "/themes/coast-poster.jpg";
   const [mounted, setMounted] = useState(false);
   const [spaces, setSpaces] = useState<SpaceAwareness[]>([]);
   const [dream, setDream] = useState("");
