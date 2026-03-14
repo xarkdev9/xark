@@ -1,29 +1,67 @@
 // XARK OS v2.0 — Voice Input Hook
-// Tap: on-device SpeechRecognition (instant, no network)
-// Long-press: @xark listening mode (auto-prefixes "@xark")
+// 2-step: Tap mic = dictation. Slide up = @xark listening.
+// Unmissable recording state. Single tap always toggles off.
+// Cleanup on unmount — mic never stays on silently.
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+
+type VoiceMode = "off" | "dictation" | "xark";
 
 interface VoiceInputResult {
   isListening: boolean;
   isXarkListening: boolean;
+  mode: VoiceMode;
   transcript: string;
-  startListening: () => void;
-  startXarkListening: () => void;
-  stopListening: () => void;
+  toggleDictation: () => void;
+  startXarkMode: () => void;
+  stop: () => void;
   error: string | null;
 }
 
 export function useVoiceInput(): VoiceInputResult {
-  const [isListening, setIsListening] = useState(false);
-  const [isXarkListening, setIsXarkListening] = useState(false);
+  const [mode, setMode] = useState<VoiceMode>("off");
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const startListening = useCallback(() => {
+  // Clear safety timeout
+  const clearSafetyTimeout = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount — critical for privacy
+  useEffect(() => {
+    return () => {
+      clearSafetyTimeout();
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, [clearSafetyTimeout]);
+
+  const stop = useCallback(() => {
+    clearSafetyTimeout();
+    try { recognitionRef.current?.stop(); } catch { /* already stopped */ }
+    recognitionRef.current = null;
+    setMode("off");
+  }, [clearSafetyTimeout]);
+
+  const startRecognition = useCallback((targetMode: VoiceMode) => {
+    // Always stop any existing recognition first
+    clearSafetyTimeout();
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch { /* ignore */ }
+      recognitionRef.current = null;
+    }
+
     const SpeechRecognitionAPI =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+      typeof window !== "undefined"
+        ? window.SpeechRecognition || window.webkitSpeechRecognition
+        : null;
+
     if (!SpeechRecognitionAPI) {
       setError("speech recognition not supported");
       return;
@@ -35,71 +73,64 @@ export function useVoiceInput(): VoiceInputResult {
     recognition.lang = "en-US";
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      clearSafetyTimeout();
       const result = event.results[0][0].transcript;
-      setTranscript(result);
-      setIsListening(false);
+      setTranscript(targetMode === "xark" ? `@xark ${result}` : result);
     };
 
     recognition.onerror = () => {
-      setIsListening(false);
+      clearSafetyTimeout();
+      setMode("off");
+      recognitionRef.current = null;
       setError("voice recognition failed");
     };
 
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      clearSafetyTimeout();
+      setMode("off");
+      recognitionRef.current = null;
+    };
 
     recognitionRef.current = recognition;
     recognition.start();
-    setIsListening(true);
+    setMode(targetMode);
     setError(null);
     setTranscript("");
-  }, []);
 
-  const startXarkListening = useCallback(() => {
-    const SpeechRecognitionAPI =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionAPI) {
-      setError("speech recognition not supported");
-      return;
+    // Safety timeout — auto-stop after 10s to prevent stuck mic
+    timeoutRef.current = setTimeout(() => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch { /* ignore */ }
+        recognitionRef.current = null;
+        setMode("off");
+      }
+    }, 10_000);
+  }, [clearSafetyTimeout]);
+
+  const toggleDictation = useCallback(() => {
+    if (mode !== "off") {
+      stop();
+    } else {
+      startRecognition("dictation");
     }
+  }, [mode, stop, startRecognition]);
 
-    const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const result = event.results[0][0].transcript;
-      setTranscript(`@xark ${result}`);
-      setIsXarkListening(false);
-    };
-
-    recognition.onerror = () => {
-      setIsXarkListening(false);
-      setError("voice recognition failed");
-    };
-
-    recognition.onend = () => setIsXarkListening(false);
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsXarkListening(true);
-    setError(null);
-    setTranscript("");
-  }, []);
-
-  const stopListening = useCallback(() => {
-    recognitionRef.current?.stop();
-    setIsListening(false);
-    setIsXarkListening(false);
-  }, []);
+  const startXarkMode = useCallback(() => {
+    if (mode !== "off") {
+      stop();
+    } else {
+      startRecognition("xark");
+    }
+  }, [mode, stop, startRecognition]);
 
   return {
-    isListening,
-    isXarkListening,
+    isListening: mode === "dictation",
+    isXarkListening: mode === "xark",
+    mode,
     transcript,
-    startListening,
-    startXarkListening,
-    stopListening,
+    toggleDictation,
+    startXarkMode,
+    stop,
     error,
   };
 }

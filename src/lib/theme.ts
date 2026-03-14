@@ -4,9 +4,9 @@
 // Font: Inter globally. No per-theme fonts. Consistency = quality.
 
 // ── THEME PRESETS ───────────────────────────────────────────────────────────
-// 2 light + 1 dark. Hearth is default.
+// Hearth only. Light theme. Default.
 
-export type ThemeName = "hearth" | "aurora" | "coast";
+export type ThemeName = "hearth";
 
 export interface ThemeConfig {
   label: string;
@@ -29,30 +29,6 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     accent: "#FF6B35",
     text: "#141414",
     bg: "#F0EEE9",
-    amber: "#9E6A06",
-    gold: "#8B6914",
-    green: "#047857",
-    orange: "#C43D08",
-    gray: "#57576A",
-  },
-  aurora: {
-    label: "aurora",
-    mode: "dark",
-    accent: "#34D399",
-    text: "#E0EEF0",
-    bg: "#040810",
-    amber: "#F5A623",
-    gold: "#FFCF40",
-    green: "#34D399",
-    orange: "#F0652A",
-    gray: "#7E8C9A",
-  },
-  coast: {
-    label: "coast",
-    mode: "light",
-    accent: "#C88A3C",
-    text: "#1C1812",
-    bg: "#F0E8DA",
     amber: "#9E6A06",
     gold: "#8B6914",
     green: "#047857",
@@ -117,7 +93,7 @@ export const timing = {
 // To scale for accessibility: multiply all fontSizes here.
 export const text = {
   hero: {
-    fontSize: "1.5rem",
+    fontSize: "1.625rem",
     fontWeight: 400 as const,
     lineHeight: 1.4,
     letterSpacing: "-0.01em",
@@ -129,48 +105,48 @@ export const text = {
     letterSpacing: "-0.01em",
   },
   listTitle: {
-    fontSize: "1.0625rem",
+    fontSize: "1.125rem",
     fontWeight: 400 as const,
     lineHeight: 1.4,
     letterSpacing: "-0.01em",
   },
   body: {
-    fontSize: "1rem",
+    fontSize: "1.0625rem",
     fontWeight: 400 as const,
     lineHeight: 1.45,
     letterSpacing: "0.01em",
   },
   subtitle: {
-    fontSize: "0.875rem",
+    fontSize: "0.9375rem",
     fontWeight: 300 as const,
     lineHeight: 1.45,
     letterSpacing: "0.01em",
   },
   label: {
-    fontSize: "0.75rem",
+    fontSize: "0.8125rem",
     fontWeight: 300 as const,
     lineHeight: 1.4,
     letterSpacing: "0.12em",
     textTransform: "uppercase" as const,
   },
   recency: {
-    fontSize: "0.6875rem",
+    fontSize: "0.75rem",
     fontWeight: 300 as const,
     lineHeight: 1.4,
     letterSpacing: "0.08em",
   },
   timestamp: {
-    fontSize: "0.625rem",
+    fontSize: "0.6875rem",
     fontWeight: 300 as const,
     lineHeight: 1.4,
   },
   input: {
-    fontSize: "1rem",
+    fontSize: "1.0625rem",
     fontWeight: 400 as const,
     letterSpacing: "0.02em",
   },
   hint: {
-    fontSize: "0.75rem",
+    fontSize: "0.8125rem",
     fontWeight: 300 as const,
     letterSpacing: "0.08em",
   },

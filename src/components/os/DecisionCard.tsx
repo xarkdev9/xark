@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { motion } from "framer-motion";
 import { getConsensusState } from "@/lib/heart-sort";
 import type { ConsensusState } from "@/lib/heart-sort";
-import { colors, text, timing } from "@/lib/theme";
+import { timing } from "@/lib/theme";
 import type { ReactionType } from "@/hooks/useReactions";
 
 type CardSize = "hero" | "standard" | "mini";
@@ -13,10 +13,15 @@ const DIMENSIONS: Record<
   CardSize,
   { w: number; h: number; pctSize: number; titleSize: string; showReactions: boolean }
 > = {
-  hero: { w: 160, h: 230, pctSize: 30, titleSize: "13px", showReactions: true },
-  standard: { w: 135, h: 200, pctSize: 20, titleSize: "11px", showReactions: true },
-  mini: { w: 100, h: 130, pctSize: 16, titleSize: "9px", showReactions: false },
+  hero: { w: 200, h: 280, pctSize: 34, titleSize: "15px", showReactions: true },
+  standard: { w: 165, h: 240, pctSize: 24, titleSize: "13px", showReactions: true },
+  mini: { w: 110, h: 150, pctSize: 18, titleSize: "10px", showReactions: false },
 };
+
+// Card surfaces are always dark regardless of theme — use fixed light text
+const CARD_TEXT = "#E8E8EC";
+const CARD_TEXT_DIM = "rgba(232, 232, 236, 0.5)";
+const CARD_TEXT_GHOST = "rgba(232, 232, 236, 0.25)";
 
 const CATEGORY_GRADIENTS: Record<string, string> = {
   hotel: "linear-gradient(160deg, #8a6a4a 0%, #3a2818 100%)",
@@ -28,16 +33,24 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   general: "linear-gradient(160deg, #2a2a3a 0%, #0a0a14 100%)",
 };
 
+// Bright signal colors for dark card surfaces (theme-independent)
+const CARD_AMBER = "#F5A623";
+const CARD_GOLD = "#FFCF40";
+const CARD_CYAN = "#40E0FF";
+const CARD_GREEN = "#34D399";
+const CARD_ORANGE = "#F0652A";
+const CARD_GRAY = "#9CA3AF";
+
 function consensusColor(state: ConsensusState): string {
-  if (state === "ignited") return colors.gold;
-  if (state === "steady") return colors.cyan;
-  return colors.amber;
+  if (state === "ignited") return CARD_GOLD;
+  if (state === "steady") return CARD_CYAN;
+  return CARD_AMBER;
 }
 
 const SIGNALS: { type: ReactionType; label: string; color: string }[] = [
-  { type: "love_it", label: "love", color: colors.amber },
-  { type: "works_for_me", label: "okay", color: colors.gray },
-  { type: "not_for_me", label: "pass", color: colors.orange },
+  { type: "love_it", label: "love", color: CARD_AMBER },
+  { type: "works_for_me", label: "okay", color: CARD_GRAY },
+  { type: "not_for_me", label: "pass", color: CARD_ORANGE },
 ];
 
 interface DecisionCardProps {
@@ -117,19 +130,19 @@ export function DecisionCard({
           backgroundPosition: "center",
         }}
       />
-      {/* Single scrim — replaces 3 separate gradient layers */}
+      {/* Single scrim — lets image breathe at top, solid at bottom for text */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 25%, rgba(10,10,16,0.75) 45%, rgba(10,10,16,0.95) 60%, #0a0a10 72%)",
+            "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.08) 30%, rgba(10,10,16,0.6) 50%, rgba(10,10,16,0.92) 65%, #0a0a10 80%)",
         }}
       />
 
       {/* Data zone */}
       <div
         className="absolute inset-x-0 bottom-0 px-3"
-        style={{ paddingBottom: dim.showReactions ? "36px" : "10px" }}
+        style={{ paddingBottom: dim.showReactions ? "44px" : "12px" }}
       >
         {/* Consensus % — the brightest thing */}
         <div style={{ marginBottom: "6px" }}>
@@ -152,11 +165,11 @@ export function DecisionCard({
           {pct > 0 && (
             <span
               style={{
-                fontSize: `${Math.round(dim.pctSize * 0.38)}px`,
+                fontSize: `${Math.round(dim.pctSize * 0.4)}px`,
                 color: cColor,
-                opacity: 0.3,
+                opacity: 0.4,
                 verticalAlign: "super",
-                marginLeft: "1px",
+                marginLeft: "2px",
               }}
             >
               %
@@ -167,7 +180,7 @@ export function DecisionCard({
             style={{
               marginTop: "4px",
               height: "2px",
-              background: "rgba(255,255,255,0.04)",
+              background: "rgba(255,255,255,0.1)",
               borderRadius: "1px",
               overflow: "hidden",
             }}
@@ -192,8 +205,7 @@ export function DecisionCard({
           style={{
             fontSize: dim.titleSize,
             fontWeight: 400,
-            color: colors.white,
-            opacity: 0.9,
+            color: CARD_TEXT,
             lineHeight: 1.3,
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -207,12 +219,11 @@ export function DecisionCard({
         {price && size !== "mini" && (
           <span
             style={{
-              fontSize: "9px",
+              fontSize: size === "hero" ? "11px" : "10px",
               fontWeight: 300,
-              color: colors.white,
-              opacity: 0.25,
+              color: CARD_TEXT_DIM,
               display: "inline-block",
-              marginTop: "3px",
+              marginTop: "4px",
             }}
           >
             {price}
@@ -222,10 +233,9 @@ export function DecisionCard({
         {price && size === "mini" && (
           <span
             style={{
-              fontSize: "8px",
+              fontSize: "9px",
               fontWeight: 300,
-              color: colors.white,
-              opacity: 0.2,
+              color: CARD_TEXT_GHOST,
               display: "inline-block",
               marginTop: "2px",
             }}
@@ -238,8 +248,8 @@ export function DecisionCard({
       {/* Reactions — hero + standard only */}
       {dim.showReactions && (
         <div
-          className="absolute inset-x-0 bottom-0 flex items-center justify-between px-3"
-          style={{ height: "32px" }}
+          className="absolute inset-x-0 bottom-0 flex items-center justify-around px-2"
+          style={{ height: "40px" }}
         >
           {SIGNALS.map((signal) => {
             const isActive = activeReaction === signal.type;
@@ -260,11 +270,13 @@ export function DecisionCard({
                 }}
                 className="outline-none"
                 style={{
-                  ...text.subtitle,
-                  fontSize: size === "hero" ? "12px" : "10px",
-                  color: isActive ? signal.color : colors.white,
-                  opacity: isActive ? 1 : activeReaction ? 0.1 : 0.35,
+                  fontSize: size === "hero" ? "13px" : "12px",
+                  fontWeight: 400,
+                  letterSpacing: "0.04em",
+                  color: isActive ? signal.color : CARD_TEXT,
+                  opacity: isActive ? 1 : activeReaction ? 0.15 : 0.55,
                   cursor: "pointer",
+                  padding: "6px 4px",
                   textShadow: isActive
                     ? `0 0 16px ${signal.color}, 0 0 6px ${signal.color}`
                     : "none",

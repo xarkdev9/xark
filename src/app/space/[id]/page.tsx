@@ -17,9 +17,11 @@ import { supabase } from "@/lib/supabase";
 import {
   fetchMessages,
   saveMessage,
+  broadcastMessage,
   subscribeToMessages,
   unsubscribeFromMessages,
 } from "@/lib/messages";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { computeSpaceState } from "@/lib/space-state";
 import type { SpaceStateItem } from "@/lib/space-state";
 import { colors, text, textColor, timing } from "@/lib/theme";
@@ -51,9 +53,9 @@ function SpacePageInner() {
   const isInvite = searchParams.get("invite") === "true";
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth(userName);
-  const resolvedUserId = ((user?.uid ?? userName) || undefined) as
-    | string
-    | undefined;
+  // CRITICAL: userId must come from authenticated user only (e.g., "name_ram"),
+  // never from raw URL param (e.g., "ram"). RLS checks user_id = auth.jwt()->>'sub'.
+  const resolvedUserId = user?.uid ?? undefined;
 
   const [view, setView] = useState<ViewMode>("discuss");
   const [spaceTitle, setSpaceTitle] = useState<string>("");
@@ -68,6 +70,7 @@ function SpacePageInner() {
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const messagesLoaded = useRef(false);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   // ── Fetch persisted messages AFTER auth resolves ──
   useEffect(() => {
@@ -93,7 +96,7 @@ function SpacePageInner() {
       });
   }, [spaceId, authLoading]);
 
-  // ── Supabase Realtime — live message sync across devices ──
+  // ── Broadcast channel — instant message delivery across devices ──
   useEffect(() => {
     const channel = subscribeToMessages(spaceId, (incoming) => {
       setMessages((prev) => {
@@ -110,14 +113,24 @@ function SpacePageInner() {
         ];
       });
     });
+    channelRef.current = channel;
 
-    return () => unsubscribeFromMessages(channel);
+    return () => {
+      unsubscribeFromMessages(channel);
+      channelRef.current = null;
+    };
   }, [spaceId]);
 
   // ── Send message — works from any view ──
   const sendMessage = useCallback(async () => {
     const txt = input.trim();
     if (!txt || isThinking) return;
+
+    // Guard: must have authenticated userId for RLS INSERT
+    if (!resolvedUserId) {
+      console.warn("[xark] sendMessage blocked: no authenticated userId yet");
+      return;
+    }
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -131,7 +144,20 @@ function SpacePageInner() {
     setInput("");
     setIsThinking(true);
 
-    // Persist user message client-side (RLS-aware)
+    // Broadcast for instant delivery to other users (~50ms)
+    if (channelRef.current) {
+      broadcastMessage(channelRef.current, {
+        id: userMsg.id,
+        space_id: spaceId,
+        role: "user",
+        content: userMsg.content,
+        user_id: resolvedUserId ?? null,
+        sender_name: user?.displayName ?? userName ?? null,
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    // Persist to DB for durability (async, RLS-aware)
     saveMessage({
       id: userMsg.id,
       spaceId,
@@ -139,7 +165,9 @@ function SpacePageInner() {
       content: userMsg.content,
       userId: resolvedUserId,
       senderName: user?.displayName ?? userName,
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error("[xark] message not saved:", err?.message ?? err);
+    });
 
     try {
       const response = await fetch("/api/xark", {
@@ -204,8 +232,9 @@ function SpacePageInner() {
   // SPACE METADATA
   // ═══════════════════════════════════════════
 
-  // ── Fetch space title ──
+  // ── Fetch space title (after auth resolves for RLS) ──
   useEffect(() => {
+    if (authLoading) return;
     async function loadTitle() {
       try {
         const { data } = await supabase
@@ -226,10 +255,11 @@ function SpacePageInner() {
       );
     }
     loadTitle();
-  }, [spaceId]);
+  }, [spaceId, authLoading]);
 
-  // ── Fetch decision items for space state computation ──
+  // ── Fetch decision items for space state computation (after auth resolves) ──
   useEffect(() => {
+    if (authLoading) return;
     async function loadItems() {
       try {
         const { data } = await supabase
@@ -242,7 +272,7 @@ function SpacePageInner() {
       }
     }
     loadItems();
-  }, [spaceId]);
+  }, [spaceId, authLoading]);
 
   const spaceState = computeSpaceState(spaceItems);
   const showItinerary =
@@ -474,7 +504,7 @@ function SpacePageInner() {
         />
       )}
       {view === "decide" && (
-        <PossibilityHorizon spaceId={spaceId} userId={resolvedUserId} />
+        <PossibilityHorizon spaceId={spaceId} userId={resolvedUserId} authLoading={authLoading} />
       )}
       {view === "itinerary" && <ItineraryView spaceId={spaceId} />}
       {view === "memories" && <MemoriesView spaceId={spaceId} />}

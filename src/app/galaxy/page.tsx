@@ -18,8 +18,6 @@ import { colors, opacity, timing, layout, text, textColor } from "@/lib/theme";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar } from "@/components/os/Avatar";
 import { Whisper, dismissOnboardingWhisper } from "@/components/os/OnboardingWhispers";
-import { VideoBackground } from "@/components/os/VideoBackground";
-import { useThemeContext } from "@/components/os/ThemeProvider";
 
 // ── People icon for contact picker trigger ──
 function PeopleIcon({ color, size = 20 }: { color: string; size?: number }) {
@@ -38,10 +36,6 @@ function GalaxyContent() {
   const searchParams = useSearchParams();
   const userName = searchParams.get("name") ?? "";
   const { user } = useAuth(userName || undefined);
-  const { theme } = useThemeContext();
-  const isVideoTheme = theme === "aurora" || theme === "coast";
-  const videoSrc = theme === "aurora" ? "/themes/aurora-loop.mp4" : "/themes/coast-loop.mp4";
-  const posterSrc = theme === "aurora" ? "/themes/aurora-poster.jpg" : "/themes/coast-poster.jpg";
   const [mounted, setMounted] = useState(false);
   const [spaces, setSpaces] = useState<SpaceAwareness[]>([]);
   const [dream, setDream] = useState("");
@@ -158,44 +152,25 @@ function GalaxyContent() {
 
   return (
     <div className="relative flex min-h-svh flex-col">
-      {/* ── Background: Video (aurora/coast) or Spectrum Wash (hearth) ── */}
-      {isVideoTheme ? (
-        <div className="fixed inset-0" style={{ zIndex: 0 }}>
-          <VideoBackground videoSrc={videoSrc} posterSrc={posterSrc}>
-            {/* Shelf gradient — solid ground for items */}
-            <div
-              className="absolute inset-0"
-              style={{
-                background: theme === "aurora"
-                  ? "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(4,8,16,0.5) 48%, rgba(4,8,16,0.9) 58%, #040810 68%)"
-                  : "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(240,232,218,0.5) 48%, rgba(240,232,218,0.9) 58%, #F0E8DA 68%)",
-                zIndex: 2,
-              }}
-            />
-          </VideoBackground>
-        </div>
-      ) : (
-        <>
-          {/* ── Spectrum Wash (hearth) ── */}
-          <div
-            className="pointer-events-none fixed inset-0"
-            style={{
-              background: [
-                `radial-gradient(ellipse 70% 50% at 30% 30%, rgba(var(--xark-accent-rgb), ${opacity.meshCyan}) 0%, transparent 60%)`,
-                `radial-gradient(ellipse 60% 40% at 70% 60%, rgba(var(--xark-amber-rgb), ${recentActivity ? 0.05 : opacity.meshAmber}) 0%, transparent 50%)`,
-              ].join(", "),
-            }}
-          />
-          {/* ── Mesh Pulse ── */}
-          <div
-            className="pointer-events-none fixed inset-0"
-            style={{
-              background: `radial-gradient(ellipse 80% 60% at 50% 40%, rgba(var(--xark-white-rgb), 0.03) 0%, transparent 100%)`,
-              animation: `meshPulse ${timing.meshPulse} ease-in-out infinite`,
-            }}
-          />
-        </>
-      )}
+      {/* ── Spectrum Wash ── */}
+      <div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background: [
+            `radial-gradient(ellipse 70% 50% at 30% 30%, rgba(var(--xark-accent-rgb), ${opacity.meshCyan}) 0%, transparent 60%)`,
+            `radial-gradient(ellipse 60% 40% at 70% 60%, rgba(var(--xark-amber-rgb), ${recentActivity ? 0.05 : opacity.meshAmber}) 0%, transparent 50%)`,
+          ].join(", "),
+        }}
+      />
+
+      {/* ── Mesh Pulse ── */}
+      <div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background: `radial-gradient(ellipse 80% 60% at 50% 40%, rgba(var(--xark-white-rgb), 0.03) 0%, transparent 100%)`,
+          animation: `meshPulse ${timing.meshPulse} ease-in-out infinite`,
+        }}
+      />
 
       {/* ── Content ── */}
       <motion.div
@@ -304,13 +279,49 @@ function GalaxyContent() {
             >
               <p
                 style={{
-                  ...text.listTitle,
+                  ...text.hero,
                   color: colors.white,
-                  opacity: opacity.tertiary,
+                  opacity: opacity.secondary,
                 }}
               >
-                who are you planning with?
+                start something
               </p>
+              <p
+                className="mt-4"
+                style={{
+                  ...text.subtitle,
+                  color: colors.white,
+                  opacity: opacity.tertiary,
+                  maxWidth: "280px",
+                  lineHeight: 1.6,
+                }}
+              >
+                type a plan below, or @someone to message a friend
+              </p>
+              <motion.div
+                className="mt-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.5, duration: 1 }}
+              >
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => inputRef.current?.focus()}
+                  onKeyDown={(e) => { if (e.key === "Enter") inputRef.current?.focus(); }}
+                  className="cursor-pointer outline-none"
+                  style={{
+                    ...text.label,
+                    color: colors.cyan,
+                    opacity: 0.5,
+                    transition: `opacity ${timing.transition} ease`,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.8"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.5"; }}
+                >
+                  try it
+                </span>
+              </motion.div>
             </motion.div>
           )}
         </div>

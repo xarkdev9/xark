@@ -1,9 +1,9 @@
 // XARK OS v2.0 — MESSAGE PERSISTENCE
 // Supabase Postgres for chat message storage.
-// Supabase Realtime for live multi-user sync.
+// Supabase Broadcast for instant delivery (~50ms). DB for durability.
 // Graceful fallback: returns empty / no-ops when Supabase is unreachable.
 
-import { supabase } from "./supabase";
+import { supabase, hasSupabaseAuth } from "./supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface ChatMessage {
@@ -24,7 +24,11 @@ export async function fetchMessages(spaceId: string): Promise<ChatMessage[]> {
     .eq("space_id", spaceId)
     .order("created_at", { ascending: true });
 
-  if (error || !data) return [];
+  if (error) {
+    console.error("[xark] fetchMessages failed:", error.message, { spaceId });
+    return [];
+  }
+  if (!data) return [];
   return data as ChatMessage[];
 }
 
@@ -37,7 +41,11 @@ export async function saveMessage(msg: {
   userId?: string;
   senderName?: string;
 }): Promise<void> {
-  await supabase.from("messages").insert({
+  const hasJWT = hasSupabaseAuth();
+  if (!hasJWT) {
+    console.error("[xark] saveMessage: NO JWT on Supabase client! userId:", msg.userId);
+  }
+  const { error } = await supabase.from("messages").insert({
     id: msg.id,
     space_id: msg.spaceId,
     role: msg.role,
@@ -45,30 +53,39 @@ export async function saveMessage(msg: {
     user_id: msg.userId ?? null,
     sender_name: msg.senderName ?? null,
   });
+  if (error) {
+    console.error("[xark] saveMessage failed:", error.message, { userId: msg.userId, spaceId: msg.spaceId, hasJWT });
+    throw error;
+  }
 }
 
-// ── Subscribe to new messages via Supabase Realtime ──
+// ── Subscribe via Broadcast — instant WebSocket delivery, bypasses DB WAL ──
 export function subscribeToMessages(
   spaceId: string,
   onMessage: (msg: ChatMessage) => void
 ): RealtimeChannel {
   const channel = supabase
-    .channel(`messages:${spaceId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "messages",
-        filter: `space_id=eq.${spaceId}`,
-      },
-      (payload) => {
-        onMessage(payload.new as ChatMessage);
-      }
-    )
+    .channel(`chat:${spaceId}`, {
+      config: { broadcast: { self: false } },
+    })
+    .on("broadcast", { event: "message" }, ({ payload }) => {
+      onMessage(payload as ChatMessage);
+    })
     .subscribe();
 
   return channel;
+}
+
+// ── Broadcast a message for instant delivery to other users ──
+export function broadcastMessage(
+  channel: RealtimeChannel,
+  msg: ChatMessage
+): void {
+  channel.send({
+    type: "broadcast",
+    event: "message",
+    payload: msg,
+  });
 }
 
 // ── Unsubscribe cleanup ──

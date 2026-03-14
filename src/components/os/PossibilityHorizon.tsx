@@ -56,11 +56,11 @@ interface PossibilityHorizonProps {
 // ── Demo items ──
 const DEMO_ITEMS: Record<string, DecisionItem[]> = {
   "space_san-diego-trip": [
-    { id: "demo_h1", title: "Hotel Del Coronado", category: "Hotel", weighted_score: 10, agreement_score: 0.92, is_locked: true, state: "locked", metadata: { price: "$450/nt", source: "booking.com" }, created_at: new Date().toISOString() },
-    { id: "demo_h2", title: "Coronado Island Marriott", category: "Hotel", weighted_score: 3, agreement_score: 0.45, is_locked: false, state: "ranked", metadata: { price: "$320/nt", source: "marriott.com" }, created_at: new Date().toISOString() },
-    { id: "demo_a1", title: "Surf Lessons at La Jolla", category: "Activity", weighted_score: 6, agreement_score: 0.45, is_locked: false, state: "ranked", metadata: { price: "$95/person", source: "surfschool.com" }, created_at: new Date().toISOString() },
-    { id: "demo_a2", title: "Balboa Park", category: "Activity", weighted_score: 4, agreement_score: 0.45, is_locked: false, state: "proposed", metadata: { price: "Free" }, created_at: new Date().toISOString() },
-    { id: "demo_d1", title: "Gaslamp Quarter Dinner", category: "Dining", weighted_score: 8, agreement_score: 0.92, is_locked: true, state: "locked", metadata: { price: "$65/person" }, created_at: new Date().toISOString() },
+    { id: "demo_h1", title: "Hotel Del Coronado", category: "Hotel", weighted_score: 10, agreement_score: 0.92, is_locked: true, state: "locked", metadata: { image_url: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=400&h=500&fit=crop", price: "$450/nt", source: "booking.com" }, created_at: new Date().toISOString() },
+    { id: "demo_h2", title: "Coronado Island Marriott", category: "Hotel", weighted_score: 3, agreement_score: 0.45, is_locked: false, state: "ranked", metadata: { image_url: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=500&fit=crop", price: "$320/nt", source: "marriott.com" }, created_at: new Date().toISOString() },
+    { id: "demo_a1", title: "Surf Lessons at La Jolla", category: "Activity", weighted_score: 6, agreement_score: 0.45, is_locked: false, state: "ranked", metadata: { image_url: "https://images.unsplash.com/photo-1502680390548-bdbac40e4a9f?w=400&h=500&fit=crop", price: "$95/person", source: "surfschool.com" }, created_at: new Date().toISOString() },
+    { id: "demo_a2", title: "Balboa Park", category: "Activity", weighted_score: 4, agreement_score: 0.45, is_locked: false, state: "proposed", metadata: { image_url: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=400&h=500&fit=crop", price: "Free" }, created_at: new Date().toISOString() },
+    { id: "demo_d1", title: "Gaslamp Quarter Dinner", category: "Dining", weighted_score: 8, agreement_score: 0.92, is_locked: true, state: "locked", metadata: { image_url: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=500&fit=crop", price: "$65/person" }, created_at: new Date().toISOString() },
   ],
 };
 
@@ -95,8 +95,8 @@ function ShimmerCard({ delay = 0 }: { delay?: number }) {
     <motion.div
       className="flex-shrink-0"
       style={{
-        width: "135px",
-        height: "200px",
+        width: "165px",
+        height: "240px",
         borderRadius: "16px",
         background:
           "linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 100%)",

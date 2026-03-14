@@ -30,9 +30,16 @@ export function setSupabaseToken(token: string | null): void {
         },
       },
     });
+    console.log("[xark-auth] JWT set on Supabase client");
   } else {
     authedClient = null;
+    console.log("[xark-auth] JWT cleared from Supabase client");
   }
+}
+
+// Check if the Supabase client has an authenticated token set.
+export function hasSupabaseAuth(): boolean {
+  return authedClient !== null;
 }
 
 // The active Supabase client — uses auth token when available.

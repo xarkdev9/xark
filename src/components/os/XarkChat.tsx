@@ -1,8 +1,8 @@
 "use client";
 
 // XARK OS v2.0 — Chat Display (Display-Only)
-// Message stream rendering. No input, no fetch, no send.
-// State (messages, input, send) lives in Space page.
+// Message stream with avatars + visual hierarchy (name vs message).
+// No input, no fetch, no send — state lives in Space page.
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +28,7 @@ import {
   fovealOpacity,
   textColor,
 } from "@/lib/theme";
+import { Avatar } from "@/components/os/Avatar";
 import type { ChatMessage } from "@/app/space/[id]/page";
 
 interface XarkChatProps {
@@ -178,7 +179,7 @@ export function XarkChat({
         {/* ── Spacer pushes greeting toward bottom when stream is empty ── */}
         {allMessages.length === 0 && <div style={{ flex: 1 }} />}
 
-        {/* ── Messages — Grouped by sender, WhatsApp-dense ── */}
+        {/* ── Messages — Grouped by sender, WhatsApp-dense, with avatars ── */}
         <AnimatePresence initial={false}>
           {allMessages.map((msg, index) => {
             // ── System messages ──
@@ -229,7 +230,11 @@ export function XarkChat({
 
             const prevMsg = index > 0 ? allMessages[index - 1] : null;
             const sameSender = prevMsg && senderLabel(prevMsg) === label;
-            const topGap = sameSender ? "mt-0.5" : index === 0 ? "" : "mt-3";
+            const topGap = sameSender ? "mt-0.5" : index === 0 ? "" : "mt-4";
+
+            // Avatar: show only on first message of a group
+            const showAvatar = !sameSender;
+            const avatarName = msg.role === "xark" ? "xark" : (msg.senderName ?? "you");
 
             return (
               <motion.div
@@ -251,46 +256,74 @@ export function XarkChat({
                     isOtherUser || msg.role === "xark" ? "auto" : "0",
                 }}
               >
-                {/* ── Role / Sender label ── */}
-                {!sameSender && (
-                  <span
-                    role={canOpenSanctuary ? "button" : undefined}
-                    tabIndex={canOpenSanctuary ? 0 : undefined}
-                    onClick={
-                      canOpenSanctuary
-                        ? () => openSanctuary(msg.senderName!)
-                        : undefined
-                    }
-                    onKeyDown={
-                      canOpenSanctuary
-                        ? (e) => {
-                            if (e.key === "Enter")
-                              openSanctuary(msg.senderName!);
-                          }
-                        : undefined
-                    }
-                    className="outline-none"
-                    style={{
-                      ...text.label,
-                      color:
-                        msg.role === "xark" ? colors.cyan : colors.white,
-                      opacity: Math.min(0.35, msgOpacity),
-                      cursor: canOpenSanctuary ? "pointer" : "default",
-                      transition: "opacity 0.3s ease",
-                    }}
-                  >
-                    {label}
-                  </span>
+                {/* ── Avatar + Name row ── */}
+                {showAvatar && (
+                  <div className="flex items-center gap-2 mb-1">
+                    {msg.role === "xark" ? (
+                      <div
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "rgba(var(--xark-accent-rgb), 0.12)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            backgroundColor: colors.cyan,
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Avatar name={avatarName} size={24} />
+                    )}
+
+                    <span
+                      role={canOpenSanctuary ? "button" : undefined}
+                      tabIndex={canOpenSanctuary ? 0 : undefined}
+                      onClick={
+                        canOpenSanctuary
+                          ? () => openSanctuary(msg.senderName!)
+                          : undefined
+                      }
+                      onKeyDown={
+                        canOpenSanctuary
+                          ? (e) => {
+                              if (e.key === "Enter")
+                                openSanctuary(msg.senderName!);
+                            }
+                          : undefined
+                      }
+                      className="outline-none"
+                      style={{
+                        ...text.body,
+                        color:
+                          msg.role === "xark" ? colors.cyan : colors.white,
+                        opacity: msg.role === "xark" ? 0.8 : 0.9,
+                        cursor: canOpenSanctuary ? "pointer" : "default",
+                        transition: "opacity 0.3s ease",
+                      }}
+                    >
+                      {label}
+                    </span>
+                  </div>
                 )}
 
                 {/* ── Content + inline timestamp ── */}
                 <p
                   style={{
-                    ...text.body,
+                    ...text.subtitle,
                     color: colors.white,
-                    opacity: msgOpacity,
+                    opacity: msgOpacity * 0.85,
                     transition: "opacity 0.6s ease",
-                    marginTop: sameSender ? 0 : "2px",
+                    paddingLeft: showAvatar ? "32px" : "32px",
                   }}
                 >
                   {msg.content}
@@ -396,34 +429,49 @@ export function XarkChat({
         {/* ── Thinking state ── */}
         {isThinking && (
           <div className="mb-4">
-            <span
-              style={{
-                ...text.label,
-                color: colors.cyan,
-                opacity: 0.4,
-              }}
-            >
-              @xark
-            </span>
-            <div className="mt-1 flex items-center gap-3">
+            <div className="flex items-center gap-2 mb-1">
               <div
                 style={{
-                  width: "6px",
-                  height: "6px",
+                  width: 24,
+                  height: 24,
                   borderRadius: "50%",
-                  backgroundColor: colors.cyan,
-                  animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(var(--xark-accent-rgb), 0.12)",
+                  flexShrink: 0,
                 }}
-              />
+              >
+                <div
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    backgroundColor: colors.cyan,
+                    animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+                  }}
+                />
+              </div>
               <span
                 style={{
-                  ...text.hint,
+                  ...text.body,
+                  color: colors.cyan,
+                  opacity: 0.8,
+                }}
+              >
+                @xark
+              </span>
+            </div>
+            <div className="flex items-center gap-3" style={{ paddingLeft: "32px" }}>
+              <span
+                style={{
+                  ...text.subtitle,
                   color: colors.cyan,
                   opacity: 0.4,
                   animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
                 }}
               >
-                thinking
+                thinking...
               </span>
             </div>
           </div>
@@ -432,21 +480,44 @@ export function XarkChat({
         {/* ── Greeting — near input, guiding first action ── */}
         {allMessages.length === 0 && (
           <div style={{ maxWidth: "640px", marginBottom: "16px" }}>
-            <span
-              style={{
-                ...text.label,
-                color: colors.cyan,
-                opacity: 0.4,
-              }}
-            >
-              @xark
-            </span>
+            <div className="flex items-center gap-2 mb-1">
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(var(--xark-accent-rgb), 0.08)",
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    backgroundColor: colors.cyan,
+                  }}
+                />
+              </div>
+              <span
+                style={{
+                  ...text.body,
+                  color: colors.cyan,
+                  opacity: 0.5,
+                }}
+              >
+                @xark
+              </span>
+            </div>
             <p
-              className="mt-1"
               style={{
-                ...text.hint,
+                ...text.subtitle,
                 color: colors.white,
                 opacity: 0.35,
+                paddingLeft: "32px",
               }}
             >
               {groundingContext
@@ -489,9 +560,9 @@ export function XarkChat({
               <div className="mx-auto" style={{ maxWidth: "640px" }}>
                 <span
                   style={{
-                    ...text.label,
+                    ...text.body,
                     color: colors.cyan,
-                    opacity: 0.4,
+                    opacity: 0.6,
                   }}
                 >
                   {sanctuaryName}
@@ -514,32 +585,35 @@ export function XarkChat({
                     return (
                       <div
                         key={msg.id}
-                        className={sameSender ? "mt-0.5" : i === 0 ? "" : "mt-3"}
+                        className={sameSender ? "mt-0.5" : i === 0 ? "" : "mt-4"}
                       >
                         {!sameSender && (
-                          <span
-                            style={{
-                              ...text.label,
-                              color:
-                                msg.role === "xark"
-                                  ? colors.cyan
-                                  : colors.white,
-                              opacity: 0.35,
-                            }}
-                          >
-                            {label}
-                          </span>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Avatar name={label} size={24} />
+                            <span
+                              style={{
+                                ...text.body,
+                                color:
+                                  msg.role === "xark"
+                                    ? colors.cyan
+                                    : colors.white,
+                                opacity: 0.9,
+                              }}
+                            >
+                              {label}
+                            </span>
+                          </div>
                         )}
                         <p
                           style={{
-                            ...text.body,
+                            ...text.subtitle,
                             color: colors.white,
                             opacity: fovealOpacity(
                               i,
                               sanctuaryMessages.length,
                               "user"
-                            ),
-                            marginTop: sameSender ? 0 : "2px",
+                            ) * 0.85,
+                            paddingLeft: "32px",
                           }}
                         >
                           {msg.content}

@@ -1,19 +1,13 @@
-// XARK OS v2.0 — DEV AUTO-LOGIN ENDPOINT
-// POST /api/dev-auto-login — passwordless dev login for URL name param flow.
-// Generates a JWT via jose (Node.js) for a test user without password verification.
-// Gate: Returns 404 if DEV_MODE !== 'true'. NEVER enable in production.
-// Use /api/dev-auth for full username+password testing.
+// XARK OS v2.0 — PASSWORD-GATED LOGIN ENDPOINT
+// POST /api/dev-auto-login — password-protected login for testing.
+// Generates a JWT via jose (Node.js) for a user verified by shared password.
+// Gate: Returns 401 if password doesn't match LOGIN_PASSWORD env var.
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { SignJWT } from "jose";
 
 export async function POST(request: NextRequest) {
-  // Gate: dev mode only
-  if (process.env.DEV_MODE !== "true") {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
-  }
-
   const jwtSecret = process.env.SUPABASE_JWT_SECRET;
   if (!jwtSecret) {
     return NextResponse.json(
@@ -22,7 +16,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { username?: string };
+  let body: { username?: string; password?: string };
   try {
     body = await request.json();
   } catch {
@@ -32,7 +26,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { username } = body;
+  const { username, password } = body;
+
+  // Gate: DEV_MODE bypasses password (local dev only). Production requires password.
+  const isDevMode = process.env.DEV_MODE === "true";
+  const loginPassword = process.env.LOGIN_PASSWORD;
+
+  if (!isDevMode) {
+    if (!loginPassword || password !== loginPassword) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+  }
   if (!username) {
     return NextResponse.json(
       { error: "username required" },
@@ -40,11 +44,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Look up user by display_name
+  // Look up user by display_name (case-insensitive)
   const { data: user, error: userError } = await supabaseAdmin
     .from("users")
     .select("id, display_name")
-    .eq("display_name", username)
+    .ilike("display_name", username)
     .single();
 
   if (userError || !user) {

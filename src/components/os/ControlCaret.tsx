@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -14,54 +14,19 @@ import {
 import type { SpaceListItem } from "@/lib/space-data";
 import { colors, opacity, timing, layout, text, textColor } from "@/lib/theme";
 import { useAuth } from "@/hooks/useAuth";
+import { Avatar } from "@/components/os/Avatar";
 
-// ── Avatar — first letter fallback, no border ──
-function Avatar({ name, photoUrl, size = 32 }: { name: string; photoUrl?: string; size?: number }) {
-  if (photoUrl) {
-    return (
-      <img
-        src={photoUrl}
-        alt=""
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          objectFit: "cover",
-          flexShrink: 0,
-        }}
-      />
-    );
-  }
-
-  const letter = (name[0] ?? "?").toUpperCase();
+// ── Search icon ──
+function SearchIcon({ color, size = 18 }: { color: string; size?: number }) {
   return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "rgba(var(--xark-white-rgb), 0.06)",
-        flexShrink: 0,
-      }}
-    >
-      <span
-        style={{
-          fontSize: size * 0.4,
-          color: colors.white,
-          opacity: 0.3,
-          letterSpacing: 0,
-        }}
-      >
-        {letter}
-      </span>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
   );
 }
 
-// ── Demo presence — used when Supabase Realtime is unreachable ──
+// ── Demo presence ──
 const DEMO_PRESENCE: Record<string, number> = {
   "space_san-diego-trip": 2,
   "space_ananya": 1,
@@ -71,6 +36,8 @@ export function ControlCaret() {
   const [isOpen, setIsOpen] = useState(false);
   const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [presence, setPresence] = useState<Record<string, number>>(DEMO_PRESENCE);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -114,6 +81,25 @@ export function ControlCaret() {
     };
   }, [spaces, userName]);
 
+  // ── Filtered spaces ──
+  const filteredSpaces = useMemo(() => {
+    if (!searchQuery.trim()) return spaces;
+    const q = searchQuery.toLowerCase();
+    return spaces.filter((s) =>
+      s.title.toLowerCase().includes(q) ||
+      s.members.some((m) => m.displayName.toLowerCase().includes(q))
+    );
+  }, [spaces, searchQuery]);
+
+  // Focus search when panel opens
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => searchRef.current?.focus(), 400);
+    } else {
+      setSearchQuery("");
+    }
+  }, [isOpen]);
+
   function navigateToSpace(spaceId: string) {
     setIsOpen(false);
     router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}`);
@@ -121,7 +107,7 @@ export function ControlCaret() {
 
   return (
     <>
-      {/* ── The Dot — fixed cyan anchor, 32px from bottom edge ── */}
+      {/* ── The Dot ── */}
       <div
         className="fixed left-1/2 z-50"
         style={{ bottom: layout.caretBottom, transform: "translateX(-50%)" }}
@@ -176,162 +162,216 @@ export function ControlCaret() {
               onClick={() => setIsOpen(false)}
             />
 
-            {/* Space list */}
+            {/* Space list + search */}
             <motion.div
-              className="fixed inset-x-0 bottom-0 z-45 overflow-y-auto px-6 pb-20 pt-8"
+              className="fixed inset-x-0 bottom-0 z-45 flex flex-col overflow-hidden"
               style={{ zIndex: 45, maxHeight: "80vh", background: colors.void }}
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="mx-auto" style={{ maxWidth: layout.maxWidth }}>
-                {spaces.map((space, index) => {
-                  const isSanctuary = space.atmosphere === "sanctuary";
-                  const hasPresenceEmber = (presence[space.id] ?? 0) > 1;
-                  const spaceOpacity = recencyOpacity(space.lastActivityAt);
-                  const memberNames = space.members.map((m) => m.displayName).join(", ");
-                  const stateLabel = isSanctuary
-                    ? space.lastMessage?.content
-                    : decisionStateLabel(space.decisionSummary);
+              {/* ── Scrollable space list ── */}
+              <div className="flex-1 overflow-y-auto px-6 pt-8 pb-4">
+                <div className="mx-auto" style={{ maxWidth: layout.maxWidth }}>
+                  {filteredSpaces.map((space, index) => {
+                    const isSanctuary = space.atmosphere === "sanctuary";
+                    const hasPresenceEmber = (presence[space.id] ?? 0) > 1;
+                    const spaceOpacity = recencyOpacity(space.lastActivityAt);
+                    const memberNames = space.members.map((m) => m.displayName).join(", ");
+                    const stateLabel = isSanctuary
+                      ? space.lastMessage?.content
+                      : decisionStateLabel(space.decisionSummary);
 
-                  return (
+                    return (
+                      <motion.div
+                        key={space.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigateToSpace(space.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") navigateToSpace(space.id);
+                        }}
+                        className="cursor-pointer outline-none"
+                        style={{ paddingBottom: "20px" }}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          delay: index * timing.staggerDelay,
+                          duration: 0.4,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* ── Avatar ── */}
+                          <div className="relative">
+                            {isSanctuary && space.members[0] ? (
+                              <Avatar
+                                name={space.members[0].displayName}
+                                photoUrl={space.members[0].photoUrl}
+                                size={36}
+                              />
+                            ) : (
+                              <Avatar name={space.title} size={36} />
+                            )}
+
+                            {/* ── Presence Ember ── */}
+                            {hasPresenceEmber && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  bottom: -1,
+                                  right: -1,
+                                  width: layout.emberSize,
+                                  height: layout.emberSize,
+                                  borderRadius: "50%",
+                                  backgroundColor: colors.cyan,
+                                  animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+                                }}
+                              />
+                            )}
+                          </div>
+
+                          {/* ── Text stack ── */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-3">
+                              {/* Name — body size, high opacity (WhatsApp hierarchy) */}
+                              <span
+                                style={{
+                                  ...text.listTitle,
+                                  color: colors.white,
+                                  opacity: spaceOpacity,
+                                }}
+                              >
+                                {space.title}
+                              </span>
+
+                              <span
+                                className="shrink-0"
+                                style={{
+                                  ...text.recency,
+                                  color: textColor(opacity.quaternary),
+                                }}
+                              >
+                                {recencyLabel(space.lastActivityAt)}
+                              </span>
+                            </div>
+
+                            {/* Subtitle: member names + decision state */}
+                            {(() => {
+                              const parts: string[] = [];
+                              if (!isSanctuary && memberNames) parts.push(memberNames);
+                              if (stateLabel) parts.push(stateLabel);
+                              const subtitle = parts.join(" · ");
+                              return subtitle ? (
+                                <p
+                                  className="mt-0.5 truncate"
+                                  style={{
+                                    ...text.recency,
+                                    color: textColor(0.3),
+                                  }}
+                                >
+                                  {subtitle}
+                                </p>
+                              ) : null;
+                            })()}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+
+                  {/* ── No results ── */}
+                  {searchQuery && filteredSpaces.length === 0 && (
+                    <p style={{ ...text.subtitle, color: textColor(0.3) }}>
+                      no matches for &ldquo;{searchQuery}&rdquo;
+                    </p>
+                  )}
+
+                  {/* ── Initiation Seed ── */}
+                  {!searchQuery && (
                     <motion.div
-                      key={space.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => navigateToSpace(space.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") navigateToSpace(space.id);
+                      onClick={() => {
+                        setIsOpen(false);
+                        router.push(`/galaxy?name=${encodeURIComponent(userName)}`);
                       }}
-                      className="cursor-pointer outline-none"
-                      style={{ paddingBottom: "24px" }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setIsOpen(false);
+                          router.push(`/galaxy?name=${encodeURIComponent(userName)}`);
+                        }
+                      }}
+                      className="cursor-pointer pt-2 outline-none"
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{
-                        delay: index * timing.staggerDelay,
+                        delay: spaces.length * timing.staggerDelay + 0.1,
                         duration: 0.4,
                         ease: [0.22, 1, 0.36, 1],
                       }}
                     >
-                      <div className="flex items-center gap-3">
-                        {/* ── Avatar ── */}
-                        <div className="relative">
-                          {isSanctuary && space.members[0] ? (
-                            <Avatar
-                              name={space.members[0].displayName}
-                              photoUrl={space.members[0].photoUrl}
-                              size={28}
-                            />
-                          ) : (
-                            <Avatar name={space.title} size={28} />
-                          )}
-
-                          {/* ── Presence Ember — overlaps bottom-right of avatar ── */}
-                          {hasPresenceEmber && (
-                            <div
-                              style={{
-                                position: "absolute",
-                                bottom: -1,
-                                right: -1,
-                                width: layout.emberSize,
-                                height: layout.emberSize,
-                                borderRadius: "50%",
-                                backgroundColor: colors.cyan,
-                                animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
-                              }}
-                            />
-                          )}
-                        </div>
-
-                        {/* ── Text stack ── */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-baseline justify-between gap-3">
-                            <span
-                              style={{
-                                ...text.listTitle,
-                                color: colors.white,
-                                opacity: spaceOpacity,
-                              }}
-                            >
-                              {space.title}
-                            </span>
-
-                            <span
-                              className="shrink-0"
-                              style={{
-                                ...text.recency,
-                                color: textColor(opacity.quaternary),
-                                paddingBottom: "0.15em",
-                              }}
-                            >
-                              {recencyLabel(space.lastActivityAt)}
-                            </span>
-                          </div>
-
-                          {/* Subtitle: member names + decision state on one line */}
-                          {(() => {
-                            const parts: string[] = [];
-                            if (!isSanctuary && memberNames) parts.push(memberNames);
-                            if (stateLabel) parts.push(stateLabel);
-                            const subtitle = parts.join(" · ");
-                            return subtitle ? (
-                              <p
-                                className="mt-1 truncate"
-                                style={{
-                                  ...text.subtitle,
-                                  color: textColor(0.35),
-                                  paddingBottom: "0.15em",
-                                }}
-                              >
-                                {subtitle}
-                              </p>
-                            ) : null;
-                          })()}
-                        </div>
-                      </div>
+                      <span
+                        style={{
+                          ...text.subtitle,
+                          color: colors.white,
+                          opacity: opacity.tertiary,
+                        }}
+                      >
+                        invite a person
+                      </span>
                     </motion.div>
-                  );
-                })}
+                  )}
+                </div>
+              </div>
 
-                {/* ── Initiation Seed ── */}
-                <motion.div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    setIsOpen(false);
-                    router.push(`/galaxy?name=${encodeURIComponent(userName)}`);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      setIsOpen(false);
-                      router.push(`/galaxy?name=${encodeURIComponent(userName)}`);
-                    }
-                  }}
-                  className="cursor-pointer pt-4 outline-none"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    delay: spaces.length * timing.staggerDelay + 0.1,
-                    duration: 0.4,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                >
-                  <span
+              {/* ═══ SEARCH BAR — at bottom, in thumb zone ═══ */}
+              <div
+                className="px-6 pb-20 pt-3"
+                style={{ background: colors.void }}
+              >
+                <div className="mx-auto" style={{ maxWidth: layout.maxWidth }}>
+                  <div
                     style={{
-                      ...text.hint,
-                      color: colors.white,
-                      opacity: opacity.tertiary,
+                      height: "1px",
+                      background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
+                      opacity: 0.1,
+                      marginBottom: "10px",
                     }}
-                  >
-                    invite a person
-                  </span>
-                </motion.div>
+                  />
+                  <div className="flex items-center gap-3">
+                    <SearchIcon color={textColor(0.3)} />
+                    <input
+                      ref={searchRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="search spaces or people"
+                      spellCheck={false}
+                      autoComplete="off"
+                      className="w-full bg-transparent outline-none"
+                      style={{
+                        ...text.input,
+                        color: colors.white,
+                        caretColor: colors.cyan,
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
+
+      <style jsx>{`
+        input::placeholder {
+          color: ${colors.white};
+          opacity: 0.15;
+          letter-spacing: 0.04em;
+        }
+      `}</style>
     </>
   );
 }
