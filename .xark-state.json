@@ -1,6 +1,6 @@
 {
   "version": "2.0.0-omega",
-  "foveal_focus": "Full implementation complete. 9 services operational. Intelligence (Gemini + Apify), Media (Firebase Storage), Notifications (FCM), Commitment (Claim + Purchase sheets), Voice Input, State Flows, Settlement Ledger. All guardrails synced.",
+  "foveal_focus": "Production V1 Readiness. Gemini 2.5 Flash live. Apify hotel search working (voyager/booking-scraper). Chat state lifted to Space page (XarkChat display-only, ChatInput shared). @xark messages persisted server-side. RLS fixed (auth_user_space_ids SECURITY DEFINER). Remaining: fix Apify activity/flight actor IDs, enable Supabase Realtime replication, Firebase setup.",
   "phase": "FIRST_REAL_TRIP",
   "algo_source": "/Users/ramchitturi/algo",
   "algo_record": "/Users/ramchitturi/algo/mar10_algo.md",
@@ -11,7 +11,7 @@
     "fonts": "Inter (body, 400), Syne (display/fallback, 400), Inter (wordmark, 300). Inter is primary in globals.css.",
     "layout": "Liquid Feed / Zero-Box. Focus outlines globally purged in globals.css.",
     "engine": "heart-sort.ts is SSOT. Source: /Users/ramchitturi/algo/src/engine/heart-sort.ts. Full port complete (DecisionItem, calculateWeightedScore, addReaction, removeReaction, calculateAgreementScore, getRankedSummary).",
-    "infrastructure": "Hybrid Stack: Firebase Auth (OTP), Supabase Postgres (decision engine), Firebase Storage (E2EE multimedia), Firebase FCM (push), Gemini 2.0 Flash (intelligence). Supabase Auth is banned."
+    "infrastructure": "Hybrid Stack: Firebase Auth (OTP), Supabase Postgres (decision engine), Firebase Storage (E2EE multimedia), Firebase FCM (push), Gemini 2.5 Flash (intelligence). Supabase Auth is banned."
   },
   "engine_config": {
     "signals": {
@@ -78,17 +78,18 @@
     "handshake_hook": "src/hooks/useHandshake.ts — Returns { proposal, whisper, confirm, dismiss, isCommitting, goldBurst }. Subscribes on mount.",
     "chat_handshake_integration": "XarkChat uses useHandshake(spaceId). Whisper injected into stream. confirm (colors.gold) and wait (colors.white) as floating text.label. Gold burst on success.",
     "navigation_flow": "Login (/login) -> Galaxy (/galaxy?name=) -> Space (/space/[id]?name=). router.push() chain.",
-    "galaxy_view": "src/app/galaxy/page.tsx — Awareness Stream home. Hero 'ready, [name]?' (text.hero). Awareness feed from src/lib/awareness.ts: priority-sorted cross-space events (needs_vote, ignited, proposal, locked, message, joined). awarenessOpacity(priority) for visual weight. Amber swell on recent activity. Mesh Pulse. Empty: 'who are you planning with?'. Input at 96px. Manifestation Loop. UserMenu visible here only.",
+    "galaxy_view": "src/app/galaxy/page.tsx — Awareness Stream home. No hero text. Awareness feed from src/lib/awareness.ts: priority-sorted cross-space events. awarenessOpacity(priority) for visual weight. Amber swell on recent activity. Mesh Pulse. Empty: 'who are you planning with?'. Input at 56px from bottom (text.body), living ambient line below text, top ambient line as content boundary. Solid void bg. Manifestation Loop. UserMenu visible here only.",
     "awareness_stream": "src/lib/awareness.ts — fetchAwareness(userId) aggregates events from all spaces. AwarenessKind types with priority weights. Time decay via exponential function. sortAwareness() by scored priority. awarenessOpacity() maps priority to 0.9/0.7/0.5/0.35/0.25. Demo fallback: getDemoAwareness().",
     "space_data": "src/lib/space-data.ts — SpaceListItem type (id, title, atmosphere, members, decisionSummary, lastMessage, lastActivityAt). fetchSpaceList() enriches with members + decision summary + last message. recencyLabel(), recencyOpacity(), decisionStateLabel(). DEMO_SPACES fallback.",
-    "space_view": "src/app/space/[id]/page.tsx — discuss/decide toggle + share action as floating text.label. Active: colors.cyan at 0.9, inactive: colors.white at 0.4. Share: navigator.share or clipboard copy. Renders XarkChat or PossibilityHorizon placeholder. No UserMenu.",
+    "space_view": "src/app/space/[id]/page.tsx — discuss/decide/itinerary/memories toggle + share action as floating text.label. Active: colors.cyan at 0.9, inactive: colors.white at 0.4. Share: navigator.share or clipboard copy. Owns chat state (messages, input, isThinking, sendMessage) — persists across view switches. ChatInput always visible. XarkChat is display-only (receives messages as props). No UserMenu.",
     "seed_data": "src/lib/seed.ts — san diego (4 items, 10 msgs), ananya sanctuary (5 msgs), tokyo (2 items), summer (empty). Run: npx tsx src/lib/seed.ts.",
     "control_caret": "src/components/os/ControlCaret.tsx — colors.cyan dot (10px) at 32px from bottom, 4.5s breath. GLOBAL via GlobalCaret.tsx. Context-aware tap: inside space -> Galaxy, on Galaxy -> toggle slide-up. Slide-up: Avatar (28px) + text.listTitle name + text.subtitle members/decision state + text.recency timestamps. recencyOpacity() drives title opacity. Presence Ember (4px colors.cyan on avatar). 'invite a person' seed. fetchSpaceList() from space-data.ts, DEMO_SPACES fallback.",
     "sanctuary_bridge": "XarkChat.tsx — SANCTUARY_MAP maps sender names to space IDs. Slide-up sheet: colors.void bg, 80vh max. Foveal opacity. #000 overlay at 0.8. No blur.",
-    "chat_interface": "src/components/os/XarkChat.tsx — Atmospheric, no bubbles/boxes. All sizes from theme.ts text tokens (text.body for messages, text.label for roles, text.timestamp inline). fovealOpacity from theme.ts. WhatsApp-dense grouping. Thumb-Arc: input at layout.inputBottom. Accent underline on focus. Greeting via getGreeting().",
+    "chat_interface": "src/components/os/XarkChat.tsx — Display-only. Receives messages and isThinking as props from Space page. Atmospheric, no bubbles/boxes. All sizes from theme.ts text tokens (text.body for messages, text.label for roles, text.timestamp inline). fovealOpacity from theme.ts. WhatsApp-dense grouping. Greeting via getGreeting(). No input, no send, no fetch — all state owned by Space page.",
+    "chat_input": "src/components/os/ChatInput.tsx — Two-zone layout. Textarea+mic at 56px from bottom: auto-expanding textarea (text.body, max 6 lines), mic SVG icon (14px), top ambient line, living ambient line below text (grows with content, breathes). Attach (paperclip SVG 16px) at left 25% at caretBottom. Camera (camera SVG 16px) at left 75% at caretBottom. Void fill 56px. Controlled by Space page props.",
     "messages_layer": "src/lib/messages.ts — fetchMessages, saveMessage, subscribeToMessages, unsubscribeFromMessages. Realtime sync. Graceful fallback.",
     "auth_hook": "src/hooks/useAuth.ts — Firebase onAuthStateChanged with URL name fallback. Firebase-only. No Supabase Auth.",
-    "chat_api_endpoint": "/api/xark — check for '@xark' prefix before calling Gemini. Silent mode if absent.",
+    "chat_api_endpoint": "/api/xark — check for '@xark' prefix before calling Gemini. Silent mode if absent. Fetches space title for location context. Persists @xark response messages server-side via supabaseAdmin (returns messageId). Client deduplicates via Realtime.",
     "chat_opacity_hierarchy": {
       "xark_response": 0.9,
       "user_message": 0.6,
@@ -100,7 +101,7 @@
     },
     "thinking_indicator": "colors.cyan dot breathing at 4.5s + 'thinking' text.hint",
     "banned_in_chat": ["chat bubbles", "message containers", "border on messages", "bg-color on messages", "robot icons", "emojis"],
-    "intelligence_orchestrator": "src/lib/intelligence/orchestrator.ts — Gemini 2.0 Flash + Apify tool routing. Stateless. OrchestratorInput → OrchestratorResult.",
+    "intelligence_orchestrator": "src/lib/intelligence/orchestrator.ts — Gemini 2.5 Flash + Apify tool routing. Stateless. OrchestratorInput (includes spaceTitle) → OrchestratorResult. Strips markdown code fences from Gemini JSON responses.",
     "tool_registry": "src/lib/intelligence/tool-registry.ts — hotel, flight, activity, restaurant, general. registerTool/getTool/listTools.",
     "apify_client": "src/lib/intelligence/apify-client.ts — runActor(actorId, input) → ApifyResult[]. Safe: empty when unconfigured.",
     "notifications_service": "src/lib/notifications.ts — Firebase Admin SDK, sendPush(tokens, title, body, data?). Lazy init. /api/notify route.",
