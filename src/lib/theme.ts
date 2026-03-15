@@ -4,9 +4,9 @@
 // Font: Inter globally. No per-theme fonts. Consistency = quality.
 
 // ── THEME PRESETS ───────────────────────────────────────────────────────────
-// Hearth only. Light theme. Default.
+// Two themes: hearth (light, default) + midnight (dark).
 
-export type ThemeName = "hearth";
+export type ThemeName = "hearth" | "midnight";
 
 export interface ThemeConfig {
   label: string;
@@ -20,6 +20,11 @@ export interface ThemeConfig {
   green: string;        // finality
   orange: string;       // rejection / "not for me"
   gray: string;         // neutral / "works for me"
+  // Solid ink colors — for high-readability contexts (chat lists, People tab)
+  inkPrimary: string;   // names, titles — maximum contrast
+  inkSecondary: string; // preview text, subtitles — distinct color, not opacity
+  inkTertiary: string;  // timestamps, metadata — lighter but still readable
+  inkSender: string;    // group message sender name
 }
 
 export const themes: Record<ThemeName, ThemeConfig> = {
@@ -34,6 +39,26 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     green: "#047857",
     orange: "#C43D08",
     gray: "#8A8A94",
+    inkPrimary: "#000000",     // pure black — maximum readability
+    inkSecondary: "#6B6B78",   // warm dark gray — 5.2:1 contrast on #F8F7F4
+    inkTertiary: "#8A8A94",    // lighter gray — 3.5:1 contrast
+    inkSender: "#9E6A06",      // hearth amber — sender identity
+  },
+  midnight: {
+    label: "midnight",
+    mode: "dark",
+    accent: "#40E0FF",
+    text: "#E8E6E1",
+    bg: "#0A0A0F",
+    amber: "#D4A017",
+    gold: "#C9A81E",
+    green: "#10B981",
+    orange: "#E8590C",
+    gray: "#8A8A94",
+    inkPrimary: "#FFFFFF",     // pure white
+    inkSecondary: "#9CA3AF",   // cool gray — readable on dark
+    inkTertiary: "#6B7280",    // muted gray
+    inkSender: "#D4A017",      // midnight amber
   },
 };
 
@@ -57,6 +82,18 @@ export const colors = {
   green: "var(--xark-green)",
   orange: "var(--xark-orange)",
   gray: "var(--xark-gray)",
+} as const;
+
+// ── SOLID TEXT COLORS ─────────────────────────────────────────────────────────
+// For chat lists, people tab, and anywhere readable text must survive sunlight.
+// These are SOLID COLORS — never opacity. Use instead of textColor(alpha) for
+// high-readability contexts (People tab, Plans tab, list items).
+// CSS variables — set by ThemeProvider per theme.
+export const ink = {
+  primary: "var(--xark-ink-primary)",       // names, titles — pure black/white
+  secondary: "var(--xark-ink-secondary)",   // preview text, subtitles
+  tertiary: "var(--xark-ink-tertiary)",     // timestamps, metadata
+  sender: "var(--xark-ink-sender)",         // group message sender name
 } as const;
 
 // ── OPACITY HIERARCHY ───────────────────────────────────────────────────────
@@ -136,7 +173,7 @@ export const text = {
     letterSpacing: "0.08em",
   },
   timestamp: {
-    fontSize: "0.6875rem",
+    fontSize: "0.75rem",
     fontWeight: 300 as const,
     lineHeight: 1.4,
   },

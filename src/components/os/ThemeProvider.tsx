@@ -44,8 +44,31 @@ function applyTheme(name: ThemeName) {
   root.style.setProperty("--xark-gray", t.gray);
   root.style.setProperty("--xark-gray-rgb", hexToRgb(t.gray));
 
+  // Solid ink colors — for high-readability contexts
+  root.style.setProperty("--xark-ink-primary", t.inkPrimary);
+  root.style.setProperty("--xark-ink-secondary", t.inkSecondary);
+  root.style.setProperty("--xark-ink-tertiary", t.inkTertiary);
+  root.style.setProperty("--xark-ink-sender", t.inkSender);
+
   // Body background
   root.style.setProperty("background-color", t.bg);
+
+  // Color scheme — tells iOS Safari (keyboard, scrollbars, native controls)
+  const colorScheme = t.mode === "dark" ? "dark" : "light";
+  root.style.colorScheme = colorScheme;
+
+  // Dynamic meta theme-color (keyboard + browser chrome + PWA title bar)
+  const existingMeta = document.querySelector('meta[name="theme-color"]');
+  if (existingMeta) {
+    existingMeta.setAttribute("content", t.bg);
+  } else {
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    meta.content = t.bg;
+    document.head.appendChild(meta);
+  }
+
+  // Inputs inherit colorScheme from root — no per-element override needed.
 }
 
 // Migrate legacy theme names to new system

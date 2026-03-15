@@ -9,6 +9,7 @@
 
 /* ── THEME CSS VARIABLES — Hearth (light) defaults. Overridden by ThemeProvider. ── */
 :root {
+  color-scheme: light;
   --xark-accent: #FF6B35;
   --xark-accent-rgb: 255, 107, 53;
   --xark-white: #111111;
@@ -25,6 +26,11 @@
   --xark-orange-rgb: 196, 61, 8;
   --xark-gray: #8A8A94;
   --xark-gray-rgb: 138, 138, 148;
+  /* Solid ink colors — never use opacity for readable text */
+  --xark-ink-primary: #000000;
+  --xark-ink-secondary: #6B6B78;
+  --xark-ink-tertiary: #8A8A94;
+  --xark-ink-sender: #9E6A06;
 }
 
 @theme inline {
@@ -131,10 +137,11 @@ body {
   overscroll-behavior-y: contain;
 }
 
-/* Allow text selection in input fields */
+/* Allow text selection in input fields + force light keyboard on iOS */
 input, textarea, [contenteditable] {
   -webkit-user-select: text;
   user-select: text;
+  color-scheme: light;
 }
 
 /* ── PWA: safe area padding for notch devices ── */

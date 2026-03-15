@@ -459,7 +459,7 @@ export default function LoginPage() {
                               style={{ fontSize: "22px", fontWeight: 400, color: "#111111", letterSpacing: "0.04em", caretColor: "#FF6B35" }}
                             />
                           </div>
-                          <p style={{ fontSize: "13px", fontWeight: 300, color: "#111111", opacity: 0.15, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                          <p style={{ fontSize: "13px", fontWeight: 300, color: "#8A8A94", letterSpacing: "0.04em", marginBottom: "16px" }}>
                             password
                           </p>
                           <div style={{ display: "flex", alignItems: "center" }}>
@@ -640,7 +640,7 @@ export default function LoginPage() {
                             onKeyDown={(e) => { if (e.key === "Enter") goToGalaxy(); }}
                             className="cursor-pointer outline-none"
                             style={{
-                              fontSize: "11px", fontWeight: 300, color: "#111111", opacity: 0.12, letterSpacing: "0.04em",
+                              fontSize: "11px", fontWeight: 300, color: "#8A8A94", letterSpacing: "0.04em",
                               transition: `opacity ${timing.transition} ease`,
                             }}
                             onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.3"; }}
@@ -696,7 +696,7 @@ export default function LoginPage() {
                   onKeyDown={(e) => { if (e.key === "Enter") setAuthMode(authMode === "phone" ? "dev" : "phone"); }}
                   className="cursor-pointer outline-none"
                   style={{
-                    fontSize: "10px", fontWeight: 300, color: "#111111", opacity: 0.12, letterSpacing: "0.04em",
+                    fontSize: "13px", fontWeight: 300, color: "#8A8A94", letterSpacing: "0.04em",
                     marginTop: "32px", transition: `opacity ${timing.transition} ease`,
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.25"; }}
@@ -708,10 +708,10 @@ export default function LoginPage() {
 
               {/* Encrypted badge — persistent */}
               <div style={{ position: "fixed", bottom: "56px", left: "36px", display: "flex", alignItems: "center", gap: "6px", zIndex: 10 }}>
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                  <path d="M6 1L3 3.5V5.5C3 7.98 4.28 10.28 6 11C7.72 10.28 9 7.98 9 5.5V3.5L6 1Z" stroke="#111111" strokeWidth="0.8" strokeLinejoin="round" opacity="0.15"/>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1L3 3.5V5.5C3 7.98 4.28 10.28 6 11C7.72 10.28 9 7.98 9 5.5V3.5L6 1Z" stroke="#8A8A94" strokeWidth="0.8" strokeLinejoin="round"/>
                 </svg>
-                <span style={{ fontSize: "8px", letterSpacing: "0.12em", color: "#111111", opacity: 0.12, textTransform: "uppercase" }}>
+                <span style={{ fontSize: "11px", letterSpacing: "0.12em", color: "#8A8A94", textTransform: "uppercase" as const }}>
                   encrypted
                 </span>
               </div>
@@ -721,12 +721,12 @@ export default function LoginPage() {
 
         <style jsx>{`
           input::placeholder {
-            color: #111111;
-            opacity: 0.12;
+            color: #8A8A94;
+            opacity: 1;
             letter-spacing: 0.08em;
           }
           input:focus::placeholder {
-            opacity: 0.06;
+            opacity: 0.4;
             transition: opacity 0.6s ease;
           }
         `}</style>
