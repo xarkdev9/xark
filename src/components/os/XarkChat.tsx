@@ -8,17 +8,11 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   buildGroundingContext,
-  generateGroundingPrompt,
   getGreeting,
 } from "@/lib/ai-grounding";
 import type { GroundingContext } from "@/lib/ai-grounding";
 import { useHandshake } from "@/hooks/useHandshake";
-import {
-  fetchMessages,
-  saveMessage,
-  subscribeToMessages,
-  unsubscribeFromMessages,
-} from "@/lib/messages";
+import { fetchMessages } from "@/lib/messages";
 import {
   colors,
   opacity,
@@ -108,7 +102,7 @@ export function XarkChat({
       setSanctuaryName(name);
       setSanctuaryOpen(true);
       try {
-        const msgs = await fetchMessages(sanctuarySpaceId);
+        const msgs = await fetchMessages(sanctuarySpaceId, { limit: 30 });
         if (msgs.length > 0) {
           setSanctuaryMessages(
             msgs.map((m) => ({
@@ -191,11 +185,9 @@ export function XarkChat({
               return (
                 <motion.div
                   key={msg.id}
-                  layout
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{
-                    layout: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
                     opacity: { duration: 0.3 },
                   }}
                   className="mt-3"
@@ -239,11 +231,9 @@ export function XarkChat({
             return (
               <motion.div
                 key={msg.id}
-                layout
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
-                  layout: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
                   opacity: { duration: 0.3 },
                   y: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
                 }}

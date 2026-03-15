@@ -23,8 +23,13 @@ export interface SpaceStateItem {
 
 export function computeSpaceState(
   items: SpaceStateItem[],
-  tripDates?: { start_date: string; end_date: string }
+  tripDates?: { start_date: string; end_date: string },
+  expiresAt?: string // ISO timestamp from space template lifetime
 ): SpaceState {
+  // Template lifetime expiration — empty expired spaces are settled
+  if (items.length === 0 && expiresAt && new Date(expiresAt) < new Date()) {
+    return "settled";
+  }
   if (items.length === 0) return "empty";
 
   const hasLocked = items.some(
@@ -71,6 +76,11 @@ export function computeSpaceState(
     ? new Date(tripDates.start_date) <= now && new Date(tripDates.end_date) >= now
     : false;
   if ((hasActiveDates || tripActive) && hasLocked) return "active";
+
+  // Template lifetime expiration — expired spaces with no open items settle
+  if (expiresAt && new Date(expiresAt) < new Date() && !hasOpenItems) {
+    return "settled";
+  }
 
   // v1 heuristic: ready when all items are settled. Full category coverage check is Gemini's job (blueprint Section 2 note).
   if (hasLocked && !hasOpenItems) return "ready";

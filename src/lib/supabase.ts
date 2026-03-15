@@ -42,6 +42,11 @@ export function hasSupabaseAuth(): boolean {
   return authedClient !== null;
 }
 
+// Get the current JWT for use in API Authorization headers.
+export function getSupabaseToken(): string | null {
+  return currentToken;
+}
+
 // The active Supabase client — uses auth token when available.
 // Proxy delegates all access to the current active client.
 export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {

@@ -6,7 +6,10 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { useKeyboard } from "@/hooks/useKeyboard";
 import { colors, text, timing, layout, opacity, textColor } from "@/lib/theme";
+
+const URL_PATTERN = /https?:\/\/[^\s]+/i;
 
 interface ChatInputProps {
   input: string;
@@ -15,6 +18,7 @@ interface ChatInputProps {
   isThinking?: boolean;
   onAttach?: () => void;
   onCamera?: () => void;
+  onUrlDetected?: (url: string) => void;
 }
 
 // ── Minimal SVG icons — thin stroke, atmospheric ──
@@ -70,8 +74,13 @@ export function ChatInput({
   isThinking,
   onAttach,
   onCamera,
+  onUrlDetected,
 }: ChatInputProps) {
   const [inputFocused, setInputFocused] = useState(false);
+  const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
+  const [showUrlPrompt, setShowUrlPrompt] = useState(false);
+  const [urlPromptDismissed, setUrlPromptDismissed] = useState(false);
+  const { keyboardHeight, isKeyboardOpen } = useKeyboard();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -106,6 +115,26 @@ export function ChatInput({
   useEffect(() => {
     autoResize();
   }, [input, autoResize]);
+
+  // ── URL detection ──
+  useEffect(() => {
+    if (urlPromptDismissed) return;
+    const match = input.match(URL_PATTERN);
+    if (match) {
+      setDetectedUrl(match[0]);
+      setShowUrlPrompt(true);
+    } else {
+      setDetectedUrl(null);
+      setShowUrlPrompt(false);
+    }
+  }, [input, urlPromptDismissed]);
+
+  // ── Reset URL prompt dismissed when input clears ──
+  useEffect(() => {
+    if (input.trim().length === 0) {
+      setUrlPromptDismissed(false);
+    }
+  }, [input]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -163,9 +192,10 @@ export function ChatInput({
       <div
         className="fixed inset-x-0 z-20 px-6"
         style={{
-          bottom: "56px",
+          bottom: isKeyboardOpen ? `${keyboardHeight}px` : "56px",
           paddingBottom: "12px",
           background: colors.void,
+          transition: "bottom 0.2s ease",
         }}
       >
         <div className="mx-auto" style={{ maxWidth: "640px" }}>
@@ -240,8 +270,11 @@ export function ChatInput({
                     : "message, or @xark for ideas"
               }
               disabled={isThinking}
+              enterKeyHint="send"
               spellCheck={false}
               autoComplete="off"
+              autoCapitalize="sentences"
+              autoCorrect="on"
               rows={1}
               onFocus={() => setInputFocused(true)}
               onBlur={() => setInputFocused(false)}
@@ -250,10 +283,12 @@ export function ChatInput({
                 ...text.input,
                 color: colors.white,
                 caretColor: colors.cyan,
+                backgroundColor: "var(--xark-void)",
                 opacity: isThinking ? 0.3 : 1,
                 lineHeight: 1.5,
                 maxHeight: "144px",
                 overflow: "hidden",
+                colorScheme: "light",
               }}
             />
 
@@ -341,6 +376,38 @@ export function ChatInput({
               transition: `width 0.3s ease, opacity ${timing.transition} ease`,
             }}
           />
+
+          {/* ── URL detection prompt ── */}
+          {showUrlPrompt && detectedUrl && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6 }}>
+              <span style={{ ...text.timestamp, color: textColor(0.4) }}>
+                add to decisions?
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  onUrlDetected?.(detectedUrl);
+                  setShowUrlPrompt(false);
+                  setUrlPromptDismissed(true);
+                }}
+                style={{ ...text.timestamp, color: colors.cyan, cursor: "pointer", opacity: 0.7 }}
+              >
+                yes
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setShowUrlPrompt(false);
+                  setUrlPromptDismissed(true);
+                }}
+                style={{ ...text.timestamp, color: textColor(0.3), cursor: "pointer" }}
+              >
+                no
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -349,8 +416,9 @@ export function ChatInput({
         className="fixed inset-x-0 z-[19]"
         style={{
           bottom: 0,
-          height: "56px",
+          height: isKeyboardOpen ? "0px" : "56px",
           background: colors.void,
+          transition: "height 0.2s ease",
         }}
       />
 

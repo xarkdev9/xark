@@ -5,6 +5,16 @@ import { storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { supabase } from "@/lib/supabase";
 
+function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 export interface MediaItem {
   id: string;
   spaceId: string;
@@ -26,7 +36,7 @@ export async function uploadMedia(
     return null;
   }
 
-  const mediaId = `media_${crypto.randomUUID()}`;
+  const mediaId = `media_${generateId()}`;
   const storagePath = `spaces/${spaceId}/media/${mediaId}`;
   const storageRef = ref(storage, storagePath);
 

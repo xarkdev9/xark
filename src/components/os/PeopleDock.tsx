@@ -15,6 +15,7 @@ import type { PersonalChat } from "@/lib/awareness";
 import { recencyLabel } from "@/lib/space-data";
 import { supabase } from "@/lib/supabase";
 import { ink, timing, layout, text } from "@/lib/theme";
+import { useThemeContext } from "@/components/os/ThemeProvider";
 import { Avatar } from "@/components/os/Avatar";
 import { Whisper, dismissOnboardingWhisper } from "@/components/os/OnboardingWhispers";
 
@@ -25,6 +26,7 @@ interface PeopleDockProps {
 }
 
 export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
+  const { isVibe } = useThemeContext();
   const [personalChats, setPersonalChats] = useState<PersonalChat[]>([]);
   const [mounted, setMounted] = useState(false);
 
@@ -129,8 +131,8 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
                 tabIndex={0}
                 onClick={() => handleChatTap(chat.spaceId)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleChatTap(chat.spaceId); }}
-                className="cursor-pointer outline-none"
-                style={{ paddingBottom: "20px" }}
+                className={`cursor-pointer outline-none ${isVibe ? "vibe-row" : ""}`}
+                style={{ paddingBottom: isVibe ? "0" : "20px", marginBottom: isVibe ? "8px" : "0" }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -140,7 +142,13 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <Avatar name={chat.contactName} size={36} />
+                  <div style={isVibe ? {
+                    borderRadius: "50%",
+                    boxShadow: "0 4px 14px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+                    transform: "translateZ(0)",
+                  } : undefined}>
+                    <Avatar name={chat.contactName} size={isVibe ? 44 : 36} />
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between">
                       <p style={{ ...text.listTitle, color: ink.primary }}>

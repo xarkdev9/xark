@@ -34,7 +34,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#0A0A0A",
+  // themeColor removed — ThemeProvider sets it dynamically per theme
+  colorScheme: "light",
 };
 
 export default function RootLayout({
@@ -43,8 +44,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${syne.variable} ${inter.variable} font-syne`}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${syne.variable} ${inter.variable}`}>
         <ThemeProvider>
           {children}
           <GlobalUserMenu />

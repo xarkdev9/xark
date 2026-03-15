@@ -65,11 +65,14 @@ interface DecisionCardProps {
   weightedScore: number;
   agreementScore: number;
   isLocked: boolean;
+  state?: string;
+  metadata?: { url?: string; shared_url?: string; phone?: string; [key: string]: unknown };
   size?: CardSize;
   activeReaction?: ReactionType;
   onReact?: (itemId: string, signal: ReactionType) => void;
   onClick?: () => void;
   entranceDelay?: number;
+  lazyImage?: boolean;
 }
 
 export function DecisionCard({
@@ -80,11 +83,15 @@ export function DecisionCard({
   price,
   source,
   agreementScore,
+  isLocked,
+  state,
+  metadata,
   size = "standard",
   activeReaction,
   onReact,
   onClick,
   entranceDelay = 0,
+  lazyImage = false,
 }: DecisionCardProps) {
   const dim = DIMENSIONS[size];
   const consensusState = getConsensusState(agreementScore);
@@ -100,6 +107,23 @@ export function DecisionCard({
     [id, onReact]
   );
 
+  // Booking bridge: locked/claimed/purchased items with URL open externally
+  const isCommitted = isLocked || state === "locked" || state === "claimed" || state === "purchased";
+  const bookingUrl = metadata?.url || metadata?.shared_url;
+  const bookingPhone = metadata?.phone;
+
+  const handleCardTap = useCallback(() => {
+    if (isCommitted && bookingUrl) {
+      window.open(bookingUrl as string, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (isCommitted && bookingPhone) {
+      window.open(`tel:${bookingPhone}`);
+      return;
+    }
+    onClick?.();
+  }, [isCommitted, bookingUrl, bookingPhone, onClick]);
+
   return (
     <motion.div
       className="relative flex-shrink-0 overflow-hidden"
@@ -111,7 +135,7 @@ export function DecisionCard({
           size === "hero"
             ? `0 0 40px rgba(255,207,64,0.06), 0 8px 32px rgba(0,0,0,0.25)`
             : "0 8px 28px rgba(0,0,0,0.2)",
-        cursor: onClick ? "pointer" : "default",
+        cursor: onClick || (isCommitted && (bookingUrl || bookingPhone)) ? "pointer" : "default",
       }}
       initial={{ opacity: 0, x: 80, scale: 0.88 }}
       whileInView={{ opacity: 1, x: 0, scale: 1 }}
@@ -121,17 +145,32 @@ export function DecisionCard({
         duration: 0.6,
         ease: [0.22, 1, 0.36, 1],
       }}
-      onClick={onClick}
+      onClick={handleCardTap}
     >
       {/* Full card background — single combined gradient over photo/fallback */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: imageUrl ? `url(${imageUrl})` : fallbackGradient,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      />
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          loading={lazyImage ? "lazy" : "eager"}
+          decoding="async"
+          className="absolute inset-0"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
+      ) : (
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: fallbackGradient,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+      )}
       {/* Single scrim — lets image breathe at top, solid at bottom for text */}
       <div
         className="absolute inset-0"

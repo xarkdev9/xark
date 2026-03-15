@@ -2,6 +2,7 @@
 // Register Apify actors by category. Orchestrator routes @xark requests here.
 
 export interface ToolDefinition {
+  tier: "gemini-search" | "apify";
   actorId: string;
   description: string;
   paramMap: (userParams: Record<string, string>) => Record<string, unknown>;
@@ -24,6 +25,7 @@ export function listTools(): string[] {
 // Register default tools — real Apify actor IDs
 
 registerTool("hotel", {
+  tier: "apify",
   actorId: "voyager/booking-scraper",
   description: "Search hotels by location, dates, and price range",
   paramMap: (p) => ({
@@ -40,6 +42,7 @@ registerTool("hotel", {
 });
 
 registerTool("flight", {
+  tier: "apify",
   actorId: "johnvc/Google-Flights-Data-Scraper-Flight-and-Price-Search",
   description: "Search flights by origin, destination, and dates",
   paramMap: (p) => ({
@@ -53,6 +56,7 @@ registerTool("flight", {
 });
 
 registerTool("activity", {
+  tier: "apify",
   actorId: "compass/crawler-google-places",
   description: "Find activities and experiences by location",
   paramMap: (p) => ({
@@ -67,6 +71,7 @@ registerTool("activity", {
 });
 
 registerTool("restaurant", {
+  tier: "apify",
   actorId: "compass/crawler-google-places",
   description: "Search restaurants by location and cuisine",
   paramMap: (p) => ({
@@ -81,11 +86,29 @@ registerTool("restaurant", {
 });
 
 registerTool("general", {
-  actorId: "apify/google-search-scraper",
-  description: "General web search for any topic",
-  paramMap: (p) => ({
-    queries: p.query,
-    maxPagesPerQuery: 1,
-    resultsPerPage: 10,
-  }),
+  tier: "gemini-search",
+  actorId: "",
+  description: "General knowledge search — best airports, travel tips, recommendations, planning questions",
+  paramMap: (params) => params,
+});
+
+registerTool("local_restaurant", {
+  tier: "gemini-search",
+  actorId: "",
+  description: "Local restaurant search via Gemini Search grounding",
+  paramMap: (params) => params,
+});
+
+registerTool("local_activity", {
+  tier: "gemini-search",
+  actorId: "",
+  description: "Local activity/place search via Gemini Search grounding",
+  paramMap: (params) => params,
+});
+
+registerTool("local_general", {
+  tier: "gemini-search",
+  actorId: "",
+  description: "General local search via Gemini Search grounding",
+  paramMap: (params) => params,
 });

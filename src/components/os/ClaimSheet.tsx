@@ -10,12 +10,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { colors, text, textColor, opacity as op } from "@/lib/theme";
 import { claimItem } from "@/lib/claims";
 
+interface ItemMetadata {
+  url?: string;
+  shared_url?: string;
+  phone?: string;
+  siteName?: string;
+  [key: string]: unknown;
+}
+
 interface ClaimSheetProps {
   isOpen: boolean;
   onClose: () => void;
   itemId: string;
   itemTitle: string;
   userId: string;
+  item?: { metadata?: ItemMetadata };
   onClaimed?: (itemId: string) => void;
 }
 
@@ -25,6 +34,7 @@ export default function ClaimSheet({
   itemId,
   itemTitle,
   userId,
+  item,
   onClaimed,
 }: ClaimSheetProps) {
   const [isClaiming, setIsClaiming] = useState(false);
@@ -90,6 +100,32 @@ export default function ClaimSheet({
             >
               {itemTitle}
             </span>
+
+            {/* Booking links */}
+            {item?.metadata?.url && (
+              <p
+                role="button"
+                tabIndex={0}
+                onClick={() => window.open(item.metadata!.url, "_blank", "noopener,noreferrer")}
+                onKeyDown={(e) => { if (e.key === "Enter") window.open(item.metadata!.url, "_blank", "noopener,noreferrer"); }}
+                className="cursor-pointer outline-none"
+                style={{ ...text.label, color: colors.cyan, opacity: 0.7, marginTop: 8 }}
+              >
+                {item.metadata.siteName || "open booking page"}
+              </p>
+            )}
+            {item?.metadata?.phone && (
+              <p
+                role="button"
+                tabIndex={0}
+                onClick={() => window.open(`tel:${item.metadata!.phone}`)}
+                onKeyDown={(e) => { if (e.key === "Enter") window.open(`tel:${item.metadata!.phone}`); }}
+                className="cursor-pointer outline-none"
+                style={{ ...text.label, color: colors.cyan, opacity: 0.7, marginTop: 4 }}
+              >
+                call {item.metadata.phone}
+              </p>
+            )}
 
             {/* Whisper after claim */}
             {whisper ? (

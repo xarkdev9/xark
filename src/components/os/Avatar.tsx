@@ -2,6 +2,7 @@
 
 // XARK OS v2.0 — Shared Avatar Component
 // First-letter fallback when no photo. No border (Zero-Box).
+// shape="circle" (default, people) or "square" (plans, spaces in vibe mode).
 
 import { colors } from "@/lib/theme";
 
@@ -9,9 +10,12 @@ interface AvatarProps {
   name: string;
   photoUrl?: string;
   size?: number;
+  shape?: "circle" | "square";
 }
 
-export function Avatar({ name, photoUrl, size = 28 }: AvatarProps) {
+export function Avatar({ name, photoUrl, size = 28, shape = "circle" }: AvatarProps) {
+  const radius = shape === "square" ? `${Math.round(size * 0.28)}px` : "50%";
+
   if (photoUrl) {
     return (
       <img
@@ -20,7 +24,7 @@ export function Avatar({ name, photoUrl, size = 28 }: AvatarProps) {
         style={{
           width: size,
           height: size,
-          borderRadius: "50%",
+          borderRadius: radius,
           objectFit: "cover",
           flexShrink: 0,
         }}
@@ -34,7 +38,7 @@ export function Avatar({ name, photoUrl, size = 28 }: AvatarProps) {
       style={{
         width: size,
         height: size,
-        borderRadius: "50%",
+        borderRadius: radius,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

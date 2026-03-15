@@ -145,68 +145,93 @@ export async function fetchSpaceList(userId?: string): Promise<SpaceListItem[]> 
 
     if (error || !spaces || spaces.length === 0) return DEMO_SPACES;
 
-    // For each space, fetch members + decision summary + last message
-    const enriched: SpaceListItem[] = await Promise.all(
-      spaces.map(async (space) => {
-        // Members
-        const { data: memberRows } = await supabase
-          .from("space_members")
-          .select("user_id")
-          .eq("space_id", space.id);
+    // Batched queries — 4 queries instead of 60+ (N+1 fix)
+    const allSpaceIds = spaces.map((s) => s.id);
 
-        let members: SpaceMember[] = [];
-        if (memberRows && memberRows.length > 0) {
-          const userIds = memberRows.map((m) => m.user_id);
-          const { data: users } = await supabase
-            .from("users")
-            .select("id, display_name, photo_url")
-            .in("id", userIds);
-          members = (users ?? []).map((u) => ({
-            id: u.id,
-            displayName: u.display_name ?? "unknown",
-            photoUrl: u.photo_url ?? undefined,
-          }));
-        }
+    const [membersResult, itemsResult, messagesResult] = await Promise.all([
+      supabase
+        .from("space_members")
+        .select("space_id, user_id")
+        .in("space_id", allSpaceIds),
+      supabase
+        .from("decision_items")
+        .select("space_id, state, is_locked")
+        .in("space_id", allSpaceIds),
+      Promise.resolve(
+        supabase.rpc("get_latest_messages_per_space", {
+          p_space_ids: allSpaceIds,
+        })
+      ).catch(() => ({ data: null as null })),
+    ]);
 
-        // Decision summary
-        const { data: items } = await supabase
-          .from("decision_items")
-          .select("state, is_locked")
-          .eq("space_id", space.id);
+    // Collect unique user IDs from members
+    const membersBySpace = new Map<string, string[]>();
+    const uniqueUserIds = new Set<string>();
+    for (const row of membersResult.data ?? []) {
+      const list = membersBySpace.get(row.space_id) ?? [];
+      list.push(row.user_id);
+      membersBySpace.set(row.space_id, list);
+      uniqueUserIds.add(row.user_id);
+    }
 
-        const summary: DecisionSummary = { locked: 0, needsVote: 0, exploring: 0, total: 0 };
-        if (items) {
-          summary.total = items.length;
-          for (const item of items) {
-            if (item.is_locked) summary.locked++;
-            else if (item.state === "proposed") summary.exploring++;
-            else summary.needsVote++;
-          }
-        }
+    // Fetch all user profiles in one query
+    const userMap = new Map<string, { id: string; displayName: string; photoUrl?: string }>();
+    if (uniqueUserIds.size > 0) {
+      const { data: users } = await supabase
+        .from("users")
+        .select("id, display_name, photo_url")
+        .in("id", Array.from(uniqueUserIds));
+      for (const u of users ?? []) {
+        userMap.set(u.id, {
+          id: u.id,
+          displayName: u.display_name ?? "unknown",
+          photoUrl: u.photo_url ?? undefined,
+        });
+      }
+    }
 
-        // Last message
-        const { data: msgs } = await supabase
-          .from("messages")
-          .select("content, sender_name")
-          .eq("space_id", space.id)
-          .order("created_at", { ascending: false })
-          .limit(1);
+    // Build items-by-space map
+    const itemsBySpace = new Map<string, Array<{ state: string; is_locked: boolean }>>();
+    for (const item of itemsResult.data ?? []) {
+      const list = itemsBySpace.get(item.space_id) ?? [];
+      list.push(item);
+      itemsBySpace.set(item.space_id, list);
+    }
 
-        const lastMessage = msgs && msgs.length > 0
-          ? { content: msgs[0].content, senderName: msgs[0].sender_name ?? undefined }
-          : undefined;
+    // Build last-message-by-space map
+    const lastMsgBySpace = new Map<string, { content: string; senderName?: string }>();
+    for (const msg of messagesResult.data ?? []) {
+      lastMsgBySpace.set(msg.space_id, {
+        content: msg.content,
+        senderName: msg.sender_name ?? undefined,
+      });
+    }
 
-        return {
-          id: space.id,
-          title: space.title,
-          atmosphere: space.atmosphere ?? "",
-          members,
-          decisionSummary: summary,
-          lastMessage,
-          lastActivityAt: new Date(space.last_activity_at ?? space.created_at),
-        };
-      })
-    );
+    // Assemble from in-memory maps
+    const enriched: SpaceListItem[] = spaces.map((space) => {
+      const memberIds = membersBySpace.get(space.id) ?? [];
+      const members: SpaceMember[] = memberIds
+        .map((uid) => userMap.get(uid))
+        .filter((u): u is NonNullable<typeof u> => !!u);
+
+      const spaceItems = itemsBySpace.get(space.id) ?? [];
+      const summary: DecisionSummary = { locked: 0, needsVote: 0, exploring: 0, total: spaceItems.length };
+      for (const item of spaceItems) {
+        if (item.is_locked) summary.locked++;
+        else if (item.state === "proposed") summary.exploring++;
+        else summary.needsVote++;
+      }
+
+      return {
+        id: space.id,
+        title: space.title,
+        atmosphere: space.atmosphere ?? "",
+        members,
+        decisionSummary: summary,
+        lastMessage: lastMsgBySpace.get(space.id),
+        lastActivityAt: new Date(space.last_activity_at ?? space.created_at),
+      };
+    });
 
     return enriched;
   } catch {

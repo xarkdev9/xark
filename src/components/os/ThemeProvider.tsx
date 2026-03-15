@@ -1,18 +1,22 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { themes, hexToRgb } from "@/lib/theme";
-import type { ThemeName } from "@/lib/theme";
+import { themes, hexToRgb, isVibeStyle } from "@/lib/theme";
+import type { ThemeName, ThemeStyle } from "@/lib/theme";
 
 const DEFAULT_THEME: ThemeName = "hearth";
 
 interface ThemeContextValue {
   theme: ThemeName;
+  style: ThemeStyle;
+  isVibe: boolean;
   setTheme: (name: ThemeName) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: DEFAULT_THEME,
+  style: "flat",
+  isVibe: false,
   setTheme: () => {},
 });
 
@@ -50,6 +54,9 @@ function applyTheme(name: ThemeName) {
   root.style.setProperty("--xark-ink-tertiary", t.inkTertiary);
   root.style.setProperty("--xark-ink-sender", t.inkSender);
 
+  // Style class on root — components use [data-style="depth"] for vibe rendering
+  root.dataset.style = t.style;
+
   // Body background
   root.style.setProperty("background-color", t.bg);
 
@@ -74,6 +81,8 @@ function applyTheme(name: ThemeName) {
 // Migrate legacy theme names to new system
 function resolveTheme(stored: string | null): ThemeName {
   if (stored && stored in themes) return stored as ThemeName;
+  // Legacy migration: "midnight" → "hearth_dark"
+  if (stored === "midnight") return "hearth_dark";
   return DEFAULT_THEME;
 }
 
@@ -94,8 +103,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("xark-theme", name);
   }, []);
 
+  const style = themes[theme].style;
+  const isVibe = style === "depth";
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, style, isVibe, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -7,12 +7,15 @@
 - **BANNED**: font-weight 500, 600, 700, 800, 900. Any weight above 400 is a constitutional violation.
 - If you need emphasis, use SIZE or OPACITY — never weight.
 
-## 2. THE THEME SYSTEM (Replaces One-White)
-- Xark OS ships with ONE theme: hearth (light, default).
+## 2. THE THEME SYSTEM (2 Themes)
+- Xark OS ships with TWO themes: hearth (light, default) + midnight (dark).
 - All colors are CSS variables (`--xark-white`, `--xark-void`, `--xark-accent`, etc.) set by ThemeProvider.
-- Text color: `var(--xark-white)` via `colors.white`. Dark ink (#141414) on warm paper.
-- Background: `var(--xark-void)` via `colors.void`. Warm off-white (#F0EEE9).
-- Accent: `var(--xark-accent)` via `colors.cyan`. Hearth = `#FF6B35` (Action Orange).
+- ThemeProvider dynamically updates `<meta name="theme-color">` and input `colorScheme` for iOS keyboard color matching.
+- **Hearth** (light, default): text `#111111`, bg `#F8F7F4`, accent `#FF6B35` (Action Orange).
+- **Midnight** (dark): text `#E8E6E1`, bg `#0A0A0F`, accent `#40E0FF` (Cyan).
+- Text color: `var(--xark-white)` via `colors.white`. Theme-aware ink.
+- Background: `var(--xark-void)` via `colors.void`. Theme-aware canvas.
+- Accent: `var(--xark-accent)` via `colors.cyan`. Theme-aware identity color.
 - `textColor(alpha)` from `theme.ts` returns `rgba(var(--xark-white-rgb), alpha)` — the APPROVED method for applying opacity to text. This bakes opacity into the color for correct antialiasing.
 - `accentColor(alpha)` works the same for accent color.
 - All hierarchy expressed via opacity, never font-weight. `textColor(0.9)` for primary, `textColor(0.4)` for tertiary.
@@ -138,14 +141,14 @@ Core philosophy: "No gates. No votes. No clustering. Just signal -> act -> lock.
 - MeshGradientBg: Radial ellipse accent glow (`opacity: 0.02`) behind all content. Atmospheric depth layer.
 - All typography uses `theme.ts` text tokens. Hierarchy through **SCALE**, never weight.
 - **FOVEAL OPACITY** (Liquid Stream Protocol): `fovealOpacity(index, total, role)` from `theme.ts`. @xark: `0.9 → 0.7 → 0.5 → 0.35 → 0.25 → floor(0.2)`. User: `0.6 → 0.45 → 0.35 → 0.25 → floor(0.2)`. Role labels capped at `min(0.35, msgOpacity)`. Timestamps inline, capped at `min(0.25, msgOpacity * 0.3)`. CSS `transition: opacity 0.6s ease`.
-- **LAYOUT ANIMATION**: `AnimatePresence` + `motion.div` with `layout` prop. New messages enter from `{ opacity: 0, y: 8 }`. Layout shifts use `[0.22, 1, 0.36, 1]` at `0.2s`. WhatsApp-dense grouping: same-sender `mt-0.5`, different-sender `mt-3`.
+- **ENTRANCE ANIMATION**: `AnimatePresence` + `motion.div` (no `layout` prop — eliminated for performance). New messages enter from `{ opacity: 0, y: 8 }`. Entrance uses `[0.22, 1, 0.36, 1]` ease. WhatsApp-dense grouping: same-sender `mt-0.5`, different-sender `mt-3`.
 - @xark responses: `text.body` (0.75rem), `colors.white`, foveal opacity (newest `0.9`), lineHeight 1.5. Left-aligned.
 - User messages: `text.body` (0.75rem), `colors.white`, foveal opacity (newest `0.6`). Own = right-aligned. Others = left-aligned.
 - Timestamps: `text.timestamp` (0.45rem), inline after content, `min(0.25, msgOpacity * 0.3)`.
 - Role labels: `text.label` (0.6rem, uppercase, 0.2em tracking), capped at `min(0.35, msgOpacity)`. @xark = `colors.cyan`. Only on first message in sender group.
 - Thinking state: `colors.cyan` dot breathing at 4.5s + "thinking" `text.hint` at opacity 0.4.
 - **Greeting**: Shows when message stream is empty, anchored near bottom (flex spacer pushes it down). @xark label (`text.label`, `colors.cyan`, 0.4) + actionable hint (`text.hint`, 0.35): `try "@xark find hotels near the beach"`. Uses `getGreeting(context, spaceTitle)` for contextual examples.
-- **Display-only**: XarkChat no longer contains input or send logic. All chat state (messages, input, isThinking, sendMessage) lives in the Space page (`src/app/space/[id]/page.tsx`). XarkChat receives `messages` and `isThinking` as props.
+- **Display-only**: XarkChat no longer contains input or send logic. All chat state (messages, input, isThinking, sendMessage) lives in the Space page (`src/app/space/[id]/page.tsx`). XarkChat receives `messages` and `isThinking` as props. Sanctuary bridge loads last 30 messages (paginated).
 - **ChatInput** (`src/components/os/ChatInput.tsx`): Two-zone layout. **Textarea + mic** at 56px from bottom: auto-expanding textarea (`text.body`, max ~6 lines/120px) + mic SVG icon (14px) in input row. Enter sends, Shift+Enter newline. Top ambient accent line (content boundary). **Living ambient line** below text: grows with text length, breathes at 4.5s, fades cyan→transparent. Invisible when empty+unfocused. Solid `colors.void` bg. Mic: tap = dictate, long-press 500ms = @xark mode (breathing dot replaces icon). **Attach icon** (16px paperclip SVG): fixed at `left: 25%` at `layout.caretBottom`. **Camera icon** (16px camera SVG): fixed at `left: 75%` at `layout.caretBottom`. Both at `colors.white` opacity 0.5 → 0.8 hover, thin 1.5px stroke. Void fill 56px.
 - **BANNED in ChatInput**: Buttons with backgrounds, text-label actions at dot level (use icons), full-width action bars, actions that shift position, static full-width underlines.
 - Grounding-aware: Loads `GroundingContext` on mount.
@@ -159,7 +162,7 @@ Core philosophy: "No gates. No votes. No clustering. Just signal -> act -> lock.
 - **Sender names**: `senderName` on group messages. Other users = name label (left-aligned). "you" = right-aligned. Tapping name with `SANCTUARY_MAP` entry opens Sanctuary Bridge.
 - **Sanctuary Bridge**: Slide-up sheet. `colors.void` bg, 80vh max. Foveal opacity. Close at 0.4. Overlay #000 at 0.8. NO blur.
 - **Demo**: 10 group (san diego), 5 sanctuary (ananya). Fallback when Supabase unreachable.
-- **Message persistence**: `src/lib/messages.ts`. Realtime sync via INSERT subscription. Deduplication.
+- **Message persistence**: `src/lib/messages.ts`. Paginated: `fetchMessages(spaceId, { limit?, before? })` — default 50, DESC reversed client-side. Space page loads 50, /api/xark loads 15, sanctuary bridge loads 30. Realtime sync via INSERT subscription. Deduplication.
 - **BANNED**: Chat bubbles, message containers, borders/backgrounds on messages, robot icons, emojis, font-weight above 400, buttons with borders/backgrounds.
 
 ## 12. THE CONSENSUS MARK
@@ -216,7 +219,7 @@ Core philosophy: "No gates. No votes. No clustering. Just signal -> act -> lock.
 - **Decision Cards**: 170×260px portrait. `borderRadius: 16px`. `boxShadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)` — floating depth, Airbnb/Netflix quality. Image or gradient placeholder. Vignette covers bottom 60% (1.0 → 0.95 at 30% → 0.5 at 55%). Amber wash. **Consensus Hero**: 1.5rem percentage in consensus color + 2px bar. Title (`text.body`, 0.9). Price (`text.recency`, 0.4). **Reactions**: float at card bottom (no container, no strip), `justify-between`, px-4. `text.subtitle` (0.65rem). Inactive: `colors.white` at 0.55 with `text-shadow: 0 1px 3px rgba(0,0,0,0.4)` for depth/readability. Active: signal color at 1.0 with color glow `text-shadow: 0 0 12px color, 0 0 4px color`. NOTE: `borderRadius` and `boxShadow` on Decide cards are an explicit user-approved exception to Zero-Box Doctrine — cards in the decision surface need physical depth to feel tappable and readable in sunlight.
 - **Self-Resolving**: When all items in a category are locked, section collapses to a settled row: 4px `colors.green` breathing dot + category name + locked title at `textColor(0.3)`.
 - **Input**: Shared `ChatInput` from Space page — always visible at bottom, persists draft across view switches. Not duplicated inside PossibilityHorizon.
-- **Data**: Single Supabase query (ALL items, no `is_locked` filter). Batch reaction fetch. Client-side grouping by `category` (memoized). Single Realtime channel (UPDATE + INSERT).
+- **Data**: Single Supabase query (items ordered by `weighted_score` DESC, limited to 100). Batch reaction fetch. Client-side grouping by `metadata.search_label` when present (search results get own rail, e.g. "coronado island hotel"), else by `category` (memoized). `CategoryRail` wrapped with `React.memo` + custom comparator. Card images lazy-loaded after first 3 per rail (`lazyImage` prop). Single Realtime channel (UPDATE + INSERT).
 - Items ordered by `heartSort()` within each category (weightedScore descending, locked items last).
 - Snap scroll: `scroll-snap-type: x mandatory`, `scroll-snap-align: start`. Hidden scrollbar. 12px gap between cards.
 - **BANNED**: `ConsensusMark` animated SVG on cards, conviction strips, buttons with borders/backgrounds. NOTE: Decision cards use `borderRadius: 16px` + `boxShadow` by explicit user approval — this exception does NOT extend to other components.
@@ -302,7 +305,7 @@ The Xark OS backend is a locked hybrid of Firebase and Supabase. No substitution
 - `src/lib/intelligence/orchestrator.ts` — Gemini 2.5 Flash orchestrator. Parses user intent via Gemini → routes to Apify tool → synthesizes response. Stateless. Strips markdown code fences from Gemini JSON. Accepts spaceTitle for location context.
 - `src/lib/intelligence/tool-registry.ts` — Tool registry pattern. Default tools: hotel, flight, activity, restaurant, general. `registerTool(name, { actorId, description, paramMap })`.
 - `src/lib/intelligence/apify-client.ts` — Apify actor runner. `runActor(actorId, input)` → `ApifyResult[]`. Safe: returns empty array when `APIFY_API_TOKEN` missing.
-- `/api/xark` endpoint: POST. Silent mode (no @xark = null response). Strips prefix, fetches space title for location context, builds grounding context, fetches last 15 messages, calls orchestrate(). Search results auto-upserted as decision_items in "proposed" state. Persists @xark response messages server-side via supabaseAdmin (returns messageId for client deduplication).
+- `/api/xark` endpoint: POST. Silent mode (no @xark = null response). Strips prefix, parallelized pre-Gemini fetches via `Promise.all` (space title + grounding context + last 15 messages). Calls orchestrate(). Search results auto-upserted as decision_items in "proposed" state with `search_batch` + `search_label` metadata. Persists @xark response messages server-side via supabaseAdmin (returns messageId for client deduplication).
 - `src/lib/supabase-admin.ts` — Server-side Supabase client with `SUPABASE_SERVICE_ROLE_KEY`. Bypasses RLS. Used by `/api/xark` and `/api/notify`.
 
 ## 21. THE CLAIM SHEET
@@ -333,7 +336,7 @@ The Xark OS backend is a locked hybrid of Firebase and Supabase. No substitution
 ## 24. THE NOTIFICATION SERVICE
 - `src/lib/notifications.ts` — Server-side FCM push via Firebase Admin SDK. Lazy initialization from `FIREBASE_SERVICE_ACCOUNT_JSON` env var. No-op when unconfigured.
 - `sendPush(tokens[], title, body, data?)` — Multicast push. webpush.fcmOptions.link for click-through.
-- `/api/notify` endpoint: POST. Accepts `{ event, spaceId, title, body, excludeUserId }`. Queries `space_members` → `user_devices` for FCM tokens. Returns `{ sent: number }`.
+- `/api/notify` endpoint: POST. Accepts `{ event, spaceId, title, body, excludeUserId }`. Uses `get_push_tokens_for_space` RPC (single query replaces 2-query chain). Returns `{ sent: number }`.
 - `src/components/os/ServiceWorkerRegistration.tsx` — Registers `/firebase-messaging-sw.js`, posts Firebase config via postMessage. Renders null. Only when API key exists.
 - `public/firebase-messaging-sw.js` — Background notification handler for PWA.
 

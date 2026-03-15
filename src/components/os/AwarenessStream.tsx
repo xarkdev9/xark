@@ -16,6 +16,7 @@ import type { SpaceAwareness } from "@/lib/awareness";
 import { recencyLabel } from "@/lib/space-data";
 import { supabase } from "@/lib/supabase";
 import { colors, ink, timing, layout, text } from "@/lib/theme";
+import { useThemeContext } from "@/components/os/ThemeProvider";
 import { Avatar } from "@/components/os/Avatar";
 import { Whisper, dismissOnboardingWhisper } from "@/components/os/OnboardingWhispers";
 
@@ -26,6 +27,7 @@ interface AwarenessStreamProps {
 }
 
 export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStreamProps) {
+  const { isVibe } = useThemeContext();
   const [spaces, setSpaces] = useState<SpaceAwareness[]>([]);
   const [mounted, setMounted] = useState(false);
 
@@ -92,8 +94,8 @@ export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStrea
                   tabIndex={0}
                   onClick={() => handleSpaceTap(space.spaceId)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSpaceTap(space.spaceId); }}
-                  className="cursor-pointer outline-none"
-                  style={{ paddingBottom: "20px" }}
+                  className={`cursor-pointer outline-none ${isVibe ? "vibe-row" : ""}`}
+                  style={{ paddingBottom: isVibe ? "0" : "20px", marginBottom: isVibe ? "8px" : "0" }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{
@@ -103,7 +105,14 @@ export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStrea
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <Avatar name={space.spaceTitle} size={36} />
+                    <div style={isVibe ? {
+                      borderRadius: "14px",
+                      boxShadow: "0 4px 14px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+                      overflow: "hidden",
+                      transform: "translateZ(0)",
+                    } : undefined}>
+                      <Avatar name={space.spaceTitle} size={isVibe ? 44 : 36} shape={isVibe ? "square" : "circle"} />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between">
                         <p style={{ ...text.listTitle, color: ink.primary }}>

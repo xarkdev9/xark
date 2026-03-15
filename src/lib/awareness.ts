@@ -84,9 +84,8 @@ export async function fetchAwareness(userId: string): Promise<SpaceAwareness[]> 
       .neq("atmosphere", "sanctuary")
       .order("last_activity_at", { ascending: false, nullsFirst: false });
 
-    if (memberSpaceIds.length > 0) {
-      spacesQuery.in("id", memberSpaceIds);
-    }
+    if (memberSpaceIds.length === 0) return [];
+    spacesQuery.in("id", memberSpaceIds);
 
     const { data: spaces } = await spacesQuery;
 
@@ -94,30 +93,30 @@ export async function fetchAwareness(userId: string): Promise<SpaceAwareness[]> 
 
     const spaceIds = spaces.map((s) => s.id);
 
-    // Fetch all decision items across user's spaces
-    const { data: items } = await supabase
-      .from("decision_items")
-      .select("id, space_id, state, is_locked, proposed_by")
-      .in("space_id", spaceIds);
+    // Fetch decision items + logistics in parallel
+    const [itemsResult, logisticsResult] = await Promise.all([
+      supabase
+        .from("decision_items")
+        .select("id, space_id, state, is_locked, proposed_by")
+        .in("space_id", spaceIds),
+      Promise.resolve(
+        supabase
+          .from("member_logistics")
+          .select("space_id")
+          .in("space_id", spaceIds)
+          .eq("user_id", userId)
+          .eq("state", "missing")
+          .not("origin", "is", null)
+      ).catch(() => ({ data: null as null })),
+    ]);
 
-    // Fetch needs_flight state
+    const items = itemsResult.data;
+
     let flightSpaceIds: Set<string> = new Set();
-    try {
-      const { data: logistics } = await supabase
-        .from("member_logistics")
-        .select("space_id")
-        .in("space_id", spaceIds)
-        .eq("user_id", userId)
-        .eq("state", "missing")
-        .not("origin", "is", null);
-
-      if (logistics) {
-        for (const row of logistics) {
-          flightSpaceIds.add(row.space_id);
-        }
+    if (logisticsResult.data) {
+      for (const row of logisticsResult.data) {
+        flightSpaceIds.add(row.space_id);
       }
-    } catch {
-      // member_logistics table may not exist yet
     }
 
     // Aggregate per space
@@ -214,3 +213,96 @@ export function getDemoAwareness(): SpaceAwareness[] {
 }
 
 export const DEMO_AWARENESS = getDemoAwareness();
+
+// ── Personal Chats (Sanctuary spaces / 1:1) ──
+
+export interface PersonalChat {
+  spaceId: string;
+  contactName: string;
+  lastMessage: string;
+  lastActivityAt: number;
+}
+
+export async function fetchPersonalChats(userId: string): Promise<PersonalChat[]> {
+  try {
+    // Get spaces the user belongs to
+    const { data: memberRows } = await supabase
+      .from("space_members")
+      .select("space_id")
+      .eq("user_id", userId);
+
+    const memberSpaceIds = memberRows?.map((r) => r.space_id) ?? [];
+    if (memberSpaceIds.length === 0) return [];
+
+    // Fetch sanctuary spaces
+    const { data: sanctuaries } = await supabase
+      .from("spaces")
+      .select("id, title, last_activity_at, created_at")
+      .eq("atmosphere", "sanctuary")
+      .in("id", memberSpaceIds);
+
+    if (!sanctuaries || sanctuaries.length === 0) return [];
+
+    const sanctuaryIds = sanctuaries.map((s) => s.id);
+
+    // Fetch last message per sanctuary via RPC (single query with DISTINCT ON)
+    const lastMessageBySpace = new Map<string, { content: string; senderName: string; createdAt: string }>();
+    try {
+      const { data: latestMsgs } = await supabase.rpc("get_latest_messages_per_space", {
+        p_space_ids: sanctuaryIds,
+      });
+      if (latestMsgs) {
+        for (const msg of latestMsgs) {
+          lastMessageBySpace.set(msg.space_id, {
+            content: msg.content,
+            senderName: msg.sender_name ?? "",
+            createdAt: msg.created_at,
+          });
+        }
+      }
+    } catch {
+      // Fallback: RPC may not exist yet
+    }
+
+    // Resolve contact name: other member in the sanctuary
+    const { data: allMembers } = await supabase
+      .from("space_members")
+      .select("space_id, user_id")
+      .in("space_id", sanctuaryIds);
+
+    const contactBySpace = new Map<string, string>();
+    for (const member of allMembers ?? []) {
+      if (member.user_id !== userId) {
+        contactBySpace.set(member.space_id, member.user_id.replace(/^name_/, ""));
+      }
+    }
+
+    return sanctuaries.map((space) => {
+      const lastMsg = lastMessageBySpace.get(space.id);
+      const contactName = contactBySpace.get(space.id) ?? space.title;
+
+      return {
+        spaceId: space.id,
+        contactName,
+        lastMessage: lastMsg?.content ?? "",
+        lastActivityAt: lastMsg
+          ? new Date(lastMsg.createdAt).getTime()
+          : new Date(space.last_activity_at ?? space.created_at).getTime(),
+      };
+    }).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+  } catch {
+    return getDemoPersonalChats();
+  }
+}
+
+export function getDemoPersonalChats(): PersonalChat[] {
+  const now = Date.now();
+  return [
+    {
+      spaceId: "space_ananya",
+      contactName: "ananya",
+      lastMessage: "sent you the photos from saturday",
+      lastActivityAt: now - 3_600_000,
+    },
+  ];
+}

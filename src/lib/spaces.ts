@@ -160,3 +160,20 @@ export async function createSpace(
 export function getOptimisticSpaceId(dream: string): string {
   return generateSpaceId(dream.toLowerCase().trim());
 }
+
+/** Generate a shareable invite link for a space */
+export async function createInviteLink(spaceId: string, userId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from("space_invites")
+      .insert({ space_id: spaceId, created_by: userId })
+      .select("token")
+      .single();
+
+    if (!data) return null;
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    return `${base}/j/${data.token}`;
+  } catch {
+    return null;
+  }
+}

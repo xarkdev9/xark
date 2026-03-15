@@ -13,31 +13,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "not configured" }, { status: 500 });
   }
 
-  // Get space members' user IDs
-  const { data: members } = await supabaseAdmin
-    .from("space_members")
-    .select("user_id")
-    .eq("space_id", spaceId);
+  // Single RPC replaces 2-query chain (members → devices)
+  const { data: tokenRows } = await supabaseAdmin.rpc("get_push_tokens_for_space", {
+    p_space_id: spaceId,
+    p_exclude_user: excludeUserId ?? null,
+  });
 
-  if (!members) return NextResponse.json({ sent: 0 });
-
-  const userIds = members
-    .map((m: { user_id: string }) => m.user_id)
-    .filter((id: string) => id !== excludeUserId);
-
-  if (userIds.length === 0) return NextResponse.json({ sent: 0 });
-
-  // Get FCM tokens for those users
-  const { data: devices } = await supabaseAdmin
-    .from("user_devices")
-    .select("fcm_token")
-    .in("user_id", userIds);
-
-  if (!devices || devices.length === 0) {
+  if (!tokenRows || tokenRows.length === 0) {
     return NextResponse.json({ sent: 0 });
   }
 
-  const tokens = devices.map((d: { fcm_token: string }) => d.fcm_token);
+  const tokens = tokenRows.map((d: { fcm_token: string }) => d.fcm_token);
   await sendPush(tokens, title, body, { spaceId, event });
 
   return NextResponse.json({ sent: tokens.length });

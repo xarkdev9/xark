@@ -153,7 +153,7 @@ Implementation: `src/hooks/useVoiceInput.ts`
 - **Multimedia**: Firebase Storage (E2EE binary blobs).
 - **Push**: Firebase Cloud Messaging (FCM).
 - **Intelligence**: Gemini 2.5 Flash powers your deep research and agentic planning. Orchestrated via `src/lib/intelligence/orchestrator.ts`. Tool routing via `src/lib/intelligence/tool-registry.ts` (hotel, flight, activity, restaurant, general Apify actors).
-- **API Endpoint**: `/api/xark` — receives message and spaceId. Strips @xark prefix, builds grounding prompt, fetches last 15 messages, routes through Intelligence Orchestrator. Search results auto-upserted as decision_items.
-- **Notifications**: Firebase Admin SDK (`src/lib/notifications.ts`). `/api/notify` endpoint for server-side push. Queries space_members → user_devices for FCM tokens.
+- **API Endpoint**: `/api/xark` — receives message and spaceId. Strips @xark prefix, parallelized pre-Gemini fetches via `Promise.all` (space title + grounding context + last 15 messages). Routes through Intelligence Orchestrator. Search results auto-upserted as decision_items with `search_batch` + `search_label` metadata.
+- **Notifications**: Firebase Admin SDK (`src/lib/notifications.ts`). `/api/notify` endpoint for server-side push. Uses `get_push_tokens_for_space` RPC (single query replaces 2-query chain).
 - **Media**: Firebase Storage (`src/lib/media.ts`). Upload blobs + Supabase metadata. Profile photos in `profiles/{userId}/avatar`.
 - **Supabase Admin**: `src/lib/supabase-admin.ts` — service-role client for server-side API routes. Bypasses RLS.

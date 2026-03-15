@@ -16,20 +16,33 @@ export interface ChatMessage {
   created_at: string;
 }
 
-// ── Fetch all messages for a space, ordered by creation time ──
-export async function fetchMessages(spaceId: string): Promise<ChatMessage[]> {
-  const { data, error } = await supabase
+// ── Fetch messages for a space with pagination ──
+export async function fetchMessages(
+  spaceId: string,
+  opts?: { limit?: number; before?: string }
+): Promise<ChatMessage[]> {
+  const limit = opts?.limit ?? 50;
+
+  let query = supabase
     .from("messages")
     .select("id, space_id, role, content, user_id, sender_name, created_at")
     .eq("space_id", spaceId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (opts?.before) {
+    query = query.lt("created_at", opts.before);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("[xark] fetchMessages failed:", error.message, { spaceId });
     return [];
   }
   if (!data) return [];
-  return data as ChatMessage[];
+  // Reverse to ascending order for display
+  return (data as ChatMessage[]).reverse();
 }
 
 // ── Persist a single message ──

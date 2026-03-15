@@ -4,13 +4,16 @@
 // Font: Inter globally. No per-theme fonts. Consistency = quality.
 
 // ── THEME PRESETS ───────────────────────────────────────────────────────────
-// Two themes: hearth (light, default) + midnight (dark).
+// 4 appearances: hearth light/dark (flat) + vibe light/dark (depth + photos).
+// Style: "flat" = clean WhatsApp-like. "depth" = floating shadows, HD photos, immersive.
 
-export type ThemeName = "hearth" | "midnight";
+export type ThemeName = "hearth" | "hearth_dark" | "vibe" | "vibe_dark";
+export type ThemeStyle = "flat" | "depth";
 
 export interface ThemeConfig {
   label: string;
   mode: "light" | "dark";
+  style: ThemeStyle;    // flat = clean utility, depth = floating shadows + HD photos
   accent: string;       // identity color (dots, underlines, @xark labels)
   text: string;         // foreground text (hierarchy via opacity)
   bg: string;           // background canvas
@@ -28,9 +31,11 @@ export interface ThemeConfig {
 }
 
 export const themes: Record<ThemeName, ThemeConfig> = {
+  // ── HEARTH: clean, flat, WhatsApp-like ──
   hearth: {
     label: "hearth",
     mode: "light",
+    style: "flat",
     accent: "#FF6B35",
     text: "#111111",
     bg: "#F8F7F4",
@@ -39,14 +44,15 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     green: "#047857",
     orange: "#C43D08",
     gray: "#8A8A94",
-    inkPrimary: "#000000",     // pure black — maximum readability
-    inkSecondary: "#6B6B78",   // warm dark gray — 5.2:1 contrast on #F8F7F4
-    inkTertiary: "#8A8A94",    // lighter gray — 3.5:1 contrast
-    inkSender: "#9E6A06",      // hearth amber — sender identity
+    inkPrimary: "#000000",
+    inkSecondary: "#6B6B78",
+    inkTertiary: "#8A8A94",
+    inkSender: "#9E6A06",
   },
-  midnight: {
-    label: "midnight",
+  hearth_dark: {
+    label: "hearth dark",
     mode: "dark",
+    style: "flat",
     accent: "#40E0FF",
     text: "#E8E6E1",
     bg: "#0A0A0F",
@@ -55,12 +61,57 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     green: "#10B981",
     orange: "#E8590C",
     gray: "#8A8A94",
-    inkPrimary: "#FFFFFF",     // pure white
-    inkSecondary: "#9CA3AF",   // cool gray — readable on dark
-    inkTertiary: "#6B7280",    // muted gray
-    inkSender: "#D4A017",      // midnight amber
+    inkPrimary: "#FFFFFF",
+    inkSecondary: "#9CA3AF",
+    inkTertiary: "#6B7280",
+    inkSender: "#D4A017",
+  },
+  // ── VIBE: floating depth, HD photos, immersive ──
+  vibe: {
+    label: "vibe",
+    mode: "light",
+    style: "depth",
+    accent: "#E87040",       // warmer orange
+    text: "#0F0F0F",
+    bg: "#FAF9F6",           // slightly brighter warm canvas
+    amber: "#B07820",
+    gold: "#9A7A18",
+    green: "#059669",
+    orange: "#DC4A20",
+    gray: "#7C7C88",
+    inkPrimary: "#000000",
+    inkSecondary: "#5A5A66",  // slightly darker for more contrast
+    inkTertiary: "#7C7C88",
+    inkSender: "#B07820",
+  },
+  vibe_dark: {
+    label: "vibe dark",
+    mode: "dark",
+    style: "depth",
+    accent: "#50E8C0",       // warm teal-green
+    text: "#ECE8E2",
+    bg: "#08080C",           // deep warm black
+    amber: "#E0A820",
+    gold: "#D4A018",
+    green: "#10B981",
+    orange: "#F06030",
+    gray: "#8A8A94",
+    inkPrimary: "#FFFFFF",
+    inkSecondary: "#A0A0AC",
+    inkTertiary: "#6E6E7A",
+    inkSender: "#E0A820",
   },
 };
+
+// ── STYLE HELPERS ────────────────────────────────────────────────────────────
+// Components use these to adapt rendering based on style (flat vs depth).
+export function getStyle(themeName: ThemeName): ThemeStyle {
+  return themes[themeName].style;
+}
+
+export function isVibeStyle(themeName: ThemeName): boolean {
+  return themes[themeName].style === "depth";
+}
 
 // Hex to "r, g, b" string for rgba() usage in gradients
 export function hexToRgb(hex: string): string {
