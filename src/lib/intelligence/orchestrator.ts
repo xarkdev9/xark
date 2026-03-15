@@ -1,8 +1,9 @@
 // XARK OS v2.0 — @xark Intelligence Orchestrator
 // Gemini parses intent → routes to Apify tool → synthesizes response.
 // Stateless. No state stored. Reads grounding context + last 15 messages.
+// UPGRADES: Internal monologue (responseSchema), self-healing retry, context-aware synthesis.
 
-import { GoogleGenerativeAI, type GenerativeModel } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType, type GenerativeModel, type Schema } from "@google/generative-ai";
 import { getTool, listTools } from "./tool-registry";
 import { runActor, type ApifyResult } from "./apify-client";
 
@@ -12,6 +13,42 @@ const genAI = process.env.GEMINI_API_KEY
 
 const GEMINI_TIMEOUT_MS = 25_000;
 const MAX_RESPONSE_LENGTH = 500;
+
+// ── Structured output schema — forces chain-of-thought BEFORE action ──
+const orchestratorSchema = {
+  type: SchemaType.OBJECT as const,
+  properties: {
+    _thought_process: {
+      type: SchemaType.STRING as const,
+      description: "MANDATORY: 1-2 sentences of internal reasoning. Analyze the space title, locked items, constraints, and social rules BEFORE deciding the action.",
+    },
+    action: {
+      type: SchemaType.STRING as const,
+      description: "Must be one of: search, reason, propose, set_dates, populate_logistics",
+    },
+    tool: { type: SchemaType.STRING as const },
+    params: { type: SchemaType.OBJECT as const, properties: {} },
+    directResponse: { type: SchemaType.STRING as const },
+    start_date: { type: SchemaType.STRING as const },
+    end_date: { type: SchemaType.STRING as const },
+    label: { type: SchemaType.STRING as const },
+    extractions: {
+      type: SchemaType.ARRAY as const,
+      items: {
+        type: SchemaType.OBJECT as const,
+        properties: {
+          user_name: { type: SchemaType.STRING as const },
+          category: { type: SchemaType.STRING as const },
+          origin: { type: SchemaType.STRING as const },
+          destination: { type: SchemaType.STRING as const },
+          confidence: { type: SchemaType.NUMBER as const },
+        },
+        required: ["user_name", "confidence"] as const,
+      },
+    },
+  },
+  required: ["_thought_process", "action"] as const,
+} as unknown as Schema;
 
 // ── Timeout wrapper — prevents Gemini from hanging indefinitely ──
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -26,19 +63,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 // ── Response quality gate — reject Gemini garbage before it reaches the user ──
 export function isGarbageResponse(text: string): boolean {
   if (!text || text.trim().length === 0) return true;
-
-  // Too long — @xark speaks in short fragments
   if (text.length > MAX_RESPONSE_LENGTH) return true;
 
-  // Word soup: high density of period-terminated short words
-  // Pattern: "big. small. tall. short. long. wide." = hallucination
   const words = text.split(/\s+/);
   if (words.length > 20) {
     const periodWords = words.filter((w) => w.endsWith(".") && w.length < 15);
     if (periodWords.length / words.length > 0.5) return true;
   }
 
-  // Repetitive: any single word >5 occurrences in a short text
   if (words.length > 15) {
     const counts = new Map<string, number>();
     for (const w of words) {
@@ -56,8 +88,8 @@ export function isGarbageResponse(text: string): boolean {
 const GARBAGE_FALLBACK = "couldn't process that. try rephrasing.";
 
 export interface OrchestratorInput {
-  userMessage: string;        // "@xark" prefix already stripped
-  groundingPrompt: string;    // from generateGroundingPrompt()
+  userMessage: string;
+  groundingPrompt: string;
   recentMessages: Array<{ role: string; content: string; sender_name?: string }>;
   spaceId: string;
   spaceTitle?: string;
@@ -116,23 +148,13 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     return { response: "intelligence service is not configured." };
   }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = genAI.getGenerativeModel({ model: modelName });
 
-  // Step 1: Parse intent via Gemini (with timeout)
+  // ── UPGRADE 1: Structured output with internal monologue ──
   const intentPrompt = buildIntentPrompt(input);
-  const intentResult = await withTimeout(
-    model.generateContent(intentPrompt),
-    GEMINI_TIMEOUT_MS
-  );
-  const intentText = intentResult.response.text();
-
-  // Strip markdown code fences if Gemini wraps JSON in ```json ... ```
-  const jsonText = intentText
-    .replace(/^```(?:json)?\s*\n?/i, "")
-    .replace(/\n?```\s*$/i, "")
-    .trim();
-
   let parsed: {
+    _thought_process?: string;
     action: string;
     tool?: string;
     params?: Record<string, string>;
@@ -142,14 +164,37 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     label?: string;
     extractions?: Array<{ user_name: string; category?: string; origin?: string; destination?: string; confidence: number }>;
   };
+
   try {
-    parsed = JSON.parse(jsonText);
-  } catch {
-    // Gemini didn't return JSON — validate before using as response
-    if (isGarbageResponse(intentText)) {
+    const intentResult = await withTimeout(
+      model.generateContent({
+        contents: [{ role: "user", parts: [{ text: intentPrompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: orchestratorSchema,
+        },
+      }),
+      GEMINI_TIMEOUT_MS
+    );
+
+    parsed = JSON.parse(intentResult.response.text());
+    console.log("[@xark thought]:", parsed._thought_process);
+  } catch (err) {
+    // Fallback: try without schema (older Gemini versions)
+    try {
+      const fallbackResult = await withTimeout(
+        model.generateContent(intentPrompt),
+        GEMINI_TIMEOUT_MS
+      );
+      const intentText = fallbackResult.response.text()
+        .replace(/^```(?:json)?\s*\n?/i, "")
+        .replace(/\n?```\s*$/i, "")
+        .trim();
+
+      parsed = JSON.parse(intentText);
+    } catch {
       return { response: GARBAGE_FALLBACK, action: "reason" };
     }
-    return { response: intentText, action: "reason" };
   }
 
   // Step 2: Route based on action
@@ -168,7 +213,6 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
         return { response: "searched but nothing matched. try a different query.", action: "search" };
       }
 
-      // Convert to ApifyResult shape for downstream compatibility
       const results: ApifyResult[] = groundedResults.map((r) => ({
         title: r.title,
         description: [r.description, r.address, r.phone].filter(Boolean).join(" — "),
@@ -186,14 +230,43 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     }
 
     // ── Apify tier (default) ──
-    const mappedParams = tool.paramMap(parsed.params);
-    const results = await runActor(tool.actorId, mappedParams);
+    let mappedParams = tool.paramMap(parsed.params);
+    let results = await runActor(tool.actorId, mappedParams);
 
-    if (results.length === 0) {
-      return { response: "searched but nothing matched. try different dates or a broader area.", action: "search" };
+    // ── UPGRADE 2: Agentic self-healing retry ──
+    if (results.length === 0 && tool.tier === "apify") {
+      const retryPrompt = `The search using tool '${parsed.tool}' with params ${JSON.stringify(parsed.params)} returned 0 results.
+Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize the category) and return updated params.
+Explain your adjustment in the _thought_process.`;
+
+      try {
+        const retryResult = await withTimeout(
+          model.generateContent({
+            contents: [{ role: "user", parts: [{ text: retryPrompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: orchestratorSchema,
+            },
+          }),
+          GEMINI_TIMEOUT_MS
+        );
+
+        const retryParsed = JSON.parse(retryResult.response.text());
+        console.log("[@xark retry thought]:", retryParsed._thought_process);
+        if (retryParsed.params && Object.keys(retryParsed.params).length > 0) {
+          mappedParams = tool.paramMap(retryParsed.params);
+          results = await runActor(tool.actorId, mappedParams);
+        }
+      } catch {
+        // Fall through to failure message
+      }
     }
 
-    // Step 3: Synthesize response via Gemini (with timeout)
+    if (results.length === 0) {
+      return { response: "tried searching but nothing fit. maybe adjust dates or budget?", action: "search" };
+    }
+
+    // ── UPGRADE 3: Context-aware synthesis ──
     const synthesisPrompt = buildSynthesisPrompt(input, results);
     const synthesisResult = await withTimeout(
       model.generateContent(synthesisPrompt),
@@ -257,10 +330,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     };
   }
 
-  return {
-    response: isGarbageResponse(intentText) ? GARBAGE_FALLBACK : intentText,
-    action: "reason",
-  };
+  return { response: GARBAGE_FALLBACK, action: "reason" };
 }
 
 function buildIntentPrompt(input: OrchestratorInput): string {
@@ -300,39 +370,38 @@ AVAILABLE TOOLS (with required params):
 
 USER REQUEST: ${input.userMessage}
 
-Respond with a single JSON object only (no markdown, no code fences). Choose one action:
-1. {"action": "search", "tool": "<tool-name>", "params": {<params — ALL required fields must be present>}}
-2. {"action": "reason", "directResponse": "<your response — follow voice rules>"}
-3. {"action": "propose", "directResponse": "<your response — follow voice rules>"}
-4. {"action": "set_dates", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "label": "optional"}
-5. {"action": "populate_logistics", "extractions": [{"user_name": "name", "origin": "AIRPORT", "confidence": 0.95}]}
+IMPORTANT: Think step by step in the _thought_process field BEFORE choosing an action. Consider:
+1. What is the destination from the space title?
+2. Are there any locked decisions that constrain this request?
+3. Which tool best serves this request?
+4. What parameters can be inferred?
 
 Rules:
 - ALWAYS infer destination/location from the SPACE TITLE first. Do not ignore it. If title says "finland trip", the destination is Finland.
 - If the user asks to find/search/look for something, use "search". Infer location from space title or conversation.
-- If the user mentions meals, dining, food, dinner, lunch, brunch, breakfast, or restaurants, use "search" with the "restaurant" tool. Infer location from space title. NEVER make up restaurant names — always search.
+- If the user mentions meals, dining, food, dinner, lunch, brunch, breakfast, or restaurants, use "search" with the "restaurant" tool.
 - If the user mentions things to do, activities, sightseeing, or entertainment, use "search" with the "activity" tool.
-- If the user asks a knowledge question ("best airport", "best time", "what to see", "tourist spots"), use "search" with tool "general" and the query. Do NOT guess answers — search first.
-- For flights: origin and destination MUST be 3-letter IATA airport codes. "finland" → "HEL". "san diego" → "SAN". Use your aviation knowledge to map countries/cities to their main airports.
-- For flexible dates ("dates flexible", "sometime in december"): pick the 1st and last day of the stated month. Example: "flexible in december 2026" → date: "2026-12-01", returnDate: "2026-12-31".
-- All dates must use the year explicitly stated by the user. If user says "dec 2026", use 2026, not ${new Date().getFullYear()}.
+- If the user asks a knowledge question ("best airport", "best time", "what to see"), use "search" with tool "general".
+- For flights: origin and destination MUST be 3-letter IATA airport codes.
+- For flexible dates ("dates flexible", "sometime in december"): pick the 1st and last day of the stated month.
+- All dates must use the year explicitly stated by the user.
 - If the user asks about group state, voting, or consensus, use "reason".
 - If the user asks to add an item, use "propose".
 - For trip dates, use "set_dates" with YYYY-MM-DD format.
 - For travel origins, use "populate_logistics" only when confidence > 0.8.
 - This may be a follow-up to a previous @xark question. Read RECENT MESSAGES to understand context.
-- CRITICAL: NEVER invent, fabricate, or hallucinate place names, restaurant names, hotel names, or any real-world entity. If the user asks about places, food, things to do, flights, or hotels, you MUST use "search" — do NOT make up names in a "reason" response.
-- Output raw JSON only. No markdown fences. No explanation.
+- CRITICAL: NEVER invent, fabricate, or hallucinate place names. If the user asks about places, you MUST use "search".
 
-ROUTING EXAMPLES (follow these):
-- "dinner tonight" → {"action":"search","tool":"restaurant","params":{"location":"<from space title>"}}
-- "find hotels" → {"action":"search","tool":"hotel","params":{"location":"<from space title>"}}
-- "best airport for tourist spots" → {"action":"search","tool":"general","params":{"query":"best airport for tourist spots in <destination>"}}
-- "things to do" → {"action":"search","tool":"activity","params":{"location":"<from space title>"}}
-- "who voted?" → {"action":"reason","directResponse":"..."}
-- "what is the status?" → {"action":"reason","directResponse":"..."}`;
+ROUTING EXAMPLES:
+- "dinner tonight" → search restaurant with location from space title
+- "find hotels" → search hotel with location from space title
+- "best airport for tourist spots" → search general with query
+- "things to do" → search activity with location from space title
+- "who voted?" → reason with directResponse
+- "what is the status?" → reason with directResponse`;
 }
 
+// ── UPGRADE 3: Context-aware synthesis — passes grounding + messages to final response ──
 function buildSynthesisPrompt(input: OrchestratorInput, results: ApifyResult[]): string {
   const resultsSummary = results
     .slice(0, 8)
@@ -341,13 +410,22 @@ function buildSynthesisPrompt(input: OrchestratorInput, results: ApifyResult[]):
 
   return `You are @xark, a silent tool. No personality. No "I". All lowercase. Short fragments.
 
-RESULTS:
-${resultsSummary}
+SPACE CONTEXT: ${input.spaceTitle || "untitled"}
+GROUNDING CONSTRAINTS:
+${input.groundingPrompt}
+
+RECENT MESSAGES (last 3):
+${input.recentMessages.slice(-3).map((m) => `${m.sender_name || m.role}: ${m.content}`).join("\n")}
 
 USER ASKED: ${input.userMessage}
 
-Respond in 1 short fragment. Examples:
+SEARCH RESULTS JUST FETCHED:
+${resultsSummary}
+
+Synthesize this into 1 short fragment.
+CRITICAL: If the results conflict with a COMMITTED decision in the grounding constraints, point it out!
+Examples:
 - "found 4 hotels under $200. in your stream now."
-- "3 flights, cheapest is $189 nonstop. added to decide."
+- "found options, but they conflict with the locked dates."
 No emoji. No exclamation marks. No hedging.`;
 }

@@ -1,5 +1,8 @@
 // XARK OS v2.0 — @xark Intelligence Endpoint
 // Silent unless message contains "@xark". Privacy-first.
+// UPGRADE 4: maxDuration + optimistic "thinking..." UI via Supabase Realtime.
+
+export const maxDuration = 60; // Prevent Vercel from killing long Apify searches
 
 import { NextRequest, NextResponse } from "next/server";
 import { orchestrate, isGarbageResponse } from "@/lib/intelligence/orchestrator";
@@ -189,7 +192,20 @@ export async function POST(req: NextRequest) {
     sender_name: m.sender_name ?? undefined,
   }));
 
-  // Orchestrate
+  // ── UPGRADE 4: Optimistic UI — insert "thinking..." immediately ──
+  const xarkMsgId = `msg_${crypto.randomUUID()}`;
+  if (supabaseAdmin) {
+    await supabaseAdmin.from("messages").insert({
+      id: xarkMsgId,
+      space_id: spaceId,
+      role: "xark",
+      content: "thinking...",
+      user_id: null,
+      sender_name: null,
+    });
+  }
+
+  // Orchestrate (can take 15-40s for Apify searches)
   const result = await orchestrate({
     userMessage,
     groundingPrompt,
@@ -198,8 +214,11 @@ export async function POST(req: NextRequest) {
     spaceTitle,
   });
 
-  // If pending confirmation, return to client without side effects
+  // If pending confirmation, delete the thinking message and return to client
   if (result.pendingConfirmation) {
+    if (supabaseAdmin) {
+      await supabaseAdmin.from("messages").delete().eq("id", xarkMsgId);
+    }
     return NextResponse.json({
       response: result.response,
       pendingConfirmation: true,
@@ -237,7 +256,9 @@ export async function POST(req: NextRequest) {
       },
     }));
 
-    await supabaseAdmin.from("decision_items").upsert(items, { onConflict: "id" });
+    if (supabaseAdmin) {
+      await supabaseAdmin.from("decision_items").upsert(items, { onConflict: "id" });
+    }
   }
 
   // ── Final sanity check — never persist garbage to DB ──
@@ -245,16 +266,12 @@ export async function POST(req: NextRequest) {
     ? "couldn't process that. try rephrasing."
     : result.response;
 
-  // Persist @xark response message server-side (RLS blocks role='xark' from client)
-  const xarkMsgId = `msg_${crypto.randomUUID()}`;
-  await supabaseAdmin.from("messages").insert({
-    id: xarkMsgId,
-    space_id: spaceId,
-    role: "xark",
-    content: finalResponse,
-    user_id: null,
-    sender_name: null,
-  });
+  // ── UPDATE the thinking message with the FINAL response (not a new insert) ──
+  if (supabaseAdmin) {
+    await supabaseAdmin.from("messages").update({
+      content: finalResponse,
+    }).eq("id", xarkMsgId);
+  }
 
   return NextResponse.json({ response: finalResponse, messageId: xarkMsgId });
 
