@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { colors, text, textColor } from "@/lib/theme";
+import { colors, text, ink } from "@/lib/theme";
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -66,7 +66,7 @@ export function Whisper({ whisperKey, children, align = "left", delay = 1.5 }: W
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         style={{
           ...text.recency,
-          color: textColor(0.2),
+          color: ink.tertiary,
           textAlign: align,
         }}
       >
