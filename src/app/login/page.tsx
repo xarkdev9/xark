@@ -9,7 +9,7 @@ import { storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { supabase } from "@/lib/supabase";
 import { setSupabaseToken } from "@/lib/supabase";
-import { colors, timing } from "@/lib/theme";
+import { colors, ink, text, timing } from "@/lib/theme";
 
 // ── Phases ──
 type Screen = "brand" | "field";
@@ -73,7 +73,7 @@ const fieldTransition = {
 // ── Arrow icon ──
 function ArrowIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="5" y1="12" x2="19" y2="12" />
       <polyline points="12 5 19 12 12 19" />
     </svg>
@@ -249,7 +249,7 @@ export default function LoginPage() {
 
   return (
     <LayoutGroup>
-      <div className="relative flex min-h-svh flex-col overflow-hidden" style={{ background: "#F8F7F4" }}>
+      <div className="relative flex min-h-svh flex-col overflow-hidden" style={{ background: colors.void }}>
         <div id="recaptcha-container" />
 
         {/* ── Progressive accent wash ── */}
@@ -287,7 +287,7 @@ export default function LoginPage() {
                 layoutId="wordmark"
                 style={{
                   fontSize: "64px", fontWeight: 300, letterSpacing: "-0.03em",
-                  color: "#111111",
+                  color: colors.white,
                   opacity: mounted ? 0.88 : 0,
                   display: "inline-block",
                 }}
@@ -302,7 +302,7 @@ export default function LoginPage() {
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: mounted ? 0.45 : 0, y: mounted ? 0 : 14 }}
                   transition={{ delay: 0.5, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontSize: "14px", fontWeight: 400, color: "#111111", lineHeight: 2, letterSpacing: "0.02em" }}
+                  style={{ fontSize: "14px", fontWeight: 400, color: colors.white, lineHeight: 2, letterSpacing: "0.02em" }}
                 >
                   people, plans and memories.
                 </motion.p>
@@ -310,7 +310,7 @@ export default function LoginPage() {
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: mounted ? 0.28 : 0, y: mounted ? 0 : 14 }}
                   transition={{ delay: 1.0, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontSize: "14px", fontWeight: 400, color: "#111111", lineHeight: 2, letterSpacing: "0.02em" }}
+                  style={{ fontSize: "14px", fontWeight: 400, color: colors.white, lineHeight: 2, letterSpacing: "0.02em" }}
                 >
                   decide together, effortlessly.
                 </motion.p>
@@ -318,7 +318,7 @@ export default function LoginPage() {
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: mounted ? 0.15 : 0, y: mounted ? 0 : 14 }}
                   transition={{ delay: 1.5, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontSize: "14px", fontWeight: 400, color: "#111111", lineHeight: 2, letterSpacing: "0.02em" }}
+                  style={{ fontSize: "14px", fontWeight: 400, color: colors.white, lineHeight: 2, letterSpacing: "0.02em" }}
                 >
                   encrypted, always.
                 </motion.p>
@@ -339,7 +339,7 @@ export default function LoginPage() {
                   className="cursor-pointer outline-none"
                   style={{
                     fontSize: "11px", fontWeight: 300, letterSpacing: "0.15em",
-                    color: "#FF6B35", opacity: 0.5,
+                    color: colors.cyan, opacity: 0.5,
                     transition: `opacity ${timing.transition} ease`,
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
@@ -369,7 +369,7 @@ export default function LoginPage() {
                   layoutId="wordmark"
                   style={{
                     fontSize: "28px", fontWeight: 300, letterSpacing: "-0.03em",
-                    color: "#111111", opacity: 0.5,
+                    color: colors.white, opacity: 0.5,
                     display: "inline-block",
                   }}
                   transition={{ layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }}
@@ -387,7 +387,7 @@ export default function LoginPage() {
                     <motion.div key="phone" {...fieldTransition}>
                       {usePhoneAuth ? (
                         <>
-                          <p style={{ fontSize: "13px", fontWeight: 300, color: "#111111", opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                          <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
                             your number
                           </p>
                           <div style={{ display: "flex", alignItems: "center" }}>
@@ -402,9 +402,9 @@ export default function LoginPage() {
                                 paddingRight: "10px", position: "relative",
                               }}
                             >
-                              <span style={{ fontSize: "22px", fontWeight: 400, color: "#111111", opacity: 0.5 }}>{countryCode}</span>
+                              <span style={{ fontSize: "22px", fontWeight: 400, color: colors.white, opacity: 0.5 }}>{countryCode}</span>
                               <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.2, marginTop: "2px" }}>
-                                <path d="M2 3L4 5L6 3" stroke="#111111" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M2 3L4 5L6 3" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>
                               <div style={{ position: "absolute", right: 0, top: "4px", bottom: "4px", width: "1px", background: "#111111", opacity: 0.06 }} />
                             </div>
@@ -420,8 +420,8 @@ export default function LoginPage() {
                               disabled={isBusy}
                               className="flex-1 bg-transparent outline-none"
                               style={{
-                                fontSize: "22px", fontWeight: 400, color: "#111111", letterSpacing: "0.06em",
-                                paddingLeft: "10px", caretColor: "#FF6B35",
+                                fontSize: "22px", fontWeight: 400, color: colors.white, letterSpacing: "0.06em",
+                                paddingLeft: "10px", caretColor: colors.cyan,
                                 opacity: isBusy ? 0.3 : 0.85,
                                 transition: `opacity ${timing.transition} ease`,
                               }}
@@ -445,7 +445,7 @@ export default function LoginPage() {
                       ) : (
                         /* Dev auth */
                         <>
-                          <p style={{ fontSize: "13px", fontWeight: 300, color: "#111111", opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                          <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
                             your name
                           </p>
                           <div style={{ display: "flex", alignItems: "center", marginBottom: "24px" }}>
@@ -456,10 +456,10 @@ export default function LoginPage() {
                               onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) document.getElementById("xark-pass")?.focus(); }}
                               placeholder="name" autoFocus spellCheck={false} autoComplete="off"
                               className="flex-1 bg-transparent outline-none"
-                              style={{ fontSize: "22px", fontWeight: 400, color: "#111111", letterSpacing: "0.04em", caretColor: "#FF6B35" }}
+                              style={{ fontSize: "22px", fontWeight: 400, color: colors.white, letterSpacing: "0.04em", caretColor: colors.cyan }}
                             />
                           </div>
-                          <p style={{ fontSize: "13px", fontWeight: 300, color: "#8A8A94", letterSpacing: "0.04em", marginBottom: "16px" }}>
+                          <p style={{ fontSize: "13px", fontWeight: 300, color: ink.tertiary, letterSpacing: "0.04em", marginBottom: "16px" }}>
                             password
                           </p>
                           <div style={{ display: "flex", alignItems: "center" }}>
@@ -469,7 +469,7 @@ export default function LoginPage() {
                               onKeyDown={(e) => { if (e.key === "Enter") handleDevEnter(); }}
                               placeholder="password" spellCheck={false} autoComplete="off"
                               className="flex-1 bg-transparent outline-none"
-                              style={{ fontSize: "16px", fontWeight: 400, color: "#111111", letterSpacing: "0.08em", caretColor: "#FF6B35", opacity: 0.6 }}
+                              style={{ fontSize: "16px", fontWeight: 400, color: colors.white, letterSpacing: "0.08em", caretColor: colors.cyan, opacity: 0.6 }}
                             />
                             <span
                               role="button" tabIndex={0}
@@ -494,7 +494,7 @@ export default function LoginPage() {
                   {fieldStep === "phone" && showPicker && (
                     <motion.div key="picker" {...fieldTransition}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111111" strokeWidth="1.5" opacity="0.2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.2">
                           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                         </svg>
                         <input
@@ -511,14 +511,14 @@ export default function LoginPage() {
                           placeholder="search country"
                           autoFocus spellCheck={false} autoComplete="off"
                           className="flex-1 bg-transparent outline-none"
-                          style={{ fontSize: "15px", fontWeight: 400, color: "#111111", letterSpacing: "0.02em", caretColor: "#FF6B35" }}
+                          style={{ fontSize: "15px", fontWeight: 400, color: colors.white, letterSpacing: "0.02em", caretColor: colors.cyan }}
                         />
                         <span
                           role="button" tabIndex={0}
                           onClick={() => setShowPicker(false)}
                           onKeyDown={(e) => { if (e.key === "Enter") setShowPicker(false); }}
                           className="cursor-pointer outline-none"
-                          style={{ fontSize: "11px", fontWeight: 300, color: "#111111", opacity: 0.2 }}
+                          style={{ fontSize: "11px", fontWeight: 300, color: colors.white, opacity: 0.2 }}
                         >
                           cancel
                         </span>
@@ -537,8 +537,8 @@ export default function LoginPage() {
                               borderBottom: "1px solid rgba(20,20,20,0.03)",
                             }}
                           >
-                            <span style={{ fontSize: "14px", fontWeight: 400, color: "#111111", opacity: 0.6 }}>{c.name}</span>
-                            <span style={{ fontSize: "13px", fontWeight: 300, color: "#FF6B35", opacity: 0.5 }}>{c.code}</span>
+                            <span style={{ fontSize: "14px", fontWeight: 400, color: colors.white, opacity: 0.6 }}>{c.name}</span>
+                            <span style={{ fontSize: "13px", fontWeight: 300, color: colors.cyan, opacity: 0.5 }}>{c.code}</span>
                           </div>
                         ))}
                       </div>
@@ -548,7 +548,7 @@ export default function LoginPage() {
                   {/* ── OTP ── */}
                   {fieldStep === "otp" && (
                     <motion.div key="otp" {...fieldTransition}>
-                      <p style={{ fontSize: "13px", fontWeight: 300, color: "#111111", opacity: 0.2, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                      <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.2, letterSpacing: "0.04em", marginBottom: "16px" }}>
                         <span style={{ opacity: 0.6 }}>{countryCode} {phoneInput}</span> · enter code
                       </p>
                       <div style={{ display: "flex", alignItems: "center" }}>
@@ -562,8 +562,8 @@ export default function LoginPage() {
                           disabled={isBusy}
                           className="flex-1 bg-transparent outline-none"
                           style={{
-                            fontSize: "32px", fontWeight: 400, color: "#111111", letterSpacing: "0.3em",
-                            caretColor: "#FF6B35",
+                            fontSize: "32px", fontWeight: 400, color: colors.white, letterSpacing: "0.3em",
+                            caretColor: colors.cyan,
                             opacity: isBusy ? 0.3 : 0.9,
                             transition: `opacity ${timing.transition} ease`,
                           }}
@@ -575,7 +575,7 @@ export default function LoginPage() {
                   {/* ── NAME ── */}
                   {fieldStep === "name" && (
                     <motion.div key="name" {...fieldTransition}>
-                      <p style={{ fontSize: "13px", fontWeight: 300, color: "#111111", opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                      <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
                         your friends call you
                       </p>
                       <div style={{ display: "flex", alignItems: "center" }}>
@@ -587,7 +587,7 @@ export default function LoginPage() {
                           placeholder="name"
                           autoFocus spellCheck={false} autoComplete="off"
                           className="flex-1 bg-transparent outline-none"
-                          style={{ fontSize: "26px", fontWeight: 400, color: "#111111", letterSpacing: "0.02em", caretColor: "#FF6B35", opacity: 0.88 }}
+                          style={{ fontSize: "26px", fontWeight: 400, color: colors.white, letterSpacing: "0.02em", caretColor: colors.cyan, opacity: 0.88 }}
                         />
                         <span
                           role="button" tabIndex={0}
@@ -609,7 +609,7 @@ export default function LoginPage() {
                   {/* ── PHOTO ── */}
                   {fieldStep === "photo" && (
                     <motion.div key="photo" {...fieldTransition}>
-                      <p style={{ fontSize: "13px", fontWeight: 300, color: "#111111", opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                      <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
                         hey {name.trim().toLowerCase()} — add a face?
                       </p>
                       <input ref={fileRef} type="file" accept="image/*" className="hidden"
@@ -625,12 +625,12 @@ export default function LoginPage() {
                             style={{ width: "56px", height: "56px", borderRadius: "50%", position: "relative" }}
                           >
                             <svg width="56" height="56" viewBox="0 0 56 56" fill="none" style={{ position: "absolute", inset: 0 }}>
-                              <circle cx="28" cy="28" r="26" stroke="#111111" strokeWidth="0.6" strokeDasharray="4 5" opacity="0.12"/>
+                              <circle cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="0.6" strokeDasharray="4 5" opacity="0.12"/>
                             </svg>
                             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" opacity="0.15">
-                                <line x1="8" y1="3" x2="8" y2="13" stroke="#111111" strokeWidth="0.8"/>
-                                <line x1="3" y1="8" x2="13" y2="8" stroke="#111111" strokeWidth="0.8"/>
+                                <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" strokeWidth="0.8"/>
+                                <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="0.8"/>
                               </svg>
                             </div>
                           </div>
@@ -640,7 +640,7 @@ export default function LoginPage() {
                             onKeyDown={(e) => { if (e.key === "Enter") goToGalaxy(); }}
                             className="cursor-pointer outline-none"
                             style={{
-                              fontSize: "11px", fontWeight: 300, color: "#8A8A94", letterSpacing: "0.04em",
+                              fontSize: "11px", fontWeight: 300, color: ink.tertiary, letterSpacing: "0.04em",
                               transition: `opacity ${timing.transition} ease`,
                             }}
                             onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.3"; }}
@@ -651,8 +651,8 @@ export default function LoginPage() {
                         </div>
                       ) : (
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#FF6B35", animation: "ambientBreath 4.5s ease-in-out infinite" }} />
-                          <span style={{ fontSize: "12px", fontWeight: 300, color: "#111111", opacity: 0.35 }}>uploading</span>
+                          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: colors.cyan, animation: "ambientBreath 4.5s ease-in-out infinite" }} />
+                          <span style={{ fontSize: "12px", fontWeight: 300, color: colors.white, opacity: 0.35 }}>uploading</span>
                         </div>
                       )}
                     </motion.div>
@@ -665,7 +665,7 @@ export default function LoginPage() {
                   style={{
                     marginTop: fieldStep === "photo" ? "18px" : "10px",
                     height: "1px",
-                    background: "linear-gradient(90deg, #FF6B35, transparent)",
+                    background: `linear-gradient(90deg, ${colors.cyan}, transparent)`,
                     animation: isBusy ? "none" : "ambientBreath 4.5s ease-in-out infinite",
                     opacity: isBusy ? 0.1 : 0.3,
                   }}
@@ -680,7 +680,7 @@ export default function LoginPage() {
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 0.7, y: 0 }}
                       exit={{ opacity: 0 }}
-                      style={{ fontSize: "11px", fontWeight: 300, color: "#C43D08", marginTop: "12px", letterSpacing: "0.02em" }}
+                      style={{ fontSize: "11px", fontWeight: 300, color: colors.orange, marginTop: "12px", letterSpacing: "0.02em" }}
                     >
                       {authError}
                     </motion.p>
@@ -696,7 +696,7 @@ export default function LoginPage() {
                   onKeyDown={(e) => { if (e.key === "Enter") setAuthMode(authMode === "phone" ? "dev" : "phone"); }}
                   className="cursor-pointer outline-none"
                   style={{
-                    fontSize: "13px", fontWeight: 300, color: "#8A8A94", letterSpacing: "0.04em",
+                    fontSize: "13px", fontWeight: 300, color: ink.tertiary, letterSpacing: "0.04em",
                     marginTop: "32px", transition: `opacity ${timing.transition} ease`,
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.25"; }}
@@ -707,11 +707,11 @@ export default function LoginPage() {
               )}
 
               {/* Encrypted badge — persistent */}
-              <div style={{ position: "fixed", bottom: "56px", left: "36px", display: "flex", alignItems: "center", gap: "6px", zIndex: 10 }}>
+              <div style={{ position: "fixed", bottom: "56px", left: "36px", display: "flex", alignItems: "center", gap: "6px", zIndex: 10, color: ink.tertiary }}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M6 1L3 3.5V5.5C3 7.98 4.28 10.28 6 11C7.72 10.28 9 7.98 9 5.5V3.5L6 1Z" stroke="#8A8A94" strokeWidth="0.8" strokeLinejoin="round"/>
+                  <path d="M6 1L3 3.5V5.5C3 7.98 4.28 10.28 6 11C7.72 10.28 9 7.98 9 5.5V3.5L6 1Z" stroke="currentColor" strokeWidth="0.8" strokeLinejoin="round"/>
                 </svg>
-                <span style={{ fontSize: "11px", letterSpacing: "0.12em", color: "#8A8A94", textTransform: "uppercase" as const }}>
+                <span style={{ fontSize: "11px", letterSpacing: "0.12em", color: ink.tertiary, textTransform: "uppercase" as const }}>
                   encrypted
                 </span>
               </div>
@@ -721,7 +721,7 @@ export default function LoginPage() {
 
         <style jsx>{`
           input::placeholder {
-            color: #8A8A94;
+            color: var(--xark-ink-tertiary);
             opacity: 1;
             letter-spacing: 0.08em;
           }
