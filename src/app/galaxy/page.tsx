@@ -3,7 +3,7 @@
 // XARK OS v2.0 — GALAXY PAGE
 // Tab toggle: People | Plans. Dream input fixed above ControlCaret.
 
-import { Suspense, useState, useCallback, useRef } from "react";
+import { Suspense, useState, useCallback, useRef, type TouchEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AwarenessStream } from "@/components/os/AwarenessStream";
 import { PeopleDock } from "@/components/os/PeopleDock";
@@ -60,6 +60,30 @@ function GalaxyContent() {
     handleSpaceTap(spaceId);
     createSpace(txt, userId).catch(() => {});
   }, [dream, isCreating, userId]);
+
+  // ── Swipe to switch tabs ──
+  const tabs: GalaxyTab[] = ["people", "plans", "memories"];
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // Only trigger if horizontal swipe is dominant and > 60px
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      const currentIdx = tabs.indexOf(activeTab);
+      if (dx < 0 && currentIdx < tabs.length - 1) {
+        setActiveTab(tabs[currentIdx + 1]);
+      } else if (dx > 0 && currentIdx > 0) {
+        setActiveTab(tabs[currentIdx - 1]);
+      }
+    }
+  }, [activeTab]);
 
   return (
     <div className="relative" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
@@ -145,10 +169,12 @@ function GalaxyContent() {
         </div>
       </div>
 
-      {/* ── Scrollable content ── */}
+      {/* ── Scrollable content — swipe left/right to switch tabs ── */}
       <div
         className="relative z-10"
         style={{ flex: 1, overflowY: "auto", paddingTop: "16px", paddingBottom: "120px" }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         {activeTab === "people" && (
           <PeopleDock

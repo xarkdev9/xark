@@ -131,8 +131,8 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
                 tabIndex={0}
                 onClick={() => handleChatTap(chat.spaceId)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleChatTap(chat.spaceId); }}
-                className={`cursor-pointer outline-none ${isVibe ? "vibe-row" : ""}`}
-                style={{ paddingBottom: isVibe ? "0" : "20px", marginBottom: isVibe ? "8px" : "0" }}
+                className="cursor-pointer outline-none"
+                style={{ paddingBottom: "20px" }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -142,12 +142,22 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <div style={isVibe ? {
-                    borderRadius: "50%",
-                    boxShadow: "0 4px 14px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
-                    transform: "translateZ(0)",
-                  } : undefined}>
-                    <Avatar name={chat.contactName} size={isVibe ? 44 : 36} />
+                  {/* Avatar — vibe: larger with floating shadow + ambient glow */}
+                  <div style={{ position: "relative", flexShrink: 0 }}>
+                    {isVibe && (
+                      <div style={{
+                        position: "absolute", inset: "-6px",
+                        borderRadius: "50%",
+                        background: "radial-gradient(circle, rgba(var(--xark-accent-rgb), 0.06) 0%, transparent 70%)",
+                        pointerEvents: "none",
+                      }} />
+                    )}
+                    <div style={isVibe ? {
+                      borderRadius: "50%",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)",
+                    } : undefined}>
+                      <Avatar name={chat.contactName} size={isVibe ? 46 : 36} />
+                    </div>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between">

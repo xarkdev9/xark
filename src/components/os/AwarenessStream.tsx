@@ -94,8 +94,8 @@ export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStrea
                   tabIndex={0}
                   onClick={() => handleSpaceTap(space.spaceId)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSpaceTap(space.spaceId); }}
-                  className={`cursor-pointer outline-none ${isVibe ? "vibe-row" : ""}`}
-                  style={{ paddingBottom: isVibe ? "0" : "20px", marginBottom: isVibe ? "8px" : "0" }}
+                  className="cursor-pointer outline-none"
+                  style={{ paddingBottom: "20px" }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{
@@ -105,13 +105,23 @@ export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStrea
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <div style={isVibe ? {
-                      borderRadius: "14px",
-                      boxShadow: "0 4px 14px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
-                      overflow: "hidden",
-                      transform: "translateZ(0)",
-                    } : undefined}>
-                      <Avatar name={space.spaceTitle} size={isVibe ? 44 : 36} shape={isVibe ? "square" : "circle"} />
+                    {/* Avatar — vibe: square with depth shadow + warm glow */}
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      {isVibe && (
+                        <div style={{
+                          position: "absolute", inset: "-6px",
+                          borderRadius: "18px",
+                          background: "radial-gradient(circle, rgba(var(--xark-amber-rgb), 0.06) 0%, transparent 70%)",
+                          pointerEvents: "none",
+                        }} />
+                      )}
+                      <div style={isVibe ? {
+                        borderRadius: "14px",
+                        boxShadow: "0 4px 16px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)",
+                        overflow: "hidden",
+                      } : undefined}>
+                        <Avatar name={space.spaceTitle} size={isVibe ? 46 : 36} shape={isVibe ? "square" : "circle"} />
+                      </div>
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between">

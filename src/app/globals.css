@@ -157,17 +157,3 @@ input, textarea, [contenteditable] {
 /* ── HORIZON SCROLL — Hide scrollbar for card rails ── */
 .horizon-scroll::-webkit-scrollbar { display: none; }
 .horizon-scroll { scrollbar-width: none; -ms-overflow-style: none; }
-
-/* ── VIBE STYLE — depth shadows for chat rows when data-style="depth" ── */
-[data-style="depth"] .vibe-row {
-  margin: 0 12px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: rgba(var(--xark-white-rgb), 0.03);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
-}
-[data-style="depth"] .vibe-row:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-}

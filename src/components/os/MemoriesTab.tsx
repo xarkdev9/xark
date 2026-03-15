@@ -32,7 +32,7 @@ function getDemoMemories(): SpaceMemory[] {
         { id: "m2", url: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=300&h=300&fit=crop", caption: null, createdAt: "2025-08-19T14:00:00Z" },
         { id: "m3", url: "https://images.unsplash.com/photo-1502680390548-bdbac40e4a9f?w=300&h=300&fit=crop", caption: null, createdAt: "2025-08-18T10:00:00Z" },
       ],
-      lastActivityAt: Date.now() - 86400000,
+      lastActivityAt: 1724000000000,
     },
     {
       spaceId: "space_bali-retreat",
@@ -41,7 +41,7 @@ function getDemoMemories(): SpaceMemory[] {
         { id: "m4", url: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&h=400&fit=crop", caption: "rice terraces at sunrise", createdAt: "2024-12-15T06:00:00Z" },
         { id: "m5", url: "https://images.unsplash.com/photo-1555400038-63f5ba517a47?w=300&h=300&fit=crop", caption: null, createdAt: "2024-12-14T16:00:00Z" },
       ],
-      lastActivityAt: Date.now() - 86400000 * 90,
+      lastActivityAt: 1716000000000,
     },
   ];
 }
