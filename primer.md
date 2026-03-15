@@ -2,7 +2,34 @@
 
 > **For AI agents**: Read this FIRST before any code work. It tells you what changed recently and what to watch for. Updated after every session.
 
-## Last Session: Mar 13-14, 2026
+## Last Session: Mar 14-15, 2026
+
+### What was built (continuation)
+11. **Memories tab** — Third Galaxy tab (people/plans/memories). Aggregates photos across all spaces. Masonry grid. Demo Unsplash photos.
+12. **4-appearance theme system** — hearth (flat light), hearth_dark (flat dark), vibe (depth light), vibe_dark (depth dark). ThemeStyle "flat"|"depth". Components use isVibe boolean. Loosely coupled — add theme = 2 file changes.
+13. **Solid ink color system** — ink.primary/secondary/tertiary/sender via CSS variables. All readable text uses solid colors (never opacity). Applied across all 10+ screens.
+14. **Login page theme-aware** — all hardcoded #111111/#F8F7F4 replaced with colors.*/ink.* tokens.
+15. **Swipe between Galaxy tabs** — horizontal swipe > 60px switches people ↔ plans ↔ memories.
+16. **Zero-Box enforcement** — vibe-row containers explored and reverted. Depth comes from avatar shadows + ambient glow only.
+17. **@xark intelligence upgrades** — (a) Internal monologue via responseSchema + _thought_process, (b) self-healing retry on empty Apify results, (c) context-aware synthesis with grounding, (d) optimistic "thinking..." UI.
+18. **Zero Compromise** — (a) BLOCK_LOW_AND_ABOVE safety filters on all 4 harm categories, (b) Social EQ: protect minorities silently, (c) empathy synthesis rules, (d) gridlock breaker, (e) deadpan easter eggs, (f) boundaries (no coding/essays/personal calendar), (g) smart follow-up: fixed slice bug + eavesdropping bug + 3-minute time decay + context injection.
+19. **Enterprise migration TODO** — docs/todo-enterprise-migration.md with pre-migration, day-of, and post-migration checklists.
+20. **Sunlight readability** — background #F8F7F4 (brighter), text #111111 (darker), distinct gray #8A8A94 for secondary text. WhatsApp/iMessage reference colors applied.
+
+### Files created this session (continuation)
+- `src/components/os/MemoriesTab.tsx` — Galaxy memories tab
+- `docs/todo-enterprise-migration.md` — Enterprise migration checklist
+- `primer.md` — This file (session changelog)
+
+### Architecture decisions made (continuation)
+- Zero-Box strictly enforced: vibe depth = avatar shadows only, never row containers
+- Opacity banned for readable text: ink.* solid colors everywhere, textColor(alpha) only for atmospheric elements
+- Smart follow-up: question detection + 3-minute time decay + context injection (no eavesdropping)
+- Safety: max strictness on all Gemini harm categories, deadpan rejections
+
+---
+
+## Previous Session: Mar 13-14, 2026
 
 ### What was built
 1. **Netflix-style Decide page** — PossibilityHorizon rewrite with horizontal card rails, DecisionCard component (3 sizes), Unsplash hero banner (destination photo from Firebase Storage), Framer Motion entrance choreography, shimmer loading, smooth momentum scroll.
