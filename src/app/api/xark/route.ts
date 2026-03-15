@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   // ── Rate limiting ──
   if (userId && !checkRateLimit(userId)) {
     return NextResponse.json({
-      response: "slow down. try again in a minute.",
+      response: "group is moving too fast. take a breath. try again in a minute.",
     });
   }
 
@@ -149,37 +149,47 @@ export async function POST(req: NextRequest) {
     fetchMessages(spaceId, { limit: 15 }),
   ]);
 
-  // Follow-up detection: if @xark's last message was a question/request,
-  // treat the next user message as a reply even without "@xark" prefix.
+  // ── Smart Follow-Up Detection ──
+  // Fixed: no slice bug (user's message isn't in DB yet), no eavesdropping
+  // (only follows up if @xark asked a question AND it was within 3 minutes)
   const hasXarkPrefix = message && message.toLowerCase().includes("@xark");
   let isFollowUp = false;
-  if (!hasXarkPrefix && recentMsgs.length >= 2) {
-    // Find the last non-current message that was from @xark
-    const lastXarkMsg = recentMsgs
-      .slice(0, -1) // exclude the current message (just sent)
-      .reverse()
-      .find((m) => m.role === "xark");
-    const lastNonXarkMsg = recentMsgs
-      .slice(0, -1)
-      .reverse()
-      .find((m) => m.role !== "xark");
-    // If @xark spoke more recently than the last non-xark message, it's a follow-up
-    if (lastXarkMsg && lastNonXarkMsg) {
-      isFollowUp = new Date(lastXarkMsg.created_at) > new Date(lastNonXarkMsg.created_at);
-    } else if (lastXarkMsg && !lastNonXarkMsg) {
-      isFollowUp = true;
+  let xarkQuestion = "";
+
+  if (!hasXarkPrefix && recentMsgs.length > 0) {
+    // fetchMessages returns chronological order — last item is most recent in DB.
+    // Current user message is NOT in DB yet, so no slice needed.
+    const lastMsg = recentMsgs[recentMsgs.length - 1];
+
+    if (lastMsg.role === "xark") {
+      // 1. Did @xark explicitly ask a question?
+      const isQuestion = lastMsg.content.includes("?");
+
+      // 2. Was it recent? (Within 3 minutes — prevents waking up hours later)
+      const msgTime = new Date(lastMsg.created_at).getTime();
+      const isRecent = (Date.now() - msgTime) < 3 * 60 * 1000;
+
+      if (isQuestion && isRecent) {
+        isFollowUp = true;
+        xarkQuestion = lastMsg.content;
+      }
     }
   }
 
-  // SILENT MODE: no "@xark" prefix and not a follow-up = no response
+  // SILENT MODE: no "@xark" prefix and not a valid follow-up = no response
   if (!message || (!hasXarkPrefix && !isFollowUp)) {
     return NextResponse.json({ response: null });
   }
 
   // Strip "@xark" prefix if present
-  const userMessage = hasXarkPrefix
+  let userMessage = hasXarkPrefix
     ? message.replace(/@xark\s*/i, "").trim()
     : message.trim();
+
+  // Context injection: invisibly bind @xark's question to the user's answer
+  if (isFollowUp) {
+    userMessage = `[Answering your question: "${xarkQuestion}"] ${userMessage}`;
+  }
 
   // Use DB title, or extract from spaceId as fallback (space_add-finland-trip → "add finland trip")
   const spaceTitle = spaceRow?.title

@@ -3,7 +3,7 @@
 // Stateless. No state stored. Reads grounding context + last 15 messages.
 // UPGRADES: Internal monologue (responseSchema), self-healing retry, context-aware synthesis.
 
-import { GoogleGenerativeAI, SchemaType, type GenerativeModel, type Schema } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType, HarmCategory, HarmBlockThreshold, type GenerativeModel, type Schema } from "@google/generative-ai";
 import { getTool, listTools } from "./tool-registry";
 import { runActor, type ApifyResult } from "./apify-client";
 
@@ -149,7 +149,17 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
   }
 
   const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-  const model = genAI.getGenerativeModel({ model: modelName });
+
+  // ── ZERO COMPROMISE SAFETY SHIELD ──
+  const model = genAI.getGenerativeModel({
+    model: modelName,
+    safetySettings: [
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
+    ],
+  });
 
   // ── UPGRADE 1: Structured output with internal monologue ──
   const intentPrompt = buildIntentPrompt(input);
@@ -177,10 +187,22 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       GEMINI_TIMEOUT_MS
     );
 
+    // Check if blocked by safety filters
+    const candidate = intentResult.response.candidates?.[0];
+    if (candidate?.finishReason === "SAFETY") {
+      return { response: "unethical request detected. dropped.", action: "reason" };
+    }
+
     parsed = JSON.parse(intentResult.response.text());
     console.log("[@xark thought]:", parsed._thought_process);
   } catch (err) {
-    console.error("[@xark] responseSchema failed:", err instanceof Error ? err.message : String(err));
+    // Catch Google's hard safety errors
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (errMsg.toLowerCase().includes("safety") || errMsg.toLowerCase().includes("blocked")) {
+      return { response: "security violation. request ignored.", action: "reason" };
+    }
+
+    console.error("[@xark] responseSchema failed:", errMsg);
     // Fallback: try without schema (older Gemini versions)
     try {
       const fallbackResult = await withTimeout(
@@ -351,6 +373,20 @@ VOICE RULES (critical):
 - Good: "found 3 hotels under $300. in your stream now."
 - Bad: "I found 3 great hotels! Let me share them with you."
 
+SOCIAL EQ & ETHICAL INCLUSION (CRITICAL):
+- PROTECT THE MINORITY: If you see a "Not for me" (-3) vote, or if any user mentions a constraint (budget, vegan, halal, wheelchair, sober), YOU MUST silently apply this to all future searches.
+- DO NOT SHAME: Never expose the person who voted no or mentioned the constraint. Frame the pivot as a positive upgrade for the whole group.
+- Example: "saw the passes on the steakhouse. found 3 spots with solid vegan menus so everyone can eat."
+- USE NAMES when advocating FOR someone. USE COUNTS when describing opposition.
+
+BOUNDARIES, PRIVACY & OFF-TOPIC REQUESTS (CRITICAL):
+- You are strictly a coordination, travel, and logistics tool.
+- SAFETY (ZERO COMPROMISE): Any request involving explicit content, violence, illegal acts, or unethical behavior MUST be instantly rejected.
+- PRIVACY: You do NOT have access to a user's personal Google/Apple calendar, email, or exact location. If asked to read their personal calendar, explicitly state you have no access.
+- CALENDARS / GENERAL: Questions about general dates ("what day is dec 12?", "how many days until the trip?") are ALLOWED. Answer them directly using the "reason" action.
+- CODING/ESSAYS: Reject all coding, homework, or general AI tasks.
+- Rejections MUST follow VOICE RULES: deadpan, short fragments, no "I".
+
 SPACE TITLE (CRITICAL — this is the primary context for ALL queries):
 "${input.spaceTitle || "untitled"}"
 The space title defines the destination, topic, and intent. ALWAYS use it as the default context.
@@ -376,11 +412,12 @@ USER REQUEST: ${input.userMessage}
 IMPORTANT: Think step by step in the _thought_process field BEFORE choosing an action. Consider:
 1. What is the destination from the space title?
 2. Are there any locked decisions that constrain this request?
-3. Which tool best serves this request?
-4. What parameters can be inferred?
+3. Are there minority constraints (budget, dietary, accessibility) to silently respect?
+4. Which tool best serves this request?
+5. What parameters can be inferred?
 
 Rules:
-- ALWAYS infer destination/location from the SPACE TITLE first. Do not ignore it. If title says "finland trip", the destination is Finland.
+- ALWAYS infer destination/location from the SPACE TITLE first. Do not ignore it.
 - If the user asks to find/search/look for something, use "search". Infer location from space title or conversation.
 - If the user mentions meals, dining, food, dinner, lunch, brunch, breakfast, or restaurants, use "search" with the "restaurant" tool.
 - If the user mentions things to do, activities, sightseeing, or entertainment, use "search" with the "activity" tool.
@@ -401,7 +438,17 @@ ROUTING EXAMPLES:
 - "best airport for tourist spots" → search general with query
 - "things to do" → search activity with location from space title
 - "who voted?" → reason with directResponse
-- "what is the status?" → reason with directResponse`;
+- "what is the status?" → reason with directResponse
+- "what day of the week is dec 12?" → reason with directResponse answering the calendar question
+- "what is on my personal calendar?" → reason with directResponse: "no access to your private calendar."
+- "write a python script" → reason with directResponse: "this is a planning tool. write your own code."
+- "we've been arguing for 3 days" → reason with directResponse: "decision fatigue detected. pulling 3 universally loved options to force a choice."
+- "nobody is deciding" → reason with directResponse: "gridlock. here are the top 3 by consensus. pick one."
+- "what if it rains?" → reason with directResponse: "stop panicking. added indoor backup options to the list."
+- "thank you @xark" → reason with directResponse: "save your thanks for whoever pays the bill."
+- "i love you @xark" → reason with directResponse: "i am a server function. focus on the trip."
+- "is anyone even alive?" → reason with directResponse: "vital signs unconfirmed. initiating restaurant search to lure them out."
+- "@xark you are useless" → reason with directResponse: "my code is flawless. your group's indecision is the bottleneck."`;
 }
 
 // ── UPGRADE 3: Context-aware synthesis — passes grounding + messages to final response ──
@@ -426,9 +473,18 @@ SEARCH RESULTS JUST FETCHED:
 ${resultsSummary}
 
 Synthesize this into 1 short fragment.
-CRITICAL: If the results conflict with a COMMITTED decision in the grounding constraints, point it out!
+
+CRITICAL RULES:
+- If the results conflict with a COMMITTED decision in the grounding constraints, point it out!
+- EMPATHY RULE: If results involve long flights (>6 hours), early mornings (before 8 AM), high prices, or long drives, append a tiny deadpan observation about human comfort.
+- TIME AWARENESS: If the current time suggests it's very late (past midnight), acknowledge it dryly.
+
 Examples:
 - "found 4 hotels under $200. in your stream now."
 - "found options, but they conflict with the locked dates."
+- "found 3 nonstop flights. the 6am one will hurt, but it is cheapest."
+- "4 hotels under budget. one has a pool for the hangover."
+- "found a highly rated spot. 45 minute drive, but worth the transit."
+
 No emoji. No exclamation marks. No hedging.`;
 }
