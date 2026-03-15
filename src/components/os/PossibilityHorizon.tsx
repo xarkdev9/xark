@@ -55,6 +55,7 @@ interface PossibilityHorizonProps {
   spaceId: string;
   userId?: string;
   authLoading?: boolean;
+  isThinking?: boolean;
 }
 
 // Card surfaces — dark, theme-independent
@@ -117,33 +118,40 @@ function HeroBanner({
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
 
+  // Cinematic parallax: bind image Y + opacity to scroll position
+  const { scrollY } = useScroll();
+  const y = useTransform(scrollY, [0, 400], [0, 150]);
+  const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.2]);
+
   return (
     <motion.div
-      className="relative overflow-hidden"
-      style={{ width: "100%", height: "340px" }}
+      className="absolute top-0 inset-x-0 overflow-hidden"
+      style={{ height: "380px", zIndex: 0 }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Destination photo — full bleed, Ken Burns zoom via wrapper */}
-      <motion.div
-        className="absolute inset-0"
-        initial={{ scale: 1.1 }}
-        animate={{ scale: imgLoaded ? 1 : 1.1 }}
-        transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] as const }}
-      >
-        <Image
-          src={heroUrl}
-          alt={spaceTitle}
-          fill
-          sizes="100vw"
-          priority
-          className="object-cover"
-          onLoad={() => setImgLoaded(true)}
-        />
+      {/* Parallax layer */}
+      <motion.div className="absolute inset-0" style={{ y, opacity: heroOpacity }}>
+        <motion.div
+          className="absolute inset-0"
+          initial={{ scale: 1.15 }}
+          animate={{ scale: imgLoaded ? 1 : 1.15 }}
+          transition={{ duration: 3, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <Image
+            src={heroUrl}
+            alt={spaceTitle}
+            fill
+            sizes="100vw"
+            priority
+            className="object-cover"
+            onLoad={() => setImgLoaded(true)}
+          />
+        </motion.div>
       </motion.div>
 
-      {/* Progressive scrim — readable title at bottom, photo breathes at top */}
+      {/* Progressive scrim */}
       <div
         className="absolute inset-0"
         style={{
@@ -284,12 +292,14 @@ const CategoryRail = React.memo(function CategoryRail({
 // POSSIBILITY HORIZON — ORCHESTRATOR
 // ══════════════════════════════════════════════
 
-export function PossibilityHorizon({ spaceId, userId, authLoading }: PossibilityHorizonProps) {
+export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking }: PossibilityHorizonProps) {
   const [items, setItems] = useState<DecisionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
   const [spaceTitle, setSpaceTitle] = useState("");
   const [activeReactions, setActiveReactions] = useState<Record<string, ReactionType>>({});
+  const [incomingQueue, setIncomingQueue] = useState<DecisionItem[]>([]);
+  const [liveWhisper, setLiveWhisper] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { react, unreact, batchGetUserReactions, isReacting } = useReactions();
@@ -357,7 +367,15 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
         { event: "UPDATE", schema: "public", table: "decision_items", filter: `space_id=eq.${spaceId}` },
         (payload) => {
           const updated = payload.new as DecisionItem;
-          setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+          setItems((prev) => {
+            const oldItem = prev.find((i) => i.id === updated.id);
+            // Multiplayer presence: if score went up, someone just loved it
+            if (oldItem && updated.weighted_score > oldItem.weighted_score) {
+              setLiveWhisper(`someone loved ${updated.title.toLowerCase()}`);
+              setTimeout(() => setLiveWhisper(null), 3000);
+            }
+            return prev.map((i) => (i.id === updated.id ? updated : i));
+          });
         }
       )
       .on(
@@ -365,7 +383,8 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
         { event: "INSERT", schema: "public", table: "decision_items", filter: `space_id=eq.${spaceId}` },
         (payload) => {
           const inserted = payload.new as DecisionItem;
-          setItems((prev) => {
+          // Dealer queue: don't slam on the table, put in the deck
+          setIncomingQueue((prev) => {
             if (prev.some((i) => i.id === inserted.id)) return prev;
             return [...prev, inserted];
           });
@@ -375,6 +394,26 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
 
     return () => { supabase.removeChannel(channel); };
   }, [spaceId]);
+
+  // ── Dealer effect: unpacks queue one card at a time ──
+  useEffect(() => {
+    if (incomingQueue.length > 0) {
+      const timer = setTimeout(() => {
+        const nextCard = incomingQueue[0];
+        setItems((prev) => {
+          if (prev.some((i) => i.id === nextCard.id)) return prev;
+          return [...prev, nextCard];
+        });
+        setIncomingQueue((prev) => prev.slice(1));
+
+        // Haptic tick: let the user physically feel each card arriving
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate(10);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [incomingQueue]);
 
   // ── Sort + group — ALL items go into rails, hero is the destination photo ──
   const grouped = useMemo(() => {
@@ -464,13 +503,39 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
       {/* ── Category Rails ── */}
       <div
         style={{
-          paddingTop: heroUrl ? "16px" : "140px",
+          paddingTop: heroUrl ? "340px" : "140px",
           paddingBottom: "160px",
           display: "flex",
           flexDirection: "column",
           gap: "32px",
+          position: "relative",
+          zIndex: 10,
         }}
       >
+        {/* Scanner: proves @xark is actively hunting */}
+        <AnimatePresence>
+          {isThinking && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, scale: 0.95 }}
+              animate={{ opacity: 1, height: "auto", scale: 1 }}
+              exit={{ opacity: 0, height: 0, scale: 0.95 }}
+              className="px-6 flex items-center gap-3"
+              style={{ overflow: "hidden", marginBottom: "8px" }}
+            >
+              <div
+                style={{
+                  width: "8px", height: "8px", borderRadius: "50%",
+                  backgroundColor: colors.cyan,
+                  animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+                  boxShadow: `0 0 12px ${colors.cyan}`,
+                }}
+              />
+              <span style={{ ...text.label, color: colors.cyan }}>
+                scanning options...
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {hasItems ? (
           categoryNames.map((category, idx) => (
             <CategoryRail
@@ -497,6 +562,29 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
           </div>
         )}
       </div>
+
+      {/* Multiplayer ghost whisper — "someone loved hotel del" */}
+      <AnimatePresence>
+        {liveWhisper && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+            className="fixed bottom-32 left-0 right-0 flex justify-center pointer-events-none z-50"
+          >
+            <span style={{
+              ...text.hint,
+              color: colors.gold,
+              background: "rgba(0,0,0,0.85)",
+              padding: "8px 20px",
+              borderRadius: "20px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}>
+              {liveWhisper}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

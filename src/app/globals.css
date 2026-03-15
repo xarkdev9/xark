@@ -156,4 +156,9 @@ input, textarea, [contenteditable] {
 
 /* ── HORIZON SCROLL — Hide scrollbar for card rails ── */
 .horizon-scroll::-webkit-scrollbar { display: none; }
-.horizon-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.horizon-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 24px;
+}

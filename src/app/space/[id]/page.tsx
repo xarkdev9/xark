@@ -532,7 +532,7 @@ function SpacePageInner() {
         />
       )}
       {view === "decide" && (
-        <PossibilityHorizon spaceId={spaceId} userId={resolvedUserId} authLoading={authLoading} />
+        <PossibilityHorizon spaceId={spaceId} userId={resolvedUserId} authLoading={authLoading} isThinking={isThinking} />
       )}
       {view === "itinerary" && <ItineraryView spaceId={spaceId} />}
       {view === "memories" && <MemoriesView spaceId={spaceId} />}

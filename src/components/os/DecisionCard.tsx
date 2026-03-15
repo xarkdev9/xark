@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useRef } from "react";
+import { motion, animate } from "framer-motion";
 import { getConsensusState } from "@/lib/heart-sort";
 import type { ConsensusState } from "@/lib/heart-sort";
 import { timing } from "@/lib/theme";
@@ -9,8 +9,7 @@ import type { ReactionType } from "@/hooks/useReactions";
 
 type CardSize = "hero" | "standard" | "mini";
 
-// Sized so 2.5 standard cards visible on 375px mobile (with 24px padding + 12px gaps)
-// (375 - 24 - 48) / 2.5 = ~121px per card + gap → 140px card shows 2.3 with peek
+// Sized so 2.5 standard cards visible on 375px mobile
 const DIMENSIONS: Record<
   CardSize,
   { w: number; h: number; pctSize: number; titleSize: string; showReactions: boolean }
@@ -20,7 +19,7 @@ const DIMENSIONS: Record<
   mini: { w: 100, h: 140, pctSize: 16, titleSize: "10px", showReactions: false },
 };
 
-// Card surfaces are always dark regardless of theme — use fixed light text
+// Card surfaces are always dark — fixed light text
 const CARD_TEXT = "#E8E8EC";
 const CARD_TEXT_DIM = "rgba(232, 232, 236, 0.5)";
 const CARD_TEXT_GHOST = "rgba(232, 232, 236, 0.25)";
@@ -35,11 +34,9 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   general: "linear-gradient(160deg, #2a2a3a 0%, #0a0a14 100%)",
 };
 
-// Bright signal colors for dark card surfaces (theme-independent)
 const CARD_AMBER = "#F5A623";
 const CARD_GOLD = "#FFCF40";
 const CARD_CYAN = "#40E0FF";
-const CARD_GREEN = "#34D399";
 const CARD_ORANGE = "#F0652A";
 const CARD_GRAY = "#9CA3AF";
 
@@ -54,6 +51,28 @@ const SIGNALS: { type: ReactionType; label: string; color: string }[] = [
   { type: "works_for_me", label: "okay", color: CARD_GRAY },
   { type: "not_for_me", label: "pass", color: CARD_ORANGE },
 ];
+
+// ── AnimatedNumber — rolling consensus counter ──
+function AnimatedNumber({ value }: { value: number }) {
+  const nodeRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node) return;
+    const start = parseInt(node.textContent || "0", 10) || 0;
+    if (start === value) return;
+    const controls = animate(start, value, {
+      duration: 0.8,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate(v) {
+        node.textContent = Math.round(v).toString();
+      },
+    });
+    return () => controls.stop();
+  }, [value]);
+
+  return <span ref={nodeRef}>{value}</span>;
+}
 
 interface DecisionCardProps {
   id: string;
@@ -73,6 +92,7 @@ interface DecisionCardProps {
   onClick?: () => void;
   entranceDelay?: number;
   lazyImage?: boolean;
+  createdAt?: number;
 }
 
 export function DecisionCard({
@@ -92,6 +112,7 @@ export function DecisionCard({
   onClick,
   entranceDelay = 0,
   lazyImage = false,
+  createdAt = 0,
 }: DecisionCardProps) {
   const dim = DIMENSIONS[size];
   const consensusState = getConsensusState(agreementScore);
@@ -100,6 +121,9 @@ export function DecisionCard({
   const fallbackGradient =
     CATEGORY_GRADIENTS[category.toLowerCase()] ?? CATEGORY_GRADIENTS.general;
 
+  // Freshness check: was this item added in the last 15 seconds?
+  const isFreshDrop = createdAt > 0 && (Date.now() - createdAt < 15000);
+
   const handleReact = useCallback(
     (signal: ReactionType) => {
       if (onReact) onReact(id, signal);
@@ -107,7 +131,7 @@ export function DecisionCard({
     [id, onReact]
   );
 
-  // Booking bridge: locked/claimed/purchased items with URL open externally
+  // Booking bridge
   const isCommitted = isLocked || state === "locked" || state === "claimed" || state === "purchased";
   const bookingUrl = metadata?.url || metadata?.shared_url;
   const bookingPhone = metadata?.phone;
@@ -124,30 +148,54 @@ export function DecisionCard({
     onClick?.();
   }, [isCommitted, bookingUrl, bookingPhone, onClick]);
 
+  // Box shadow: fresh glow (cyan), ignited (breathing gold), or default depth
+  const boxShadowValue = isFreshDrop
+    ? [
+        "0 0 0px rgba(64, 224, 255, 0)",
+        "0 0 20px rgba(64, 224, 255, 0.5)",
+        "0 8px 28px rgba(0,0,0,0.2)",
+      ]
+    : consensusState === "ignited"
+    ? [
+        "0 8px 24px rgba(255, 207, 64, 0.15)",
+        "0 12px 40px rgba(255, 207, 64, 0.4)",
+        "0 8px 24px rgba(255, 207, 64, 0.15)",
+      ]
+    : ["0 8px 28px rgba(0,0,0,0.2)"];
+
   return (
     <motion.div
+      layout
       className="relative flex-shrink-0 overflow-hidden"
       style={{
         width: `${dim.w}px`,
         height: `${dim.h}px`,
         borderRadius: "16px",
-        boxShadow:
-          size === "hero"
-            ? `0 0 40px rgba(255,207,64,0.06), 0 8px 32px rgba(0,0,0,0.25)`
-            : "0 8px 28px rgba(0,0,0,0.2)",
+        scrollSnapAlign: "start",
         cursor: onClick || (isCommitted && (bookingUrl || bookingPhone)) ? "pointer" : "default",
       }}
-      initial={{ opacity: 0, x: 80, scale: 0.88 }}
-      whileInView={{ opacity: 1, x: 0, scale: 1 }}
-      viewport={{ once: true, amount: 0.3 }}
+      // Physics: rise from below with weight
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.85 }}
+      viewport={{ once: true, amount: 0.2 }}
+      animate={{ boxShadow: boxShadowValue }}
       transition={{
-        delay: entranceDelay,
-        duration: 0.6,
-        ease: [0.22, 1, 0.36, 1],
+        layout: { type: "spring", stiffness: 300, damping: 24 },
+        opacity: { duration: 0.5, delay: entranceDelay },
+        y: { type: "spring", stiffness: 400, damping: 20, delay: entranceDelay },
+        scale: { type: "spring", stiffness: 400, damping: 20, delay: entranceDelay },
+        boxShadow: isFreshDrop
+          ? { duration: 3, ease: "easeOut" }
+          : consensusState === "ignited"
+          ? { duration: 3, repeat: Infinity, ease: "easeInOut" }
+          : { duration: 0.3 },
       }}
       onClick={handleCardTap}
+      whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.97 }}
     >
-      {/* Full card background — single combined gradient over photo/fallback */}
+      {/* Photo */}
       {imageUrl ? (
         <img
           src={imageUrl}
@@ -155,28 +203,20 @@ export function DecisionCard({
           loading={lazyImage ? "lazy" : "eager"}
           decoding="async"
           className="absolute inset-0"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-          }}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
       ) : (
         <div
           className="absolute inset-0"
-          style={{
-            backgroundImage: fallbackGradient,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
+          style={{ backgroundImage: fallbackGradient, backgroundSize: "cover", backgroundPosition: "center" }}
         />
       )}
-      {/* Single scrim — lets image breathe at top, solid at bottom for text */}
+
+      {/* Single scrim */}
       <div
         className="absolute inset-0"
         style={{
-          background:
-            "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.08) 30%, rgba(10,10,16,0.6) 50%, rgba(10,10,16,0.92) 65%, #0a0a10 80%)",
+          background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.08) 30%, rgba(10,10,16,0.6) 50%, rgba(10,10,16,0.92) 65%, #0a0a10 80%)",
         }}
       />
 
@@ -185,7 +225,7 @@ export function DecisionCard({
         className="absolute inset-x-0 bottom-0 px-3"
         style={{ paddingBottom: dim.showReactions ? "44px" : "12px" }}
       >
-        {/* Consensus % — the brightest thing */}
+        {/* Consensus % — animated rolling number */}
         <div style={{ marginBottom: "6px" }}>
           <span
             style={{
@@ -194,14 +234,11 @@ export function DecisionCard({
               lineHeight: 1,
               letterSpacing: "-0.04em",
               color: cColor,
-              textShadow:
-                consensusState === "ignited"
-                  ? `0 0 40px ${cColor}, 0 0 12px ${cColor}`
-                  : "none",
+              textShadow: consensusState === "ignited" ? `0 0 40px ${cColor}, 0 0 12px ${cColor}` : "none",
               opacity: consensusState === "ignited" ? 1 : 0.75,
             }}
           >
-            {pct > 0 ? pct : "—"}
+            {pct > 0 ? <AnimatedNumber value={pct} /> : "—"}
           </span>
           {pct > 0 && (
             <span
@@ -286,7 +323,7 @@ export function DecisionCard({
         )}
       </div>
 
-      {/* Reactions — hero + standard only */}
+      {/* Reactions — haptic spring physics */}
       {dim.showReactions && (
         <div
           className="absolute inset-x-0 bottom-0 flex items-center justify-around px-2"
@@ -295,12 +332,16 @@ export function DecisionCard({
           {SIGNALS.map((signal) => {
             const isActive = activeReaction === signal.type;
             return (
-              <span
+              <motion.span
                 key={signal.type}
                 role="button"
                 tabIndex={0}
                 onClick={(e) => {
                   e.stopPropagation();
+                  // Haptic feedback: double heartbeat for love, single tap for others
+                  if (typeof navigator !== "undefined" && navigator.vibrate) {
+                    navigator.vibrate(signal.type === "love_it" ? [20, 30, 20] : 15);
+                  }
                   handleReact(signal.type);
                 }}
                 onKeyDown={(e) => {
@@ -309,6 +350,10 @@ export function DecisionCard({
                     handleReact(signal.type);
                   }
                 }}
+                // Spring physics: squish on press, pop on active
+                whileTap={{ scale: 0.8 }}
+                animate={{ scale: isActive ? 1.15 : 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 className="outline-none"
                 style={{
                   fontSize: size === "hero" ? "13px" : "12px",
@@ -317,15 +362,14 @@ export function DecisionCard({
                   color: isActive ? signal.color : CARD_TEXT,
                   opacity: isActive ? 1 : activeReaction ? 0.15 : 0.55,
                   cursor: "pointer",
-                  padding: "6px 4px",
+                  padding: "6px 8px",
                   textShadow: isActive
                     ? `0 0 16px ${signal.color}, 0 0 6px ${signal.color}`
                     : "none",
-                  transition: `opacity ${timing.transition} ease, color ${timing.transition} ease, text-shadow ${timing.transition} ease`,
                 }}
               >
                 {signal.label}
-              </span>
+              </motion.span>
             );
           })}
         </div>

@@ -11,7 +11,7 @@ const genAI = process.env.GEMINI_API_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
 
-const GEMINI_TIMEOUT_MS = 25_000;
+const GEMINI_TIMEOUT_MS = 45_000;
 const MAX_RESPONSE_LENGTH = 500;
 
 // ── Structured output schema — forces chain-of-thought BEFORE action ──
@@ -20,7 +20,7 @@ const orchestratorSchema = {
   properties: {
     _thought_process: {
       type: SchemaType.STRING as const,
-      description: "MANDATORY: 1-2 sentences of internal reasoning. Analyze the space title, locked items, constraints, and social rules BEFORE deciding the action.",
+      description: "MANDATORY: 1-2 sentences of internal reasoning before deciding the action.",
     },
     action: {
       type: SchemaType.STRING as const,
@@ -109,6 +109,7 @@ export interface OrchestratorResult {
     destination?: string;
     confidence: number;
   }>;
+  _debug?: Record<string, unknown>; // TEMPORARY: debug info for diagnosing failures
 }
 
 /** Call Gemini with Google Search grounding for local queries */
@@ -150,18 +151,24 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
 
   const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-  // ── ZERO COMPROMISE SAFETY SHIELD ──
+  // ── SAFETY SETTINGS ──
+  // BLOCK_ONLY_HIGH: blocks only high-probability harmful content.
+  // The system prompt mentions safety terms ("violence", "illegal") in its
+  // BOUNDARIES section which triggers stricter filters as false positives.
+  // Actual safety enforcement is done in the prompt itself (reject harmful requests).
   const model = genAI.getGenerativeModel({
     model: modelName,
     safetySettings: [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
     ],
   });
 
-  // ── UPGRADE 1: Structured output with internal monologue ──
+  // ── Intent parsing — prompt-based JSON (not responseSchema) ──
+  // responseSchema with Gemini 2.5 Flash returns empty responses for complex prompts.
+  // Prompt-based JSON is more reliable across model versions.
   const intentPrompt = buildIntentPrompt(input);
   let parsed: {
     _thought_process?: string;
@@ -179,10 +186,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     const intentResult = await withTimeout(
       model.generateContent({
         contents: [{ role: "user", parts: [{ text: intentPrompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: orchestratorSchema,
-        },
+        generationConfig: { maxOutputTokens: 1024 },
       }),
       GEMINI_TIMEOUT_MS
     );
@@ -193,33 +197,34 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       return { response: "unethical request detected. dropped.", action: "reason" };
     }
 
-    parsed = JSON.parse(intentResult.response.text());
-    console.log("[@xark thought]:", parsed._thought_process);
+    let rawText = "";
+    try { rawText = intentResult.response.text(); } catch { /* empty */ }
+
+    if (!rawText || rawText.trim().length === 0) {
+      return { response: GARBAGE_FALLBACK, action: "reason", _debug: { stage: "empty_gemini_response", finishReason: candidate?.finishReason } };
+    }
+
+    // Strip markdown code fences
+    rawText = rawText
+      .replace(/^```(?:json)?\s*\n?/i, "")
+      .replace(/\n?```\s*$/i, "")
+      .trim();
+
+    // Extract JSON object from response (Gemini may add text before/after)
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return { response: GARBAGE_FALLBACK, action: "reason", _debug: { stage: "no_json_in_response", rawText: rawText.slice(0, 300) } };
+    }
+
+    parsed = JSON.parse(jsonMatch[0]);
+    console.log("[@xark]:", parsed.action, parsed.tool ?? "", parsed._thought_process?.slice(0, 100) ?? "");
   } catch (err) {
-    // Catch Google's hard safety errors
     const errMsg = err instanceof Error ? err.message : String(err);
     if (errMsg.toLowerCase().includes("safety") || errMsg.toLowerCase().includes("blocked")) {
       return { response: "security violation. request ignored.", action: "reason" };
     }
-
-    console.error("[@xark] responseSchema failed:", errMsg);
-    // Fallback: try without schema (older Gemini versions)
-    try {
-      const fallbackResult = await withTimeout(
-        model.generateContent(intentPrompt),
-        GEMINI_TIMEOUT_MS
-      );
-      const intentText = fallbackResult.response.text()
-        .replace(/^```(?:json)?\s*\n?/i, "")
-        .replace(/\n?```\s*$/i, "")
-        .trim();
-
-      parsed = JSON.parse(intentText);
-      console.log("[@xark] fallback parsed OK:", parsed.action);
-    } catch (fallbackErr) {
-      console.error("[@xark] both schema + fallback failed:", fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr));
-      return { response: GARBAGE_FALLBACK, action: "reason" };
-    }
+    console.error("[@xark] intent parse failed:", errMsg);
+    return { response: GARBAGE_FALLBACK, action: "reason", _debug: { stage: "intent_parse_failed", error: errMsg } };
   }
 
   // Step 2: Route based on action
@@ -349,13 +354,15 @@ Explain your adjustment in the _thought_process.`;
 
   // Default: reasoning response
   if (parsed.directResponse) {
+    const drGarbage = isGarbageResponse(parsed.directResponse);
     return {
-      response: isGarbageResponse(parsed.directResponse) ? GARBAGE_FALLBACK : parsed.directResponse,
+      response: drGarbage ? GARBAGE_FALLBACK : parsed.directResponse,
       action: "reason",
+      _debug: drGarbage ? { stage: "directResponse_garbage", directResponseLen: parsed.directResponse.length, directResponse: parsed.directResponse.slice(0, 300) } : undefined,
     };
   }
 
-  return { response: GARBAGE_FALLBACK, action: "reason" };
+  return { response: GARBAGE_FALLBACK, action: "reason", _debug: { stage: "no_directResponse_at_end", parsedAction: parsed.action, parsedTool: parsed.tool, parsedKeys: Object.keys(parsed) } };
 }
 
 function buildIntentPrompt(input: OrchestratorInput): string {
@@ -433,22 +440,19 @@ Rules:
 - CRITICAL: NEVER invent, fabricate, or hallucinate place names. If the user asks about places, you MUST use "search".
 
 ROUTING EXAMPLES:
-- "dinner tonight" → search restaurant with location from space title
-- "find hotels" → search hotel with location from space title
-- "best airport for tourist spots" → search general with query
-- "things to do" → search activity with location from space title
-- "who voted?" → reason with directResponse
-- "what is the status?" → reason with directResponse
-- "what day of the week is dec 12?" → reason with directResponse answering the calendar question
-- "what is on my personal calendar?" → reason with directResponse: "no access to your private calendar."
-- "write a python script" → reason with directResponse: "this is a planning tool. write your own code."
-- "we've been arguing for 3 days" → reason with directResponse: "decision fatigue detected. pulling 3 universally loved options to force a choice."
-- "nobody is deciding" → reason with directResponse: "gridlock. here are the top 3 by consensus. pick one."
-- "what if it rains?" → reason with directResponse: "stop panicking. added indoor backup options to the list."
-- "thank you @xark" → reason with directResponse: "save your thanks for whoever pays the bill."
-- "i love you @xark" → reason with directResponse: "i am a server function. focus on the trip."
-- "is anyone even alive?" → reason with directResponse: "vital signs unconfirmed. initiating restaurant search to lure them out."
-- "@xark you are useless" → reason with directResponse: "my code is flawless. your group's indecision is the bottleneck."`;
+- "dinner tonight" → {"action":"search","tool":"restaurant","params":{"location":"san diego"}}
+- "find hotels" → {"action":"search","tool":"hotel","params":{"location":"san diego"}}
+- "best airport" → {"action":"search","tool":"general","params":{"query":"best airport near san diego"}}
+- "things to do" → {"action":"search","tool":"activity","params":{"location":"san diego"}}
+- "who voted?" → {"action":"reason","directResponse":"2 votes on hotel del. 1 on surf lessons."}
+- "what is the status?" → {"action":"reason","directResponse":"hotel del has consensus. surf lessons still open."}
+- "what day is dec 12?" → {"action":"reason","directResponse":"friday."}
+- "write a python script" → {"action":"reason","directResponse":"this is a planning tool. write your own code."}
+- "thank you" → {"action":"reason","directResponse":"save your thanks for whoever pays the bill."}
+
+RESPOND WITH ONLY a JSON object. No markdown, no code fences, no explanation. Just the raw JSON.
+Required fields: action (string).
+Optional fields: tool (string), params (object), directResponse (string), start_date, end_date, label, extractions.`;
 }
 
 // ── UPGRADE 3: Context-aware synthesis — passes grounding + messages to final response ──
