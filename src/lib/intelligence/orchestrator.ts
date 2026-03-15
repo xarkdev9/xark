@@ -180,6 +180,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     parsed = JSON.parse(intentResult.response.text());
     console.log("[@xark thought]:", parsed._thought_process);
   } catch (err) {
+    console.error("[@xark] responseSchema failed:", err instanceof Error ? err.message : String(err));
     // Fallback: try without schema (older Gemini versions)
     try {
       const fallbackResult = await withTimeout(
@@ -192,7 +193,9 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
         .trim();
 
       parsed = JSON.parse(intentText);
-    } catch {
+      console.log("[@xark] fallback parsed OK:", parsed.action);
+    } catch (fallbackErr) {
+      console.error("[@xark] both schema + fallback failed:", fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr));
       return { response: GARBAGE_FALLBACK, action: "reason" };
     }
   }
