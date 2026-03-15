@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useThemeContext } from "./ThemeProvider";
-import { colors, opacity, timing, text, themes, layout, textColor } from "@/lib/theme";
+import { colors, opacity, timing, text, themes, layout, ink } from "@/lib/theme";
 import { supabase, setSupabaseToken } from "@/lib/supabase";
 import { auth, storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { ThemeName } from "@/lib/theme";
 
-const THEME_NAMES: ThemeName[] = ["hearth"];
+const THEME_NAMES: ThemeName[] = ["hearth", "midnight"];
 
 type SettingsView = "main" | "profile" | "system";
 
@@ -176,8 +176,7 @@ export function UserMenu() {
         <p
           style={{
             ...text.body,
-            color: colors.white,
-            opacity: opacity.primary,
+            color: ink.primary,
           }}
         >
           {userName || "anonymous"}
@@ -193,11 +192,11 @@ export function UserMenu() {
           className="cursor-pointer outline-none"
           style={{
             ...text.body,
-            color: textColor(0.5),
+            color: ink.secondary,
             transition: `color ${timing.transition} ease`,
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.8); }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.5); }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = ink.primary; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = ink.secondary; }}
         >
           profile
         </span>
@@ -210,11 +209,11 @@ export function UserMenu() {
           className="cursor-pointer outline-none"
           style={{
             ...text.body,
-            color: textColor(0.5),
+            color: ink.secondary,
             transition: `color ${timing.transition} ease`,
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.8); }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.5); }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = ink.primary; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = ink.secondary; }}
         >
           system
         </span>
@@ -230,12 +229,11 @@ export function UserMenu() {
           ...text.recency,
           display: "inline-block",
           marginTop: "14px",
-          color: colors.white,
-          opacity: opacity.quaternary,
-          transition: `opacity ${timing.transition} ease`,
+          color: ink.tertiary,
+          transition: `color ${timing.transition} ease`,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.opacity = String(opacity.tertiary); }}
-        onMouseLeave={(e) => { e.currentTarget.style.opacity = String(opacity.quaternary); }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = ink.secondary; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = ink.tertiary; }}
       >
         log out
       </span>
@@ -261,11 +259,11 @@ export function UserMenu() {
         className="cursor-pointer outline-none"
         style={{
           ...text.recency,
-          color: textColor(0.25),
+          color: ink.tertiary,
           transition: `color ${timing.transition} ease`,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.4); }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.25); }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = ink.secondary; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = ink.tertiary; }}
       >
         back
       </span>
@@ -295,12 +293,11 @@ export function UserMenu() {
             className="cursor-pointer outline-none"
             style={{
               ...text.hint,
-              color: colors.white,
-              opacity: 0.35,
-              transition: `opacity ${timing.transition} ease`,
+              color: ink.tertiary,
+              transition: `color ${timing.transition} ease`,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.6"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.35"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = ink.secondary; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = ink.tertiary; }}
           >
             change photo
           </span>
@@ -318,8 +315,7 @@ export function UserMenu() {
             <span
               style={{
                 ...text.hint,
-                color: colors.white,
-                opacity: 0.4,
+                color: ink.tertiary,
               }}
             >
               uploading
@@ -340,7 +336,7 @@ export function UserMenu() {
             className="w-full bg-transparent outline-none"
             style={{
               ...text.input,
-              color: colors.white,
+              color: ink.primary,
               caretColor: colors.cyan,
             }}
           />
@@ -358,8 +354,8 @@ export function UserMenu() {
         <span
           style={{
             ...text.hint,
-            color: colors.white,
-            opacity: nameSaved ? 0.4 : 0,
+            color: ink.tertiary,
+            opacity: nameSaved ? 1 : 0,
             transition: `opacity ${timing.transition} ease`,
           }}
         >
@@ -388,11 +384,11 @@ export function UserMenu() {
         className="cursor-pointer outline-none"
         style={{
           ...text.recency,
-          color: textColor(0.25),
+          color: ink.tertiary,
           transition: `color ${timing.transition} ease`,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = textColor(0.4); }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = textColor(0.25); }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = ink.secondary; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = ink.tertiary; }}
       >
         back
       </span>
@@ -428,9 +424,8 @@ export function UserMenu() {
               <span
                 style={{
                   ...text.recency,
-                  color: isActive ? t.accent : colors.white,
-                  opacity: isActive ? 0.8 : opacity.tertiary,
-                  transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
+                  color: isActive ? t.accent : ink.tertiary,
+                  transition: `color ${timing.transition} ease`,
                 }}
               >
                 {t.label}
@@ -439,6 +434,7 @@ export function UserMenu() {
           );
         })}
       </div>
+
     </motion.div>
   );
 
@@ -446,8 +442,9 @@ export function UserMenu() {
     <>
       {/* ── Avatar trigger — hidden when sheet is open ── */}
       <div
-        className="fixed left-6 top-6 z-[70]"
+        className="fixed right-6 z-[70]"
         style={{
+          top: "calc(env(safe-area-inset-top, 0px) + 46px)",
           opacity: isOpen ? 0 : 0.6,
           pointerEvents: isOpen ? "none" : "auto",
           transition: `opacity ${timing.transition} ease`,

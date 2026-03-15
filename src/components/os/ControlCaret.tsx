@@ -12,7 +12,7 @@ import {
   DEMO_SPACES,
 } from "@/lib/space-data";
 import type { SpaceListItem } from "@/lib/space-data";
-import { colors, opacity, timing, layout, text, textColor } from "@/lib/theme";
+import { colors, opacity, timing, layout, text, ink } from "@/lib/theme";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar } from "@/components/os/Avatar";
 
@@ -50,13 +50,15 @@ export function ControlCaret() {
     fetchSpaceList(userId).then(setSpaces).catch(() => setSpaces(DEMO_SPACES));
   }, [user]);
 
-  // ── Supabase Realtime Presence ──
+  // ── Supabase Realtime Presence — top 5 most-recent spaces only ──
   useEffect(() => {
     if (spaces.length === 0) return;
 
+    // Limit presence channels to 5 most-recent spaces
+    const recentSpaces = spaces.slice(0, 5);
     const channels: ReturnType<typeof supabase.channel>[] = [];
 
-    for (const space of spaces) {
+    for (const space of recentSpaces) {
       const channel = supabase.channel(`presence:${space.id}`, {
         config: { presence: { key: userName || "anonymous" } },
       });
@@ -250,7 +252,7 @@ export function ControlCaret() {
                                 className="shrink-0"
                                 style={{
                                   ...text.recency,
-                                  color: textColor(opacity.quaternary),
+                                  color: ink.tertiary,
                                 }}
                               >
                                 {recencyLabel(space.lastActivityAt)}
@@ -268,7 +270,7 @@ export function ControlCaret() {
                                   className="mt-0.5 truncate"
                                   style={{
                                     ...text.recency,
-                                    color: textColor(0.3),
+                                    color: ink.tertiary,
                                   }}
                                 >
                                   {subtitle}
@@ -283,7 +285,7 @@ export function ControlCaret() {
 
                   {/* ── No results ── */}
                   {searchQuery && filteredSpaces.length === 0 && (
-                    <p style={{ ...text.subtitle, color: textColor(0.3) }}>
+                    <p style={{ ...text.subtitle, color: ink.tertiary }}>
                       no matches for &ldquo;{searchQuery}&rdquo;
                     </p>
                   )}
@@ -341,7 +343,7 @@ export function ControlCaret() {
                     }}
                   />
                   <div className="flex items-center gap-3">
-                    <SearchIcon color={textColor(0.3)} />
+                    <SearchIcon color={ink.tertiary} />
                     <input
                       ref={searchRef}
                       type="text"
@@ -353,7 +355,7 @@ export function ControlCaret() {
                       className="w-full bg-transparent outline-none"
                       style={{
                         ...text.input,
-                        color: colors.white,
+                        color: ink.primary,
                         caretColor: colors.cyan,
                       }}
                     />
@@ -367,8 +369,7 @@ export function ControlCaret() {
 
       <style jsx>{`
         input::placeholder {
-          color: ${colors.white};
-          opacity: 0.15;
+          color: ${ink.tertiary};
           letter-spacing: 0.04em;
         }
       `}</style>
