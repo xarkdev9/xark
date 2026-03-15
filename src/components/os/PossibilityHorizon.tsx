@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { heartSort } from "@/lib/heart-sort";
 import { getConsensusState } from "@/lib/heart-sort";
@@ -11,8 +11,8 @@ import { supabase } from "@/lib/supabase";
 import { DecisionCard } from "@/components/os/DecisionCard";
 import {
   colors,
+  ink,
   text,
-  textColor,
   timing,
 } from "@/lib/theme";
 
@@ -32,6 +32,8 @@ interface DecisionItem {
     image_url?: string;
     price?: string;
     source?: string;
+    search_batch?: string;
+    search_label?: string;
   } | null;
   created_at: string;
 }
@@ -176,7 +178,7 @@ function ShimmerCard({ delay = 0 }: { delay?: number }) {
 // CATEGORY RAIL — the row of cards
 // ══════════════════════════════════════════════
 
-function CategoryRail({
+const CategoryRail = React.memo(function CategoryRail({
   category,
   items,
   activeReactions,
@@ -211,8 +213,8 @@ function CategoryRail({
           animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
           flexShrink: 0,
         }} />
-        <span style={{ ...text.label, color: textColor(0.3) }}>{displayName}</span>
-        <span style={{ ...text.recency, color: textColor(0.2) }}>
+        <span style={{ ...text.label, color: ink.tertiary }}>{displayName}</span>
+        <span style={{ ...text.recency, color: ink.tertiary }}>
           {lockedTitle}{items.length > 1 ? ` + ${items.length - 1} more` : ""}
         </span>
       </motion.div>
@@ -228,7 +230,7 @@ function CategoryRail({
     >
       {/* Rail header */}
       <div className="flex items-baseline justify-between px-6" style={{ marginBottom: "12px" }}>
-        <span style={{ ...text.label, color: textColor(0.3) }}>{displayName}</span>
+        <span style={{ ...text.label, color: ink.tertiary }}>{displayName}</span>
         <span style={{ fontSize: "10px", fontWeight: 300, color: vital.color, opacity: 0.5 }}>{vital.label}</span>
       </div>
 
@@ -259,18 +261,24 @@ function CategoryRail({
             activeReaction={activeReactions[item.id]}
             onReact={onReact}
             entranceDelay={railDelay + 0.08 + idx * 0.06}
+            lazyImage={idx >= 3}
           />
         ))}
 
         {items.length > 10 && (
           <div className="flex flex-shrink-0 items-center justify-center" style={{ width: "40px", minHeight: "200px" }}>
-            <span style={{ fontSize: "10px", fontWeight: 300, color: textColor(0.12) }}>+{items.length - 10}</span>
+            <span style={{ fontSize: "10px", fontWeight: 300, color: ink.tertiary }}>+{items.length - 10}</span>
           </div>
         )}
       </div>
     </motion.div>
   );
-}
+}, (prev, next) =>
+  prev.category === next.category &&
+  prev.items === next.items &&
+  prev.activeReactions === next.activeReactions &&
+  prev.railIndex === next.railIndex
+);
 
 // ══════════════════════════════════════════════
 // POSSIBILITY HORIZON — ORCHESTRATOR
@@ -321,7 +329,9 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
       const { data } = await supabase
         .from("decision_items")
         .select("id, title, category, weighted_score, agreement_score, is_locked, state, metadata, created_at")
-        .eq("space_id", spaceId);
+        .eq("space_id", spaceId)
+        .order("weighted_score", { ascending: false })
+        .limit(100);
 
       if (data && data.length > 0) {
         setItems(data as DecisionItem[]);
@@ -384,11 +394,12 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
 
     for (const item of sorted) {
       const full = metaMap.get(item.id);
-      const category = full?.category || "general";
-      if (!groups[category]) groups[category] = [];
-      groups[category].push({
+      // Group by search_label when present (e.g. "coronado island hotel"), else by category
+      const groupKey = full?.metadata?.search_label || full?.category || "general";
+      if (!groups[groupKey]) groups[groupKey] = [];
+      groups[groupKey].push({
         ...item,
-        category,
+        category: full?.category || "general",
         price: full?.metadata?.price ?? "",
         source: full?.metadata?.source ?? "",
       });
@@ -431,7 +442,7 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
           transition={{ duration: 0.4 }}
         />
         <div className="px-6" style={{ marginTop: "24px" }}>
-          <div style={{ ...text.label, color: textColor(0.12), marginBottom: "12px" }}>loading</div>
+          <div style={{ ...text.label, color: ink.tertiary, marginBottom: "12px" }}>loading</div>
           <div className="flex gap-3">
             <ShimmerCard delay={0.1} />
             <ShimmerCard delay={0.2} />
@@ -479,7 +490,7 @@ export function PossibilityHorizon({ spaceId, userId, authLoading }: Possibility
               transition={{ delay: 0.5, duration: 0.8 }}
             >
               <span style={{ ...text.label, color: colors.cyan, opacity: 0.4 }}>@xark</span>
-              <p className="mt-1" style={{ ...text.hint, color: colors.white, opacity: 0.35 }}>
+              <p className="mt-1" style={{ ...text.hint, color: ink.tertiary }}>
                 {`try "@xark find hotels near the beach" or "@xark add dates aug 15–25"`}
               </p>
             </motion.div>

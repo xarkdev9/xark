@@ -13,7 +13,7 @@ import { ItineraryView } from "@/components/os/ItineraryView";
 import { MemoriesView } from "@/components/os/MemoriesView";
 import { ChatInput } from "@/components/os/ChatInput";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseToken } from "@/lib/supabase";
 import {
   fetchMessages,
   saveMessage,
@@ -24,7 +24,7 @@ import {
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { computeSpaceState } from "@/lib/space-state";
 import type { SpaceStateItem } from "@/lib/space-state";
-import { colors, text, textColor, timing } from "@/lib/theme";
+import { colors, ink, text, textColor, timing } from "@/lib/theme";
 
 // Demo space title map — used when Supabase is unreachable
 const DEMO_TITLES: Record<string, string> = {
@@ -33,6 +33,17 @@ const DEMO_TITLES: Record<string, string> = {
   "space_tokyo-neon-nights": "tokyo neon nights",
   "space_summer-2026": "summer 2026",
 };
+
+// Universal UUID fallback for browsers without crypto.randomUUID
+function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 
 export interface ChatMessage {
   id: string;
@@ -57,11 +68,19 @@ function SpacePageInner() {
   // never from raw URL param (e.g., "ram"). RLS checks user_id = auth.jwt()->>'sub'.
   const resolvedUserId = user?.uid ?? undefined;
 
-  const [view, setView] = useState<ViewMode>("discuss");
+  const viewParam = searchParams.get("view");
+  const [view, setView] = useState<ViewMode>(
+    viewParam === "decide" ? "decide" : "discuss"
+  );
   const [spaceTitle, setSpaceTitle] = useState<string>("");
   const [spaceItems, setSpaceItems] = useState<SpaceStateItem[]>([]);
   const [joining, setJoining] = useState(false);
   const [shareWhisper, setShareWhisper] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<{
+    response: string;
+    action: string;
+    payload: Record<string, unknown>;
+  } | null>(null);
 
   // ═══════════════════════════════════════════
   // CHAT STATE — lives here, shared across views
@@ -76,7 +95,7 @@ function SpacePageInner() {
   useEffect(() => {
     if (authLoading || messagesLoaded.current) return;
 
-    fetchMessages(spaceId)
+    fetchMessages(spaceId, { limit: 50 })
       .then((persisted) => {
         if (persisted.length > 0) {
           setMessages(
@@ -133,7 +152,7 @@ function SpacePageInner() {
     }
 
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: "user",
       content: txt,
       timestamp: Date.now(),
@@ -170,9 +189,13 @@ function SpacePageInner() {
     });
 
     try {
+      const token = getSupabaseToken();
       const response = await fetch("/api/xark", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           message: txt,
           spaceId,
@@ -187,7 +210,7 @@ function SpacePageInner() {
         setMessages((prev) => [
           ...prev,
           {
-            id: crypto.randomUUID(),
+            id: generateId(),
             role: "xark",
             content: data.response,
             timestamp: Date.now(),
@@ -203,11 +226,20 @@ function SpacePageInner() {
         return;
       }
 
+      // Check for pending confirmation (e.g., set_dates, populate_logistics)
+      if (data.pendingConfirmation) {
+        setPendingConfirmation({
+          response: data.response,
+          action: data.action,
+          payload: data.payload || {},
+        });
+      }
+
       // @xark response (persisted server-side via supabaseAdmin)
       setMessages((prev) => [
         ...prev,
         {
-          id: data.messageId ?? crypto.randomUUID(),
+          id: data.messageId ?? generateId(),
           role: "xark",
           content: data.response ?? "i could not generate a response.",
           timestamp: Date.now(),
@@ -217,7 +249,7 @@ function SpacePageInner() {
       setMessages((prev) => [
         ...prev,
         {
-          id: crypto.randomUUID(),
+          id: generateId(),
           role: "xark",
           content: "connection interrupted. try again.",
           timestamp: Date.now(),
@@ -265,7 +297,8 @@ function SpacePageInner() {
         const { data } = await supabase
           .from("decision_items")
           .select("state, is_locked, category, metadata")
-          .eq("space_id", spaceId);
+          .eq("space_id", spaceId)
+          .limit(200);
         if (data) setSpaceItems(data as SpaceStateItem[]);
       } catch {
         // Silent — demo fallback stays empty
@@ -356,7 +389,7 @@ function SpacePageInner() {
         className="flex min-h-svh items-center justify-center"
         style={{ background: colors.void }}
       >
-        <p style={{ ...text.hint, color: textColor(0.4) }}>
+        <p style={{ ...text.hint, color: ink.tertiary }}>
           joining space...
         </p>
       </div>
@@ -395,10 +428,9 @@ function SpacePageInner() {
                 className="outline-none"
                 style={{
                   ...text.label,
-                  color: view === "discuss" ? colors.cyan : colors.white,
-                  opacity: view === "discuss" ? 0.9 : 0.4,
+                  color: view === "discuss" ? colors.cyan : ink.tertiary,
                   cursor: "pointer",
-                  transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
+                  transition: `color ${timing.transition} ease`,
                 }}
               >
                 discuss
@@ -413,10 +445,9 @@ function SpacePageInner() {
                 className="outline-none"
                 style={{
                   ...text.label,
-                  color: view === "decide" ? colors.cyan : colors.white,
-                  opacity: view === "decide" ? 0.9 : 0.4,
+                  color: view === "decide" ? colors.cyan : ink.tertiary,
                   cursor: "pointer",
-                  transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
+                  transition: `color ${timing.transition} ease`,
                 }}
               >
                 decide
@@ -432,10 +463,9 @@ function SpacePageInner() {
                   className="outline-none"
                   style={{
                     ...text.label,
-                    color: view === "itinerary" ? colors.cyan : colors.white,
-                    opacity: view === "itinerary" ? 0.9 : 0.4,
+                    color: view === "itinerary" ? colors.cyan : ink.tertiary,
                     cursor: "pointer",
-                    transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
+                    transition: `color ${timing.transition} ease`,
                   }}
                 >
                   itinerary
@@ -452,10 +482,9 @@ function SpacePageInner() {
                   className="outline-none"
                   style={{
                     ...text.label,
-                    color: view === "memories" ? colors.cyan : colors.white,
-                    opacity: view === "memories" ? 0.9 : 0.4,
+                    color: view === "memories" ? colors.cyan : ink.tertiary,
                     cursor: "pointer",
-                    transition: `opacity ${timing.transition} ease, color ${timing.transition} ease`,
+                    transition: `color ${timing.transition} ease`,
                   }}
                 >
                   memories
@@ -473,10 +502,9 @@ function SpacePageInner() {
               className="outline-none"
               style={{
                 ...text.label,
-                color: colors.white,
-                opacity: shareWhisper ? 0.7 : 0.4,
+                color: shareWhisper ? ink.secondary : ink.tertiary,
                 cursor: "pointer",
-                transition: `opacity ${timing.transition} ease`,
+                transition: `color ${timing.transition} ease`,
               }}
             >
               {shareWhisper ? "link copied" : "share"}
@@ -508,6 +536,46 @@ function SpacePageInner() {
       )}
       {view === "itinerary" && <ItineraryView spaceId={spaceId} />}
       {view === "memories" && <MemoriesView spaceId={spaceId} />}
+
+      {/* ── Pending confirmation whisper ── */}
+      {pendingConfirmation && (
+        <div style={{ textAlign: "center", padding: "12px 0" }}>
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={async () => {
+              const confirmToken = getSupabaseToken();
+              await fetch("/api/xark", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  ...(confirmToken ? { Authorization: `Bearer ${confirmToken}` } : {}),
+                },
+                body: JSON.stringify({
+                  confirm_action: pendingConfirmation.action,
+                  spaceId,
+                  payload: pendingConfirmation.payload,
+                }),
+              });
+              setPendingConfirmation(null);
+            }}
+            className="cursor-pointer outline-none"
+            style={{ ...text.body, color: colors.gold, opacity: 0.8 }}
+          >
+            confirm
+          </span>
+          <span style={{ ...text.body, color: ink.tertiary, margin: "0 16px" }}>·</span>
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={() => setPendingConfirmation(null)}
+            className="cursor-pointer outline-none"
+            style={{ ...text.body, color: ink.tertiary }}
+          >
+            wait
+          </span>
+        </div>
+      )}
 
       {/* ── ChatInput — always visible, draft persists across views ── */}
       <ChatInput
