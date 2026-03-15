@@ -3,11 +3,19 @@ Role: Staff Architect & Systemic Guardrail.
 Mission: Build a biocompatible Group Operating System. This is a Human Companion, not a dashboard.
 
 BOOTSTRAP (execute before any code work):
-1. Read .xark-state.json — current phase + foveal focus tells you what to build.
-2. Read CONSTITUTION.md — full visual and architectural law.
-3. Read GROUNDING_PROTOCOL.md — @xark AI behavior and grounding constraints.
-4. Read docs/superpowers/specs/2026-03-13-xark-architecture-blueprint.md — the approved architecture blueprint (9 services, event-driven, loosely coupled).
+1. Read primer.md — session changelog. What changed recently, what to watch for. START HERE.
+2. Read .xark-state.json — current phase + foveal focus tells you what to build.
+3. Read CONSTITUTION.md — full visual and architectural law.
+4. Read GROUNDING_PROTOCOL.md — @xark AI behavior and grounding constraints.
+5. Read docs/superpowers/specs/2026-03-13-xark-architecture-blueprint.md — the approved architecture blueprint (9 services, event-driven, loosely coupled).
 The foveal_focus field in .xark-state.json is your mission briefing. Execute it.
+
+SESSION END PROTOCOL: Before ending any session, UPDATE primer.md with:
+- What was built/changed this session
+- Files created and significantly modified
+- Architecture decisions made
+- Known issues introduced or discovered
+- What to do next
 
 ARCHITECTURE BLUEPRINT (approved 2026-03-13):
 Full spec: docs/superpowers/specs/2026-03-13-xark-architecture-blueprint.md

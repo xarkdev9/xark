@@ -121,11 +121,14 @@
     "supabase_admin": "src/lib/supabase-admin.ts — Service-role client for /api/xark and /api/notify. Bypasses RLS."
   },
   "theme_system": {
-    "themes": ["hearth (light, default)", "midnight (dark)"],
-    "provider": "src/components/os/ThemeProvider.tsx — sets CSS variables on :root",
-    "tokens": "src/lib/theme.ts — colors, opacity, timing, text, layout, foveal, neuro, reactions objects",
-    "css_variables": "--xark-white, --xark-void, --xark-accent, --xark-amber, --xark-gold, --xark-green, --xark-orange, --xark-gray (plus -rgb variants)",
-    "helpers": "textColor(alpha), accentColor(alpha), amberWash(score), goldBloom(score), fovealOpacity(index, total, role)"
+    "themes": ["hearth (light, flat)", "hearth_dark (dark, flat)", "vibe (light, depth)", "vibe_dark (dark, depth)"],
+    "styles": ["flat (clean, WhatsApp-like)", "depth (floating shadows, larger avatars, ambient glow)"],
+    "provider": "src/components/os/ThemeProvider.tsx — sets CSS variables on :root, data-style attribute, isVibe in context",
+    "tokens": "src/lib/theme.ts — colors, opacity, timing, text, layout, foveal, neuro, reactions, ink objects",
+    "css_variables": "--xark-white, --xark-void, --xark-accent, --xark-amber, --xark-gold, --xark-green, --xark-orange, --xark-gray, --xark-ink-primary, --xark-ink-secondary, --xark-ink-tertiary, --xark-ink-sender (plus -rgb variants)",
+    "helpers": "textColor(alpha), accentColor(alpha), amberWash(score), goldBloom(score), fovealOpacity(index, total, role), isVibeStyle(theme)",
+    "ink_system": "Solid text colors for readable content (never opacity). ink.primary (#000/#FFF), ink.secondary (#6B6B78/#9CA3AF), ink.tertiary (#8A8A94/#6B7280), ink.sender (#9E6A06/#D4A017). Use for People tab, Plans tab, list items. textColor(alpha) reserved for atmospheric elements only.",
+    "extensibility": "Add theme: 1) theme.ts ThemeName + config entry 2) UserMenu THEME_NAMES array. Components use style field, not theme names. Architecture supports unlimited themes."
   },
   "type_scale": {
     "source": "text object in src/lib/theme.ts",
