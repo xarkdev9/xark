@@ -236,21 +236,26 @@ const CategoryRail = React.memo(function CategoryRail({
       viewport={{ once: true, amount: 0.15 }}
       transition={{ delay: railDelay, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
     >
-      {/* Rail header */}
-      <div className="flex items-baseline justify-between px-6" style={{ marginBottom: "12px" }}>
-        <span style={{ ...text.label, color: ink.tertiary }}>{displayName}</span>
-        <span style={{ fontSize: "10px", fontWeight: 300, color: vital.color, opacity: 0.5 }}>{vital.label}</span>
+      {/* Rail header — editorial, large */}
+      <div className="flex items-baseline justify-between px-6" style={{ marginBottom: "16px" }}>
+        <span style={{ fontSize: "1.75rem", fontWeight: 300, color: colors.white, opacity: 0.8, letterSpacing: "-0.01em" }}>
+          {displayName}
+        </span>
+        <span style={{ fontSize: "12px", fontWeight: 300, color: vital.color, opacity: 0.6, letterSpacing: "0.06em" }}>
+          {vital.label}
+        </span>
       </div>
 
-      {/* Horizontal scroll — sized so 2.5 cards are visible (peek effect) */}
+      {/* Horizontal snap scroll — immersive cards, one at a time with peek */}
       <div
-        className="horizon-scroll flex overflow-x-auto"
+        className="horizon-scroll flex overflow-x-auto snap-x snap-mandatory"
         style={{
           gap: "12px",
-          paddingLeft: "24px",
-          paddingRight: "48px",
-          paddingBottom: "6px",
+          paddingLeft: "20px",
+          paddingRight: "20px",
+          paddingBottom: "8px",
           WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
         }}
       >
         {items.map((item, idx) => (
@@ -265,17 +270,16 @@ const CategoryRail = React.memo(function CategoryRail({
             weightedScore={item.weightedScore}
             agreementScore={item.agreementScore}
             isLocked={item.isLocked}
-            size="standard"
             activeReaction={activeReactions[item.id]}
             onReact={onReact}
-            entranceDelay={railDelay + 0.08 + idx * 0.06}
+            entranceDelay={railDelay + 0.1 + idx * 0.12}
             lazyImage={idx >= 3}
           />
         ))}
 
         {items.length > 10 && (
-          <div className="flex flex-shrink-0 items-center justify-center" style={{ width: "40px", minHeight: "200px" }}>
-            <span style={{ fontSize: "10px", fontWeight: 300, color: ink.tertiary }}>+{items.length - 10}</span>
+          <div className="flex flex-shrink-0 items-center justify-center snap-center" style={{ width: "60px", minHeight: "clamp(320px, 50dvh, 440px)" }}>
+            <span style={{ fontSize: "12px", fontWeight: 300, color: ink.tertiary }}>+{items.length - 10}</span>
           </div>
         )}
       </div>
@@ -304,17 +308,30 @@ export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking }:
 
   const { react, unreact, batchGetUserReactions, isReacting } = useReactions();
 
-  // ── Demo hero images — fallback when no Unsplash key configured ──
-  const DEMO_HEROES: Record<string, string> = {
-    "space_san-diego-trip": "https://images.unsplash.com/photo-1538097304804-2a1b932466a9?w=800&h=500&fit=crop",
-    "space_tokyo-neon-nights": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=500&fit=crop",
-    "space_bali-retreat": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&h=500&fit=crop",
-    "space_summer-2026": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop",
-  };
+  // ── Hero images — deterministic per space (no Unsplash key needed) ──
+  const HERO_POOL = [
+    "https://images.unsplash.com/photo-1538097304804-2a1b932466a9?w=800&h=500&fit=crop", // san diego coast
+    "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=500&fit=crop", // tokyo night
+    "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&h=500&fit=crop", // bali temple
+    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop", // tropical beach
+    "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&h=500&fit=crop", // road trip
+    "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&h=500&fit=crop", // mountain lake
+    "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&h=500&fit=crop", // camping
+    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=500&fit=crop", // dinner
+    "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=500&fit=crop", // sunset valley
+    "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=800&h=500&fit=crop", // travel map
+  ];
+
+  // Hash spaceId to pick a deterministic hero — same space always gets same image
+  function heroForSpace(id: string): string {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+    return HERO_POOL[Math.abs(hash) % HERO_POOL.length];
+  }
 
   // ── Fetch space metadata (hero photo + title) ──
   useEffect(() => {
-    const fallback = DEMO_HEROES[spaceId] ?? "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop";
+    const fallback = heroForSpace(spaceId);
     const fallbackTitle = spaceId.replace(/^space_/, "").replace(/-/g, " ");
 
     Promise.resolve(
@@ -447,20 +464,40 @@ export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking }:
     return groups;
   }, [items]);
 
-  // ── Reactions ──
+  // ── Reactions — optimistic with rollback on failure ──
   const handleReaction = useCallback(
     async (itemId: string, signal: ReactionType) => {
       if (isReacting) return;
-      if (activeReactions[itemId] === signal) {
+      const prevReaction = activeReactions[itemId];
+
+      if (prevReaction === signal) {
+        // Toggle off
         setActiveReactions((prev) => {
           const next = { ...prev };
           delete next[itemId];
           return next;
         });
-        await unreact(itemId);
+        const ok = await unreact(itemId);
+        if (!ok) {
+          // Rollback: restore previous reaction
+          setActiveReactions((prev) => ({ ...prev, [itemId]: prevReaction }));
+        }
       } else {
+        // Set new reaction
         setActiveReactions((prev) => ({ ...prev, [itemId]: signal }));
-        await react(itemId, signal);
+        const ok = await react(itemId, signal);
+        if (!ok) {
+          // Rollback: restore previous state
+          if (prevReaction) {
+            setActiveReactions((prev) => ({ ...prev, [itemId]: prevReaction }));
+          } else {
+            setActiveReactions((prev) => {
+              const next = { ...prev };
+              delete next[itemId];
+              return next;
+            });
+          }
+        }
       }
     },
     [activeReactions, isReacting, react, unreact]
