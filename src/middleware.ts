@@ -29,7 +29,7 @@ export function middleware(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://firebasestorage.googleapis.com https://*.supabase.co",
     "font-src 'self'",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://fcmregistrations.googleapis.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://fcmregistrations.googleapis.com https://www.google.com https://www.recaptcha.net https://www.gstatic.com https://apis.google.com",
     "media-src 'self' https://videos.pexels.com",
     "worker-src 'self' blob:",
     "frame-src 'self' https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net",
