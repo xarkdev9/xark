@@ -1,7 +1,7 @@
 // XARK OS v2.0 — Offline Service Worker
 // Caches app shell for offline launch. Network-first for API + dynamic pages.
 
-const CACHE_NAME = "xark-v1";
+const CACHE_NAME = "xark-v2";
 const APP_SHELL = [
   "/login",
   "/galaxy",
@@ -32,13 +32,11 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Skip non-GET, API routes, and Supabase/Firebase calls
+  // Skip non-GET, API routes, and all external service calls
   if (
     event.request.method !== "GET" ||
     url.pathname.startsWith("/api/") ||
-    url.hostname.includes("supabase") ||
-    url.hostname.includes("firebase") ||
-    url.hostname.includes("googleapis")
+    url.hostname !== self.location.hostname
   ) {
     return;
   }
