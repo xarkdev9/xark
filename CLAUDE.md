@@ -56,6 +56,13 @@ ZERO-BOX DOCTRINE: No border, no bg-white, no rounded-lg containers for feed ite
 
 PORT DISCIPLINE: Run ONLY on Port 3000. If occupied, kill the process. Never jump to 3001.
 
+DEPLOYMENT (LOCKED):
+- GitHub: git@github.com:xarkdev9/xark.git (remote: new-origin). Push via: GH_TOKEN=$(gh auth token) git -c "http.https://github.com/.extraheader=Authorization: basic $(echo -n "x-access-token:$(gh auth token)" | base64)" push new-origin main
+- Vercel: project "xark" under scope "xarks-projects-700da30e". Deploy via: vercel deploy --prod --scope xarks-projects-700da30e --yes
+- Production URL: https://xark.vercel.app
+- All env vars set on Vercel production environment.
+- NEVER push to old origin (chram2022). ALWAYS use new-origin (xarkdev9).
+
 IDENTITY & INFRASTRUCTURE LOCK (HYBRID STACK):
 The Xark OS infrastructure is a locked hybrid of Firebase and Supabase. Do not deviate.
 - Phone OTP: Firebase Auth. Do not scaffold Supabase Auth, @supabase/auth, or any supabase/auth import.
@@ -195,8 +202,13 @@ KEY MODULE MAP (read the source for implementation details):
 - src/components/os/ChatInput.tsx — The Magnetic Input. Gradient floor (transparent→canvas). 18px weight-300 text. @xark detection turns text cyan with glow. Attach/camera icons animate out when typing. Mic↔send crossfade. Placeholder uses ink.tertiary.
 - src/components/os/ControlCaret.tsx — Living Brand Anchor. "xark" text (18px, weight 300, tracking 0.2em, Action Orange #FF6B35) replaces the dot. Breathing animation (0.7→0.9 opacity, 4s). Neon glow on tap. Persistent text-shadow for light background readability. Same slide-up panel for space navigation.
 - src/components/os/OnboardingWhispers.tsx — Gentle onboarding hints that dismiss after first interaction.
-- src/components/os/XarkChat.tsx — Display-only chat stream. Receives messages and isThinking as props from Space page. No input, no send, no fetch. Handshake protocol, sanctuary bridge (limit: 30 msgs), greeting. No layout prop on message motion.divs (eliminates layout thrashing).
-- src/components/os/ChatInput.tsx — Three-element layout. TEXTAREA + MIC: fixed at 56px from bottom, auto-expanding textarea (text.body) + mic icon (SVG, 14px) in the input row. Top ambient line + bottom ambient line (grows with text width, breathes, fades from cyan to transparent), solid void bg. ATTACH ICON: 16px paperclip SVG at left 25% (halfway dot-to-left-edge), caretBottom level. CAMERA ICON: 16px camera SVG at left 75% (halfway dot-to-right-edge), caretBottom level. Icons at colors.white opacity 0.5→0.8 hover, thin 1.5px stroke. Mic: tap=dictate, long-press=@xark mode. Reduced void (56px).
+- src/components/os/XarkChat.tsx — Display-only chat stream. WhatsApp-precision spacing (20px different sender, 2px same sender, 4px name-to-message). text.subtitle at 16px/400/1.35 for message body. Typing indicator + inline card previews + inline invite prompt (onInvite + memberCount props). Sender names 13px amber (humans) / cyan (@xark). Opacity floor 0.55.
+- src/components/os/PlaygroundSpace.tsx — Complete playground space view. Mock reactions (local state), mock @xark (hardcoded restaurants), choreography engine, swipe discuss↔decide. No Supabase.
+- src/components/os/PlaygroundWhisper.tsx — Diegetic whisper. Breathing opacity 30→60% over 4s. Weight 300. Dismisses on interaction.
+- src/components/os/InlineCardPreview.tsx — Miniature decision card for chat timeline. 100px tall, photo left, score+title right. Read-only, tappable.
+- src/lib/playground.ts — Ghost Playground data. 5 friends (leo, kai, ava, zoe, sam), 4 spaces (tokyo/dinner/maya/hike), detection (isPlaygroundMode), getters, mock @xark restaurant results. Client-side only, zero DB.
+- src/hooks/usePlaygroundChoreography.ts — Timer-based choreography engine. Whispers, queued messages, typing indicators, tab badges per space. Trigger callbacks (postVote, postXark, postClaim, postPurchase). All timers cleaned on unmount.
+- src/hooks/useKeyboard.ts — Virtual keyboard detection. Android: returns keyboardHeight=0 (viewport resizes natively). iOS: explicit offset. Prevents double-offset on Android.
 - src/components/os/ItineraryView.tsx — Committed items timeline view for ready/active spaces.
 - src/components/os/MemoriesView.tsx — Photo stream view, default for settled spaces.
 - next.config.ts — serverExternalPackages: ["apify-client"] to fix dynamic require bundling issue.
