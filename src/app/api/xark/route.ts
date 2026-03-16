@@ -12,26 +12,16 @@ import { sanitizeForIntelligence } from "@/lib/intelligence/sanitize";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { applyLogisticsExtractions, flagStaleLogistics } from "@/lib/member-logistics";
 import { verifyAuth } from "@/lib/auth-verify";
+import { checkRateLimit } from "@/lib/rate-limit";
 
-// ── Rate limiting — 10 @xark calls per user per minute ──
-const rateLimitMap = new Map<string, number[]>();
-const RATE_WINDOW = 60_000;
-const RATE_MAX = 10;
 const MAX_MESSAGE_LENGTH = 1000;
-
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const timestamps = (rateLimitMap.get(userId) ?? []).filter(
-    (t) => now - t < RATE_WINDOW
-  );
-  if (timestamps.length >= RATE_MAX) return false;
-  timestamps.push(now);
-  rateLimitMap.set(userId, timestamps);
-  return true;
-}
 
 export async function POST(req: NextRequest) {
   try {
+  if (!supabaseAdmin) {
+    return NextResponse.json({ response: "server not configured." }, { status: 500 });
+  }
+
   const body = await req.json();
   const { message, spaceId: reqSpaceId, userId, confirm_action, payload } = body;
 
@@ -48,7 +38,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Rate limiting ──
-  if (userId && !checkRateLimit(userId)) {
+  if (userId && !checkRateLimit(`xark:${userId}`, 10)) {
     return NextResponse.json({
       response: "group is moving too fast. take a breath. try again in a minute.",
     });
@@ -78,6 +68,10 @@ export async function POST(req: NextRequest) {
 
     if (confirm_action === "set_dates" && payload) {
       const { start_date, end_date, label } = payload;
+      // Validate payload shape
+      if ((start_date && typeof start_date !== 'string') || (end_date && typeof end_date !== 'string') || (label && typeof label !== 'string')) {
+        return NextResponse.json({ response: "invalid date payload." }, { status: 400 });
+      }
 
       // Upsert space_dates with version increment
       const { data: existing } = await supabaseAdmin
@@ -129,10 +123,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Normal @xark flow — require auth ──
+  // ── Normal @xark flow — require auth + space membership ──
   const auth = await verifyAuth(req.headers.get("authorization"));
   if (!auth) {
     return NextResponse.json({ response: null }, { status: 401 });
+  }
+
+  // Verify caller is a member of the target space
+  const { data: membershipCheck } = await supabaseAdmin
+    .from("space_members")
+    .select("user_id")
+    .eq("space_id", reqSpaceId)
+    .eq("user_id", auth.userId)
+    .single();
+
+  if (!membershipCheck) {
+    return NextResponse.json({ response: "not a member of this space." }, { status: 403 });
   }
 
   const spaceId = reqSpaceId;
@@ -204,16 +210,14 @@ export async function POST(req: NextRequest) {
 
   // ── UPGRADE 4: Optimistic UI — insert "thinking..." immediately ──
   const xarkMsgId = `msg_${crypto.randomUUID()}`;
-  if (supabaseAdmin) {
-    await supabaseAdmin.from("messages").insert({
-      id: xarkMsgId,
-      space_id: spaceId,
-      role: "xark",
-      content: "thinking...",
-      user_id: null,
-      sender_name: null,
-    });
-  }
+  await supabaseAdmin.from("messages").insert({
+    id: xarkMsgId,
+    space_id: spaceId,
+    role: "xark",
+    content: "thinking...",
+    user_id: null,
+    sender_name: null,
+  });
 
   // Orchestrate (can take 15-40s for Apify searches)
   const result = await orchestrate({
@@ -226,9 +230,7 @@ export async function POST(req: NextRequest) {
 
   // If pending confirmation, delete the thinking message and return to client
   if (result.pendingConfirmation) {
-    if (supabaseAdmin) {
-      await supabaseAdmin.from("messages").delete().eq("id", xarkMsgId);
-    }
+    await supabaseAdmin.from("messages").delete().eq("id", xarkMsgId);
     return NextResponse.json({
       response: result.response,
       pendingConfirmation: true,
@@ -241,7 +243,10 @@ export async function POST(req: NextRequest) {
   // If search results exist, insert as decision_items
   if (result.searchResults && result.searchResults.length > 0) {
     const searchBatch = `batch_${crypto.randomUUID().slice(0, 8)}`;
-    const searchLabel = `${spaceTitle} ${result.tool ?? "general"}`.trim();
+    // Use the user's query as the rail label so each search gets its own section
+    // e.g., "coffee spots", "restaurants in rancho bernardo", "brunch"
+    const queryText = (message ?? "").replace(/@xark\s*/i, "").trim().toLowerCase();
+    const searchLabel = queryText || `${spaceTitle} ${result.tool ?? "general"}`.trim();
     const items = result.searchResults.map((r) => ({
       id: `item_${crypto.randomUUID()}`,
       space_id: spaceId,
@@ -259,29 +264,30 @@ export async function POST(req: NextRequest) {
         image_url: r.imageUrl,
         external_url: r.externalUrl,
         source: r.source ?? "apify",
-        search_tier: r.source === "gemini-search" ? "gemini-search" : "apify",
+        search_tier: r.source === "gemini-local" ? "gemini-local" : r.source === "gemini-search" ? "gemini-search" : "apify",
         rating: r.rating,
         search_batch: searchBatch,
         search_label: searchLabel,
       },
     }));
 
-    if (supabaseAdmin) {
-      await supabaseAdmin.from("decision_items").upsert(items, { onConflict: "id" });
-    }
+    await supabaseAdmin.from("decision_items").upsert(items, { onConflict: "id" });
   }
 
   // ── Final sanity check — never persist garbage to DB ──
-  const finalResponse = isGarbageResponse(result.response)
-    ? "couldn't process that. try rephrasing."
-    : result.response;
+  if (isGarbageResponse(result.response)) {
+    await supabaseAdmin.from("messages").delete().eq("id", xarkMsgId);
+    return NextResponse.json({
+      response: "couldn't process that. try rephrasing.",
+      messageId: xarkMsgId,
+    });
+  }
+  const finalResponse = result.response;
 
   // ── UPDATE the thinking message with the FINAL response (not a new insert) ──
-  if (supabaseAdmin) {
-    await supabaseAdmin.from("messages").update({
-      content: finalResponse,
-    }).eq("id", xarkMsgId);
-  }
+  await supabaseAdmin.from("messages").update({
+    content: finalResponse,
+  }).eq("id", xarkMsgId);
 
   return NextResponse.json({ response: finalResponse, messageId: xarkMsgId });
 
@@ -289,12 +295,12 @@ export async function POST(req: NextRequest) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error("[/api/xark] error:", errMsg);
 
-    // User-friendly error — don't leak internals
-    const userResponse = errMsg.includes("timeout")
-      ? "took too long. try again."
-      : "something went wrong. try again.";
     return NextResponse.json(
-      { response: userResponse },
+      {
+        response: errMsg.includes("timeout")
+          ? "took too long. try again."
+          : "something went wrong. try again.",
+      },
       { status: 500 }
     );
   }
