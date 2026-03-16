@@ -238,10 +238,10 @@ export function DecisionCard({
         </div>
       </div>
 
-      {/* ── Reactions — love / okay / pass — spaced across bottom ── */}
+      {/* ── Reactions — love / okay / pass — rewarding, tactile buttons ── */}
       <div
         className="absolute inset-x-0 bottom-0 flex items-center justify-between"
-        style={{ height: "48px", padding: "0 24px" }}
+        style={{ height: "56px", padding: "0 16px" }}
       >
         {SIGNALS.map((signal) => {
           const isActive = activeReaction === signal.type;
@@ -253,7 +253,7 @@ export function DecisionCard({
               onClick={(e) => {
                 e.stopPropagation();
                 if (typeof navigator !== "undefined" && navigator.vibrate) {
-                  navigator.vibrate(signal.type === "love_it" ? [20, 30, 20] : 15);
+                  navigator.vibrate(signal.type === "love_it" ? [20, 30, 20] : [10, 15]);
                 }
                 handleReact(signal.type);
               }}
@@ -263,21 +263,32 @@ export function DecisionCard({
                   handleReact(signal.type);
                 }
               }}
-              whileTap={{ scale: 0.8 }}
-              animate={{ scale: isActive ? 1.1 : 1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              whileTap={{ scale: 0.85 }}
+              animate={{
+                scale: isActive ? 1.05 : 1,
+                y: isActive ? -2 : 0,
+              }}
+              transition={{ type: "spring", stiffness: 500, damping: 20 }}
               className="outline-none"
               style={{
-                fontSize: "14px",
-                fontWeight: 300,
-                letterSpacing: "0.15em",
-                color: isActive ? signal.color : CARD_TEXT,
-                opacity: isActive ? 1 : 0.5,
+                position: "relative",
+                fontSize: "13px",
+                fontWeight: isActive ? 400 : 300,
+                letterSpacing: "0.12em",
+                color: isActive ? signal.color : "rgba(255,255,255,0.45)",
                 cursor: "pointer",
-                padding: "8px 4px",
-                textShadow: isActive
-                  ? `0 0 16px ${signal.color}, 0 0 6px ${signal.color}`
+                padding: "6px 14px",
+                borderRadius: "20px",
+                background: isActive
+                  ? `radial-gradient(ellipse at center, ${signal.color}22 0%, ${signal.color}08 70%, transparent 100%)`
+                  : "transparent",
+                boxShadow: isActive
+                  ? `0 0 20px ${signal.color}30, 0 0 8px ${signal.color}18, inset 0 0 12px ${signal.color}10`
                   : "none",
+                textShadow: isActive
+                  ? `0 0 12px ${signal.color}, 0 0 4px ${signal.color}80`
+                  : "none",
+                transition: "background 0.3s ease, box-shadow 0.3s ease",
               }}
             >
               {signal.label}
