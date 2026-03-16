@@ -34,8 +34,8 @@ function consensusColor(state: ConsensusState): string {
 
 const SIGNALS: { type: ReactionType; label: string; color: string }[] = [
   { type: "love_it", label: "love", color: "#FF6B35" },
-  { type: "works_for_me", label: "okay", color: CARD_CYAN },
-  { type: "not_for_me", label: "pass", color: CARD_GRAY },
+  { type: "works_for_me", label: "okay", color: "#A8B4C0" },
+  { type: "not_for_me", label: "pass", color: "#6B7280" },
 ];
 
 // ── AnimatedNumber — rolling consensus counter ──
