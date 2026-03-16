@@ -451,7 +451,6 @@ function SpacePageInner() {
         userId: resolvedUserId,
         userName: user?.displayName ?? userName ?? "",
         spaceItems,
-        setView,
         supabaseToken: getSupabaseToken(),
       };
 

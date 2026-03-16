@@ -4,14 +4,11 @@
 
 import type { SpaceStateItem } from "./space-state";
 
-type ViewMode = "discuss" | "decide" | "itinerary" | "memories";
-
 export interface LocalContext {
   spaceId: string;
   userId: string;
   userName: string;
   spaceItems: SpaceStateItem[];
-  setView: (view: ViewMode) => void;
   supabaseToken: string | null;
 }
 
@@ -88,20 +85,7 @@ function parseSimpleDateRange(text: string): { start_date: string; end_date: str
   return null;
 }
 
-// ── Navigation commands — pure UI, no DB ──
-const NAVIGATION_COMMANDS: LocalCommand[] = [
-  {
-    pattern: /@xark\s+(?:show|go\s+to|switch\s+to|open)\s+(discuss|decide|itinerary|memories)/i,
-    execute: (match, ctx) => {
-      const target = match[1].toLowerCase() as ViewMode;
-      return {
-        handled: true,
-        uiAction: () => ctx.setView(target),
-        whisper: `switched to ${target}`,
-      };
-    },
-  },
-];
+// Navigation commands removed — users swipe to switch views. Redundant as @xark commands.
 
 // ── Date commands — mutate via /api/local-action ──
 const DATE_COMMANDS: LocalCommand[] = [
@@ -189,7 +173,6 @@ const STATE_QUERY_COMMANDS: LocalCommand[] = [
 
 // ── All command registries (order matters — first match wins) ──
 const ALL_COMMANDS: LocalCommand[] = [
-  ...NAVIGATION_COMMANDS,
   ...DATE_COMMANDS,
   ...RENAME_COMMANDS,
   ...STATE_QUERY_COMMANDS,

@@ -7,7 +7,6 @@ const mockContext: LocalContext = {
   userId: "name_ram",
   userName: "ram",
   spaceItems: [],
-  setView: () => {},
   supabaseToken: "mock-token",
 };
 
@@ -20,35 +19,6 @@ describe("tryLocalAgent", () => {
   it("returns null for unrecognized @xark commands", () => {
     const result = tryLocalAgent("@xark find me flights to miami", mockContext);
     expect(result).toBeNull();
-  });
-
-  it("handles navigation: show decide", () => {
-    let viewSet = "";
-    const ctx = { ...mockContext, setView: (v: string) => { viewSet = v; } };
-    const result = tryLocalAgent("@xark show decide", ctx as unknown as LocalContext);
-    expect(result).not.toBeNull();
-    expect(result!.handled).toBe(true);
-    expect(result!.whisper).toContain("decide");
-    result!.uiAction?.();
-    expect(viewSet).toBe("decide");
-  });
-
-  it("handles navigation: go to itinerary", () => {
-    let viewSet = "";
-    const ctx = { ...mockContext, setView: (v: string) => { viewSet = v; } };
-    const result = tryLocalAgent("@xark go to itinerary", ctx as unknown as LocalContext);
-    expect(result).not.toBeNull();
-    result!.uiAction?.();
-    expect(viewSet).toBe("itinerary");
-  });
-
-  it("handles navigation: switch to memories", () => {
-    let viewSet = "";
-    const ctx = { ...mockContext, setView: (v: string) => { viewSet = v; } };
-    const result = tryLocalAgent("@xark switch to memories", ctx as unknown as LocalContext);
-    expect(result).not.toBeNull();
-    result!.uiAction?.();
-    expect(viewSet).toBe("memories");
   });
 });
 
