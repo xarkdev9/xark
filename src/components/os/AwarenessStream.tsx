@@ -19,28 +19,34 @@ import { colors, ink, timing, layout, text } from "@/lib/theme";
 import { useThemeContext } from "@/components/os/ThemeProvider";
 import { Avatar } from "@/components/os/Avatar";
 import { Whisper, dismissOnboardingWhisper } from "@/components/os/OnboardingWhispers";
+import { fetchUnreadCounts } from "@/lib/unread";
 
 interface AwarenessStreamProps {
   userId: string;
   userName: string;
   onSpaceTap: (spaceId: string, viewMode?: "decide") => void;
+  playgroundSpaces?: SpaceAwareness[];
 }
 
-export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStreamProps) {
+export function AwarenessStream({ userId, userName, onSpaceTap, playgroundSpaces }: AwarenessStreamProps) {
   const { isVibe } = useThemeContext();
   const [spaces, setSpaces] = useState<SpaceAwareness[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Fetch awareness on mount
+  // Fetch awareness + unread counts on mount
   useEffect(() => {
     if (!userId) return;
     fetchAwareness(userId)
-      .then((result) => setSpaces(result.length > 0 ? result : getDemoAwareness()))
-      .catch(() => setSpaces(getDemoAwareness()));
+      .then((result) => setSpaces(result))
+      .catch(() => setSpaces([]));
+    fetchUnreadCounts()
+      .then(setUnreadCounts)
+      .catch(() => {});
   }, [userId]);
 
   // Real-time: refetch when user is added to a new space
@@ -58,7 +64,7 @@ export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStrea
         },
         () => {
           fetchAwareness(userId)
-            .then((result) => setSpaces(result.length > 0 ? result : getDemoAwareness()))
+            .then((result) => setSpaces(result))
             .catch(() => {});
         }
       )
@@ -67,24 +73,32 @@ export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStrea
     return () => { supabase.removeChannel(channel); };
   }, [userId]);
 
-  const allPeaceful = spaces.length > 0 && spaces.every((s) => !s.actionNeeded);
+  // Use playground spaces when real spaces are empty
+  const displaySpaces = spaces.length > 0 ? spaces : (playgroundSpaces ?? []);
+  const isPlayground = spaces.length === 0 && (playgroundSpaces ?? []).length > 0;
+  const allPeaceful = displaySpaces.length > 0 && displaySpaces.every((s) => !s.actionNeeded);
 
   const handleSpaceTap = useCallback((spaceId: string) => {
     dismissOnboardingWhisper("galaxy_tap");
-    onSpaceTap(spaceId, "decide");
-  }, [onSpaceTap]);
+    if (isPlayground) {
+      // Playground spaces navigate with ?playground=true
+      onSpaceTap(spaceId, "decide");
+    } else {
+      onSpaceTap(spaceId, "decide");
+    }
+  }, [onSpaceTap, isPlayground]);
 
   return (
     <div className="px-6">
       <div className="mx-auto" style={{ maxWidth: layout.maxWidth }}>
-        {/* ── Awareness items ── */}
-        {spaces.length > 0 && (
+        {/* ── Awareness items (real or playground) ── */}
+        {displaySpaces.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6 }}
           >
-            {spaces.map((space, index) => {
+            {displaySpaces.map((space, index) => {
               const summary = summaryText(space);
 
               return (
@@ -128,9 +142,28 @@ export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStrea
                         <p style={{ ...text.listTitle, color: ink.primary }}>
                           {space.spaceTitle}
                         </p>
-                        <p style={{ ...text.timestamp, color: ink.tertiary }}>
-                          {recencyLabel(new Date(space.lastActivityAt))}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p style={{ ...text.timestamp, color: ink.tertiary }}>
+                            {recencyLabel(new Date(space.lastActivityAt))}
+                          </p>
+                          {(unreadCounts[space.spaceId] ?? 0) > 0 && (
+                            <span style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              minWidth: "18px",
+                              height: "18px",
+                              borderRadius: "9px",
+                              padding: "0 5px",
+                              fontSize: "11px",
+                              fontWeight: 400,
+                              color: "#fff",
+                              backgroundColor: "#FF6B35",
+                            }}>
+                              {unreadCounts[space.spaceId] > 99 ? "99+" : unreadCounts[space.spaceId]}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <p
                         style={{
@@ -167,22 +200,26 @@ export function AwarenessStream({ userId, userName, onSpaceTap }: AwarenessStrea
           </motion.div>
         )}
 
-        {/* ── Empty state ── */}
+        {/* ── Empty state — inviting, not hollow ── */}
         {spaces.length === 0 && mounted && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.8 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="py-8"
           >
-            <p style={{ ...text.subtitle, color: ink.secondary }}>
-              no active plans yet
+            <p style={{ ...text.listTitle, color: ink.primary }}>
+              where to?
             </p>
             <p
-              className="mt-2"
-              style={{ ...text.recency, color: ink.tertiary }}
+              className="mt-3"
+              style={{ ...text.subtitle, color: ink.secondary }}
             >
-              start a plan below to get going
+              type a dream below — a trip, dinner tonight, something to buy together
             </p>
+            <Whisper whisperKey="galaxy_input" delay={3}>
+              try "weekend in napa" or "dinner tonight"
+            </Whisper>
           </motion.div>
         )}
 

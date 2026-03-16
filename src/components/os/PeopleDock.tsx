@@ -18,6 +18,7 @@ import { ink, timing, layout, text } from "@/lib/theme";
 import { useThemeContext } from "@/components/os/ThemeProvider";
 import { Avatar } from "@/components/os/Avatar";
 import { Whisper, dismissOnboardingWhisper } from "@/components/os/OnboardingWhispers";
+import { fetchUnreadCounts } from "@/lib/unread";
 
 interface PeopleDockProps {
   userId: string;
@@ -28,6 +29,7 @@ interface PeopleDockProps {
 export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
   const { isVibe } = useThemeContext();
   const [personalChats, setPersonalChats] = useState<PersonalChat[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [mounted, setMounted] = useState(false);
 
   // Stabilized subscription ref
@@ -37,12 +39,15 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
     setMounted(true);
   }, []);
 
-  // Fetch personal chats on mount
+  // Fetch personal chats + unread counts on mount
   useEffect(() => {
     if (!userId) return;
     fetchPersonalChats(userId)
-      .then((result) => setPersonalChats(result.length > 0 ? result : getDemoPersonalChats()))
-      .catch(() => setPersonalChats(getDemoPersonalChats()));
+      .then((result) => setPersonalChats(result))
+      .catch(() => setPersonalChats([]));
+    fetchUnreadCounts()
+      .then(setUnreadCounts)
+      .catch(() => {});
   }, [userId]);
 
   // Real-time: refetch when user is added to a new space (sanctuary might appear)
@@ -60,7 +65,7 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
         },
         () => {
           fetchPersonalChats(userId)
-            .then((result) => setPersonalChats(result.length > 0 ? result : getDemoPersonalChats()))
+            .then((result) => setPersonalChats(result))
             .catch(() => {});
         }
       )
@@ -132,7 +137,7 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
                 onClick={() => handleChatTap(chat.spaceId)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleChatTap(chat.spaceId); }}
                 className="cursor-pointer outline-none"
-                style={{ paddingBottom: "20px" }}
+                style={{ paddingBottom: "14px" }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -141,32 +146,35 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
                   ease: [0.22, 1, 0.36, 1],
                 }}
               >
-                <div className="flex items-center gap-3">
-                  {/* Avatar — vibe: larger with floating shadow + ambient glow */}
-                  <div style={{ position: "relative", flexShrink: 0 }}>
-                    {isVibe && (
-                      <div style={{
-                        position: "absolute", inset: "-6px",
-                        borderRadius: "50%",
-                        background: "radial-gradient(circle, rgba(var(--xark-accent-rgb), 0.06) 0%, transparent 70%)",
-                        pointerEvents: "none",
-                      }} />
-                    )}
-                    <div style={isVibe ? {
-                      borderRadius: "50%",
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)",
-                    } : undefined}>
-                      <Avatar name={chat.contactName} size={isVibe ? 46 : 36} />
-                    </div>
-                  </div>
+                <div className="flex items-center gap-4">
+                  <Avatar name={chat.contactName} size={48} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between">
                       <p style={{ ...text.listTitle, color: ink.primary }}>
                         {chat.contactName}
                       </p>
-                      <p style={{ ...text.timestamp, color: ink.tertiary }}>
-                        {recencyLabel(new Date(chat.lastActivityAt))}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p style={{ ...text.timestamp, color: ink.tertiary }}>
+                          {recencyLabel(new Date(chat.lastActivityAt))}
+                        </p>
+                        {(unreadCounts[chat.spaceId] ?? 0) > 0 && (
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            minWidth: "18px",
+                            height: "18px",
+                            borderRadius: "9px",
+                            padding: "0 5px",
+                            fontSize: "11px",
+                            fontWeight: 400,
+                            color: "#fff",
+                            backgroundColor: "#FF6B35",
+                          }}>
+                            {unreadCounts[chat.spaceId] > 99 ? "99+" : unreadCounts[chat.spaceId]}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p
                       style={{
@@ -190,21 +198,22 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
           </motion.div>
         )}
 
-        {/* ── Empty state ── */}
+        {/* ── Empty state — warm, not hollow ── */}
         {!hasPersonalChats && mounted && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.8 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="py-8"
           >
-            <p style={{ ...text.subtitle, color: ink.secondary }}>
-              no conversations yet
+            <p style={{ ...text.listTitle, color: ink.primary }}>
+              your people
             </p>
             <p
-              className="mt-2"
-              style={{ ...text.recency, color: ink.tertiary }}
+              className="mt-3"
+              style={{ ...text.subtitle, color: ink.secondary }}
             >
-              invite someone to start chatting
+              share a space link to start planning with friends
             </p>
           </motion.div>
         )}

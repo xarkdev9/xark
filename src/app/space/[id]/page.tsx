@@ -37,6 +37,7 @@ import { useLocalMemory } from "@/hooks/useLocalMemory";
 import { useDeviceTier } from "@/hooks/useDeviceTier";
 import { ContextCard } from "@/components/os/ContextCard";
 import type { LedgerEvent } from "@/components/os/LedgerPill";
+import { markSpaceRead } from "@/lib/unread";
 import { PlaygroundSpace } from "@/components/os/PlaygroundSpace";
 import { isPlaygroundSpace } from "@/lib/playground";
 
@@ -241,6 +242,12 @@ function SpacePageInner() {
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spaceId, authLoading, e2ee.available]);
+
+  // ── Mark space as read when user opens it ──
+  useEffect(() => {
+    if (authLoading || !resolvedUserId) return;
+    markSpaceRead(spaceId);
+  }, [spaceId, authLoading, resolvedUserId]);
 
   // ── Broadcast channel — instant message delivery across devices ──
   useEffect(() => {
