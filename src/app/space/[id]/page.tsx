@@ -37,6 +37,8 @@ import { useLocalMemory } from "@/hooks/useLocalMemory";
 import { useDeviceTier } from "@/hooks/useDeviceTier";
 import { ContextCard } from "@/components/os/ContextCard";
 import type { LedgerEvent } from "@/components/os/LedgerPill";
+import { PlaygroundSpace } from "@/components/os/PlaygroundSpace";
+import { isPlaygroundSpace } from "@/lib/playground";
 
 // Demo space title map — used when Supabase is unreachable
 const DEMO_TITLES: Record<string, string> = {
@@ -76,13 +78,23 @@ function SpacePageInner() {
   const userName = searchParams.get("name") ?? undefined;
   const isInvite = searchParams.get("invite") === "true";
 
+  // ── PLAYGROUND MODE — early return, no Supabase ──
+  const isPlayground = searchParams.get("playground") === "true" && isPlaygroundSpace(spaceId);
+  if (isPlayground) {
+    return <PlaygroundSpace spaceId={spaceId} userName={userName ?? "you"} />;
+  }
+
   const { user, isAuthenticated, isLoading: authLoading } = useAuth(userName);
   // CRITICAL: userId must come from authenticated user only (e.g., "name_ram"),
   // never from raw URL param (e.g., "ram"). RLS checks user_id = auth.jwt()->>'sub'.
   const resolvedUserId = user?.uid ?? undefined;
 
-  // E2EE — gracefully degrades if migration 014 not applied
-  const e2ee = useE2EE(resolvedUserId ?? null);
+  // E2EE — only for phone-authenticated users (Firebase OTP).
+  // Dev-auto-login users (name_ prefix) use legacy plaintext path.
+  // E2EE requires persistent IndexedDB keys + Sender Key distribution
+  // which doesn't work across dev browser sessions.
+  const isPhoneAuth = resolvedUserId?.startsWith("phone_") ?? false;
+  const e2ee = useE2EE(isPhoneAuth ? resolvedUserId ?? null : null);
 
   const viewParam = searchParams.get("view");
   const [view, setView] = useState<ViewMode>(
