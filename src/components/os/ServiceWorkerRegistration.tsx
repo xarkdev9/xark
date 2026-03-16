@@ -5,8 +5,13 @@ import { useEffect } from "react";
 export function ServiceWorkerRegistration() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
+
+    // Register offline service worker (always — works without Firebase)
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+
     if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) return;
 
+    // Register FCM service worker for push notifications
     navigator.serviceWorker
       .register("/firebase-messaging-sw.js")
       .then((reg) => {
