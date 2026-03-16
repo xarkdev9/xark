@@ -3,14 +3,28 @@
 // XARK OS v2.0 — GALAXY PAGE
 // Tab toggle: People | Plans. Dream input fixed above ControlCaret.
 
-import { Suspense, useState, useCallback, useRef, type TouchEvent } from "react";
+import { Suspense, useState, useCallback, useRef, useEffect, type TouchEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { AwarenessStream } from "@/components/os/AwarenessStream";
 import { PeopleDock } from "@/components/os/PeopleDock";
 import { MemoriesTab } from "@/components/os/MemoriesTab";
 import { useAuth } from "@/hooks/useAuth";
 import { createSpace, getOptimisticSpaceId } from "@/lib/spaces";
 import { colors, opacity, timing, layout, text } from "@/lib/theme";
+import { makeUserId } from "@/lib/user-id";
+import { UserMenu } from "@/components/os/UserMenu";
+
+// ── Time-of-day greeting ──
+function getGreeting(name: string): string {
+  const h = new Date().getHours();
+  const first = name.split(" ")[0]?.toLowerCase() || "";
+  if (h < 5) return `still up, ${first}?`;
+  if (h < 12) return `morning, ${first}`;
+  if (h < 17) return `hey ${first}`;
+  if (h < 21) return `evening, ${first}`;
+  return `night, ${first}`;
+}
 
 type GalaxyTab = "people" | "plans" | "memories";
 
@@ -29,15 +43,29 @@ function GalaxyContent() {
   const router = useRouter();
   const userName = searchParams.get("name") ?? "";
   const { user } = useAuth(userName || undefined);
-  const [activeTab, setActiveTab] = useState<GalaxyTab>("plans");
+  const [activeTab, setActiveTab] = useState<GalaxyTab>("people");
+  const [tabDirection, setTabDirection] = useState(0);
+  const [greetingVisible, setGreetingVisible] = useState(false);
 
   // Dream input state
   const [dream, setDream] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const userId = user?.uid ?? `name_${userName}`;
+  // Auto-resize textarea (max ~4 lines)
+  const autoResize = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 100)}px`;
+  }, []);
+
+  useEffect(() => {
+    autoResize();
+  }, [dream, autoResize]);
+
+  const userId = user?.uid ?? makeUserId("name", userName);
 
   const handleSpaceTap = (spaceId: string, viewMode?: "decide") => {
     const viewParam = viewMode ? `&view=${viewMode}` : "";
@@ -53,8 +81,12 @@ function GalaxyContent() {
     if (!raw || isCreating) return;
     setIsCreating(true);
 
-    // Strip "@xark create" / "@xark" prefix — user wants a space, not an @xark command
-    const txt = raw.replace(/^@xark\s+(create|make|start|new)\s+/i, "").replace(/^@xark\s+/i, "").trim() || raw;
+    // Strip "@xark create group/space/trip" prefix — but preserve place names like "New York"
+    // Only strip "create/make/start/new" when followed by "group", "space", "trip", "plan"
+    const txt = raw
+      .replace(/^@xark\s+(?:create|make|start|new)\s+(?:group|space|trip|plan)\s*/i, "")
+      .replace(/^@xark\s+/i, "")
+      .trim() || raw;
 
     const spaceId = getOptimisticSpaceId(txt);
     handleSpaceTap(spaceId);
@@ -78,8 +110,10 @@ function GalaxyContent() {
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       const currentIdx = tabs.indexOf(activeTab);
       if (dx < 0 && currentIdx < tabs.length - 1) {
+        setTabDirection(1);
         setActiveTab(tabs[currentIdx + 1]);
       } else if (dx > 0 && currentIdx > 0) {
+        setTabDirection(-1);
         setActiveTab(tabs[currentIdx - 1]);
       }
     }
@@ -87,22 +121,22 @@ function GalaxyContent() {
 
   return (
     <div className="relative" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      {/* ── Spectrum Wash ── */}
+      {/* ── Spectrum Wash — warmer, more present ── */}
       <div
         className="pointer-events-none fixed inset-0"
         style={{
           background: [
-            `radial-gradient(ellipse 70% 50% at 30% 30%, rgba(var(--xark-accent-rgb), ${opacity.meshCyan}) 0%, transparent 60%)`,
-            `radial-gradient(ellipse 60% 40% at 70% 60%, rgba(var(--xark-amber-rgb), ${opacity.meshAmber}) 0%, transparent 50%)`,
+            `radial-gradient(ellipse 70% 50% at 25% 20%, rgba(var(--xark-accent-rgb), 0.06) 0%, transparent 60%)`,
+            `radial-gradient(ellipse 60% 50% at 75% 70%, rgba(var(--xark-amber-rgb), 0.04) 0%, transparent 50%)`,
           ].join(", "),
         }}
       />
 
-      {/* ── Mesh Pulse ── */}
+      {/* ── Mesh Pulse — slow, living ── */}
       <div
         className="pointer-events-none fixed inset-0"
         style={{
-          background: `radial-gradient(ellipse 80% 60% at 50% 40%, rgba(var(--xark-white-rgb), 0.03) 0%, transparent 100%)`,
+          background: `radial-gradient(ellipse 80% 60% at 50% 40%, rgba(var(--xark-white-rgb), 0.04) 0%, transparent 100%)`,
           animation: `meshPulse ${timing.meshPulse} ease-in-out infinite`,
         }}
       />
@@ -113,9 +147,10 @@ function GalaxyContent() {
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)", flexShrink: 0 }}
       >
         <div
-          className="mx-auto flex gap-6"
+          className="mx-auto flex items-center"
           style={{ maxWidth: layout.maxWidth }}
         >
+          <div className="flex gap-6">
           {(["people", "plans", "memories"] as GalaxyTab[]).map((tab) => {
             const isActive = activeTab === tab;
             return (
@@ -123,8 +158,8 @@ function GalaxyContent() {
                 key={tab}
                 role="button"
                 tabIndex={0}
-                onClick={() => setActiveTab(tab)}
-                onKeyDown={(e) => { if (e.key === "Enter") setActiveTab(tab); }}
+                onClick={() => { setTabDirection(tabs.indexOf(tab) > tabs.indexOf(activeTab) ? 1 : -1); setActiveTab(tab); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { setTabDirection(tabs.indexOf(tab) > tabs.indexOf(activeTab) ? 1 : -1); setActiveTab(tab); } }}
                 className="cursor-pointer outline-none"
                 style={{
                   ...text.label,
@@ -166,33 +201,66 @@ function GalaxyContent() {
               </span>
             );
           })}
+          </div>
+          <div style={{ marginLeft: "auto", paddingBottom: "10px" }}>
+            <UserMenu userName={userName} userId={userId} />
+          </div>
         </div>
       </div>
 
-      {/* ── Scrollable content — swipe left/right to switch tabs ── */}
+      {/* ── Scrollable content — crossfade + slide on tab switch ── */}
       <div
         className="relative z-10"
-        style={{ flex: 1, overflowY: "auto", paddingTop: "16px", paddingBottom: "120px" }}
+        style={{ flex: 1, overflowY: "auto", paddingTop: "12px", paddingBottom: "120px" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {activeTab === "people" && (
-          <PeopleDock
-            userId={userId}
-            userName={userName}
-            onPersonTap={handlePersonTap}
-          />
-        )}
-        {activeTab === "plans" && (
-          <AwarenessStream
-            userId={userId}
-            userName={userName}
-            onSpaceTap={handleSpaceTap}
-          />
-        )}
-        {activeTab === "memories" && (
-          <MemoriesTab userId={userId} />
-        )}
+        <AnimatePresence mode="wait" custom={tabDirection}>
+          {activeTab === "people" && (
+            <motion.div
+              key="people"
+              custom={tabDirection}
+              initial={{ opacity: 0, x: tabDirection * 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: tabDirection * -30 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <PeopleDock
+                userId={userId}
+                userName={userName}
+                onPersonTap={handlePersonTap}
+              />
+            </motion.div>
+          )}
+          {activeTab === "plans" && (
+            <motion.div
+              key="plans"
+              custom={tabDirection}
+              initial={{ opacity: 0, x: tabDirection * 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: tabDirection * -30 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <AwarenessStream
+                userId={userId}
+                userName={userName}
+                onSpaceTap={handleSpaceTap}
+              />
+            </motion.div>
+          )}
+          {activeTab === "memories" && (
+            <motion.div
+              key="memories"
+              custom={tabDirection}
+              initial={{ opacity: 0, x: tabDirection * 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: tabDirection * -30 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <MemoriesTab userId={userId} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── Dream input — fixed above ControlCaret ── */}
@@ -210,20 +278,23 @@ function GalaxyContent() {
             style={{
               height: "1px",
               background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
-              opacity: 0.15,
+              opacity: inputFocused ? 0.3 : 0.12,
               marginBottom: "10px",
+              transition: "opacity 0.4s ease",
             }}
           />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-end gap-3">
             <div className="flex-1">
-              <input
+              <textarea
                 ref={inputRef}
-                type="text"
                 value={dream}
                 onChange={(e) => setDream(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") manifestDream();
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    manifestDream();
+                  }
                 }}
                 placeholder="a trip, a dinner, a plan..."
                 enterKeyHint="send"
@@ -231,14 +302,18 @@ function GalaxyContent() {
                 spellCheck={false}
                 autoComplete="off"
                 autoCapitalize="sentences"
+                rows={1}
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
-                className="w-full bg-transparent outline-none"
+                className="w-full bg-transparent outline-none resize-none"
                 style={{
                   ...text.input,
                   color: colors.white,
                   caretColor: colors.cyan,
                   opacity: isCreating ? 0.3 : 1,
+                  lineHeight: 1.4,
+                  maxHeight: "100px",
+                  overflow: "hidden",
                 }}
               />
             </div>
@@ -291,7 +366,7 @@ function GalaxyContent() {
           0%, 100% { opacity: 0; }
           50% { opacity: 1; }
         }
-        input::placeholder {
+        textarea::placeholder {
           color: ${colors.white};
           opacity: ${opacity.whisper};
           letter-spacing: 0.04em;
