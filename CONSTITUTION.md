@@ -7,19 +7,24 @@
 - **BANNED**: font-weight 500, 600, 700, 800, 900. Any weight above 400 is a constitutional violation.
 - If you need emphasis, use SIZE or OPACITY — never weight.
 
-## 2. THE THEME SYSTEM (2 Themes)
-- Xark OS ships with TWO themes: hearth (light, default) + midnight (dark).
+## 2. THE THEME SYSTEM (4 Themes)
+- Xark OS ships with FOUR themes across 2 axes — style (flat/depth) and mode (light/dark).
+- `ThemeStyle = "flat" | "depth"`. Components use `isVibe` from ThemeContext, not theme names.
 - All colors are CSS variables (`--xark-white`, `--xark-void`, `--xark-accent`, etc.) set by ThemeProvider.
-- ThemeProvider dynamically updates `<meta name="theme-color">` and input `colorScheme` for iOS keyboard color matching.
-- **Hearth** (light, default): text `#111111`, bg `#F8F7F4`, accent `#FF6B35` (Action Orange).
-- **Midnight** (dark): text `#E8E6E1`, bg `#0A0A0F`, accent `#40E0FF` (Cyan).
+- ThemeProvider dynamically updates `<meta name="theme-color">`, input `colorScheme` for iOS keyboard, and `data-style` attribute.
+- **Hearth** (flat light, default): text `#111111`, bg `#F8F7F4`, accent `#FF6B35` (Action Orange).
+- **Hearth Dark** (flat dark): text `#E8E6E1`, bg `#0A0A0F`, accent `#40E0FF` (Cyan).
+- **Vibe** (depth light): text `#0F0F0F`, bg `#FAF9F6`, accent `#E87040` (warm orange). Floating shadows, HD photos, immersive.
+- **Vibe Dark** (depth dark): text `#ECE8E2`, bg `#08080C`, accent `#50E8C0` (warm teal).
 - Text color: `var(--xark-white)` via `colors.white`. Theme-aware ink.
 - Background: `var(--xark-void)` via `colors.void`. Theme-aware canvas.
 - Accent: `var(--xark-accent)` via `colors.cyan`. Theme-aware identity color.
 - `textColor(alpha)` from `theme.ts` returns `rgba(var(--xark-white-rgb), alpha)` — the APPROVED method for applying opacity to text. This bakes opacity into the color for correct antialiasing.
 - `accentColor(alpha)` works the same for accent color.
 - All hierarchy expressed via opacity, never font-weight. `textColor(0.9)` for primary, `textColor(0.4)` for tertiary.
+- **Ink system**: Solid text colors for high-readability contexts. `ink.primary`, `ink.secondary`, `ink.tertiary`, `ink.sender` via CSS variables. Use instead of `textColor(alpha)` for chat lists, People tab, settings. Never opacity-based.
 - Engine signal colors (amber, gold, green, orange, gray) are ALL CSS variables — adjusted per theme for contrast.
+- **Loosely coupled**: Adding a theme = 2 file changes (theme.ts + UserMenu). Components check `style` field, not theme names.
 - **BANNED**: Hardcoded hex colors in components (use `colors.*` or `textColor()`). The exception is `colors.overlay` (#000000) which is always black.
 
 ## 3. THE FONT SYSTEM
@@ -40,12 +45,15 @@
 - **Green Lock (#10B981)**: Finality. Flash green → settle to Cloud Dancer (#F0EEE9).
 
 ## 6. THE AI (@xark)
-- No robot icons. No sparkles. No emojis.
+- COOL FRIEND PERSONA: @xark texts like a real friend in a group chat. brief, lowercase, punchy, max 1-2 short sentences (20 words or less). warm but never corny, never robotic.
+- NO AI CRINGE: never say "OMG", "mission accomplished", "epic", "vibes", "dive in", "delve", "world is our oyster", "let's gooo", "legendary", "bestie", "superpower".
+- EMOJI: never use ✨, 🎉, 🚀, or 🤖. maximum ONE contextual emoji (🌮 for tacos). zero is usually better.
+- PUNCTUATION: avoid exclamation points. a period or no punctuation is better. lowercase encouraged.
 - Intelligence is signaled via accent color (`colors.cyan`) breathing at a 4.5s cycle.
 - SILENT BY DEFAULT: @xark never responds unless the message contains "@xark" (explicit invocation).
-- NEVER: reacts to messages, summarizes unprompted, inserts itself into banter, sends proactive suggestions, adds emoji or personality.
+- NEVER: reacts to messages, summarizes unprompted, inserts itself into banter, sends proactive suggestions.
 - ONE EXCEPTION: Handshake whisper at >80% consensus (automated, no user invocation needed).
-- SOCIAL REASONING: Use names when advocating FOR someone ("nina and raj aren't feeling italian"). Use counts for opposition ("3 people voted not for me"). Never assume WHY someone voted. Reports state, asks the question, lets humans fill the gap.
+- SOCIAL REASONING: Use names when advocating FOR someone ("nina and raj aren't feeling italian"). Use counts for opposition ("3 people aren't feeling this one"). Never assume WHY someone voted. Reports state, asks the question, lets humans fill the gap.
 - If you detect that you have used a border, a font-weight above 400, a bold class, or a hardcoded hex color in a component, you must immediately stop, delete the file, and output the text: 'I HAVE VIOLATED THE CONSTITUTION. RESTARTING TURN.'
 
 ## 7. THE UNIVERSAL DECISION ENGINE
@@ -294,19 +302,55 @@ The Xark OS backend is a locked hybrid of Firebase and Supabase. No substitution
 |---|---|---|
 | Phone OTP | Firebase Auth | Flawless SMS delivery and session management |
 | Decision Engine | Supabase (Postgres) | SQL required for heart-sort ranking math |
+| E2EE Key Distribution | Supabase (Postgres) | key_bundles, one_time_pre_keys tables with atomic RPC |
+| Encrypted Message Storage | Supabase (Postgres) | message_ciphertexts table (server stores ciphertext only) |
 | Multimedia (E2EE) | Firebase Storage | High-performance binary delivery with bucket security |
+| Encrypted Key Backups | Firebase Storage | Argon2id-encrypted backup blobs (server cannot decrypt) |
+| Cold Ciphertext Archive | Firebase Storage | Monthly partitions older than 6 months |
 | Push Alerts | Firebase (FCM) | Native integration with iOS and Android |
-| Intelligence | Gemini 2.5 Flash | @xark deep research and agentic planning |
+| Intelligence | Gemini 2.5 Flash | @xark deep research and agentic planning (Layer 3 only) |
 
 - **BANNED**: Supabase Auth (`supabase/auth`, `@supabase/auth`, `createClient` with auth config for Supabase). All authentication flows use Firebase Auth exclusively.
 - If you detect a Supabase Auth import or scaffold, you must immediately stop and output: 'I HAVE VIOLATED THE CONSTITUTION. RESTARTING TURN.'
 
+## 19a. THE ENCRYPTION CONSTITUTION (E2EE)
+Full architecture documented in SECURITY.md. Key constitutional rules:
+
+- **ZERO-KNOWLEDGE MESSAGING**: Server NEVER sees message plaintext or private keys. All crypto is client-side (`src/lib/crypto/`). Never import crypto modules on the server.
+- **THREE-LAYER SEPARATION**: Layer 1 (key management) → Layer 2 (message encryption, zero-knowledge) → Layer 3 (structured intelligence, @xark reads only this). These layers MUST remain separate. No bridging without explicit user consent.
+- **SIGNAL PROTOCOL**: Double Ratchet for 1:1 sanctuaries (per-message forward secrecy). Sender Keys for groups (per-sender chain forward secrecy). XChaCha20-Poly1305 AEAD (hardware-independent). No AES-GCM (requires AES-NI for constant-time).
+- **@xark IS BLIND TO LAYER 2**: @xark reads Layer 3 data only (decision items, reactions, constraints, space metadata). @xark is DISABLED in sanctuaries. When a user invokes @xark, only the command text is sent to the server — this is an explicit, user-initiated disclosure.
+- **ON-DEVICE CONSTRAINT DETECTION**: Bridges Layer 2 → Layer 3. Runs on sender's device only. Conservative allowlists. Requires explicit user consent (save/dismiss prompt).
+- **NO BACKDOORS**: No master key. No key escrow. No admin decryption. No recovery mechanism that bypasses user password. This is non-negotiable.
+- **MESSAGE TYPE GUARD**: Client MUST use `resolveMessageContent()` — E2EE messages are ONLY rendered from decrypted ciphertext, never from `messages.content` (anti-injection defense).
+- **ANTI-INJECTION**: Even if the server is compromised and sets `content` on an E2EE message, the client ignores it and decrypts from `message_ciphertexts` only.
+- **NO SERVER-SIDE CRYPTO**: All encryption, decryption, key generation, and key derivation happens on the client. The server is a dumb relay for ciphertext and public keys.
+- If you detect server-side decryption, a master key, key escrow, or any mechanism that gives the server access to plaintext, you must immediately stop and output: 'I HAVE VIOLATED THE ENCRYPTION CONSTITUTION. RESTARTING TURN.'
+
 ## 20. THE INTELLIGENCE SERVICE
-- `src/lib/intelligence/orchestrator.ts` — Gemini 2.5 Flash orchestrator. Parses user intent via Gemini → routes to Apify tool → synthesizes response. Stateless. Strips markdown code fences from Gemini JSON. Accepts spaceTitle for location context.
-- `src/lib/intelligence/tool-registry.ts` — Tool registry pattern. Default tools: hotel, flight, activity, restaurant, general. `registerTool(name, { actorId, description, paramMap })`.
+- `src/lib/intelligence/orchestrator.ts` — Gemini 2.5 Flash orchestrator with **three-tier routing**:
+  - **gemini-local** (FAST, ~7-10s): `geminiLocalSearch()` — direct Gemini knowledge for casual queries (coffee, brunch, sunset spots, bars). No Google Search tool. Returns JSON array of real places with descriptions. Tools: `local_restaurant`, `local_activity`.
+  - **gemini-search** (~40-50s): `geminiSearchGrounded()` — Google Search grounding for knowledge queries (travel tips, weather, what to pack). Tool: `general`.
+  - **apify** (SLOW, 15-50s): Apify actors for booking-specific queries with prices/ratings. Tools: `hotel`, `flight`, `restaurant`, `activity`.
+  - Intent prompt exposes all 8 tools with explicit TIER SELECTION rules: "DEFAULT TO FAST TIER. most queries are casual."
+  - Stateless. Native JSON mode (`responseMimeType: "application/json"`). `_thought_process` chain of thought. Anti-cringe voice rules. Accepts spaceTitle for location context.
+- `src/lib/intelligence/tool-registry.ts` — Tool registry pattern. 8 tools across 2 tiers: apify (hotel, flight, activity, restaurant, general) + gemini-search (local_restaurant, local_activity, local_general). `registerTool(name, { actorId, description, paramMap, tier })`.
 - `src/lib/intelligence/apify-client.ts` — Apify actor runner. `runActor(actorId, input)` → `ApifyResult[]`. Safe: returns empty array when `APIFY_API_TOKEN` missing.
-- `/api/xark` endpoint: POST. Silent mode (no @xark = null response). Strips prefix, parallelized pre-Gemini fetches via `Promise.all` (space title + grounding context + last 15 messages). Calls orchestrate(). Search results auto-upserted as decision_items in "proposed" state with `search_batch` + `search_label` metadata. Persists @xark response messages server-side via supabaseAdmin (returns messageId for client deduplication).
-- `src/lib/supabase-admin.ts` — Server-side Supabase client with `SUPABASE_SERVICE_ROLE_KEY`. Bypasses RLS. Used by `/api/xark` and `/api/notify`.
+- Prompt split: `buildStaticPrompt()` (voice rules, boundaries, tools, examples — stable) + `buildDynamicPrompt()` (space title, grounding, messages, request — variable). Composed in `buildIntentPrompt()`. Flash model guard warns if pro model detected.
+- `/api/xark` endpoint: POST. Silent mode (no @xark = null response). Strips prefix, parallelized pre-Gemini fetches via `Promise.all` (space title + grounding context + last 15 messages). Calls orchestrate(). Search results auto-upserted as decision_items in "proposed" state with `search_batch` + `search_label` (user's query text — each search gets its own Decide rail) + `search_tier` metadata. Persists @xark response messages server-side via supabaseAdmin (returns messageId for client deduplication).
+- `/api/message` endpoint: Unified E2EE message endpoint. Async @xark orchestration (fire-and-forget) + server-side broadcast. Same search_label logic via `orchestrateAndUpdate()`.
+- `src/lib/supabase-admin.ts` — Server-side Supabase client with `SUPABASE_SERVICE_ROLE_KEY`. Bypasses RLS. Used by `/api/xark`, `/api/message`, `/api/local-action`, and `/api/notify`.
+
+## 20a. LOCAL INTELLIGENCE (PARKED — needs browser debugging)
+- Three-tier client-side routing in `sendMessage()`: Tier 1 (regex, <1ms) → Tier 2 (lexical search, ~50ms) → Tier 3 (Gemini cloud). First match wins.
+- `src/lib/local-agent.ts` — Tier 1 fast-path router. `tryLocalAgent()` intercepts @xark admin commands. Commands: date management, space rename, state queries. Runs even while `isThinking`.
+- `src/lib/local-recall.ts` — Tier 2 recall detection. `isRecallQuestion()` with tuned patterns. Strict halt on zero results (cloud is E2EE-blind).
+- `src/workers/memory-worker.ts` — Tier 2 Web Worker. MiniSearch lexical search. 1000-message cap, 3s debounced persistence, timestamp watermark.
+- `src/hooks/useLocalMemory.ts` — React hook bridging Worker + IndexedDB blob persistence.
+- `/api/local-action` — Tier 1 mutation endpoint. JWT + membership check. Atomic: mutation + `space_ledger` entry. Actions: update_dates, rename_space, revert.
+- `src/components/os/LedgerPill.tsx` — Interactive system pill (icon + actor + verb + [tappable payload] + undo). Interleaved in XarkChat timeline.
+- `src/components/os/ContextCard.tsx` — Actionable recall card. Jump to Message + Quote to Group.
+- `supabase/migrations/017_hybrid_brain.sql` — `space_ledger` table (Layer 3, unencrypted). RLS + Realtime.
 
 ## 21. THE CLAIM SHEET
 - `src/components/os/ClaimSheet.tsx` — Slide-up sheet for claiming a locked item.
