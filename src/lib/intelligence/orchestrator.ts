@@ -1,9 +1,10 @@
 // XARK OS v2.0 — @xark Intelligence Orchestrator
 // Gemini parses intent → routes to Apify tool → synthesizes response.
 // Stateless. No state stored. Reads grounding context + last 15 messages.
-// UPGRADES: Internal monologue (responseSchema), self-healing retry, context-aware synthesis.
+// Native JSON mode (responseMimeType), chain-of-thought (_thought_process),
+// self-healing retry, context-aware synthesis. Anti-cringe voice.
 
-import { GoogleGenerativeAI, SchemaType, HarmCategory, HarmBlockThreshold, type GenerativeModel, type Schema } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, type GenerativeModel } from "@google/generative-ai";
 import { getTool, listTools } from "./tool-registry";
 import { runActor, type ApifyResult } from "./apify-client";
 
@@ -13,42 +14,6 @@ const genAI = process.env.GEMINI_API_KEY
 
 const GEMINI_TIMEOUT_MS = 45_000;
 const MAX_RESPONSE_LENGTH = 500;
-
-// ── Structured output schema — forces chain-of-thought BEFORE action ──
-const orchestratorSchema = {
-  type: SchemaType.OBJECT as const,
-  properties: {
-    _thought_process: {
-      type: SchemaType.STRING as const,
-      description: "MANDATORY: 1-2 sentences of internal reasoning before deciding the action.",
-    },
-    action: {
-      type: SchemaType.STRING as const,
-      description: "Must be one of: search, reason, propose, set_dates, populate_logistics",
-    },
-    tool: { type: SchemaType.STRING as const },
-    params: { type: SchemaType.OBJECT as const, properties: {} },
-    directResponse: { type: SchemaType.STRING as const },
-    start_date: { type: SchemaType.STRING as const },
-    end_date: { type: SchemaType.STRING as const },
-    label: { type: SchemaType.STRING as const },
-    extractions: {
-      type: SchemaType.ARRAY as const,
-      items: {
-        type: SchemaType.OBJECT as const,
-        properties: {
-          user_name: { type: SchemaType.STRING as const },
-          category: { type: SchemaType.STRING as const },
-          origin: { type: SchemaType.STRING as const },
-          destination: { type: SchemaType.STRING as const },
-          confidence: { type: SchemaType.NUMBER as const },
-        },
-        required: ["user_name", "confidence"] as const,
-      },
-    },
-  },
-  required: ["_thought_process", "action"] as const,
-} as unknown as Schema;
 
 // ── Timeout wrapper — prevents Gemini from hanging indefinitely ──
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -85,7 +50,7 @@ export function isGarbageResponse(text: string): boolean {
   return false;
 }
 
-const GARBAGE_FALLBACK = "couldn't process that. try rephrasing.";
+const GARBAGE_FALLBACK = "something glitched. try that again?";
 
 export interface OrchestratorInput {
   userMessage: string;
@@ -109,10 +74,54 @@ export interface OrchestratorResult {
     destination?: string;
     confidence: number;
   }>;
-  _debug?: Record<string, unknown>; // TEMPORARY: debug info for diagnosing failures
+  _debug?: Record<string, unknown>;
 }
 
-/** Call Gemini with Google Search grounding for local queries */
+/** Fast local search — direct Gemini knowledge (no Google Search tool, ~3-5s) */
+async function geminiLocalSearch(
+  model: GenerativeModel,
+  query: string,
+  spaceTitle: string
+): Promise<Array<{ title: string; description: string; url?: string; phone?: string; address?: string }>> {
+  const location = spaceTitle || "the area";
+
+  try {
+    const result = await withTimeout(
+      model.generateContent({
+        contents: [{ role: "user", parts: [{ text: `You are a local guide for ${location}. Return 5-8 real, well-known places for: "${query}".
+
+RULES:
+- ONLY return places you are confident actually exist. no made-up names.
+- include the neighborhood/area in the description.
+- if you're not sure about a place, skip it. fewer accurate results > many guesses.
+
+Return ONLY a JSON array:
+[{"title":"Place Name","description":"Brief description with neighborhood","address":"approximate address or area"}]` }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      }),
+      GEMINI_TIMEOUT_MS
+    );
+
+    const responseText = result.response.text();
+    if (!responseText) return [];
+
+    const parsed = JSON.parse(responseText);
+    const items = Array.isArray(parsed) ? parsed : [];
+    return items.map((item: Record<string, unknown>) => ({
+      title: String(item.title || ""),
+      description: String(item.description || ""),
+      url: item.url ? String(item.url) : undefined,
+      phone: item.phone ? String(item.phone) : undefined,
+      address: item.address ? String(item.address) : undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Call Gemini with Google Search grounding for knowledge queries */
 async function geminiSearchGrounded(
   model: GenerativeModel,
   query: string,
@@ -121,10 +130,13 @@ async function geminiSearchGrounded(
   const contextualQuery = spaceTitle ? `${query} near ${spaceTitle}` : query;
 
   try {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: `Find real places for: ${contextualQuery}. Return a JSON array of objects with fields: title, description, url, phone, address. Return ONLY the JSON array, no other text.` }] }],
-      tools: [{ googleSearch: {} }] as any,
-    });
+    const result = await withTimeout(
+      model.generateContent({
+        contents: [{ role: "user", parts: [{ text: `Find real places for: ${contextualQuery}. Return a JSON array of objects with fields: title, description, url, phone, address. Return ONLY the JSON array, no other text.` }] }],
+        tools: [{ googleSearch: {} }] as any,
+      }),
+      GEMINI_TIMEOUT_MS
+    );
 
     const responseText = result.response.text();
     const jsonMatch = responseText.match(/\[[\s\S]*\]/);
@@ -146,16 +158,17 @@ async function geminiSearchGrounded(
 
 export async function orchestrate(input: OrchestratorInput): Promise<OrchestratorResult> {
   if (!genAI) {
-    return { response: "intelligence service is not configured." };
+    return { response: "not configured yet. someone needs to set up the api key." };
   }
 
   const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  if (modelName.includes("pro")) {
+    console.warn("[@xark] pro model detected — flash recommended for routing latency");
+  }
 
-  // ── SAFETY SETTINGS ──
-  // BLOCK_ONLY_HIGH: blocks only high-probability harmful content.
-  // The system prompt mentions safety terms ("violence", "illegal") in its
-  // BOUNDARIES section which triggers stricter filters as false positives.
-  // Actual safety enforcement is done in the prompt itself (reject harmful requests).
+  // BLOCK_ONLY_HIGH: the system prompt mentions safety terms in BOUNDARIES
+  // which triggers stricter filters as false positives. Actual safety
+  // enforcement is done in the prompt itself (reject harmful requests).
   const model = genAI.getGenerativeModel({
     model: modelName,
     safetySettings: [
@@ -166,9 +179,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     ],
   });
 
-  // ── Intent parsing — prompt-based JSON (not responseSchema) ──
-  // responseSchema with Gemini 2.5 Flash returns empty responses for complex prompts.
-  // Prompt-based JSON is more reliable across model versions.
+  // ── Step 1: Parse intent — native JSON mode (responseMimeType) ──
   const intentPrompt = buildIntentPrompt(input);
   let parsed: {
     _thought_process?: string;
@@ -186,42 +197,29 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     const intentResult = await withTimeout(
       model.generateContent({
         contents: [{ role: "user", parts: [{ text: intentPrompt }] }],
-        generationConfig: { maxOutputTokens: 1024 },
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
       }),
       GEMINI_TIMEOUT_MS
     );
 
-    // Check if blocked by safety filters
     const candidate = intentResult.response.candidates?.[0];
     if (candidate?.finishReason === "SAFETY") {
-      return { response: "unethical request detected. dropped.", action: "reason" };
+      return { response: "nope. let's keep it chill.", action: "reason" };
     }
 
-    let rawText = "";
-    try { rawText = intentResult.response.text(); } catch { /* empty */ }
-
-    if (!rawText || rawText.trim().length === 0) {
+    const jsonText = intentResult.response.text();
+    if (!jsonText || jsonText.trim().length === 0) {
       return { response: GARBAGE_FALLBACK, action: "reason", _debug: { stage: "empty_gemini_response", finishReason: candidate?.finishReason } };
     }
 
-    // Strip markdown code fences
-    rawText = rawText
-      .replace(/^```(?:json)?\s*\n?/i, "")
-      .replace(/\n?```\s*$/i, "")
-      .trim();
-
-    // Extract JSON object from response (Gemini may add text before/after)
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { response: GARBAGE_FALLBACK, action: "reason", _debug: { stage: "no_json_in_response", rawText: rawText.slice(0, 300) } };
-    }
-
-    parsed = JSON.parse(jsonMatch[0]);
-    console.log("[@xark]:", parsed.action, parsed.tool ?? "", parsed._thought_process?.slice(0, 100) ?? "");
+    parsed = JSON.parse(jsonText);
+    console.log("[@xark]:", parsed.action, parsed.tool ?? "", parsed._thought_process?.slice(0, 120) ?? "");
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     if (errMsg.toLowerCase().includes("safety") || errMsg.toLowerCase().includes("blocked")) {
-      return { response: "security violation. request ignored.", action: "reason" };
+      return { response: "that got flagged. moving on.", action: "reason" };
     }
     console.error("[@xark] intent parse failed:", errMsg);
     return { response: GARBAGE_FALLBACK, action: "reason", _debug: { stage: "intent_parse_failed", error: errMsg } };
@@ -231,16 +229,40 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
   if (parsed.action === "search" && parsed.tool && parsed.params) {
     const tool = getTool(parsed.tool);
     if (!tool) {
-      return { response: `i don't have a ${parsed.tool} search tool yet.`, action: "search" };
+      return { response: `don't have a ${parsed.tool} search yet. try something else?`, action: "search" };
     }
 
-    // ── Gemini Search grounding tier ──
+    // ── Fast local tier (local_restaurant, local_activity) — direct Gemini, ~3-5s ──
+    if (tool.tier === "gemini-search" && parsed.tool?.startsWith("local_")) {
+      const query = parsed.params.query || parsed.params.location || input.userMessage;
+      const localResults = await geminiLocalSearch(model, query, input.spaceTitle || "");
+
+      if (localResults.length === 0) {
+        return { response: "couldn't find anything. try being more specific?", action: "search" };
+      }
+
+      const results: ApifyResult[] = localResults.map((r) => ({
+        title: r.title,
+        description: [r.description, r.address].filter(Boolean).join(" — "),
+        externalUrl: r.url,
+        source: "gemini-local",
+      }));
+
+      return {
+        response: `found ${results.length} spots. they're in decide now.`,
+        searchResults: results,
+        action: "search",
+        tool: parsed.tool,
+      };
+    }
+
+    // ── Gemini Search grounding tier (general knowledge queries) ──
     if (tool.tier === "gemini-search") {
       const query = parsed.params.query || parsed.params.location || input.userMessage;
       const groundedResults = await geminiSearchGrounded(model, query, input.spaceTitle || "");
 
       if (groundedResults.length === 0) {
-        return { response: "searched but nothing matched. try a different query.", action: "search" };
+        return { response: "searched but came up empty. try different keywords?", action: "search" };
       }
 
       const results: ApifyResult[] = groundedResults.map((r) => ({
@@ -250,9 +272,8 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
         source: "gemini-search",
       }));
 
-      const placeWord = results.length === 1 ? "place" : "places";
       return {
-        response: `found ${results.length} ${placeWord}. added to decide.`,
+        response: `found ${results.length} spots. they're in decide now.`,
         searchResults: results,
         action: "search",
         tool: parsed.tool,
@@ -263,11 +284,10 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     let mappedParams = tool.paramMap(parsed.params);
     let results = await runActor(tool.actorId, mappedParams);
 
-    // ── UPGRADE 2: Agentic self-healing retry ──
+    // ── Self-healing retry — loosen constraints on empty results ──
     if (results.length === 0 && tool.tier === "apify") {
       const retryPrompt = `The search using tool '${parsed.tool}' with params ${JSON.stringify(parsed.params)} returned 0 results.
-Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize the category) and return updated params.
-Explain your adjustment in the _thought_process.`;
+Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize the category) and return updated params as JSON: {"params": {...}}`;
 
       try {
         const retryResult = await withTimeout(
@@ -275,16 +295,15 @@ Explain your adjustment in the _thought_process.`;
             contents: [{ role: "user", parts: [{ text: retryPrompt }] }],
             generationConfig: {
               responseMimeType: "application/json",
-              responseSchema: orchestratorSchema,
             },
           }),
           GEMINI_TIMEOUT_MS
         );
 
         const retryParsed = JSON.parse(retryResult.response.text());
-        console.log("[@xark retry thought]:", retryParsed._thought_process);
-        if (retryParsed.params && Object.keys(retryParsed.params).length > 0) {
-          mappedParams = tool.paramMap(retryParsed.params);
+        const retryParams = retryParsed.params ?? retryParsed;
+        if (retryParams && Object.keys(retryParams).length > 0) {
+          mappedParams = tool.paramMap(retryParams);
           results = await runActor(tool.actorId, mappedParams);
         }
       } catch {
@@ -293,10 +312,10 @@ Explain your adjustment in the _thought_process.`;
     }
 
     if (results.length === 0) {
-      return { response: "tried searching but nothing fit. maybe adjust dates or budget?", action: "search" };
+      return { response: "nothing fit. maybe loosen the dates or budget?", action: "search" };
     }
 
-    // ── UPGRADE 3: Context-aware synthesis ──
+    // ── Context-aware synthesis ──
     const synthesisPrompt = buildSynthesisPrompt(input, results);
     const synthesisResult = await withTimeout(
       model.generateContent(synthesisPrompt),
@@ -304,10 +323,9 @@ Explain your adjustment in the _thought_process.`;
     );
     const synthesisText = synthesisResult.response.text();
 
-    const resultWord = results.length === 1 ? "result" : "results";
     return {
       response: isGarbageResponse(synthesisText)
-        ? `found ${results.length} ${resultWord}. added to decide.`
+        ? `found ${results.length} options. take a look in decide.`
         : synthesisText,
       searchResults: results,
       action: "search",
@@ -327,7 +345,7 @@ Explain your adjustment in the _thought_process.`;
     const endDate = parsed.end_date as string;
     const label = parsed.label as string | undefined;
     return {
-      response: `set dates to ${startDate} – ${endDate}?`,
+      response: `${startDate} to ${endDate}. lock it in?`,
       action: "set_dates" as const,
       pendingConfirmation: true,
       payload: { start_date: startDate, end_date: endDate, label },
@@ -344,7 +362,7 @@ Explain your adjustment in the _thought_process.`;
         .map((e) => `${e.user_name} from ${e.origin}`)
         .join(", ");
       return {
-        response: `got it — ${names}. correct?`,
+        response: `got it — ${names}. that right?`,
         action: "populate_logistics" as const,
         pendingConfirmation: true,
         extractions: validExtractions,
@@ -354,141 +372,173 @@ Explain your adjustment in the _thought_process.`;
 
   // Default: reasoning response
   if (parsed.directResponse) {
-    const drGarbage = isGarbageResponse(parsed.directResponse);
     return {
-      response: drGarbage ? GARBAGE_FALLBACK : parsed.directResponse,
+      response: isGarbageResponse(parsed.directResponse) ? GARBAGE_FALLBACK : parsed.directResponse,
       action: "reason",
-      _debug: drGarbage ? { stage: "directResponse_garbage", directResponseLen: parsed.directResponse.length, directResponse: parsed.directResponse.slice(0, 300) } : undefined,
     };
   }
 
-  return { response: GARBAGE_FALLBACK, action: "reason", _debug: { stage: "no_directResponse_at_end", parsedAction: parsed.action, parsedTool: parsed.tool, parsedKeys: Object.keys(parsed) } };
+  return { response: GARBAGE_FALLBACK, action: "reason" };
+}
+
+/** Static system prompt — stable across all invocations (~800 tokens).
+ *  Split from dynamic content for future context caching readiness. */
+export function buildStaticPrompt(): string {
+  return `You are @xark, a smart friend who handles group planning logistics. you're warm but cool about it — never corny, never robotic.
+
+VOICE RULES (CRITICAL - READ CAREFULLY):
+- TEXT LIKE A REAL HUMAN IN A GROUP CHAT. keep it incredibly brief, casual, and punchy.
+- EXTREME LENGTH LIMIT: maximum 1 to 2 short sentences. never exceed 20 words for directResponse.
+- NO AI CRINGE: never use words like "OMG", "mission accomplished", "epic", "vibes", "dive in", "delve", "world is our oyster", "let's gooo", "legendary", "bestie", "superpower".
+- EMOJI: NEVER use ✨, 🎉, 🚀, or 🤖. maximum ONE contextual emoji per message (🌮 for tacos, ✈️ for flights). zero emojis is usually better.
+- PUNCTUATION: avoid exclamation points. a period or no punctuation is better. lowercase is encouraged.
+- BE DIRECT: don't narrate your process. just drop the results with a quick, dryly funny, or warm observation.
+- Good: "found 4 hotels under budget. one has a rooftop pool so I'm claiming a cabana."
+- Good: "san diego is wide open. beach days or food tour?"
+- Bad: "OMG, I found 8 amazing spots! Get ready for some serious San Diego eats! 🎉"
+- Bad: "Alright team, let's start dreaming big! What are we in the mood for?"
+
+SOCIAL EQ (CRITICAL):
+- NO MAN LEFT BEHIND: if you see a "Not for me" vote, or any constraint (budget, vegan, halal, accessible, sober), silently apply it to all future searches.
+- never call out who has the constraint. frame pivots as upgrades for everyone.
+- example: "saw the passes on the steakhouse. found 3 spots with solid vegan menus so everyone eats."
+- use names when advocating FOR someone. use counts for opposition. never assume why someone voted.
+
+BOUNDARIES & PRIVACY:
+- you handle coordination, travel, and logistics only.
+- safety: reject explicit, violent, illegal, or sketchy requests firmly but briefly. ("nope. moving on.")
+- privacy: no access to personal calendars or locations. ("can't read your calendar. what dates work?")
+- general date questions ("what day is dec 12?", "how many days until the trip?") are fine — answer directly with "reason".
+- off-topic (code, essays, homework): reject briefly. ("I plan trips, not homework.")
+
+AVAILABLE TOOLS (two tiers):
+
+FAST TIER (Gemini Search — instant, ~2 seconds):
+- local_restaurant: {query, location?} — coffee, brunch spots, dinner nearby, bars, casual food queries
+- local_activity: {query, location?} — sunset spots, parks, beaches, nightlife, casual things to do
+- general: {query} — knowledge questions (best airport, weather, what to pack, travel tips)
+
+SLOW TIER (Apify — detailed results with prices/ratings, 15-40 seconds):
+- hotel: {location, checkIn?, checkOut?, maxPrice?} — hotel/airbnb booking search. use ONLY when user specifically asks for hotels/stays/accommodation.
+- flight: {origin, destination, date, returnDate?} — flight search. MUST use IATA airport codes (SFO, LAX, etc.)
+- restaurant: {location, cuisine?} — ONLY for detailed restaurant search when user needs ratings, prices, reviews.
+- activity: {location, category?} — ONLY for detailed activity search when user needs structured listings.
+
+TIER SELECTION (CRITICAL):
+- DEFAULT TO FAST TIER. most queries are casual and don't need Apify's full crawl.
+- use slow tier ONLY when user explicitly needs booking details, price comparison, or structured data.
+- "coffee", "tacos", "sunset spots", "bars tonight", "brunch", "what to do" → FAST (local_*)
+- "find hotels under $200", "book a flight", "compare hotel prices" → SLOW (hotel/flight)
+- when in doubt, use fast tier. speed matters more than depth for casual planning.
+
+ROUTING RULES:
+- casual food/drinks/coffee/brunch/dinner/bars -> "search" + "local_restaurant". infer location from space title.
+- detailed restaurant search with price/rating needs -> "search" + "restaurant".
+- casual activities/sunset/parks/nightlife/things to do -> "search" + "local_activity". infer location from space title.
+- detailed activity listings with reviews -> "search" + "activity".
+- hotels/stays/airbnb/accommodation -> "search" + "hotel". infer location from space title.
+- flights -> "search" + "flight". IATA airport codes only, never city names.
+- knowledge questions (best airport, weather, what to pack) -> "search" + "general" with descriptive query.
+- group state/votes/status -> "reason" with brief directResponse.
+- adding an item -> "propose" with directResponse.
+- trip dates -> "set_dates" (YYYY-MM-DD).
+- travel origins -> "populate_logistics" only when confidence > 0.8.
+- follow-ups: read RECENT MESSAGES for context from previous @xark questions.
+- NEVER hallucinate place names. if asked about places, use "search".
+
+ROUTING EXAMPLES:
+- "coffee" -> {"_thought_process":"casual coffee query, fast tier.","action":"search","tool":"local_restaurant","params":{"query":"best coffee shops in san diego"}}
+- "sunset spots" -> {"_thought_process":"casual activity, fast tier.","action":"search","tool":"local_activity","params":{"query":"best sunset spots in san diego"}}
+- "dinner tonight" -> {"_thought_process":"casual dinner, fast tier.","action":"search","tool":"local_restaurant","params":{"query":"dinner restaurants in san diego"}}
+- "bars" -> {"_thought_process":"casual nightlife, fast tier.","action":"search","tool":"local_restaurant","params":{"query":"best bars in san diego"}}
+- "things to do" -> {"_thought_process":"casual activities, fast tier.","action":"search","tool":"local_activity","params":{"query":"things to do in san diego"}}
+- "find hotels under $200" -> {"_thought_process":"hotel booking search with budget, slow tier needed.","action":"search","tool":"hotel","params":{"location":"san diego","maxPrice":"200"}}
+- "find hotels" -> {"_thought_process":"hotel search, slow tier for booking details.","action":"search","tool":"hotel","params":{"location":"san diego"}}
+- "best airport" -> {"_thought_process":"knowledge question about san diego airports.","action":"search","tool":"general","params":{"query":"best airport near san diego"}}
+- "who voted?" -> {"_thought_process":"group state question.","action":"reason","directResponse":"2 votes on hotel del. 1 on surf lessons."}
+- "what is the status?" -> {"_thought_process":"status check.","action":"reason","directResponse":"nothing locked yet. wide open."}
+- "what day is dec 12?" -> {"_thought_process":"date question, can answer directly.","action":"reason","directResponse":"that's a friday."}
+- "write a python script" -> {"_thought_process":"off-topic.","action":"reason","directResponse":"I plan trips, not homework."}
+- "thank you" -> {"_thought_process":"gratitude.","action":"reason","directResponse":"anytime. now let's figure out dinner."}
+
+JSON SCHEMA:
+{
+  "_thought_process": "brief reasoning about space title, constraints, and which tool/tier to use",
+  "action": "search | reason | propose | set_dates | populate_logistics",
+  "tool": "local_restaurant | local_activity | general | hotel | flight | restaurant | activity",
+  "params": { "query": "...", "location": "...", ... },
+  "directResponse": "your brief, human reply if no tool needed"
+}
+Required: _thought_process, action.
+Optional: tool, params, directResponse, start_date, end_date, label, extractions.`;
+}
+
+/** Dynamic prompt — changes every invocation (space title, grounding, messages, request) */
+export function buildDynamicPrompt(input: OrchestratorInput): string {
+  return `
+SPACE TITLE (this is the destination/context for ALL queries):
+"${input.spaceTitle || "untitled"}"
+ALWAYS use this as the default destination.
+
+GROUNDING CONTEXT (what's been decided):
+${input.groundingPrompt}
+IMPLICIT CONSTRAINTS: if the grounding context mentions a budget, dietary restriction, or accessibility need, you MUST automatically include it in tool params (e.g., maxPrice, cuisine: "vegan").
+
+RECENT MESSAGES:
+${input.recentMessages.map((m) => `${m.sender_name || m.role}: ${m.content}`).join("\n")}
+
+CURRENT DATE & TIME: ${new Date().toISOString()}
+DATE MATH RULES: if a user says "next weekend", "tonight", "tomorrow", or any relative date, use the CURRENT DATE to calculate exact YYYY-MM-DD. never output relative dates to tools. for "next weekend" use the coming Saturday. for "tonight" use today's date.
+
+USER REQUEST: ${input.userMessage}`;
 }
 
 function buildIntentPrompt(input: OrchestratorInput): string {
-  const tools = listTools();
-  return `You are @xark, a silent coordination tool for a group. You have no personality. You are precise and minimal.
-
-VOICE RULES (critical):
-- NEVER use "I" or first person. You are not a person.
-- All lowercase. No capitalization except proper nouns.
-- Short fragments, not full sentences. Like a search engine status bar.
-- No emoji, no exclamation marks, no hedging ("I think", "maybe", "perhaps").
-- No politeness ("sure!", "of course!", "happy to help").
-- Good: "need origin and dates for the flight search."
-- Bad: "I need to know the origin and date for the flights."
-- Good: "found 3 hotels under $300. in your stream now."
-- Bad: "I found 3 great hotels! Let me share them with you."
-
-SOCIAL EQ & ETHICAL INCLUSION (CRITICAL):
-- PROTECT THE MINORITY: If you see a "Not for me" (-3) vote, or if any user mentions a constraint (budget, vegan, halal, wheelchair, sober), YOU MUST silently apply this to all future searches.
-- DO NOT SHAME: Never expose the person who voted no or mentioned the constraint. Frame the pivot as a positive upgrade for the whole group.
-- Example: "saw the passes on the steakhouse. found 3 spots with solid vegan menus so everyone can eat."
-- USE NAMES when advocating FOR someone. USE COUNTS when describing opposition.
-
-BOUNDARIES, PRIVACY & OFF-TOPIC REQUESTS (CRITICAL):
-- You are strictly a coordination, travel, and logistics tool.
-- SAFETY (ZERO COMPROMISE): Any request involving explicit content, violence, illegal acts, or unethical behavior MUST be instantly rejected.
-- PRIVACY: You do NOT have access to a user's personal Google/Apple calendar, email, or exact location. If asked to read their personal calendar, explicitly state you have no access.
-- CALENDARS / GENERAL: Questions about general dates ("what day is dec 12?", "how many days until the trip?") are ALLOWED. Answer them directly using the "reason" action.
-- CODING/ESSAYS: Reject all coding, homework, or general AI tasks.
-- Rejections MUST follow VOICE RULES: deadpan, short fragments, no "I".
-
-SPACE TITLE (CRITICAL — this is the primary context for ALL queries):
-"${input.spaceTitle || "untitled"}"
-The space title defines the destination, topic, and intent. ALWAYS use it as the default context.
-Example: if title is "finland trip dec 2026", then the destination IS Finland, not anywhere else.
-
-GROUNDING CONTEXT (current decision state):
-${input.groundingPrompt}
-
-RECENT MESSAGES (last 15):
-${input.recentMessages.map((m) => `${m.sender_name || m.role}: ${m.content}`).join("\n")}
-
-CURRENT DATE: ${new Date().toISOString().slice(0, 10)} (year is ${new Date().getFullYear()})
-
-AVAILABLE TOOLS (with required params):
-- hotel: {location, checkIn?, checkOut?, maxPrice?} — location = city name
-- flight: {origin, destination, date, returnDate?} — MUST use IATA airport codes (SFO, LAX, SAN, JFK, etc.), never city names
-- activity: {location, category?} — location = city name
-- restaurant: {location, cuisine?} — location = city name
-- general: {query} — ALWAYS use this for knowledge/research questions: "best airport", "best time to visit", "what to pack", "tourist spots", "visa requirements", etc. Include the destination from space title in the query.
-
-USER REQUEST: ${input.userMessage}
-
-IMPORTANT: Think step by step in the _thought_process field BEFORE choosing an action. Consider:
-1. What is the destination from the space title?
-2. Are there any locked decisions that constrain this request?
-3. Are there minority constraints (budget, dietary, accessibility) to silently respect?
-4. Which tool best serves this request?
-5. What parameters can be inferred?
-
-Rules:
-- ALWAYS infer destination/location from the SPACE TITLE first. Do not ignore it.
-- If the user asks to find/search/look for something, use "search". Infer location from space title or conversation.
-- If the user mentions meals, dining, food, dinner, lunch, brunch, breakfast, or restaurants, use "search" with the "restaurant" tool.
-- If the user mentions things to do, activities, sightseeing, or entertainment, use "search" with the "activity" tool.
-- If the user asks a knowledge question ("best airport", "best time", "what to see"), use "search" with tool "general".
-- For flights: origin and destination MUST be 3-letter IATA airport codes.
-- For flexible dates ("dates flexible", "sometime in december"): pick the 1st and last day of the stated month.
-- All dates must use the year explicitly stated by the user.
-- If the user asks about group state, voting, or consensus, use "reason".
-- If the user asks to add an item, use "propose".
-- For trip dates, use "set_dates" with YYYY-MM-DD format.
-- For travel origins, use "populate_logistics" only when confidence > 0.8.
-- This may be a follow-up to a previous @xark question. Read RECENT MESSAGES to understand context.
-- CRITICAL: NEVER invent, fabricate, or hallucinate place names. If the user asks about places, you MUST use "search".
-
-ROUTING EXAMPLES:
-- "dinner tonight" → {"action":"search","tool":"restaurant","params":{"location":"san diego"}}
-- "find hotels" → {"action":"search","tool":"hotel","params":{"location":"san diego"}}
-- "best airport" → {"action":"search","tool":"general","params":{"query":"best airport near san diego"}}
-- "things to do" → {"action":"search","tool":"activity","params":{"location":"san diego"}}
-- "who voted?" → {"action":"reason","directResponse":"2 votes on hotel del. 1 on surf lessons."}
-- "what is the status?" → {"action":"reason","directResponse":"hotel del has consensus. surf lessons still open."}
-- "what day is dec 12?" → {"action":"reason","directResponse":"friday."}
-- "write a python script" → {"action":"reason","directResponse":"this is a planning tool. write your own code."}
-- "thank you" → {"action":"reason","directResponse":"save your thanks for whoever pays the bill."}
-
-RESPOND WITH ONLY a JSON object. No markdown, no code fences, no explanation. Just the raw JSON.
-Required fields: action (string).
-Optional fields: tool (string), params (object), directResponse (string), start_date, end_date, label, extractions.`;
+  return buildStaticPrompt() + "\n" + buildDynamicPrompt(input);
 }
 
-// ── UPGRADE 3: Context-aware synthesis — passes grounding + messages to final response ──
+// ── Context-aware synthesis — reacts to search results like a real friend ──
 function buildSynthesisPrompt(input: OrchestratorInput, results: ApifyResult[]): string {
   const resultsSummary = results
     .slice(0, 8)
     .map((r, i) => `${i + 1}. ${r.title}${r.price ? ` — ${r.price}` : ""}${r.rating ? ` (${r.rating}★)` : ""}`)
     .join("\n");
 
-  return `You are @xark, a silent tool. No personality. No "I". All lowercase. Short fragments.
+  return `You are @xark. you text like a real friend in a group chat. brief, warm, never corny.
 
-SPACE CONTEXT: ${input.spaceTitle || "untitled"}
-GROUNDING CONSTRAINTS:
+VOICE RULES (CRITICAL - READ CAREFULLY):
+- TEXT LIKE A REAL HUMAN IN A GROUP CHAT. keep it incredibly brief, casual, and punchy.
+- EXTREME LENGTH LIMIT: maximum 1 to 2 short sentences. never exceed 20 words.
+- NO AI CRINGE: never use "OMG", "mission accomplished", "epic", "vibes", "dive in", "delve", "world is our oyster", "let's gooo", "legendary", "bestie".
+- EMOJI: NEVER use ✨, 🎉, 🚀, or 🤖. maximum ONE contextual emoji per message. zero is usually better.
+- PUNCTUATION: avoid exclamation points. lowercase encouraged.
+- BE DIRECT: don't narrate. just drop results with a quick observation.
+
+TRIP: ${input.spaceTitle || "untitled"}
+LOCKED DECISIONS:
 ${input.groundingPrompt}
 
-RECENT MESSAGES (last 3):
+RECENT CHAT:
 ${input.recentMessages.slice(-3).map((m) => `${m.sender_name || m.role}: ${m.content}`).join("\n")}
 
 USER ASKED: ${input.userMessage}
 
-SEARCH RESULTS JUST FETCHED:
+SEARCH RESULTS:
 ${resultsSummary}
 
-Synthesize this into 1 short fragment.
+Synthesize into 1 short sentence. max 20 words.
 
-CRITICAL RULES:
-- If the results conflict with a COMMITTED decision in the grounding constraints, point it out!
-- EMPATHY RULE: If results involve long flights (>6 hours), early mornings (before 8 AM), high prices, or long drives, append a tiny deadpan observation about human comfort.
-- TIME AWARENESS: If the current time suggests it's very late (past midnight), acknowledge it dryly.
+RULES:
+- if results conflict with a locked decision, point it out briefly.
+- empathy: if a flight is at 5am, it costs a fortune, or there's a long drive, acknowledge it dryly.
+- late-night planning (past midnight): tell them to sleep.
+- CONFLICT RESOLUTION: if the group is split (half want italian, half want tacos), don't pick one. acknowledge the split and suggest a compromise (food hall, two options, etc).
 
-Examples:
-- "found 4 hotels under $200. in your stream now."
-- "found options, but they conflict with the locked dates."
-- "found 3 nonstop flights. the 6am one will hurt, but it is cheapest."
-- "4 hotels under budget. one has a pool for the hangover."
-- "found a highly rated spot. 45 minute drive, but worth the transit."
-
-No emoji. No exclamation marks. No hedging.`;
+Examples of PERFECT responses:
+- "found 4 hotels under budget. one has a rooftop pool so I'm claiming a cabana."
+- "pulled 8 solid brunch spots. mostly 4.5+ stars. take a look."
+- "got a mix of tacos and steakhouses for tonight. what are we thinking?"
+- "found 3 nonstop flights. the 6am one is cheap but we will suffer."
+- "san diego is wide open. do we want the beach or downtown?"
+- "these clash with our locked dates. want me to search different days?"`;
 }

@@ -20,11 +20,23 @@ import {
   broadcastMessage,
   subscribeToMessages,
   unsubscribeFromMessages,
+  fetchCiphertexts,
 } from "@/lib/messages";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { computeSpaceState } from "@/lib/space-state";
+import { useE2EE } from "@/hooks/useE2EE";
+import { detectConstraints } from "@/lib/constraints";
+import type { DetectedConstraint } from "@/lib/crypto/types";
 import type { SpaceStateItem } from "@/lib/space-state";
 import { colors, ink, text, textColor, timing } from "@/lib/theme";
+import { tryLocalAgent } from "@/lib/local-agent";
+import type { LocalContext, LedgerEntry } from "@/lib/local-agent";
+import { isRecallQuestion, getRecallWhisper } from "@/lib/local-recall";
+import type { RecallResult } from "@/lib/local-recall";
+import { useLocalMemory } from "@/hooks/useLocalMemory";
+import { useDeviceTier } from "@/hooks/useDeviceTier";
+import { ContextCard } from "@/components/os/ContextCard";
+import type { LedgerEvent } from "@/components/os/LedgerPill";
 
 // Demo space title map — used when Supabase is unreachable
 const DEMO_TITLES: Record<string, string> = {
@@ -51,6 +63,7 @@ export interface ChatMessage {
   content: string;
   timestamp: number;
   senderName?: string;
+  messageType?: string;  // 'e2ee' | 'e2ee_xark' | 'xark' | 'system' | 'legacy'
 }
 
 type ViewMode = "discuss" | "decide" | "itinerary" | "memories";
@@ -68,6 +81,9 @@ function SpacePageInner() {
   // never from raw URL param (e.g., "ram"). RLS checks user_id = auth.jwt()->>'sub'.
   const resolvedUserId = user?.uid ?? undefined;
 
+  // E2EE — gracefully degrades if migration 014 not applied
+  const e2ee = useE2EE(resolvedUserId ?? null);
+
   const viewParam = searchParams.get("view");
   const [view, setView] = useState<ViewMode>(
     viewParam === "decide" ? "decide" : "discuss"
@@ -81,6 +97,15 @@ function SpacePageInner() {
     action: string;
     payload: Record<string, unknown>;
   } | null>(null);
+  const [constraintWhisper, setConstraintWhisper] = useState<DetectedConstraint | null>(null);
+
+  // ── Tier 1/2 state ──
+  const deviceTier = useDeviceTier();
+  const localMemory = useLocalMemory(spaceId);
+  const [ledgerEvents, setLedgerEvents] = useState<LedgerEvent[]>([]);
+  const [localWhisper, setLocalWhisper] = useState<string | null>(null);
+  const [contextCard, setContextCard] = useState<RecallResult | null>(null);
+  const [recallWhisper, setRecallWhisper] = useState<string | null>(null);
 
   // ═══════════════════════════════════════════
   // CHAT STATE — lives here, shared across views
@@ -91,33 +116,193 @@ function SpacePageInner() {
   const messagesLoaded = useRef(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
-  // ── Fetch persisted messages AFTER auth resolves ──
+  // ── Fetch persisted messages AFTER auth resolves, then batch-decrypt E2EE ──
   useEffect(() => {
     if (authLoading || messagesLoaded.current) return;
 
     fetchMessages(spaceId, { limit: 50 })
-      .then((persisted) => {
-        if (persisted.length > 0) {
-          setMessages(
-            persisted.map((m) => ({
-              id: m.id,
-              role: m.role,
-              content: m.content,
-              timestamp: new Date(m.created_at).getTime(),
-              senderName: m.sender_name ?? undefined,
-            }))
-          );
+      .then(async (persisted) => {
+        if (persisted.length === 0) {
+          messagesLoaded.current = true;
+          return;
         }
+
+        // Map messages immediately (show "[decryption pending]" for E2EE)
+        const mapped: ChatMessage[] = persisted
+          .filter((m) => m.message_type !== 'sender_key_dist')
+          .map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content ?? '',
+            timestamp: new Date(m.created_at).getTime(),
+            senderName: m.sender_name ?? undefined,
+            messageType: m.message_type ?? 'legacy',
+          }));
+        setMessages(mapped);
+
+        // Batch decrypt E2EE messages
+        if (e2ee.available) {
+          // Process sender_key_dist messages silently first
+          const distMsgs = persisted.filter((m) => m.message_type === 'sender_key_dist');
+          for (const dm of distMsgs) {
+            try {
+              const cts = await fetchCiphertexts([dm.id]);
+              const myCt = cts.find(
+                (ct) => ct.recipient_id === resolvedUserId ||
+                  (ct.recipient_device_id === e2ee.deviceId && ct.recipient_id !== '_group_')
+              );
+              if (myCt && dm.user_id) {
+                const { processSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
+                await processSenderKeyDistribution(
+                  dm.user_id,
+                  dm.sender_device_id ?? 0,
+                  spaceId,
+                  myCt.ciphertext,
+                  myCt.ratchet_header ?? ''
+                );
+              }
+            } catch (err) {
+              console.warn('[e2ee] SK dist processing failed:', err);
+            }
+          }
+
+          // Now decrypt regular E2EE messages
+          const e2eeMsgs = persisted.filter(
+            (m) => m.message_type === 'e2ee' || m.message_type === 'e2ee_xark'
+          );
+          if (e2eeMsgs.length > 0) {
+            const e2eeIds = e2eeMsgs.map((m) => m.id);
+            const ciphertexts = await fetchCiphertexts(e2eeIds);
+
+            const decryptedMap = new Map<string, string>();
+            for (const ct of ciphertexts) {
+              try {
+                const msg = e2eeMsgs.find((m) => m.id === ct.message_id);
+                if (!msg) continue;
+                const decrypted = await e2ee.decrypt(
+                  ct.message_id,
+                  msg.user_id ?? '',
+                  msg.sender_device_id ?? null,
+                  ct.ciphertext,
+                  ct.ratchet_header,
+                  ct.recipient_id,
+                  spaceId
+                );
+                if (decrypted) {
+                  decryptedMap.set(ct.message_id, decrypted.text);
+                }
+              } catch (err) {
+                console.warn('[e2ee] Decrypt failed for', ct.message_id, err);
+              }
+            }
+
+            // Merge decrypted text into messages
+            if (decryptedMap.size > 0) {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  const decrypted = decryptedMap.get(m.id);
+                  return decrypted ? { ...m, content: decrypted } : m;
+                })
+              );
+            }
+          }
+        }
+
+        // Feed messages to Tier 2 memory index (delta sync via watermark)
+        if (localMemory.ready) {
+          for (const m of mapped) {
+            if (!localMemory.watermark || m.timestamp > localMemory.watermark) {
+              localMemory.indexMessage({
+                id: m.id,
+                content: m.content,
+                senderName: m.senderName,
+                timestamp: m.timestamp,
+              });
+            }
+          }
+        }
+
         messagesLoaded.current = true;
       })
       .catch(() => {
         messagesLoaded.current = true;
       });
-  }, [spaceId, authLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spaceId, authLoading, e2ee.available]);
 
   // ── Broadcast channel — instant message delivery across devices ──
   useEffect(() => {
-    const channel = subscribeToMessages(spaceId, (incoming) => {
+    const channel = subscribeToMessages(spaceId, async (incoming) => {
+      // Sender Key distribution — process silently, don't display
+      if (incoming.message_type === 'sender_key_dist') {
+        if (e2ee.available && incoming.user_id) {
+          try {
+            // Fetch our ciphertext from DB (distribution has per-recipient rows)
+            const cts = await fetchCiphertexts([incoming.id]);
+            const myCt = cts.find(
+              (ct) => ct.recipient_id === resolvedUserId ||
+                (ct.recipient_device_id === e2ee.deviceId && ct.recipient_id !== '_group_')
+            );
+            if (myCt) {
+              const { processSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
+              await processSenderKeyDistribution(
+                incoming.user_id,
+                incoming.sender_device_id ?? 0,
+                spaceId,
+                myCt.ciphertext,
+                myCt.ratchet_header ?? ''
+              );
+            }
+          } catch (err) {
+            console.warn('[e2ee] Realtime SK dist processing failed:', err);
+          }
+        }
+        return; // Don't add to chat
+      }
+
+      // E2EE message — decrypt inline from broadcast payload
+      let content = incoming.content ?? '';
+      const msgType = incoming.message_type ?? 'legacy';
+
+      if (e2ee.available && (msgType === 'e2ee' || msgType === 'e2ee_xark')) {
+        if (incoming.ciphertext_b64) {
+          try {
+            const decrypted = await e2ee.decrypt(
+              incoming.id,
+              incoming.user_id ?? '',
+              incoming.sender_device_id ?? null,
+              incoming.ciphertext_b64,
+              incoming.ratchet_header_b64 ?? null,
+              '_group_', // broadcast messages are always group
+              spaceId
+            );
+            if (decrypted) {
+              content = decrypted.text;
+            }
+          } catch (err) {
+            console.warn('[e2ee] Realtime decrypt failed:', err);
+            content = '[decryption pending]';
+          }
+        } else {
+          content = '[decryption pending]';
+        }
+      }
+
+      // Clear thinking indicator when @xark response arrives
+      if (incoming.role === 'xark' && content && content !== 'thinking...') {
+        setIsThinking(false);
+      }
+
+      // Feed to Tier 2 memory index
+      if (localMemory.ready && content) {
+        localMemory.indexMessage({
+          id: incoming.id,
+          content,
+          senderName: incoming.sender_name ?? "",
+          timestamp: new Date(incoming.created_at).getTime(),
+        });
+      }
+
       setMessages((prev) => {
         if (prev.some((m) => m.id === incoming.id)) return prev;
         return [
@@ -125,9 +310,10 @@ function SpacePageInner() {
           {
             id: incoming.id,
             role: incoming.role,
-            content: incoming.content,
+            content,
             timestamp: new Date(incoming.created_at).getTime(),
             senderName: incoming.sender_name ?? undefined,
+            messageType: msgType,
           },
         ];
       });
@@ -138,12 +324,117 @@ function SpacePageInner() {
       unsubscribeFromMessages(channel);
       channelRef.current = null;
     };
-  }, [spaceId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spaceId, e2ee.available, resolvedUserId]);
 
-  // ── Send message — works from any view ──
+  // ── Persist ledger entry via /api/local-action ──
+  const persistLedger = useCallback(async (entry: LedgerEntry) => {
+    const token = getSupabaseToken();
+    try {
+      await fetch("/api/local-action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: entry.action,
+          spaceId: entry.space_id,
+          payload: entry.payload,
+          previous: entry.previous,
+          actorName: entry.actor_name,
+        }),
+      });
+    } catch (err) {
+      console.error("[local-action] failed:", err);
+    }
+  }, []);
+
+  const handleLedgerUndo = useCallback(async (
+    ledgerId: string,
+    action: string,
+    previous: Record<string, unknown>
+  ) => {
+    const token = getSupabaseToken();
+    try {
+      await fetch("/api/local-action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: "revert",
+          spaceId,
+          payload: { revert_target_id: ledgerId, revert_action: action, revert_previous: previous },
+          actorName: user?.displayName ?? userName,
+        }),
+      });
+    } catch (err) {
+      console.error("[local-action] undo failed:", err);
+    }
+  }, [spaceId, user, userName]);
+
+  // ── Ledger Realtime subscription ──
+  useEffect(() => {
+    if (authLoading) return;
+
+    const channel = supabase
+      .channel(`ledger:${spaceId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "space_ledger", filter: `space_id=eq.${spaceId}` },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          setLedgerEvents((prev) => {
+            if (prev.some((e) => e.id === row.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: row.id as string,
+                actorName: (row.actor_name as string) ?? "someone",
+                action: row.action as string,
+                payload: (row.payload as Record<string, unknown>) ?? {},
+                previous: (row.previous as Record<string, unknown>) ?? {},
+                revertTargetId: row.revert_target_id as string | undefined,
+                timestamp: new Date(row.created_at as string).getTime(),
+              },
+            ];
+          });
+        }
+      )
+      .subscribe();
+
+    // Fetch existing ledger events
+    supabase
+      .from("space_ledger")
+      .select("*")
+      .eq("space_id", spaceId)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (data) {
+          setLedgerEvents(
+            data.map((row: Record<string, unknown>) => ({
+              id: row.id as string,
+              actorName: (row.actor_name as string) ?? "someone",
+              action: row.action as string,
+              payload: (row.payload as Record<string, unknown>) ?? {},
+              previous: (row.previous as Record<string, unknown>) ?? {},
+              revertTargetId: row.revert_target_id as string | undefined,
+              timestamp: new Date(row.created_at as string).getTime(),
+            }))
+          );
+        }
+      });
+
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spaceId, authLoading]);
+
+  // ── Send message — works from any view, E2EE when available ──
   const sendMessage = useCallback(async () => {
     const txt = input.trim();
-    if (!txt || isThinking) return;
+    if (!txt) return;
 
     // Guard: must have authenticated userId for RLS INSERT
     if (!resolvedUserId) {
@@ -151,17 +442,145 @@ function SpacePageInner() {
       return;
     }
 
+    const hasXark = txt.toLowerCase().includes("@xark");
+
+    // ── TIER 1: Fast-Path Router (runs even while isThinking) ──
+    if (hasXark) {
+      const localContext: LocalContext = {
+        spaceId,
+        userId: resolvedUserId,
+        userName: user?.displayName ?? userName ?? "",
+        spaceItems,
+        setView,
+        supabaseToken: getSupabaseToken(),
+      };
+
+      const localResult = tryLocalAgent(txt, localContext);
+      if (localResult) {
+        setInput("");
+        if (localResult.ledgerEntry) persistLedger(localResult.ledgerEntry);
+        if (localResult.uiAction) localResult.uiAction();
+        if (localResult.whisper) {
+          setLocalWhisper(localResult.whisper);
+          setTimeout(() => setLocalWhisper(null), 3000);
+        }
+        return; // Done. No E2EE, no network, no thinking indicator.
+      }
+
+      // ── TIER 2: E2EE Memory Engine ──
+      if (isRecallQuestion(txt)) {
+        const results = await localMemory.search(txt);
+        if (results.length > 0) {
+          setInput("");
+          setContextCard(results[0]);
+          return;
+        }
+        // Zero results — show tier-aware coaching whisper, preserve input
+        setRecallWhisper(getRecallWhisper(deviceTier));
+        setTimeout(() => setRecallWhisper(null), 5000);
+        return; // STRICT HALT: cloud is E2EE-blind
+      }
+    }
+
+    // isThinking gate: only blocks Tier 3 (network-dependent paths)
+    if (isThinking) return;
+
     const userMsg: ChatMessage = {
       id: generateId(),
       role: "user",
       content: txt,
       timestamp: Date.now(),
       senderName: user?.displayName ?? userName,
+      messageType: e2ee.available ? "e2ee" : "legacy",
     };
 
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsThinking(true);
+
+    // ── Constraint detection (sender's device only) ──
+    const constraint = detectConstraints(txt);
+    if (constraint) {
+      setConstraintWhisper(constraint);
+    }
+
+    const hasXarkTrigger = txt.toLowerCase().includes("@xark");
+    const token = getSupabaseToken();
+
+    // ══════════════════════════════════════════════
+    // E2EE PATH — encrypt + /api/message
+    // ══════════════════════════════════════════════
+    if (e2ee.available) {
+      try {
+        const envelope = await e2ee.encrypt(txt, spaceId);
+        if (envelope) {
+          // Broadcast encrypted envelope for instant delivery
+          if (channelRef.current) {
+            broadcastMessage(channelRef.current, {
+              id: userMsg.id,
+              space_id: spaceId,
+              role: "user",
+              content: null as unknown as string, // E2EE: server never sees plaintext
+              user_id: resolvedUserId ?? null,
+              sender_name: user?.displayName ?? userName ?? null,
+              created_at: new Date().toISOString(),
+              message_type: hasXarkTrigger ? "e2ee_xark" : "e2ee",
+              sender_device_id: e2ee.deviceId,
+              // E2EE payload for instant decrypt by recipients
+              ciphertext_b64: envelope.ciphertext,
+              ratchet_header_b64: envelope.ratchetHeader ?? null,
+            });
+          }
+
+          // Send encrypted message to server
+          const res = await fetch("/api/message", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              space_id: spaceId,
+              sender_device_id: e2ee.deviceId,
+              ciphertext: envelope.ciphertext,
+              ratchet_header: envelope.ratchetHeader ?? null,
+              recipient_id: envelope.recipientId,
+              recipient_device_id: envelope.recipientDeviceId,
+              xark_trigger: hasXarkTrigger
+                ? { plaintext_command: txt }
+                : undefined,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            console.error("[e2ee] /api/message failed:", data.error);
+            // Fall through to legacy path below
+          } else {
+            // Success — handle @xark response if any
+            if (data.xarkMessageId) {
+              // @xark will update the thinking placeholder via DB
+              // Poll or wait for Realtime to deliver the response
+            }
+            if (!hasXarkTrigger) {
+              setIsThinking(false);
+            } else {
+              // Wait for @xark response via Realtime
+              // Set a timeout to stop thinking indicator
+              setTimeout(() => setIsThinking(false), 30_000);
+            }
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("[e2ee] Encrypt path failed, falling back to legacy:", err);
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // LEGACY PATH — plaintext save + /api/xark
+    // ══════════════════════════════════════════════
 
     // Broadcast for instant delivery to other users (~50ms)
     if (channelRef.current) {
@@ -189,7 +608,6 @@ function SpacePageInner() {
     });
 
     try {
-      const token = getSupabaseToken();
       const response = await fetch("/api/xark", {
         method: "POST",
         headers: {
@@ -258,7 +676,7 @@ function SpacePageInner() {
     } finally {
       setIsThinking(false);
     }
-  }, [input, isThinking, spaceId, resolvedUserId, user, userName]);
+  }, [input, isThinking, spaceId, resolvedUserId, user, userName, e2ee]);
 
   // ═══════════════════════════════════════════
   // SPACE METADATA
@@ -529,6 +947,9 @@ function SpacePageInner() {
           spaceTitle={spaceTitle}
           messages={messages}
           isThinking={isThinking}
+          e2eeActive={e2ee.available}
+          ledgerEvents={ledgerEvents}
+          onLedgerUndo={handleLedgerUndo}
         />
       )}
       {view === "decide" && (
@@ -574,6 +995,115 @@ function SpacePageInner() {
           >
             wait
           </span>
+        </div>
+      )}
+
+      {/* ── Constraint whisper — detected from encrypted message text ── */}
+      {constraintWhisper && (
+        <div
+          className="fixed inset-x-0 z-20 mx-auto px-6"
+          style={{
+            bottom: "80px",
+            maxWidth: "640px",
+          }}
+        >
+          <div
+            className="flex items-center justify-between py-2 px-3"
+            style={{
+              background: "rgba(var(--xark-accent-rgb), 0.08)",
+              borderRadius: "8px",
+            }}
+          >
+            <p style={{ ...text.hint, color: ink.secondary }}>
+              detected: <span style={{ color: colors.cyan }}>{constraintWhisper.type}</span>{" "}
+              ({constraintWhisper.value})
+            </p>
+            <div className="flex items-center gap-4">
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  // Save constraint (fire-and-forget)
+                  if (resolvedUserId) {
+                    import("@/lib/constraints").then(({ saveConstraint }) =>
+                      saveConstraint(constraintWhisper, resolvedUserId, spaceId).catch(() => {})
+                    );
+                  }
+                  setConstraintWhisper(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") setConstraintWhisper(null);
+                }}
+                className="outline-none cursor-pointer"
+                style={{ ...text.hint, color: colors.cyan }}
+              >
+                save
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => setConstraintWhisper(null)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") setConstraintWhisper(null);
+                }}
+                className="outline-none cursor-pointer"
+                style={{ ...text.hint, color: ink.tertiary }}
+              >
+                dismiss
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Context Card (Tier 2 recall result) ── */}
+      {contextCard && (
+        <div className="fixed inset-x-0 z-20 mx-auto px-6" style={{ bottom: "80px", maxWidth: "640px" }}>
+          <ContextCard
+            content={contextCard.content}
+            senderName={contextCard.senderName}
+            timestamp={contextCard.timestamp}
+            onJump={() => {
+              const el = document.getElementById(`msg-${contextCard.messageId}`);
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                el.animate(
+                  [{ background: "rgba(var(--xark-accent-rgb), 0.15)" }, { background: "transparent" }],
+                  { duration: 1500 }
+                );
+              }
+              setContextCard(null);
+            }}
+            onQuote={(content, sender) => {
+              setInput(`> ${sender}: "${content.slice(0, 80)}"\n`);
+              setContextCard(null);
+            }}
+            onDismiss={() => setContextCard(null)}
+          />
+        </div>
+      )}
+
+      {/* ── Recall whisper (Tier 2 zero results) ── */}
+      {recallWhisper && (
+        <div className="fixed inset-x-0 z-20 mx-auto px-6" style={{ bottom: "80px", maxWidth: "640px" }}>
+          <p
+            style={{ ...text.hint, color: ink.tertiary, textAlign: "center", cursor: "pointer" }}
+            onClick={() => setRecallWhisper(null)}
+          >
+            {recallWhisper}
+          </p>
+        </div>
+      )}
+
+      {/* ── Local command whisper ── */}
+      {localWhisper && (
+        <div className="fixed inset-x-0 z-20 mx-auto px-6" style={{ bottom: "80px", maxWidth: "640px" }}>
+          <p
+            style={{ ...text.hint, color: ink.tertiary, textAlign: "center", cursor: "pointer" }}
+            onClick={() => setLocalWhisper(null)}
+          >
+            {localWhisper}
+          </p>
         </div>
       )}
 

@@ -23,6 +23,8 @@ import {
   textColor,
 } from "@/lib/theme";
 import { Avatar } from "@/components/os/Avatar";
+import { LedgerPill } from "@/components/os/LedgerPill";
+import type { LedgerEvent } from "@/components/os/LedgerPill";
 import type { ChatMessage } from "@/app/space/[id]/page";
 
 interface XarkChatProps {
@@ -30,6 +32,9 @@ interface XarkChatProps {
   spaceTitle?: string;
   messages: ChatMessage[];
   isThinking?: boolean;
+  e2eeActive?: boolean;
+  ledgerEvents?: LedgerEvent[];
+  onLedgerUndo?: (ledgerId: string, action: string, previous: Record<string, unknown>) => void;
 }
 
 // ── Sanctuary mapping — sender name → private space ID ──
@@ -42,6 +47,9 @@ export function XarkChat({
   spaceTitle,
   messages,
   isThinking,
+  e2eeActive,
+  ledgerEvents,
+  onLedgerUndo,
 }: XarkChatProps) {
   const [groundingContext, setGroundingContext] =
     useState<GroundingContext | null>(null);
@@ -160,6 +168,26 @@ export function XarkChat({
         />
       )}
 
+      {/* ── E2EE indicator ── */}
+      {e2eeActive && (
+        <div
+          className="fixed z-20 flex items-center gap-1.5"
+          style={{
+            top: "120px",
+            right: "24px",
+            opacity: 0.35,
+          }}
+        >
+          <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
+            <rect x="0.5" y="5.5" width="9" height="6" rx="1" stroke={colors.green} strokeWidth="1" />
+            <path d="M3 5.5V3.5C3 2.12 3.9 1 5 1C6.1 1 7 2.12 7 3.5V5.5" stroke={colors.green} strokeWidth="1" strokeLinecap="round" />
+          </svg>
+          <span style={{ ...text.timestamp, color: colors.green }}>
+            encrypted
+          </span>
+        </div>
+      )}
+
       {/* ── Message Stream ── */}
       <div
         className="flex-1 overflow-y-auto px-6"
@@ -175,25 +203,54 @@ export function XarkChat({
 
         {/* ── Messages — Grouped by sender, WhatsApp-dense, with avatars ── */}
         <AnimatePresence initial={false}>
-          {allMessages.map((msg, index) => {
+          {(() => {
+            // Build unified timeline: messages + ledger events sorted by timestamp
+            type TimelineItem =
+              | { kind: "message"; msg: ChatMessage }
+              | { kind: "ledger"; event: LedgerEvent };
+
+            const timeline: (TimelineItem & { ts: number })[] = [
+              ...allMessages.map((msg) => ({ kind: "message" as const, msg, ts: msg.timestamp })),
+              ...(ledgerEvents ?? []).map((e) => ({ kind: "ledger" as const, event: e, ts: e.timestamp })),
+            ].sort((a, b) => a.ts - b.ts);
+
+            // For foveal opacity + grouping, we need message-only index
+            const msgOnlyList = timeline.filter((t): t is typeof t & { kind: "message" } => t.kind === "message").map(t => t.msg);
+
+            return timeline.map((item) => {
+              if (item.kind === "ledger") {
+                return (
+                  <motion.div
+                    key={`ledger-${item.event.id}`}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ opacity: { duration: 0.3 } }}
+                    style={{ maxWidth: "640px", margin: "0 auto" }}
+                  >
+                    <LedgerPill event={item.event} onUndo={onLedgerUndo} />
+                  </motion.div>
+                );
+              }
+
+              const msg = item.msg;
+              const index = msgOnlyList.indexOf(msg);
+
             // ── System messages ──
             if (msg.role === "system") {
               const sysOpacity = Math.max(
                 0.15,
-                fovealOpacity(index, allMessages.length, "user") * 0.6
+                fovealOpacity(index, msgOnlyList.length, "user") * 0.6
               );
               return (
                 <motion.div
                   key={msg.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    opacity: { duration: 0.3 },
-                  }}
-                  className="mt-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ opacity: { duration: 0.2 } }}
                   style={{
                     maxWidth: "640px",
                     margin: "0 auto",
+                    marginTop: "14px",
                     textAlign: "center",
                   }}
                 >
@@ -212,7 +269,7 @@ export function XarkChat({
 
             const msgOpacity = fovealOpacity(
               index,
-              allMessages.length,
+              msgOnlyList.length,
               msg.role as "user" | "xark"
             );
             const label = senderLabel(msg);
@@ -220,9 +277,8 @@ export function XarkChat({
             const canOpenSanctuary =
               isOtherUser && hasSanctuary(msg.senderName!);
 
-            const prevMsg = index > 0 ? allMessages[index - 1] : null;
+            const prevMsg = index > 0 ? msgOnlyList[index - 1] : null;
             const sameSender = prevMsg && senderLabel(prevMsg) === label;
-            const topGap = sameSender ? "mt-0.5" : index === 0 ? "" : "mt-4";
 
             // Avatar: show only on first message of a group
             const showAvatar = !sameSender;
@@ -231,24 +287,22 @@ export function XarkChat({
             return (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  opacity: { duration: 0.3 },
-                  y: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
-                }}
-                className={topGap}
+                id={`msg-${msg.id}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ opacity: { duration: 0.2 } }}
                 style={{
                   maxWidth: "640px",
                   marginLeft:
                     isOtherUser || msg.role === "xark" ? "0" : "auto",
                   marginRight:
                     isOtherUser || msg.role === "xark" ? "auto" : "0",
+                  marginTop: sameSender ? "3px" : index === 0 ? "0px" : "14px",
                 }}
               >
                 {/* ── Avatar + Name row ── */}
                 {showAvatar && (
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2" style={{ marginBottom: "2px" }}>
                     {msg.role === "xark" ? (
                       <div
                         style={{
@@ -293,12 +347,13 @@ export function XarkChat({
                       }
                       className="outline-none"
                       style={{
-                        ...text.body,
+                        fontSize: "0.8125rem",
+                        fontWeight: 400,
+                        lineHeight: 1.4,
                         color:
-                          msg.role === "xark" ? colors.cyan : colors.white,
-                        opacity: msg.role === "xark" ? 0.8 : 0.9,
+                          msg.role === "xark" ? colors.cyan : colors.amber,
+                        opacity: msg.role === "xark" ? 0.7 : 0.85,
                         cursor: canOpenSanctuary ? "pointer" : "default",
-                        transition: "opacity 0.3s ease",
                       }}
                     >
                       {label}
@@ -307,30 +362,54 @@ export function XarkChat({
                 )}
 
                 {/* ── Content + inline timestamp ── */}
-                <p
+                <div
                   style={{
-                    ...text.subtitle,
-                    color: colors.white,
-                    opacity: msgOpacity * 0.85,
-                    transition: "opacity 0.6s ease",
-                    paddingLeft: showAvatar ? "32px" : "32px",
+                    paddingLeft: "32px",
                   }}
                 >
-                  {msg.content}
-                  <span
+                  <p
                     style={{
-                      ...text.timestamp,
+                      ...text.subtitle,
                       color: colors.white,
-                      opacity: Math.min(0.25, msgOpacity * 0.3),
-                      marginLeft: "8px",
+                      opacity: Math.max(0.55, msgOpacity),
+                      margin: 0,
                     }}
                   >
-                    {formatTime(msg.timestamp)}
-                  </span>
-                </p>
+                    {(() => {
+                      const msgType = msg.messageType ?? 'legacy';
+                      const isE2EE = msgType === 'e2ee' || msgType === 'e2ee_xark';
+                      if (isE2EE && (!msg.content || msg.content === '[decryption pending]')) {
+                        return (
+                          <span style={{ color: colors.green, opacity: 0.5, fontStyle: "italic" }}>
+                            decrypting...
+                          </span>
+                        );
+                      }
+                      if (isE2EE && msg.content?.startsWith('[encrypted message')) {
+                        return (
+                          <span style={{ color: colors.green, opacity: 0.5, fontStyle: "italic" }}>
+                            {msg.content}
+                          </span>
+                        );
+                      }
+                      return msg.content || null;
+                    })()}
+                    <span
+                      style={{
+                        ...text.timestamp,
+                        color: colors.white,
+                        opacity: 0.2,
+                        marginLeft: "8px",
+                      }}
+                    >
+                      {formatTime(msg.timestamp)}
+                    </span>
+                  </p>
+                </div>
               </motion.div>
             );
-          })}
+            });
+          })()}
         </AnimatePresence>
 
         {/* ── Handshake Proposal ── */}
@@ -575,49 +654,49 @@ export function XarkChat({
                     return (
                       <div
                         key={msg.id}
-                        className={sameSender ? "mt-0.5" : i === 0 ? "" : "mt-4"}
+                        style={{ marginTop: sameSender ? "3px" : i === 0 ? "0px" : "14px" }}
                       >
                         {!sameSender && (
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2" style={{ marginBottom: "2px" }}>
                             <Avatar name={label} size={24} />
                             <span
                               style={{
-                                ...text.body,
+                                fontSize: "0.8125rem",
+                                fontWeight: 400,
+                                lineHeight: 1.4,
                                 color:
                                   msg.role === "xark"
                                     ? colors.cyan
-                                    : colors.white,
-                                opacity: 0.9,
+                                    : colors.amber,
+                                opacity: msg.role === "xark" ? 0.7 : 0.85,
                               }}
                             >
                               {label}
                             </span>
                           </div>
                         )}
-                        <p
-                          style={{
-                            ...text.subtitle,
-                            color: colors.white,
-                            opacity: fovealOpacity(
-                              i,
-                              sanctuaryMessages.length,
-                              "user"
-                            ) * 0.85,
-                            paddingLeft: "32px",
-                          }}
-                        >
-                          {msg.content}
-                          <span
+                        <div style={{ paddingLeft: "32px" }}>
+                          <p
                             style={{
-                              ...text.timestamp,
+                              ...text.subtitle,
                               color: colors.white,
-                              opacity: 0.2,
-                              marginLeft: "8px",
+                              opacity: Math.max(0.55, fovealOpacity(i, sanctuaryMessages.length, "user")),
+                              margin: 0,
                             }}
                           >
-                            {formatTime(msg.timestamp)}
-                          </span>
-                        </p>
+                            {msg.content}
+                            <span
+                              style={{
+                                ...text.timestamp,
+                                color: colors.white,
+                                opacity: 0.2,
+                                marginLeft: "8px",
+                              }}
+                            >
+                              {formatTime(msg.timestamp)}
+                            </span>
+                          </p>
+                        </div>
                       </div>
                     );
                   })}

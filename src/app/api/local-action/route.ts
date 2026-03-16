@@ -1,0 +1,169 @@
+// XARK OS v2.0 — Tier 1 Mutation Endpoint
+// JWT-validated, supabaseAdmin writes. Atomic: mutation + ledger entry.
+// Upserts space_dates for date commands.
+
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { verifyAuth } from "@/lib/auth-verify";
+
+export async function POST(req: Request) {
+  // ── Auth ──
+  const auth = await verifyAuth(req.headers.get("authorization"));
+  if (!auth) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const { action, spaceId, payload, previous, actorName } = body;
+
+  if (!action || !spaceId) {
+    return NextResponse.json({ error: "missing action or spaceId" }, { status: 400 });
+  }
+
+  // ── Membership check (CRITICAL: supabaseAdmin bypasses RLS) ──
+  const { data: member } = await supabaseAdmin
+    .from("space_members")
+    .select("user_id")
+    .eq("space_id", spaceId)
+    .eq("user_id", auth.userId)
+    .single();
+
+  if (!member) {
+    return NextResponse.json({ error: "not a member" }, { status: 403 });
+  }
+
+  try {
+    // ── update_dates ──
+    if (action === "update_dates") {
+      const { start_date, end_date, label } = payload ?? {};
+      if (!start_date || !end_date) {
+        return NextResponse.json({ error: "missing dates" }, { status: 400 });
+      }
+
+      // Fetch previous state for undo
+      const { data: currentDates } = await supabaseAdmin
+        .from("space_dates")
+        .select("start_date, end_date, label, version")
+        .eq("space_id", spaceId)
+        .single();
+
+      // Upsert space_dates (downstream: purge TTL, retention, computeSpaceState)
+      await supabaseAdmin.from("space_dates").upsert({
+        space_id: spaceId,
+        start_date,
+        end_date,
+        label: label ?? null,
+        set_by: auth.userId,
+        version: (currentDates?.version ?? 0) + 1,
+        updated_at: new Date().toISOString(),
+      });
+
+      // Also update spaces.metadata
+      const { data: space } = await supabaseAdmin
+        .from("spaces")
+        .select("metadata")
+        .eq("id", spaceId)
+        .single();
+
+      const metadata = (space?.metadata as Record<string, unknown>) ?? {};
+      await supabaseAdmin
+        .from("spaces")
+        .update({
+          metadata: { ...metadata, start_date, end_date, label: label ?? undefined },
+        })
+        .eq("id", spaceId);
+
+      // Write ledger entry
+      await supabaseAdmin.from("space_ledger").insert({
+        space_id: spaceId,
+        actor_id: auth.userId,
+        actor_name: actorName ?? null,
+        action: "update_dates",
+        payload: { start_date, end_date, label },
+        previous: currentDates
+          ? { start_date: currentDates.start_date, end_date: currentDates.end_date, label: currentDates.label }
+          : {},
+      });
+
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── rename_space ──
+    if (action === "rename_space") {
+      const { new_title } = payload ?? {};
+      if (!new_title || typeof new_title !== "string") {
+        return NextResponse.json({ error: "missing new_title" }, { status: 400 });
+      }
+
+      const { data: space } = await supabaseAdmin
+        .from("spaces")
+        .select("title")
+        .eq("id", spaceId)
+        .single();
+
+      const previousTitle = space?.title ?? "";
+
+      await supabaseAdmin
+        .from("spaces")
+        .update({ title: new_title.trim() })
+        .eq("id", spaceId);
+
+      await supabaseAdmin.from("space_ledger").insert({
+        space_id: spaceId,
+        actor_id: auth.userId,
+        actor_name: actorName ?? null,
+        action: "rename_space",
+        payload: { new_title: new_title.trim() },
+        previous: { old_title: previousTitle },
+      });
+
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── revert ──
+    if (action === "revert") {
+      const { revert_target_id, revert_action, revert_previous } = payload ?? {};
+      if (!revert_target_id || !revert_action || !revert_previous) {
+        return NextResponse.json({ error: "missing revert data" }, { status: 400 });
+      }
+
+      if (revert_action === "update_dates") {
+        const prev = revert_previous as { start_date?: string; end_date?: string; label?: string };
+        if (prev.start_date && prev.end_date) {
+          await supabaseAdmin.from("space_dates").upsert({
+            space_id: spaceId,
+            start_date: prev.start_date,
+            end_date: prev.end_date,
+            label: prev.label ?? null,
+            set_by: auth.userId,
+            updated_at: new Date().toISOString(),
+          });
+        } else {
+          await supabaseAdmin.from("space_dates").delete().eq("space_id", spaceId);
+        }
+      } else if (revert_action === "rename_space") {
+        const prev = revert_previous as { old_title?: string };
+        if (prev.old_title) {
+          await supabaseAdmin.from("spaces").update({ title: prev.old_title }).eq("id", spaceId);
+        }
+      }
+
+      await supabaseAdmin.from("space_ledger").insert({
+        space_id: spaceId,
+        actor_id: auth.userId,
+        actor_name: actorName ?? null,
+        action: `revert_${revert_action}`,
+        payload: revert_previous,
+        previous: payload,
+        revert_target_id,
+      });
+
+      return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json({ error: `unknown action: ${action}` }, { status: 400 });
+  } catch (err) {
+    console.error("[local-action]", err);
+    return NextResponse.json({ error: "mutation failed" }, { status: 500 });
+  }
+}
