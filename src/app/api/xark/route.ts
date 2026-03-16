@@ -217,6 +217,7 @@ export async function POST(req: NextRequest) {
     content: "thinking...",
     user_id: null,
     sender_name: null,
+    message_type: "xark",  // plaintext — server-side @xark responses are never encrypted
   });
 
   // Orchestrate (can take 15-40s for Apify searches)
