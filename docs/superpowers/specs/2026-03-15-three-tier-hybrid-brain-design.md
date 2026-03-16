@@ -506,7 +506,7 @@ Phased delivery, each phase independently shippable:
 ### Phase 4 — Tier 3: Cloud Optimizations (1 session)
 - Streaming synthesis (`generateContentStream` + batched chunk broadcast at 50ms/10 tokens)
 - `buildStaticPrompt()` / `buildDynamicPrompt()` split
-- Conditional context caching (activates when payload exceeds 32K tokens)
+- Conditional context caching (activates when estimated payload exceeds 33K tokens — buffered above 32,768 API minimum)
 - Multi-action intent schema + `Promise.allSettled` with per-tool timeouts
 - Flash model guard
 - **Ships**: Perceived latency drops dramatically for cloud queries. Multi-tool requests execute concurrently.
@@ -518,3 +518,49 @@ Phased delivery, each phase independently shippable:
 - **Tier 2 recall**: Search results appear only on the querying user's device (actionable context card). They are never broadcast or persisted. "Quote to Group" re-enters the standard E2EE send path.
 - **Tier 3**: No changes to E2EE guarantees. Streaming synthesis is still server-side Gemini output — same trust boundary as existing flow.
 - **Embedding security**: On high-tier devices, embeddings are stored inside the encrypted blob alongside the lexical index. They are never exposed at rest. Research shows embeddings can be approximately inverted (Vec2Text), but they never leave the encrypted blob boundary.
+
+## 11. Implementation Edge Cases
+
+### 11.1 Tier 1 API Security: Membership Verification
+
+`/api/local-action` uses `supabaseAdmin` (service role, bypasses RLS). Because this gives god-mode DB access, the route **must** verify space membership before executing any mutation:
+
+```typescript
+// BEFORE any mutation:
+const { data: member } = await supabaseAdmin
+  .from('space_members')
+  .select('id')
+  .eq('space_id', spaceId)
+  .eq('user_id', jwtSub)
+  .single();
+
+if (!member) return NextResponse.json({ error: 'not a member' }, { status: 403 });
+```
+
+This is the equivalent of RLS enforcement at the application layer. Without it, any authenticated user could mutate any space.
+
+### 11.2 Tier 2 Memory Guard: Per-Message Truncation
+
+The 1000-message hard cap controls message count, but not message size. Users occasionally paste massive text walls, URLs, or base64 data. Without a size guard, a few oversized messages could bloat Worker RAM on low-tier devices.
+
+**Fix**: Truncate message text to 2000 characters before sending to the Worker via `INDEX_MESSAGE`. This keeps the index focused on searchable content while bounding per-message memory at ~4KB (2000 chars × 2 bytes UTF-16).
+
+```typescript
+// In useLocalMemory.ts, before postMessage to Worker:
+const truncated = message.content.slice(0, 2000);
+worker.postMessage({ type: 'INDEX_MESSAGE', message: { ...message, content: truncated } });
+```
+
+### 11.3 Context Caching Threshold Buffer
+
+The Gemini Context Caching API rejects payloads under 32,768 tokens. The client-side token estimator uses a ~4 chars/token heuristic, which is inexact. An estimate of 32,100 could evaluate to 31,900 actual tokens, causing an API rejection.
+
+**Fix**: Use a buffered trigger threshold of 33,000 estimated tokens (not 32,000). This absorbs estimation error and ensures the actual token count clears the API minimum.
+
+```typescript
+const CACHE_TRIGGER_THRESHOLD = 33_000; // buffered above 32,768 API minimum
+
+if (totalEstimate > CACHE_TRIGGER_THRESHOLD && cachedContentRef) {
+  // Safe to create/use cache
+}
+```
