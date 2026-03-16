@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { SignJWT } from "jose";
+import { makeUserId } from "@/lib/user-id";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Firebase Admin SDK for token verification (lightweight — just the auth piece)
 import { initializeApp, getApps, cert, type ServiceAccount } from "firebase-admin/app";
@@ -52,6 +54,13 @@ export async function POST(request: NextRequest) {
   }
 
   const { firebaseToken, displayName } = body;
+
+  // H2 fix: rate limit by IP before any expensive Firebase verification
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!checkRateLimit(`phone-auth:${ip}`, 10)) {
+    return NextResponse.json({ error: "too many attempts" }, { status: 429 });
+  }
+
   if (!firebaseToken) {
     return NextResponse.json(
       { error: "firebaseToken required" },
@@ -91,7 +100,7 @@ export async function POST(request: NextRequest) {
   // Find or create user in Supabase
   // User ID format: phone_{last10digits} for consistency
   const phoneDigits = phoneNumber.replace(/\D/g, "").slice(-10);
-  const userId = `phone_${phoneDigits}`;
+  const userId = makeUserId("phone", phoneDigits);
   const name = displayName || phoneDigits.slice(-4);
 
   // Try to find existing user

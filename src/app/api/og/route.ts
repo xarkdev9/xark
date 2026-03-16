@@ -39,6 +39,12 @@ function isUrlSafe(urlString: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
+    // H3 fix: require auth for ALL requests (prevents open SSRF proxy)
+    const auth = await verifyAuth(req.headers.get("authorization"));
+    if (!auth) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { url, insertAsItem, spaceId, title, text } = body;
 
@@ -50,12 +56,8 @@ export async function POST(req: NextRequest) {
       metadata = await fetchOGMetadata(url);
     }
 
-    // Insert as decision_item — requires authentication + space membership
+    // Insert as decision_item — requires space membership
     if (insertAsItem && spaceId) {
-      const auth = await verifyAuth(req.headers.get("authorization"));
-      if (!auth) {
-        return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-      }
 
       const { supabaseAdmin } = await import("@/lib/supabase-admin");
       if (!supabaseAdmin) {

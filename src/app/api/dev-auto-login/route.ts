@@ -28,12 +28,16 @@ export async function POST(request: NextRequest) {
 
   const { username, password } = body;
 
-  // Gate: DEV_MODE bypasses password (local dev only). Production requires password.
+  // M5 fix: block ALL dev-auto-login in production regardless of DEV_MODE
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "not available" }, { status: 404 });
+  }
+
   const isDevMode = process.env.DEV_MODE === "true";
   const loginPassword = process.env.LOGIN_PASSWORD;
 
   if (!isDevMode) {
-    if (!loginPassword || password !== loginPassword) {
+    if (!loginPassword || !password || password !== loginPassword) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
   }

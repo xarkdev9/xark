@@ -37,12 +37,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // ── Rate limiting ──
-  if (userId && !checkRateLimit(`xark:${userId}`, 10)) {
-    return NextResponse.json({
-      response: "group is moving too fast. take a breath. try again in a minute.",
-    });
-  }
+  // H4 fix: rate limiting moved after auth (see below). Old position used client-supplied userId.
 
   // ── Handle confirmations — require auth + space membership ──
   if (confirm_action && (confirm_action === "set_dates" || confirm_action === "confirm_logistics")) {
@@ -127,6 +122,13 @@ export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req.headers.get("authorization"));
   if (!auth) {
     return NextResponse.json({ response: null }, { status: 401 });
+  }
+
+  // H4 fix: rate limit keyed on verified JWT userId, not client-supplied
+  if (!checkRateLimit(`xark:${auth.userId}`, 10)) {
+    return NextResponse.json({
+      response: "group is moving too fast. take a breath. try again in a minute.",
+    });
   }
 
   // Verify caller is a member of the target space

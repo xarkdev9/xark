@@ -473,11 +473,17 @@ Required: _thought_process, action.
 Optional: tool, params, directResponse, start_date, end_date, label, extractions.`;
 }
 
+// M6 fix: sanitize user-controlled strings before prompt injection
+function sanitizeForPrompt(text: string): string {
+  return text.replace(/[{}"\\`]/g, "").replace(/\n/g, " ").slice(0, 200);
+}
+
 /** Dynamic prompt — changes every invocation (space title, grounding, messages, request) */
 export function buildDynamicPrompt(input: OrchestratorInput): string {
+  const safeTitle = sanitizeForPrompt(input.spaceTitle || "untitled");
   return `
 SPACE TITLE (this is the destination/context for ALL queries):
-"${input.spaceTitle || "untitled"}"
+"${safeTitle}"
 ALWAYS use this as the default destination.
 
 GROUNDING CONTEXT (what's been decided):

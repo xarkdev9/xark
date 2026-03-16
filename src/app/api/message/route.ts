@@ -50,6 +50,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ciphertext too large' }, { status: 400 });
     }
 
+    // ── C2 fix: validate message_type_override against strict allowlist ──
+    const ALLOWED_CLIENT_TYPES = ['e2ee', 'e2ee_xark', 'sender_key_dist'] as const;
+    if (message_type_override && !ALLOWED_CLIENT_TYPES.includes(message_type_override as typeof ALLOWED_CLIENT_TYPES[number])) {
+      return NextResponse.json({ error: 'invalid message_type_override' }, { status: 400 });
+    }
+
+    // ── H5 fix: cap xark_trigger length (matches /api/xark 1000-char cap) ──
+    if (xark_trigger) {
+      if (typeof xark_trigger.plaintext_command === 'string' && xark_trigger.plaintext_command.length > 1000) {
+        return NextResponse.json({ error: 'xark command too long' }, { status: 400 });
+      }
+      if (typeof xark_trigger.bundled_context === 'string' && xark_trigger.bundled_context.length > 2000) {
+        return NextResponse.json({ error: 'context too long' }, { status: 400 });
+      }
+    }
+
     // ── Rate limit @xark triggers ──
     if (xark_trigger && !checkRateLimit(`xark:${auth.userId}`, 10)) {
       return NextResponse.json({
@@ -59,17 +75,15 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Space membership check — prevent cross-space injection ──
-    if (supabaseAdmin) {
-      const { data: membership } = await supabaseAdmin
-        .from('space_members')
-        .select('user_id')
-        .eq('space_id', space_id)
-        .eq('user_id', auth.userId)
-        .single();
+    const { data: membership } = await supabaseAdmin
+      .from('space_members')
+      .select('user_id')
+      .eq('space_id', space_id)
+      .eq('user_id', auth.userId)
+      .single();
 
-      if (!membership) {
-        return NextResponse.json({ error: 'not a member of this space' }, { status: 403 });
-      }
+    if (!membership) {
+      return NextResponse.json({ error: 'not a member of this space' }, { status: 403 });
     }
 
     // ── Step 1: Insert encrypted message envelope ──

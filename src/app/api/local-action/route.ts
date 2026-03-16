@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { verifyAuth } from "@/lib/auth-verify";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   // ── Auth ──
@@ -18,6 +19,11 @@ export async function POST(req: Request) {
 
   if (!action || !spaceId) {
     return NextResponse.json({ error: "missing action or spaceId" }, { status: 400 });
+  }
+
+  // H6 fix: rate limit mutations
+  if (!checkRateLimit(`local-action:${auth.userId}`, 20)) {
+    return NextResponse.json({ error: "too many actions" }, { status: 429 });
   }
 
   // ── Membership check (CRITICAL: supabaseAdmin bypasses RLS) ──
