@@ -20,11 +20,11 @@ create index idx_ledger_space_created
 alter table space_ledger enable row level security;
 
 create policy "members_read_ledger" on space_ledger
-  for select using (space_id = any(auth_user_space_ids()));
+  for select using (space_id in (select auth_user_space_ids()));
 
 create policy "members_write_ledger" on space_ledger
   for insert with check (
-    space_id = any(auth_user_space_ids())
+    space_id in (select auth_user_space_ids())
     and actor_id = auth.jwt()->>'sub'
   );
 
