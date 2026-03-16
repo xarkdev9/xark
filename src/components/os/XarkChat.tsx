@@ -297,12 +297,12 @@ export function XarkChat({
                     isOtherUser || msg.role === "xark" ? "0" : "auto",
                   marginRight:
                     isOtherUser || msg.role === "xark" ? "auto" : "0",
-                  marginTop: sameSender ? "3px" : index === 0 ? "0px" : "14px",
+                  marginTop: sameSender ? "2px" : index === 0 ? "0px" : "20px",
                 }}
               >
                 {/* ── Avatar + Name row ── */}
                 {showAvatar && (
-                  <div className="flex items-center gap-2" style={{ marginBottom: "2px" }}>
+                  <div className="flex items-center gap-2" style={{ marginBottom: "4px" }}>
                     {msg.role === "xark" ? (
                       <div
                         style={{
