@@ -2,7 +2,158 @@
 
 > **For AI agents**: Read this FIRST before any code work. It tells you what changed recently and what to watch for. Updated after every session.
 
-## Last Session: Mar 15, 2026 (Three-Tier Hybrid Brain)
+## Last Session: Mar 16, 2026 (Security + Voting + Unread + PWA)
+
+### What was built
+52. **Security Audit — All Critical/High/Medium Fixed** — C2: message_type_override allowlist (prevents @xark spoofing). H2: phone-auth rate limited. H3: /api/og requires auth (SSRF fix). H4: xark rate limit keyed on verified JWT. H5: xark_trigger length cap. H6: local-action + notify rate limited. M3: invite token 16 bytes (128-bit). M5: dev-auto-login blocked in production. M6: spaceTitle sanitized before Gemini prompt.
+
+53. **Voting Fix — 3 Issues** — (a) Love button uses brand orange #FF6B35. (b) Global isReacting lock replaced with per-item debounce via useRef Set — vote on multiple items simultaneously. (c) Toggle/unlove/re-vote works because per-item lock releases in finally{}. Signal colors: love=#FF6B35 (orange), okay=#A8B4C0 (steel), pass=#6B7280 (gray). Rewarding button UX: glowing pill background, triple box-shadow, text glow, y-lift, spring animation.
+
+54. **Unread Message Badges** — WhatsApp-style unread counts on Galaxy space list. space_members.last_read_at column. get_unread_counts() RPC (excludes own + system messages). mark_space_read() RPC called on space open. Brand orange pill badge (#FF6B35) on AwarenessStream + PeopleDock. Caps at 99+.
+
+55. **E2EE Fix** — Disabled E2EE for dev-auto-login users (name_ prefix). Only phone-authenticated users (phone_ prefix) get E2EE. Prevents "[encrypted message - sender key not available]" for dev users. @xark server-side messages tagged message_type: 'xark' (plaintext).
+
+56. **Search Results Grouping Fix** — Each @xark search gets its own Decide rail via search_label (user's query text, not tool category). "coffee" and "restaurants in rancho bernardo" appear as separate sections.
+
+57. **Space Name Fix** — "New York" preserved (was stripped to "york"). Regex only strips "new" when followed by group/space/trip/plan.
+
+58. **Chat Spacing** — WhatsApp-precision: 20px between different senders (was 14px), 2px same sender, 4px name-to-message.
+
+59. **PWA Production** — Offline service worker (sw.js), maskable icons, apple-touch-icon, branded splash screens (cyan X mark + wordmark + tagline via sharp).
+
+60. **Pexels Hero Images** — Already wired (Pexels primary, Unsplash fallback). Key set in .env.local.
+
+### Files created this session
+- `supabase/migrations/017_hybrid_brain.sql` — space_ledger table
+- `supabase/migrations/018_security_hardening_v2.sql` — invite token 16 bytes
+- `supabase/migrations/019_unread_counts.sql` — last_read_at + RPCs
+- `src/lib/unread.ts` — fetchUnreadCounts() + markSpaceRead()
+- `src/lib/local-agent.ts` — Tier 1 fast-path router (parked)
+- `src/lib/local-recall.ts` — Tier 2 recall detection (parked)
+- `src/workers/memory-worker.ts` — Tier 2 Web Worker (parked)
+- `src/hooks/useLocalMemory.ts` — Tier 2 hook (parked)
+- `src/components/os/LedgerPill.tsx` — Interactive system pills (parked)
+- `src/components/os/ContextCard.tsx` — Recall context card (parked)
+- `src/app/api/local-action/route.ts` — Tier 1 mutation endpoint
+- `public/sw.js` — Offline service worker
+- `public/icons/icon-maskable-*.png` — Maskable icons
+- `public/splash/splash-*.png` — Branded splash screens
+- `mar17.md` — Local intelligence parked state doc
+
+### Files significantly modified
+- `src/hooks/useReactions.ts` — JWT guard, error logging, returns boolean (success/fail)
+- `src/components/os/PossibilityHorizon.tsx` — Per-item debounce (replaces global isReacting), optimistic rollback
+- `src/components/os/DecisionCard.tsx` — Signal colors (love orange, okay steel, pass gray), rewarding glowing pill buttons
+- `src/components/os/XarkChat.tsx` — 20px different-sender gap, ledger pill timeline interleaving
+- `src/components/os/AwarenessStream.tsx` — Unread count badge
+- `src/components/os/PeopleDock.tsx` — Unread count badge
+- `src/app/space/[id]/page.tsx` — E2EE phone-only gate, markSpaceRead on mount, Tier 1/2 wiring (parked)
+- `src/app/api/message/route.ts` — message_type_override allowlist, xark_trigger length cap
+- `src/app/api/xark/route.ts` — Rate limit after auth, message_type: 'xark' on thinking insert, search_label = query text
+- `src/app/api/phone-auth/route.ts` — Rate limited by IP
+- `src/app/api/og/route.ts` — Auth required for all requests
+- `src/app/api/local-action/route.ts` — Rate limited
+- `src/app/api/notify/route.ts` — Rate limited
+- `src/app/api/dev-auto-login/route.ts` — Blocked in production
+- `src/lib/intelligence/orchestrator.ts` — buildStaticPrompt/buildDynamicPrompt split, spaceTitle sanitized, flash guard
+- `src/app/galaxy/page.tsx` — Space name fix ("New York" preserved)
+- `src/app/layout.tsx` — Apple touch icon + splash screen meta tags
+- `src/components/os/ServiceWorkerRegistration.tsx` — Registers sw.js
+
+### Architecture decisions made
+- **E2EE disabled for dev users** — name_ prefix = legacy plaintext path. phone_ prefix = E2EE. Prevents broken decrypt on reload.
+- **Per-item vote debounce** — useRef Set replaces global isReacting boolean. Multiple items votable simultaneously.
+- **Unread via last_read_at** — simple, WhatsApp-proven pattern. RPC counts messages newer than last read.
+- **In-memory rate limiter noted** — works for dev, needs Upstash Redis for serverless prod.
+- **Search results grouped by query text** — not tool category. Each search = own Decide rail.
+
+### Known issues
+- In-memory rate limiter doesn't work in Vercel serverless (needs Upstash Redis)
+- Local intelligence (Tier 1/2) parked — needs browser debugging
+- IndexedDB blob storage plaintext (Phase 2b encryption deferred)
+- Streaming synthesis not implemented
+- geminiSearchGrounded still uses regex JSON extraction
+- Key rotation on member leave deferred to v2
+
+### What to do next
+- Test voting in browser (should work now with per-item debounce + JWT guard)
+- Test unread badges in browser (open space = clears badge)
+- Replace in-memory rate limiter with Upstash Redis for production
+- Debug local intelligence Tier 1 in browser
+- First real users
+
+---
+
+## Previous Session: Mar 15, 2026 (UI Overhaul — Login, Galaxy, Decide, Chat)
+
+### What was built
+42. **Login Screen — Cinematic Video Background** — Phase-based animation choreography (spark → collision → reveal → idle). 4 Pexels videos (friends, silhouette, ocean, candle) in round-robin rotation per page load. Video persists across all login screens (welcome → phone → OTP → name → photo). All text uses solid white with text-shadow for readability over any video. Scrim at 75%. WelcomeScreen.tsx is now a transparent overlay.
+
+43. **3-Tone Warm Surface System** — Replaced flat single-bg with depth hierarchy: `surface.chrome` (elevated UI — header, panels), `surface.canvas` (content areas — input bar), `surface.recessed` (wells — avatars). 4 values per theme (hearth light: #F8F7F3/#EEEBE5/#E3DCD1, hearth dark: #141418/#0A0A0F/#060608, vibe light: #FAF9F6/#F0EDE6/#E5E0D6, vibe dark: #121216/#08080C/#040406). CSS variables via ThemeProvider.
+
+44. **Immersive Decision Cards** — Cards redesigned from 140×200px to 82% viewport × clamp(320px, 50dvh, 440px). Full-bleed photos with cinematic bottom-up gradient. Score at 56px weight-300 amber. 28px radius. Snap-center scroll. Softer shadows. Image error fallback to category gradient. Category rail headers at 1.75rem editorial lowercase.
+
+45. **PossibilityHorizon Hero Images** — Pool of 10 Unsplash images with deterministic hash per spaceId (different space = different hero). Pexels API integration as primary free source (200/hr). unsplash.ts rewritten: Pexels → Unsplash fallback chain.
+
+46. **WhatsApp-Precision Chat Spacing** — XarkChat.tsx: same-sender gap 3px, different-sender gap 14px, name→message 2px. Sender names 13px with amber (humans) / cyan (@xark). Message opacity floor raised to 0.55. Timestamps at fixed 0.2 opacity. Removed y-animation on messages (clean opacity fade only). Sanctuary bridge uses identical spacing.
+
+47. **The Magnetic Input** — ChatInput.tsx rewritten: ambient gradient floor (transparent→canvas), 18px weight-300 text, @xark detection turns text cyan with glow shadow, typed text gets subtle drop-shadow lift, attach/camera icons animate out when typing (Framer AnimatePresence), mic↔send crossfade. Galaxy dream input unified to same visual language. Placeholder uses ink.tertiary at full opacity.
+
+48. **Living Brand Anchor** — ControlCaret dot replaced with "xark" text. 18px weight-300, letter-spacing 0.2em, Action Orange #FF6B35. Breathing animation (opacity 0.7→0.9 over 4s). Tap: full opacity + neon glow + scale 0.95. Persistent dark text-shadow for light background readability.
+
+49. **Vibe Dark Accent** — Changed from #50E8C0 (teal) to #FF6B35 (Action Orange — brand color).
+
+50. **Decide Card Animation Fix** — Removed `layout` prop and `whileInView` from DecisionCard (caused scroll-fighting). Entrance is now simple opacity+scale fade. Rail stagger doubled (60ms→120ms between cards).
+
+51. **Lossless Context Plugin** — Built Claude Code plugin at /Users/ramchitturi/lossless-context. PreCompact hook saves full transcript to SQLite before compaction. SessionStart hook reports stats. FTS5 full-text search. Backfilled 5,414 messages across 30 sessions. Hooks wired in ~/.claude/settings.json. CLAUDE.md updated with recall instructions.
+
+### Files created this session
+- `src/components/os/WelcomeScreen.tsx` — Transparent cinematic entrance overlay (phase-based)
+- `/Users/ramchitturi/lossless-context/` — Complete Claude Code lossless context plugin (hooks, scripts, skill)
+
+### Files significantly modified
+- `src/app/login/page.tsx` — Video background at page level, all text white with text-shadow, round-robin video
+- `src/app/galaxy/page.tsx` — 3-tone surfaces, tab crossfade + directional slide, auto-resize textarea, gradient input floor
+- `src/components/os/DecisionCard.tsx` — Full-bleed immersive cards (82%×50dvh), cinematic gradient, 56px score, 28px radius, snap scroll, image error fallback
+- `src/components/os/PossibilityHorizon.tsx` — 10-image hero pool with hash, editorial rail headers, snap scroll, stagger timing
+- `src/components/os/ChatInput.tsx` — Magnetic Input rewrite: gradient floor, @xark cyan detection, icon fade choreography
+- `src/components/os/XarkChat.tsx` — WhatsApp spacing (3px/14px/2px), opacity floor 0.55, amber sender names
+- `src/components/os/ControlCaret.tsx` — "xark" text anchor replacing dot, breathing animation, neon glow on tap
+- `src/components/os/Avatar.tsx` — surface.recessed background
+- `src/components/os/PeopleDock.tsx` — 48px avatars, 14px item spacing, removed vibe shadow/glow wrappers
+- `src/components/os/GlobalUserMenu.tsx` — Props from useAuth + searchParams
+- `src/lib/theme.ts` — 3-tone surface system (surfaceChrome/Canvas/Recessed), surface export, vibe_dark accent to #FF6B35
+- `src/components/os/ThemeProvider.tsx` — 3 new CSS variables for surfaces
+- `src/lib/unsplash.ts` — Pexels API primary + Unsplash fallback
+- `src/lib/messages.ts` — Graceful handling of missing message_type column
+- `src/app/layout.tsx` — GlobalUserMenu restored
+- `~/.claude/settings.json` — Lossless context hooks (PreCompact + SessionStart)
+- `~/.claude/CLAUDE.md` — Lossless context recall instructions
+
+### Architecture decisions made
+- **3-tone surface system** replaces single flat bg — depth without borders, just color hierarchy (chrome > canvas > recessed)
+- **Video in login page, not WelcomeScreen** — persists across all login steps, WelcomeScreen is just the typography overlay
+- **Decision cards viewport-relative** — `clamp(320px, 50dvh, 440px)` adapts to every device from iPhone SE to iPad
+- **No `layout` or `whileInView` with y-transforms on scrollable cards** — causes scroll-fighting on mobile
+- **"xark" text replaces dot** — the brand IS the navigation anchor. Orange on every theme.
+- **Pexels over Unsplash** for hero images — free (200/hr, no credit card), CDN verified working
+- **Lossless context as hooks (not plugin)** — settings.json hooks are permanent, no --plugin-dir flag needed
+
+### Known issues
+- Pexels API key not configured (needs NEXT_PUBLIC_PEXELS_API_KEY in .env.local)
+- Voting/reactions on decision cards needs testing
+- message_type column may not exist if migration 014 not run (graceful fallback in place)
+- Login page videos load from external CDN (Pexels) — consider self-hosting for production
+
+### What to do next
+- Configure Pexels API key for hero images
+- Test voting flow end-to-end (react → score update → consensus)
+- Clear test data, seed fresh demo spaces
+- First real users
+
+---
+
+## Previous Session: Mar 15, 2026 (Three-Tier Hybrid Brain)
 
 ### What was built
 41. **Three-Tier Hybrid Brain** — Client-side intelligence interceptor for @xark. 60%+ of queries now resolve locally with zero latency, zero API cost.

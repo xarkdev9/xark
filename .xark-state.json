@@ -1,7 +1,7 @@
 {
   "version": "2.0.0-omega",
-  "foveal_focus": "THREE-TIER HYBRID BRAIN — Client-side local intelligence for @xark. Tier 1: deterministic regex router (dates, rename, status) via /api/local-action with space_ledger audit trail. Tier 2: MiniSearch lexical recall in Web Worker with encrypted IndexedDB persistence. Tier 3: Gemini cloud with buildStaticPrompt/buildDynamicPrompt split. Search results now grouped by user query text (each search gets own Decide rail). Voting RPC works but may fail silently if JWT not set. Local intelligence parked — needs browser debugging. Remaining: blob encryption, semantic search, streaming synthesis, first real users.",
-  "phase": "THREE_TIER_HYBRID_BRAIN",
+  "foveal_focus": "PRODUCTION HARDENING — Security audit complete (all C/H/M fixed). Voting fixed (per-item debounce, JWT guard, rollback). Unread badges live (WhatsApp-style counts on Galaxy). E2EE disabled for dev users (name_ prefix). PWA ready (offline SW, maskable icons, splash screens). Search results grouped by query. Local intelligence parked. Next: test in browser, Upstash Redis for rate limiting, first real users.",
+  "phase": "PRODUCTION_HARDENING",
   "algo_source": "/Users/ramchitturi/algo",
   "algo_record": "/Users/ramchitturi/algo/mar10_algo.md",
   "algo_status": "198 tests, 0 type errors, hexagonal architecture",

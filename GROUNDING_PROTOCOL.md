@@ -174,6 +174,9 @@ Implementation: `src/hooks/useVoiceInput.ts`
 - **Media**: Firebase Storage (`src/lib/media.ts`). Upload blobs + Supabase metadata. Profile photos in `profiles/{userId}/avatar`.
 - **Supabase Admin**: `src/lib/supabase-admin.ts` — service-role client for server-side API routes. Bypasses RLS.
 - **PII Sanitization**: `src/lib/intelligence/sanitize.ts` — Redacts credit cards (Luhn validation), SSN, CVV, bank accounts before any Gemini call. Defense-in-depth even for @xark commands.
+- **Unread Counts**: `src/lib/unread.ts` + `supabase/migrations/019_unread_counts.sql`. WhatsApp-style `last_read_at` per user per space. `get_unread_counts()` RPC excludes own + system messages. Brand orange badge on Galaxy space list.
+- **Security**: message_type_override allowlist, rate limiting on all mutation endpoints, /api/og auth required, spaceTitle prompt-injection sanitized, invite tokens 128-bit, E2EE disabled for dev users (name_ prefix).
+- **PWA**: `public/sw.js` (offline service worker), maskable icons, branded splash screens (cyan X + wordmark via sharp).
 
 ## 10. E2EE PRIVACY BOUNDARY
 

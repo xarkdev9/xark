@@ -37,7 +37,7 @@ THEME SYSTEM (4 Themes): Xark OS ships with 4 themes across 2 axes — style (fl
 - Hearth (flat light): text #111111, bg #F8F7F4, accent #FF6B35 (Action Orange).
 - Hearth Dark (flat dark): text #E8E6E1, bg #0A0A0F, accent #40E0FF (Cyan).
 - Vibe (depth light): text #0F0F0F, bg #FAF9F6, accent #E87040 (warm orange).
-- Vibe Dark (depth dark): text #ECE8E2, bg #08080C, accent #50E8C0 (warm teal).
+- Vibe Dark (depth dark): text #ECE8E2, bg #08080C, accent #FF6B35 (Action Orange — Xark brand color).
 - ThemeStyle: "flat" | "depth". Flat = clean WhatsApp-like. Depth = floating shadows, HD photos, immersive.
 - Text color: `var(--xark-white)` via `colors.white`. Theme-aware ink.
 - Background: `var(--xark-void)` via `colors.void`. Theme-aware canvas.
@@ -47,6 +47,8 @@ THEME SYSTEM (4 Themes): Xark OS ships with 4 themes across 2 axes — style (fl
 - `accentColor(alpha)` works the same way for accent color with opacity.
 - Hierarchy is always expressed through opacity, never font-weight. Use `textColor(0.9)` for primary, `textColor(0.4)` for tertiary, etc.
 - `ink.*` system: Solid text colors (`ink.primary`, `ink.secondary`, `ink.tertiary`, `ink.sender`) via CSS variables — set by ThemeProvider per theme. Use instead of `textColor(alpha)` for high-readability contexts (chat lists, People tab, settings). These are solid colors, never opacity-based.
+- `surface.*` system: 3-tone depth hierarchy (`surface.chrome`, `surface.canvas`, `surface.recessed`) via CSS variables. Chrome = elevated UI (headers, panels). Canvas = content areas (input bars). Recessed = wells (avatars, input fields). Depth without borders — just color hierarchy. Hearth light: #F8F7F3/#EEEBE5/#E3DCD1.
+- Xark Brand Color: Action Orange #FF6B35. Used for the Living Brand Anchor ("xark" text at bottom center), vibe_dark accent, hearth accent.
 
 FONT SYSTEM: Inter (variable) for body text — primary font, set globally in globals.css. Syne (variable) for display/fallback. Inter (variable, weight 300) for the wordmark. No other fonts.
 
@@ -171,6 +173,11 @@ KEY MODULE MAP (read the source for implementation details):
 - src/components/os/LedgerPill.tsx — Interactive system pill for space_ledger events. Icon + actor + verb + [tappable payload] + undo. Interleaved chronologically in XarkChat timeline.
 - src/components/os/ContextCard.tsx — Actionable context card for Tier 2 recall results. Jump to Message (scroll + cyan pulse) + Quote to Group (loads into composer as reply). Slides up above ChatInput.
 - supabase/migrations/017_hybrid_brain.sql — space_ledger table (Layer 3, unencrypted admin audit trail). RLS via auth_user_space_ids(). Realtime publication for live pill rendering.
+- supabase/migrations/018_security_hardening_v2.sql — Invite token entropy 6→16 bytes.
+- supabase/migrations/019_unread_counts.sql — space_members.last_read_at, get_unread_counts() RPC, mark_space_read() RPC.
+- src/lib/unread.ts — fetchUnreadCounts() + markSpaceRead(). WhatsApp-style unread count per space. Badge: brand orange pill (#FF6B35) on AwarenessStream + PeopleDock.
+- src/hooks/useReactions.ts — JWT guard (getSupabaseToken check), error logging ([xark-vote] prefix), returns boolean. Per-item debounce in PossibilityHorizon (useRef Set replaces global isReacting).
+- public/sw.js — Offline service worker. Caches app shell (login, galaxy, icons). Network-first for pages, cache fallback for offline.
 - src/lib/media.ts — Firebase Storage upload/download + Supabase metadata.
 - src/lib/notifications.ts — Server-side FCM push. Lazy init from FIREBASE_SERVICE_ACCOUNT_JSON. /api/notify uses get_push_tokens_for_space RPC (single query replaces 2-query chain).
 - src/lib/seed.ts — Demo data: san diego trip (4 items, 10 msgs), ananya sanctuary (5 msgs), tokyo neon nights (2 items), summer 2026 (empty). Run: npx tsx src/lib/seed.ts
@@ -179,11 +186,14 @@ KEY MODULE MAP (read the source for implementation details):
 - src/components/os/ClaimSheet.tsx — Slide-up for claiming locked items. "i'll handle this" stamps owner.
 - src/components/os/PurchaseSheet.tsx — Slide-up for purchase confirmation + amount entry. claimed → purchased.
 - src/components/os/UserMenu.tsx — Settings sheet: 4-view drill-down (main → profile, main → notifications, main → about). Props: userName, userId. Main: profile card (avatar + name + phone), inline theme toggles (flat/vibe + light/dark), menu rows (notifications, invite, about), log out. Profile: avatar (48px) + change photo (storageAdapter) + name input + phone display. Notifications: master toggle (FCM token registration via getMessagingInstance), per-space mute list (users.preferences.muted_spaces). About: version + feedback link. Theme sync: localStorage primary, Supabase fallback read + fresh-fetch-before-write on toggle.
-- src/components/os/PossibilityHorizon.tsx — Decide view: Netflix-style fluid horizontal card rails with Framer Motion entrance choreography (whileInView, staggered). DecisionCard component (3 sizes: hero 200×280, standard 165×240, mini 110×150). Unsplash hero image at top with fade-in. Category vitals in rail headers. Shimmer placeholders during load. Smooth momentum scroll (no snap). Self-resolving: locked categories collapse to green dot. No input — shared ChatInput from Space page. Items capped at 100 (ordered by weighted_score DESC). CategoryRail wrapped with React.memo + custom comparator. Groups by metadata.search_label when present (search results get own rail), else by category. Card images lazy-loaded after first 3 per rail.
-- src/components/os/DecisionCard.tsx — Shared decision card component. 3 size variants (hero/standard/mini). No borders. Photo via native img element with lazyImage prop (loading="lazy" for off-screen cards), single scrim gradient, solid dark data zone. Consensus % is brightest element. Fixed light text colors (theme-independent card surfaces). Framer Motion whileInView entrance + consensus bar animation.
-- src/lib/unsplash.ts — Unsplash API client. fetchDestinationPhoto(query) returns imageUrl + photographer attribution. Called at space creation, stored in spaces.metadata.hero_url.
+- src/components/os/PossibilityHorizon.tsx — Decide view: immersive horizontal card rails with snap-center scroll. 10-image hero pool with deterministic hash per spaceId. Editorial rail headers (1.75rem, weight 300, lowercase). Category vitals. Shimmer loading. Self-resolving: locked categories collapse to green dot. Items capped at 100. CategoryRail with React.memo. Groups by search_label or category. Card stagger: railDelay + 0.1 + idx * 0.12.
+- src/components/os/DecisionCard.tsx — Immersive decision card. 82% viewport width, clamp(320px, 50dvh, 440px) height. Full-bleed photo with cinematic bottom-up gradient. Score at 56px weight-300 amber. 28px radius. Snap-center scroll. Image error fallback to category gradient. love/okay/pass reactions at 14px with wide tracking.
+- src/lib/unsplash.ts — Photo fetcher: Pexels API (free, 200/hr) primary → Unsplash fallback. fetchDestinationPhoto(query) returns imageUrl + blob for Firebase Storage upload.
 - src/hooks/useDeviceTier.ts — Detects low-end devices (deviceMemory ≤ 2, hardwareConcurrency ≤ 4, prefers-reduced-motion). Returns "high" or "low".
-- src/components/os/Avatar.tsx — Reusable avatar component for space/user avatars.
+- src/components/os/Avatar.tsx — Reusable avatar component. Letter fallback uses surface.recessed background.
+- src/components/os/WelcomeScreen.tsx — Cinematic login entrance. Phase-based choreography (spark→collision→reveal→idle). Transparent overlay — video background lives in login page.
+- src/components/os/ChatInput.tsx — The Magnetic Input. Gradient floor (transparent→canvas). 18px weight-300 text. @xark detection turns text cyan with glow. Attach/camera icons animate out when typing. Mic↔send crossfade. Placeholder uses ink.tertiary.
+- src/components/os/ControlCaret.tsx — Living Brand Anchor. "xark" text (18px, weight 300, tracking 0.2em, Action Orange #FF6B35) replaces the dot. Breathing animation (0.7→0.9 opacity, 4s). Neon glow on tap. Persistent text-shadow for light background readability. Same slide-up panel for space navigation.
 - src/components/os/OnboardingWhispers.tsx — Gentle onboarding hints that dismiss after first interaction.
 - src/components/os/XarkChat.tsx — Display-only chat stream. Receives messages and isThinking as props from Space page. No input, no send, no fetch. Handshake protocol, sanctuary bridge (limit: 30 msgs), greeting. No layout prop on message motion.divs (eliminates layout thrashing).
 - src/components/os/ChatInput.tsx — Three-element layout. TEXTAREA + MIC: fixed at 56px from bottom, auto-expanding textarea (text.body) + mic icon (SVG, 14px) in the input row. Top ambient line + bottom ambient line (grows with text width, breathes, fades from cyan to transparent), solid void bg. ATTACH ICON: 16px paperclip SVG at left 25% (halfway dot-to-left-edge), caretBottom level. CAMERA ICON: 16px camera SVG at left 75% (halfway dot-to-right-edge), caretBottom level. Icons at colors.white opacity 0.5→0.8 hover, thin 1.5px stroke. Mic: tap=dictate, long-press=@xark mode. Reduced void (56px).

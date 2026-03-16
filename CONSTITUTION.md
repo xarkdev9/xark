@@ -352,6 +352,23 @@ Full architecture documented in SECURITY.md. Key constitutional rules:
 - `src/components/os/ContextCard.tsx` — Actionable recall card. Jump to Message + Quote to Group.
 - `supabase/migrations/017_hybrid_brain.sql` — `space_ledger` table (Layer 3, unencrypted). RLS + Realtime.
 
+## 20b. UNREAD MESSAGE SYSTEM
+- `space_members.last_read_at` — timestamp per user per space, updated on space open via `mark_space_read()` RPC.
+- `get_unread_counts()` RPC — returns unread count per space. Excludes own messages and system messages.
+- `src/lib/unread.ts` — `fetchUnreadCounts()` + `markSpaceRead()`.
+- Badge: brand orange pill (#FF6B35), 18px, 11px white text. Caps at "99+". Shown on AwarenessStream + PeopleDock.
+- Space page calls `markSpaceRead()` on mount (clears badge when user opens space).
+
+## 20c. SECURITY HARDENING
+- `message_type_override` validated against allowlist (e2ee, e2ee_xark, sender_key_dist). Prevents @xark message spoofing.
+- Rate limiting: phone-auth (by IP), xark (by verified JWT userId, after auth), local-action, notify.
+- `/api/og` requires auth for all requests (SSRF prevention).
+- `dev-auto-login` blocked in `NODE_ENV=production`.
+- `spaceTitle` sanitized before Gemini prompt injection (strips `{}"\\`` + newlines).
+- Invite token entropy: 16 bytes (128-bit, migration 018).
+- E2EE disabled for dev users (name_ prefix) — only phone_ prefix users get E2EE.
+- In-memory rate limiter works for dev; needs Upstash Redis for serverless prod.
+
 ## 21. THE CLAIM SHEET
 - `src/components/os/ClaimSheet.tsx` — Slide-up sheet for claiming a locked item.
 - "i'll handle this" (`colors.cyan`, `text.label`, 0.9 opacity) + "not yet" (`textColor(0.4)`, `text.label`).
