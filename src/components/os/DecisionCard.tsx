@@ -33,7 +33,7 @@ function consensusColor(state: ConsensusState): string {
 }
 
 const SIGNALS: { type: ReactionType; label: string; color: string }[] = [
-  { type: "love_it", label: "love", color: CARD_AMBER },
+  { type: "love_it", label: "love", color: "#FF6B35" },
   { type: "works_for_me", label: "okay", color: CARD_GRAY },
   { type: "not_for_me", label: "pass", color: CARD_ORANGE },
 ];

@@ -465,42 +465,49 @@ export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking }:
   }, [items]);
 
   // ── Reactions — optimistic with rollback on failure ──
+  // No global isReacting guard — each item can be voted independently
+  const pendingItems = useRef(new Set<string>());
   const handleReaction = useCallback(
     async (itemId: string, signal: ReactionType) => {
-      if (isReacting) return;
+      // Per-item debounce: skip if this specific item has a pending RPC
+      if (pendingItems.current.has(itemId)) return;
+      pendingItems.current.add(itemId);
+
       const prevReaction = activeReactions[itemId];
 
-      if (prevReaction === signal) {
-        // Toggle off
-        setActiveReactions((prev) => {
-          const next = { ...prev };
-          delete next[itemId];
-          return next;
-        });
-        const ok = await unreact(itemId);
-        if (!ok) {
-          // Rollback: restore previous reaction
-          setActiveReactions((prev) => ({ ...prev, [itemId]: prevReaction }));
-        }
-      } else {
-        // Set new reaction
-        setActiveReactions((prev) => ({ ...prev, [itemId]: signal }));
-        const ok = await react(itemId, signal);
-        if (!ok) {
-          // Rollback: restore previous state
-          if (prevReaction) {
+      try {
+        if (prevReaction === signal) {
+          // Toggle off
+          setActiveReactions((prev) => {
+            const next = { ...prev };
+            delete next[itemId];
+            return next;
+          });
+          const ok = await unreact(itemId);
+          if (!ok) {
             setActiveReactions((prev) => ({ ...prev, [itemId]: prevReaction }));
-          } else {
-            setActiveReactions((prev) => {
-              const next = { ...prev };
-              delete next[itemId];
-              return next;
-            });
+          }
+        } else {
+          // Set new reaction
+          setActiveReactions((prev) => ({ ...prev, [itemId]: signal }));
+          const ok = await react(itemId, signal);
+          if (!ok) {
+            if (prevReaction) {
+              setActiveReactions((prev) => ({ ...prev, [itemId]: prevReaction }));
+            } else {
+              setActiveReactions((prev) => {
+                const next = { ...prev };
+                delete next[itemId];
+                return next;
+              });
+            }
           }
         }
+      } finally {
+        pendingItems.current.delete(itemId);
       }
     },
-    [activeReactions, isReacting, react, unreact]
+    [activeReactions, react, unreact]
   );
 
   const categoryNames = Object.keys(grouped);
