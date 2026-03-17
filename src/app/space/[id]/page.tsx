@@ -90,12 +90,8 @@ function SpacePageInner() {
   // never from raw URL param (e.g., "ram"). RLS checks user_id = auth.jwt()->>'sub'.
   const resolvedUserId = user?.uid ?? undefined;
 
-  // E2EE — only for phone-authenticated users (Firebase OTP).
-  // Dev-auto-login users (name_ prefix) use legacy plaintext path.
-  // E2EE requires persistent IndexedDB keys + Sender Key distribution
-  // which doesn't work across dev browser sessions.
-  const isPhoneAuth = resolvedUserId?.startsWith("phone_") ?? false;
-  const e2ee = useE2EE(isPhoneAuth ? resolvedUserId ?? null : null);
+  // E2EE re-enabled after fixing BUGs 1,2,5,6,9,11,15,20
+  const e2ee = useE2EE(resolvedUserId ?? null);
 
   const viewParam = searchParams.get("view");
   const [view, setView] = useState<ViewMode>(
@@ -160,8 +156,41 @@ function SpacePageInner() {
   useEffect(() => {
     if (authLoading || messagesLoaded.current) return;
 
-    fetchMessages(spaceId, { limit: 50 })
-      .then(async (persisted) => {
+    // BUG 9 fix: fetch ALL sender_key_dist messages first (not limited to 50)
+    // Then fetch regular messages
+    const fetchAllSkDist = async () => {
+      try {
+        const { data } = await supabase
+          .from("messages")
+          .select("id, space_id, role, content, user_id, sender_name, created_at, message_type, sender_device_id")
+          .eq("space_id", spaceId)
+          .eq("message_type", "sender_key_dist")
+          .order("created_at", { ascending: true });
+        return data ?? [];
+      } catch { return []; }
+    };
+
+    Promise.all([fetchAllSkDist(), fetchMessages(spaceId, { limit: 50 })])
+      .then(async ([skDistMsgs, persisted]) => {
+        // Process SK dist messages first (before regular decrypt)
+        if (e2ee.available && skDistMsgs.length > 0) {
+          for (const dm of skDistMsgs) {
+            try {
+              const cts = await fetchCiphertexts([dm.id]);
+              const myCt = cts.find(
+                (ct) => ct.recipient_id === resolvedUserId ||
+                  (ct.recipient_device_id === e2ee.deviceId && ct.recipient_id !== '_group_')
+              );
+              if (myCt && dm.user_id) {
+                const { processSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
+                await processSenderKeyDistribution(
+                  dm.user_id, dm.sender_device_id ?? 0, spaceId, myCt.ciphertext, myCt.ratchet_header ?? ''
+                );
+              }
+            } catch { /* continue */ }
+          }
+        }
+
         if (persisted.length === 0) {
           messagesLoaded.current = true;
           return;
@@ -559,25 +588,8 @@ function SpacePageInner() {
       try {
         const envelope = await e2ee.encrypt(txt, spaceId);
         if (envelope) {
-          // Broadcast encrypted envelope for instant delivery
-          if (channelRef.current) {
-            broadcastMessage(channelRef.current, {
-              id: userMsg.id,
-              space_id: spaceId,
-              role: "user",
-              content: null as unknown as string, // E2EE: server never sees plaintext
-              user_id: resolvedUserId ?? null,
-              sender_name: user?.displayName ?? userName ?? null,
-              created_at: new Date().toISOString(),
-              message_type: hasXarkTrigger ? "e2ee_xark" : "e2ee",
-              sender_device_id: e2ee.deviceId,
-              // E2EE payload for instant decrypt by recipients
-              ciphertext_b64: envelope.ciphertext,
-              ratchet_header_b64: envelope.ratchetHeader ?? null,
-            });
-          }
-
-          // Send encrypted message to server
+          // BUG 5 fix: send to server FIRST, then broadcast
+          // (ensures ciphertext rows exist in DB before recipients try to fetch)
           const res = await fetch("/api/message", {
             method: "POST",
             headers: {
@@ -603,16 +615,26 @@ function SpacePageInner() {
             console.error("[e2ee] /api/message failed:", data.error);
             // Fall through to legacy path below
           } else {
-            // Success — handle @xark response if any
-            if (data.xarkMessageId) {
-              // @xark will update the thinking placeholder via DB
-              // Poll or wait for Realtime to deliver the response
+            // Success — NOW broadcast for instant delivery (BUG 5 fix: after DB write)
+            if (channelRef.current) {
+              broadcastMessage(channelRef.current, {
+                id: userMsg.id,
+                space_id: spaceId,
+                role: "user",
+                content: null as unknown as string,
+                user_id: resolvedUserId ?? null,
+                sender_name: user?.displayName ?? userName ?? null,
+                created_at: new Date().toISOString(),
+                message_type: hasXarkTrigger ? "e2ee_xark" : "e2ee",
+                sender_device_id: e2ee.deviceId,
+                ciphertext_b64: envelope.ciphertext,
+                ratchet_header_b64: envelope.ratchetHeader ?? null,
+              });
             }
+
             if (!hasXarkTrigger) {
               setIsThinking(false);
             } else {
-              // Wait for @xark response via Realtime
-              // Set a timeout to stop thinking indicator
               setTimeout(() => setIsThinking(false), 30_000);
             }
             return;

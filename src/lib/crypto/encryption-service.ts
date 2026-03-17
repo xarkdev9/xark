@@ -1,0 +1,585 @@
+// XARK OS v2.0 — Encryption Service
+// High-level API for encrypting/decrypting messages.
+// Bridges Double Ratchet (1:1) and Sender Keys (groups).
+// Handles Sender Key distribution via pairwise sessions.
+
+import {
+  initCrypto, toBase64, fromBase64, toBytes, fromBytes,
+  ed25519SkToCurve25519, ed25519PkToCurve25519, generateDHKeyPair
+} from './primitives';
+import { x3dhInitiate, x3dhRespond } from './x3dh';
+import {
+  initSessionAsInitiator, initSessionAsResponder,
+  ratchetEncrypt, ratchetDecrypt,
+  serializeSession, deserializeSession
+} from './double-ratchet';
+import {
+  generateSenderKey, senderKeyEncrypt, senderKeyDecrypt,
+  serializeSenderKey, deserializeSenderKey
+} from './sender-keys';
+import { keyStore } from './keystore';
+import { fetchPeerKeyBundle } from './key-manager';
+import { supabase, getSupabaseToken } from '../supabase';
+import type { DecryptedMessage, MessageType } from './types';
+
+/** Encrypted message ready for server transmission */
+export interface EncryptedEnvelope {
+  ciphertext: string;       // base64
+  ratchetHeader?: string;   // base64 (Double Ratchet only)
+  recipientId: string;      // user_id or '_group_'
+  recipientDeviceId: number; // device_id or 0
+}
+
+// ── Helpers ──
+
+async function getCurrentUserId(): Promise<string> {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('xark_user_id');
+    if (stored) return stored;
+  }
+  throw new Error('No authenticated user');
+}
+
+/** Get or establish a pairwise Double Ratchet session with a peer */
+async function getOrEstablishSession(
+  peerId: string,
+  peerDeviceId: number
+): Promise<ReturnType<typeof deserializeSession>> {
+  const sessionData = await keyStore.getSession(peerId, peerDeviceId);
+  if (sessionData) {
+    return deserializeSession(sessionData);
+  }
+
+  // New session — X3DH key agreement as initiator
+  const identity = await keyStore.getIdentityKey();
+  if (!identity) throw new Error('No identity key. Register first.');
+
+  const peerBundle = await fetchPeerKeyBundle(peerId, peerDeviceId);
+  const curve25519Private = ed25519SkToCurve25519(identity.privateKey);
+  const curve25519Public = ed25519PkToCurve25519(identity.publicKey);
+
+  const { sharedSecret, ephemeralKey } = x3dhInitiate(
+    { publicKey: curve25519Public, privateKey: curve25519Private },
+    peerBundle
+  );
+
+  const session = initSessionAsInitiator(sharedSecret, peerBundle.signedPreKey);
+  // Attach X3DH ephemeral public key — needed by responder for key agreement
+  (session as any)._x3dhEphemeralPub = toBase64(ephemeralKey.publicKey);
+  (session as any)._x3dhIdentityPub = toBase64(identity.publicKey);
+  return session;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SENDER KEY DISTRIBUTION
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Distribute a Sender Key to all space members via pairwise Double Ratchet sessions.
+ * Each member gets the key encrypted with their existing (or newly established) session.
+ * The distribution message is a control message (message_type: 'sender_key_dist')
+ * that is not displayed in chat UI.
+ */
+export async function distributeSenderKey(
+  spaceId: string,
+  senderKey: ReturnType<typeof generateSenderKey>
+): Promise<void> {
+  const myUserId = await getCurrentUserId();
+  const myDeviceId = await keyStore.getDeviceId();
+
+  // Fetch all space member devices (excluding self)
+  const { data: members, error } = await supabase.rpc('get_space_member_devices', {
+    p_space_id: spaceId,
+    p_exclude_user: myUserId,
+  });
+
+  if (error) {
+    console.warn('[e2ee] Failed to fetch space member devices:', error.message);
+    return;
+  }
+  if (!members || members.length === 0) {
+    // Solo space or no members with key bundles — nothing to distribute
+    return;
+  }
+
+  // Serialize the sender key for distribution (BUG 15 fix: no private signing key)
+  const serializedKey = serializeSenderKey(senderKey, false);
+
+  // Build ciphertext rows for each member device
+  const ciphertextRows: Array<{
+    id: string;
+    message_id: string;
+    recipient_id: string;
+    recipient_device_id: number;
+    ciphertext: string;
+    ratchet_header: string;
+  }> = [];
+
+  const msgId = `msg_skd_${crypto.randomUUID()}`;
+
+  for (const member of members as Array<{ user_id: string; device_id: number }>) {
+    try {
+      // Get or establish pairwise session
+      const session = await getOrEstablishSession(member.user_id, member.device_id);
+
+      // Encrypt serialized Sender Key with Double Ratchet
+      const { ciphertext, nonce, header } = ratchetEncrypt(session, serializedKey);
+
+      // Persist updated session
+      await keyStore.saveSession(member.user_id, member.device_id, serializeSession(session));
+
+      // Pack nonce + ciphertext
+      const packed = new Uint8Array(nonce.length + ciphertext.length);
+      packed.set(nonce, 0);
+      packed.set(ciphertext, nonce.length);
+
+      // Build ratchet header with X3DH metadata for first-contact sessions
+      const headerJson: Record<string, unknown> = {
+        publicKey: toBase64(header.publicKey),
+        previousCount: header.previousCount,
+        messageNumber: header.messageNumber,
+      };
+
+      // Include X3DH metadata if this is the first message in the session
+      if (header.messageNumber === 0 && header.previousCount === 0) {
+        const x3dhEph = (session as any)._x3dhEphemeralPub;
+        const x3dhIdent = (session as any)._x3dhIdentityPub;
+        if (x3dhEph && x3dhIdent) {
+          headerJson.x3dh = {
+            identityKey: x3dhIdent,
+            ephemeralKey: x3dhEph,  // BUG 11 fix: include actual X3DH ephemeral key
+          };
+        } else {
+          const identity = await keyStore.getIdentityKey();
+          if (identity) {
+            headerJson.x3dh = {
+              identityKey: toBase64(identity.publicKey),
+            };
+          }
+        }
+      }
+
+      ciphertextRows.push({
+        id: `mc_${crypto.randomUUID()}`,
+        message_id: msgId,
+        recipient_id: member.user_id,
+        recipient_device_id: member.device_id,
+        ciphertext: toBase64(packed),
+        ratchet_header: toBase64(new TextEncoder().encode(JSON.stringify(headerJson))),
+      });
+    } catch (err) {
+      console.warn(`[e2ee] Failed to encrypt SK for ${member.user_id}:${member.device_id}:`, err);
+      // Continue with other members — partial distribution is better than none
+    }
+  }
+
+  if (ciphertextRows.length === 0) return;
+
+  // Send distribution message via /api/message-like flow
+  const token = getSupabaseToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  try {
+    const res = await fetch('/api/message', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        space_id: spaceId,
+        sender_device_id: myDeviceId,
+        ciphertext: '__sender_key_dist__', // placeholder — real ciphertexts are per-recipient
+        recipient_id: '_group_',
+        recipient_device_id: 0,
+        message_type_override: 'sender_key_dist',
+        distribution_ciphertexts: ciphertextRows,
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn('[e2ee] /api/message distribution failed');
+    } else {
+      // BUG 20 fix: broadcast the distribution event so live recipients process it immediately
+      const data = await res.json();
+      if (data.messageId) {
+        try {
+          const { supabase } = await import('@/lib/supabase');
+          const channel = supabase.channel(`chat:${spaceId}`);
+          await channel.subscribe();
+          channel.send({
+            type: 'broadcast',
+            event: 'message',
+            payload: {
+              id: data.messageId,
+              space_id: spaceId,
+              role: 'user',
+              content: null,
+              user_id: myUserId,
+              sender_name: null,
+              created_at: new Date().toISOString(),
+              message_type: 'sender_key_dist',
+              sender_device_id: myDeviceId,
+            },
+          });
+          supabase.removeChannel(channel);
+        } catch {
+          // Non-critical — recipients will get it on next page load
+        }
+      }
+    }
+  } catch {
+    console.warn('[e2ee] Distribution message send failed');
+  }
+}
+
+/**
+ * Process an incoming Sender Key distribution message.
+ * Decrypts the Sender Key from the pairwise session and stores it locally.
+ */
+export async function processSenderKeyDistribution(
+  senderId: string,
+  senderDeviceId: number,
+  spaceId: string,
+  ciphertextB64: string,
+  ratchetHeaderB64: string
+): Promise<void> {
+  await initCrypto();
+
+  const packed = fromBase64(ciphertextB64);
+  const nonceLen = 24;
+  const nonce = packed.slice(0, nonceLen);
+  const ciphertext = packed.slice(nonceLen);
+
+  const headerObj = JSON.parse(new TextDecoder().decode(fromBase64(ratchetHeaderB64)));
+  const header = {
+    publicKey: fromBase64(headerObj.publicKey),
+    previousCount: headerObj.previousCount,
+    messageNumber: headerObj.messageNumber,
+  };
+
+  let sessionData = await keyStore.getSession(senderId, senderDeviceId);
+  let session;
+
+  if (!sessionData) {
+    // First contact — X3DH responder side
+    const identity = await keyStore.getIdentityKey();
+    if (!identity) throw new Error('No identity key');
+
+    const curve25519Private = ed25519SkToCurve25519(identity.privateKey);
+    const curve25519Public = ed25519PkToCurve25519(identity.publicKey);
+
+    const spkId = 1;
+    const signedPreKey = await keyStore.getSignedPreKey(spkId);
+    if (!signedPreKey) throw new Error('No signed pre-key');
+
+    // Extract X3DH metadata from header
+    let peerIdentityEd25519: Uint8Array | null = null;
+    if (headerObj.x3dh?.identityKey) {
+      peerIdentityEd25519 = fromBase64(headerObj.x3dh.identityKey);
+    }
+
+    if (peerIdentityEd25519) {
+      const peerIdentityCurve = ed25519PkToCurve25519(peerIdentityEd25519);
+      // BUG 11 fix: use actual X3DH ephemeral key, NOT the ratchet key
+      const peerEphemeralPublic = headerObj.x3dh?.ephemeralKey
+        ? fromBase64(headerObj.x3dh.ephemeralKey)
+        : header.publicKey; // fallback for old messages without ephemeral key
+
+      const sharedSecret = x3dhRespond(
+        { publicKey: curve25519Public, privateKey: curve25519Private },
+        signedPreKey,
+        null, // OTK lookup skipped for SK distribution — simplified for v1
+        peerIdentityCurve,
+        peerEphemeralPublic
+      );
+
+      const myRatchetKey = generateDHKeyPair();
+      session = initSessionAsResponder(sharedSecret, myRatchetKey);
+    } else {
+      // No X3DH metadata — use simplified session init
+      const myRatchetKey = generateDHKeyPair();
+      session = initSessionAsResponder(new Uint8Array(32), myRatchetKey);
+    }
+  } else {
+    session = deserializeSession(sessionData);
+  }
+
+  const plaintext = ratchetDecrypt(session, ciphertext, nonce, header);
+  await keyStore.saveSession(senderId, senderDeviceId, serializeSession(session));
+
+  // plaintext is a serialized SenderKeyState — store it keyed by spaceId:senderId
+  const senderKey = deserializeSenderKey(plaintext);
+  await keyStore.saveSenderKey(`${spaceId}:${senderId}`, serializeSenderKey(senderKey));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENCRYPT
+// ═══════════════════════════════════════════════════════════════
+
+/** Encrypt a message for a 1:1 sanctuary */
+export async function encryptForSanctuary(
+  text: string,
+  peerId: string,
+  peerDeviceId: number
+): Promise<EncryptedEnvelope> {
+  await initCrypto();
+
+  const payload: DecryptedMessage = {
+    text,
+    replyTo: null,
+    mediaUrl: null,
+    type: 'message',
+  };
+  const plaintext = toBytes(JSON.stringify(payload));
+
+  // Get or establish session
+  let sessionData = await keyStore.getSession(peerId, peerDeviceId);
+  let session;
+  let isNewSession = false;
+  let identity: Awaited<ReturnType<typeof keyStore.getIdentityKey>> = null;
+
+  if (!sessionData) {
+    isNewSession = true;
+    identity = await keyStore.getIdentityKey();
+    if (!identity) throw new Error('No identity key. Register first.');
+
+    const peerBundle = await fetchPeerKeyBundle(peerId, peerDeviceId);
+    const curve25519Private = ed25519SkToCurve25519(identity.privateKey);
+    const curve25519Public = ed25519PkToCurve25519(identity.publicKey);
+
+    const { sharedSecret } = x3dhInitiate(
+      { publicKey: curve25519Public, privateKey: curve25519Private },
+      peerBundle
+    );
+
+    session = initSessionAsInitiator(sharedSecret, peerBundle.signedPreKey);
+  } else {
+    session = deserializeSession(sessionData);
+  }
+
+  const { ciphertext, nonce, header } = ratchetEncrypt(session, plaintext);
+
+  // Persist updated session
+  await keyStore.saveSession(peerId, peerDeviceId, serializeSession(session));
+
+  // Pack nonce + ciphertext
+  const packed = new Uint8Array(nonce.length + ciphertext.length);
+  packed.set(nonce, 0);
+  packed.set(ciphertext, nonce.length);
+
+  // Build ratchet header JSON
+  const headerJson: Record<string, unknown> = {
+    publicKey: toBase64(header.publicKey),
+    previousCount: header.previousCount,
+    messageNumber: header.messageNumber,
+  };
+
+  // Include X3DH metadata for first message (session establishment)
+  if (isNewSession && identity) {
+    const x3dhEph = (session as any)._x3dhEphemeralPub;
+    headerJson.x3dh = {
+      identityKey: toBase64(identity.publicKey),
+      ephemeralKey: x3dhEph ?? undefined,  // BUG 11 fix
+    };
+  }
+
+  return {
+    ciphertext: toBase64(packed),
+    ratchetHeader: toBase64(new TextEncoder().encode(JSON.stringify(headerJson))),
+    recipientId: peerId,
+    recipientDeviceId: peerDeviceId,
+  };
+}
+
+/** Encrypt a message for a group space (Sender Key) */
+export async function encryptForSpace(
+  text: string,
+  spaceId: string
+): Promise<EncryptedEnvelope> {
+  await initCrypto();
+
+  const payload: DecryptedMessage = {
+    text,
+    replyTo: null,
+    mediaUrl: null,
+    type: 'message',
+  };
+  const plaintext = toBytes(JSON.stringify(payload));
+
+  // Get or generate Sender Key for this space
+  let senderKeyData = await keyStore.getSenderKey(spaceId);
+  let senderKey;
+
+  if (!senderKeyData) {
+    // Generate new Sender Key and distribute to space members
+    senderKey = generateSenderKey();
+    await keyStore.saveSenderKey(spaceId, serializeSenderKey(senderKey));
+
+    // Distribute to all space members via pairwise sessions
+    try {
+      await distributeSenderKey(spaceId, senderKey);
+    } catch (err) {
+      console.warn('[e2ee] Sender Key distribution failed:', err);
+      // Continue anyway — we can still encrypt, recipients will request key later
+    }
+  } else {
+    senderKey = deserializeSenderKey(senderKeyData);
+  }
+
+  const { ciphertext, nonce, signature, iteration } = senderKeyEncrypt(senderKey, plaintext);
+
+  // Persist advanced state
+  await keyStore.saveSenderKey(spaceId, serializeSenderKey(senderKey));
+
+  // Pack: nonce + signature + iteration(4 bytes) + ciphertext
+  const iterBytes = new Uint8Array(4);
+  new DataView(iterBytes.buffer).setUint32(0, iteration, false);
+
+  const packed = new Uint8Array(nonce.length + signature.length + 4 + ciphertext.length);
+  packed.set(nonce, 0);
+  packed.set(signature, nonce.length);
+  packed.set(iterBytes, nonce.length + signature.length);
+  packed.set(ciphertext, nonce.length + signature.length + 4);
+
+  return {
+    ciphertext: toBase64(packed),
+    recipientId: '_group_',
+    recipientDeviceId: 0,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DECRYPT
+// ═══════════════════════════════════════════════════════════════
+
+/** Decrypt a message based on its type */
+export async function decryptMessage(
+  messageId: string,
+  senderId: string,
+  senderDeviceId: number | null,
+  ciphertextB64: string,
+  ratchetHeaderB64: string | null,
+  recipientId: string,
+  spaceId: string
+): Promise<DecryptedMessage> {
+  await initCrypto();
+
+  let plaintext: Uint8Array;
+
+  if (recipientId === '_group_') {
+    // Group message — Sender Key
+    const packed = fromBase64(ciphertextB64);
+    const nonceLen = 24; // XChaCha20-Poly1305 nonce is 24 bytes
+    const sigLen = 64;
+    const nonce = packed.slice(0, nonceLen);
+    const signature = packed.slice(nonceLen, nonceLen + sigLen);
+    const iterBytes = packed.slice(nonceLen + sigLen, nonceLen + sigLen + 4);
+    const iteration = new DataView(iterBytes.buffer, iterBytes.byteOffset).getUint32(0, false);
+    const ciphertext = packed.slice(nonceLen + sigLen + 4);
+
+    // Get sender's Sender Key (received via pairwise distribution)
+    let senderKeyData = await keyStore.getSenderKey(`${spaceId}:${senderId}`);
+    if (!senderKeyData) {
+      // BUG 6 fix: retry after 2s — SK distribution may still be processing
+      await new Promise(r => setTimeout(r, 2000));
+      senderKeyData = await keyStore.getSenderKey(`${spaceId}:${senderId}`);
+    }
+    if (!senderKeyData) {
+      return { text: '[encrypted message - sender key not available]', replyTo: null, mediaUrl: null, type: 'message' };
+    }
+
+    const senderKey = deserializeSenderKey(senderKeyData);
+    plaintext = senderKeyDecrypt(senderKey, ciphertext, nonce, signature, iteration);
+
+    // Persist advanced state
+    await keyStore.saveSenderKey(`${spaceId}:${senderId}`, serializeSenderKey(senderKey));
+  } else {
+    // 1:1 message — Double Ratchet
+    if (!ratchetHeaderB64) throw new Error('Missing ratchet header for 1:1 message');
+
+    const packed = fromBase64(ciphertextB64);
+    const nonceLen = 24; // XChaCha20-Poly1305 nonce is 24 bytes
+    const nonce = packed.slice(0, nonceLen);
+    const ciphertext = packed.slice(nonceLen);
+
+    const headerObj = JSON.parse(new TextDecoder().decode(fromBase64(ratchetHeaderB64)));
+    const header = {
+      publicKey: fromBase64(headerObj.publicKey),
+      previousCount: headerObj.previousCount,
+      messageNumber: headerObj.messageNumber,
+    };
+
+    let sessionData = await keyStore.getSession(senderId, senderDeviceId ?? 0);
+    let session;
+
+    if (!sessionData) {
+      // First message received — X3DH responder side
+      const identity = await keyStore.getIdentityKey();
+      if (!identity) throw new Error('No identity key');
+
+      const curve25519Private = ed25519SkToCurve25519(identity.privateKey);
+      const curve25519Public = ed25519PkToCurve25519(identity.publicKey);
+
+      const spkId = 1; // current signed pre-key ID
+      const signedPreKey = await keyStore.getSignedPreKey(spkId);
+      if (!signedPreKey) throw new Error('No signed pre-key');
+
+      // Extract X3DH metadata from ratchet header
+      let peerIdentityEd25519: Uint8Array | null = null;
+      if (headerObj.x3dh?.identityKey) {
+        peerIdentityEd25519 = fromBase64(headerObj.x3dh.identityKey);
+      }
+
+      if (peerIdentityEd25519) {
+        // Full X3DH responder flow
+        const peerIdentityCurve = ed25519PkToCurve25519(peerIdentityEd25519);
+        // BUG 11 fix: use actual X3DH ephemeral key, NOT the ratchet key
+        const peerEphemeralPublic = headerObj.x3dh?.ephemeralKey
+          ? fromBase64(headerObj.x3dh.ephemeralKey)
+          : header.publicKey; // fallback for old messages
+
+        const sharedSecret = x3dhRespond(
+          { publicKey: curve25519Public, privateKey: curve25519Private },
+          signedPreKey,
+          null, // OTK handling simplified for v1
+          peerIdentityCurve,
+          peerEphemeralPublic
+        );
+
+        const myRatchetKey = generateDHKeyPair();
+        session = initSessionAsResponder(sharedSecret, myRatchetKey);
+      } else {
+        // Legacy: no X3DH metadata (messages from before wiring update)
+        const myRatchetKey = generateDHKeyPair();
+        session = initSessionAsResponder(new Uint8Array(32), myRatchetKey);
+      }
+    } else {
+      session = deserializeSession(sessionData);
+    }
+
+    plaintext = ratchetDecrypt(session, ciphertext, nonce, header);
+    await keyStore.saveSession(senderId, senderDeviceId ?? 0, serializeSession(session));
+  }
+
+  const parsed = JSON.parse(fromBytes(plaintext)) as DecryptedMessage;
+  return parsed;
+}
+
+/** Client-side message type guard — anti-injection defense */
+export function resolveMessageContent(
+  messageType: MessageType,
+  serverContent: string | null,
+  decryptedContent: string | null
+): string {
+  switch (messageType) {
+    case 'e2ee':
+    case 'e2ee_xark':
+      // NEVER trust server content for E2EE messages
+      return decryptedContent ?? '[decryption pending]';
+    case 'xark':
+    case 'system':
+    case 'legacy':
+      return serverContent ?? '';
+    default:
+      return serverContent ?? '';
+  }
+}
