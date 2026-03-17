@@ -2,10 +2,9 @@
 // The "Manifestation Loop": Dream → Space → Seed Item → Transit
 // Optimistic: UI navigates immediately, DB write is parallel.
 
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "./firebase";
 import { supabase } from "./supabase";
 import { fetchDestinationPhoto } from "./unsplash";
+import { storageAdapter } from "./storage";
 
 function generateId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -73,10 +72,10 @@ export async function createSpace(
     atmosphere,
   });
 
-  // 2. Explicitly add creator as owner in space_members (bug B4 fix)
-  await supabase.from("space_members").upsert(
-    { space_id: spaceId, user_id: ownerId, role: "owner" },
-    { onConflict: "space_id,user_id" }
+  // 2. Explicitly add creator as owner in space_members
+  // Use insert (not upsert) — upsert's SELECT check fails when user isn't a member yet
+  await supabase.from("space_members").insert(
+    { space_id: spaceId, user_id: ownerId, role: "owner" }
   );
 
   // 3. If inviting someone, look them up and add as member
@@ -127,16 +126,12 @@ export async function createSpace(
 
     let heroUrl = photo.imageUrl; // Fallback: Unsplash CDN URL
 
-    // Upload to Firebase Storage if available — eliminates Unsplash dependency
-    if (storage) {
-      try {
-        const storagePath = `heroes/${spaceId}/hero.jpg`;
-        const storageRef = ref(storage, storagePath);
-        await uploadBytes(storageRef, photo.imageBlob, { contentType: "image/jpeg" });
-        heroUrl = await getDownloadURL(storageRef);
-      } catch {
-        // Firebase upload failed — fall back to Unsplash URL
-      }
+    // Upload to storage adapter — eliminates Unsplash dependency
+    try {
+      const storagePath = `heroes/${spaceId}/hero.jpg`;
+      heroUrl = await storageAdapter.upload(storagePath, photo.imageBlob, "image/jpeg");
+    } catch {
+      // Storage upload failed — fall back to Unsplash URL
     }
 
     supabase
