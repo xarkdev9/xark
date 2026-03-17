@@ -15,6 +15,7 @@ export function generateSenderKey(): SenderKeyState {
     chainKey: randomBytes(32),
     signingKey: generateSigningKeyPair(),
     iteration: 0,
+    createdAt: Date.now(),
   };
 }
 
@@ -80,44 +81,64 @@ export function senderKeyDecrypt(
 
 // ── Serialization ──
 
-/** Serialize Sender Key state for storage or distribution.
- *  BUG 15 fix: private signing key is ONLY included for local storage (own key).
- *  Distribution to other members includes only the public key (for verification). */
-export function serializeSenderKey(state: SenderKeyState, includePrivate = true): Uint8Array {
-  const obj: Record<string, unknown> = {
+/** Serialize for LOCAL STORAGE ONLY — includes private signing key.
+ *  NEVER send the output of this function over the network. */
+export function serializeSenderKeyForStorage(state: SenderKeyState): Uint8Array {
+  const obj = {
     chainKey: toBase64(state.chainKey),
     signingKey: {
       pub: toBase64(state.signingKey.publicKey),
-      ...(includePrivate && state.signingKey.privateKey.length > 0
-        ? { priv: toBase64(state.signingKey.privateKey) }
-        : {}),
+      priv: toBase64(state.signingKey.privateKey),
     },
     iteration: state.iteration,
+    ...(state.createdAt && { createdAt: state.createdAt }),
   };
   return new TextEncoder().encode(JSON.stringify(obj));
 }
 
-/** Deserialize Sender Key state */
+/** Serialize for DISTRIBUTION to group members — NEVER includes private signing key.
+ *  Recipients only need the public key for signature verification. */
+export function serializeSenderKeyForDistribution(state: SenderKeyState): Uint8Array {
+  const obj = {
+    chainKey: toBase64(state.chainKey),
+    signingKey: {
+      pub: toBase64(state.signingKey.publicKey),
+      // Private key INTENTIONALLY OMITTED — BUG 15 fix
+    },
+    iteration: state.iteration,
+    ...(state.createdAt && { createdAt: state.createdAt }),
+  };
+  return new TextEncoder().encode(JSON.stringify(obj));
+}
+
+/** Deserialize Sender Key state (handles both storage and distribution formats) */
 export function deserializeSenderKey(data: Uint8Array): SenderKeyState {
   const obj = JSON.parse(new TextDecoder().decode(data));
   return {
     chainKey: fromBase64(obj.chainKey),
     signingKey: {
       publicKey: fromBase64(obj.signingKey.pub),
-      // Private key may be absent in distributed keys (BUG 15 fix)
+      // Private key absent in distributed keys — empty array signals "received key"
       privateKey: obj.signingKey.priv ? fromBase64(obj.signingKey.priv) : new Uint8Array(0),
     } as RawKeyPair,
     iteration: obj.iteration,
+    createdAt: obj.createdAt,
   };
 }
 
-/** Create a distribution message (sent via pairwise Double Ratchet session) */
+/** Create a distribution message — ALWAYS uses safe serialization (no private key) */
 export function createSenderKeyDistribution(
   spaceId: string,
   state: SenderKeyState
 ): { spaceId: string; serializedKey: Uint8Array } {
   return {
     spaceId,
-    serializedKey: serializeSenderKey(state),
+    serializedKey: serializeSenderKeyForDistribution(state),
   };
+}
+
+/** Rotate Sender Key for a space — called when a member leaves.
+ *  Generates fresh key material. Old key should be archived for historical decrypt. */
+export function rotateSenderKey(): SenderKeyState {
+  return generateSenderKey();
 }
