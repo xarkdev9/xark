@@ -47,30 +47,37 @@ export async function registerKeys(): Promise<{
   await keyStore.saveSignedPreKey(signedPreKeyId, signedPreKey);
   await keyStore.saveOneTimePreKeys(otks.map(o => ({ id: o.id, keyPair: o.keyPair })));
 
-  // 5. Upload public keys to server
-  const { error: bundleError } = await supabase.from('key_bundles').upsert({
-    user_id: await getCurrentUserId(),
-    device_id: deviceId,
-    identity_key: toBase64(identity.ed25519.publicKey),
-    signed_pre_key: toBase64(signedPreKey.publicKey),
-    signed_pre_key_id: signedPreKeyId,
-    pre_key_sig: toBase64(spkSignature),
+  // 5. Upload public keys via API route (rate limited + validated)
+  const bundleRes = await fetch('/api/keys/bundle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      device_id: deviceId,
+      identity_key: toBase64(identity.ed25519.publicKey),
+      signed_pre_key: toBase64(signedPreKey.publicKey),
+      signed_pre_key_id: signedPreKeyId,
+      pre_key_sig: toBase64(spkSignature),
+    }),
   });
-  if (bundleError) throw new Error(`Failed to upload key bundle: ${bundleError.message}`);
+  if (!bundleRes.ok) {
+    const err = await bundleRes.text().catch(() => 'unknown');
+    throw new Error(`Failed to upload key bundle: ${bundleRes.status} ${err}`);
+  }
 
-  // 6. Upload OTK public keys
-  const otkRows = otks.map(o => ({
+  // 6. Upload OTK public keys via API route
+  const otkPayload = otks.map(o => ({
     id: o.id,
-    user_id: '', // will be set by getCurrentUserId
-    device_id: deviceId,
     public_key: toBase64(o.keyPair.publicKey),
   }));
-  // Set user_id
-  const userId = await getCurrentUserId();
-  for (const row of otkRows) row.user_id = userId;
-
-  const { error: otkError } = await supabase.from('one_time_pre_keys').insert(otkRows);
-  if (otkError) throw new Error(`Failed to upload OTKs: ${otkError.message}`);
+  const otkRes = await fetch('/api/keys/otk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ device_id: deviceId, keys: otkPayload }),
+  });
+  if (!otkRes.ok) {
+    const err = await otkRes.text().catch(() => 'unknown');
+    throw new Error(`Failed to upload OTKs: ${otkRes.status} ${err}`);
+  }
 
   return {
     deviceId,
@@ -137,17 +144,22 @@ export async function replenishOTKsIfNeeded(): Promise<void> {
   // Store locally
   await keyStore.saveOneTimePreKeys(otks.map(o => ({ id: o.id, keyPair: o.keyPair })));
 
-  // Upload public keys
-  const otkRows = otks.map(o => ({
+  // Upload public keys via API route (rate limited + validated)
+  const otkPayload = otks.map(o => ({
     id: o.id,
-    user_id: userId,
-    device_id: deviceId,
     public_key: toBase64(o.keyPair.publicKey),
   }));
-
-  const { error } = await supabase.from('one_time_pre_keys').upsert(otkRows, { onConflict: 'id' });
-  if (error) console.warn('[xark-e2ee] OTK upload failed:', error.message);
-  else console.log(`[xark-e2ee] Replenished ${OTK_BATCH_SIZE} OTKs`);
+  const otkRes = await fetch('/api/keys/otk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ device_id: deviceId, keys: otkPayload }),
+  });
+  if (!otkRes.ok) {
+    const err = await otkRes.text().catch(() => 'unknown');
+    console.warn(`[xark-e2ee] OTK upload failed: ${otkRes.status} ${err}`);
+  } else {
+    console.log(`[xark-e2ee] Replenished ${OTK_BATCH_SIZE} OTKs`);
+  }
 }
 
 /** Create encrypted backup of keys */
