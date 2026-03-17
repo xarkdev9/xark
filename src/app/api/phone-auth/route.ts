@@ -19,11 +19,17 @@ function getFirebaseAdmin() {
 
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (serviceAccountJson) {
-    // Handle literal newlines in private_key (Vercel env vars may have actual \n bytes)
-    const sanitized = serviceAccountJson.replace(/\n/g, "\\n").replace(/\\\\n/g, "\\n");
-    const serviceAccount = JSON.parse(sanitized) as ServiceAccount;
-    const app = initializeApp({ credential: cert(serviceAccount) });
-    return getAuth(app);
+    try {
+      // Handle literal newlines in private_key (Vercel env vars may have actual \n bytes)
+      const sanitized = serviceAccountJson.replace(/\n/g, "\\n").replace(/\\\\n/g, "\\n");
+      const serviceAccount = JSON.parse(sanitized) as ServiceAccount;
+      const app = initializeApp({ credential: cert(serviceAccount) });
+      return getAuth(app);
+    } catch (parseErr) {
+      console.error("[phone-auth] Firebase service account parse error:", parseErr);
+      console.error("[phone-auth] JSON first 200 chars:", serviceAccountJson.slice(0, 200));
+      return null;
+    }
   }
 
   // Fallback: use project ID only (works in GCP environments)
