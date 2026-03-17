@@ -26,16 +26,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "too many actions" }, { status: 429 });
   }
 
-  // ── Membership check (CRITICAL: supabaseAdmin bypasses RLS) ──
-  const { data: member } = await supabaseAdmin
-    .from("space_members")
-    .select("user_id")
-    .eq("space_id", spaceId)
-    .eq("user_id", auth.userId)
-    .single();
+  // ── Membership check (skip for create_space — space doesn't exist yet) ──
+  if (action !== "create_space") {
+    const { data: member } = await supabaseAdmin
+      .from("space_members")
+      .select("user_id")
+      .eq("space_id", spaceId)
+      .eq("user_id", auth.userId)
+      .single();
 
-  if (!member) {
-    return NextResponse.json({ error: "not a member" }, { status: 403 });
+    if (!member) {
+      return NextResponse.json({ error: "not a member" }, { status: 403 });
+    }
   }
 
   try {
@@ -165,6 +167,56 @@ export async function POST(req: Request) {
       });
 
       return NextResponse.json({ ok: true });
+    }
+
+    // ── create_space — atomic: space + creator member + optional invite + seed message ──
+    if (action === "create_space") {
+      const { title, invite_username, atmosphere } = payload ?? {};
+      if (!title) return NextResponse.json({ error: "missing title" }, { status: 400 });
+
+      const slug = String(title).toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 40);
+      const newSpaceId = `space_${slug}`;
+
+      // Create space
+      await supabaseAdmin.from("spaces").upsert({
+        id: newSpaceId,
+        title: String(title).toLowerCase().trim(),
+        owner_id: auth.userId,
+        atmosphere: atmosphere ?? "cyan_horizon",
+      }, { onConflict: "id" });
+
+      // Add creator as member
+      await supabaseAdmin.from("space_members").upsert(
+        { space_id: newSpaceId, user_id: auth.userId, role: "owner" },
+        { onConflict: "space_id,user_id" }
+      );
+
+      // Invite another user by display_name
+      if (invite_username) {
+        const { data: invitedUser } = await supabaseAdmin
+          .from("users")
+          .select("id")
+          .ilike("display_name", String(invite_username))
+          .single();
+        if (invitedUser) {
+          await supabaseAdmin.from("space_members").upsert(
+            { space_id: newSpaceId, user_id: invitedUser.id, role: "member" },
+            { onConflict: "space_id,user_id" }
+          );
+        }
+      }
+
+      // Seed message
+      await supabaseAdmin.from("messages").insert({
+        id: `msg_${crypto.randomUUID()}`,
+        space_id: newSpaceId,
+        role: "user",
+        content: invite_username ? `started a chat` : `started planning ${String(title).toLowerCase()}`,
+        user_id: auth.userId,
+        sender_name: actorName ?? null,
+      });
+
+      return NextResponse.json({ ok: true, spaceId: newSpaceId });
     }
 
     return NextResponse.json({ error: `unknown action: ${action}` }, { status: 400 });

@@ -53,6 +53,12 @@ function GalaxyContent() {
   // Known contacts — derived from space members
   const [knownContacts, setKnownContacts] = useState<string[]>([]);
   const [firstChatDone, setFirstChatDone] = useState(false);
+  // New chat/group flow
+  const [showNewSheet, setShowNewSheet] = useState(false);
+  const [showUserPicker, setShowUserPicker] = useState(false);
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; display_name: string }>>([]);
+  const [showGroupInput, setShowGroupInput] = useState(false);
+  const [groupName, setGroupName] = useState("");
   // Playground spaces — computed client-side only (uses Date.now())
   const [pgSpaces, setPgSpaces] = useState<ReturnType<typeof getPlaygroundSpaces>>([]);
   useEffect(() => { setPgSpaces(getPlaygroundSpaces()); }, []);
@@ -85,6 +91,12 @@ function GalaxyContent() {
     }
   }, [userId]);
 
+  // Fetch all users for contact picker
+  const fetchAllUsers = useCallback(async () => {
+    const { data } = await supabase.from("users").select("id, display_name").neq("id", userId).order("display_name");
+    if (data) setAllUsers(data.filter(u => u.display_name));
+  }, [userId]);
+
   // Auto-resize textarea (max ~4 lines)
   const autoResize = useCallback(() => {
     const el = inputRef.current;
@@ -106,6 +118,26 @@ function GalaxyContent() {
   const handlePersonTap = (spaceId: string) => {
     router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}`);
   };
+
+  const handleNewChat = useCallback((contact: { id: string; display_name: string }) => {
+    const title = `${userName} & ${contact.display_name}`;
+    const spaceId = getOptimisticSpaceId(title);
+    setShowUserPicker(false);
+    setShowNewSheet(false);
+    handlePersonTap(spaceId);
+    createSpace(title, userId, contact.display_name).catch(() => {});
+  }, [userId, userName, handlePersonTap]);
+
+  const handleNewGroup = useCallback(() => {
+    const name = groupName.trim();
+    if (!name) return;
+    const spaceId = getOptimisticSpaceId(name);
+    setShowGroupInput(false);
+    setShowNewSheet(false);
+    setGroupName("");
+    handleSpaceTap(spaceId);
+    createSpace(name, userId).catch(() => {});
+  }, [groupName, userId, handleSpaceTap]);
 
   // Start a chat with a contact (People tab)
   const startChat = useCallback((contactName: string) => {
@@ -481,6 +513,158 @@ function GalaxyContent() {
           )}
         </div>
       </div>
+
+      {/* ── Floating "+" button ── */}
+      <motion.div
+        className="fixed z-[25]"
+        style={{ bottom: "72px", right: "24px" }}
+        whileTap={{ scale: 0.9 }}
+      >
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => { setShowNewSheet(true); }}
+          onKeyDown={(e) => { if (e.key === "Enter") setShowNewSheet(true); }}
+          className="outline-none cursor-pointer"
+          style={{
+            width: "48px",
+            height: "48px",
+            borderRadius: "50%",
+            background: "#FF6B35",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 16px rgba(255,107,53,0.35)",
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </div>
+      </motion.div>
+
+      {/* ── New chat/group sheet ── */}
+      <AnimatePresence>
+        {showNewSheet && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[30]"
+              style={{ background: "#000" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowNewSheet(false); setShowUserPicker(false); setShowGroupInput(false); }}
+            />
+            <motion.div
+              className="fixed inset-x-0 bottom-0 z-[31] px-6 pb-8"
+              style={{ background: surface.chrome, borderRadius: "20px 20px 0 0", maxHeight: "70vh", overflowY: "auto" }}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            >
+              <div className="mx-auto pt-4 pb-2" style={{ maxWidth: layout.maxWidth }}>
+                <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: ink.tertiary, opacity: 0.3, margin: "0 auto 16px" }} />
+
+                {!showUserPicker && !showGroupInput && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => { setShowUserPicker(true); fetchAllUsers(); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { setShowUserPicker(true); fetchAllUsers(); } }}
+                      className="outline-none cursor-pointer"
+                      style={{ padding: "14px 0", display: "flex", alignItems: "center", gap: "14px" }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ink.primary} strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      <span style={{ ...text.body, color: ink.primary }}>new chat</span>
+                    </div>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setShowGroupInput(true)}
+                      onKeyDown={(e) => { if (e.key === "Enter") setShowGroupInput(true); }}
+                      className="outline-none cursor-pointer"
+                      style={{ padding: "14px 0", display: "flex", alignItems: "center", gap: "14px" }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ink.primary} strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                      </svg>
+                      <span style={{ ...text.body, color: ink.primary }}>new group</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* User picker */}
+                {showUserPicker && (
+                  <div>
+                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "12px" }}>pick a friend</p>
+                    {allUsers.length === 0 && (
+                      <p style={{ ...text.hint, color: ink.tertiary }}>no other users on xark yet</p>
+                    )}
+                    {allUsers.map((u) => (
+                      <div
+                        key={u.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleNewChat(u)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleNewChat(u); }}
+                        className="outline-none cursor-pointer"
+                        style={{ padding: "10px 0", display: "flex", alignItems: "center", gap: "12px" }}
+                      >
+                        <Avatar name={u.display_name} size={36} />
+                        <span style={{ ...text.body, color: ink.primary }}>{u.display_name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Group name input */}
+                {showGroupInput && (
+                  <div>
+                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "12px" }}>group name</p>
+                    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                      <input
+                        type="text"
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleNewGroup(); }}
+                        placeholder="new york trip"
+                        autoFocus
+                        className="outline-none"
+                        style={{
+                          ...text.body,
+                          flex: 1,
+                          color: ink.primary,
+                          background: "transparent",
+                          padding: "10px 0",
+                          caretColor: "#FF6B35",
+                        }}
+                      />
+                      {groupName.trim() && (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={handleNewGroup}
+                          className="outline-none cursor-pointer"
+                        >
+                          <SendIcon color="#FF6B35" size={28} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ── Void fill below input ── */}
       <div

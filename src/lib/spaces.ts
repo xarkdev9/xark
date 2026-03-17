@@ -60,64 +60,32 @@ export async function createSpace(
   const spaceId = generateSpaceId(title);
   const seedItemTitle = generateSeedTitle(dream);
 
-  // Personal chat (just "@name", no other content) → sanctuary atmosphere
-  const isPersonalChat = inviteUsername && title === `chat with ${inviteUsername.toLowerCase()}`;
-  const atmosphere = isPersonalChat ? "sanctuary" : "cyan_horizon";
+  const isPersonalChat = !!inviteUsername;
 
-  // 1. Insert the space
-  await supabase.from("spaces").insert({
-    id: spaceId,
-    title,
-    owner_id: ownerId,
-    atmosphere,
-  });
-
-  // 2. Explicitly add creator as owner in space_members
-  // Use insert (not upsert) — upsert's SELECT check fails when user isn't a member yet
-  await supabase.from("space_members").insert(
-    { space_id: spaceId, user_id: ownerId, role: "owner" }
-  );
-
-  // 3. If inviting someone, look them up and add as member
-  if (inviteUsername) {
-    const { data: invitedUser } = await supabase
-      .from("users")
-      .select("id")
-      .ilike("display_name", inviteUsername)
-      .single();
-
-    if (invitedUser) {
-      await supabase.from("space_members").upsert(
-        { space_id: spaceId, user_id: invitedUser.id, role: "member" },
-        { onConflict: "space_id,user_id" }
-      );
-    }
-  }
-
-  // 4. Insert the seed item — one "seeking" possibility so Decide is never empty
-  // Skip for sanctuary (personal chats don't need decision items)
-  if (!isPersonalChat) {
-    await supabase.from("decision_items").insert({
-      id: `item_${generateId()}`,
-      space_id: spaceId,
-      title: seedItemTitle,
-      category: "experience",
-      description: "",
-      state: "proposed",
-      is_locked: false,
+  // Route through /api/local-action (server-side, supabaseAdmin)
+  // This handles: space creation + creator as member + invite + seed message atomically
+  try {
+    const token = (await import("./supabase")).getSupabaseToken();
+    await fetch("/api/local-action", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        action: "create_space",
+        spaceId,
+        payload: {
+          title,
+          invite_username: inviteUsername ?? null,
+          atmosphere: isPersonalChat ? "sanctuary" : "cyan_horizon",
+        },
+        actorName: null,
+      }),
     });
+  } catch (err) {
+    console.error("[spaces] createSpace via API failed:", err);
   }
-
-  // 5. Insert creator's first message — the space is born with a voice
-  await supabase.from("messages").insert({
-    id: generateId(),
-    space_id: spaceId,
-    role: "user",
-    content: isPersonalChat
-      ? `hey ${inviteUsername}`
-      : `started planning ${title}. first idea: ${seedItemTitle}`,
-    user_id: ownerId,
-  });
 
   // 6. Fetch Unsplash hero → upload to Firebase Storage → store Firebase CDN URL
   // Fire-and-forget. Non-blocking. Space is already navigable.
