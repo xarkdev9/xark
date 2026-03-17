@@ -11,20 +11,14 @@ import { PeopleDock } from "@/components/os/PeopleDock";
 import { MemoriesTab } from "@/components/os/MemoriesTab";
 import { useAuth } from "@/hooks/useAuth";
 import { createSpace, getOptimisticSpaceId } from "@/lib/spaces";
-import { colors, opacity, timing, layout, text } from "@/lib/theme";
+import { colors, opacity, timing, layout, text, surface, ink } from "@/lib/theme";
 import { makeUserId } from "@/lib/user-id";
 import { UserMenu } from "@/components/os/UserMenu";
-
-// ── Time-of-day greeting ──
-function getGreeting(name: string): string {
-  const h = new Date().getHours();
-  const first = name.split(" ")[0]?.toLowerCase() || "";
-  if (h < 5) return `still up, ${first}?`;
-  if (h < 12) return `morning, ${first}`;
-  if (h < 17) return `hey ${first}`;
-  if (h < 21) return `evening, ${first}`;
-  return `night, ${first}`;
-}
+import { Avatar } from "@/components/os/Avatar";
+import { isPlaygroundMode, getPlaygroundSpaces, isPlaygroundSpace } from "@/lib/playground";
+import { fetchPersonalChats } from "@/lib/awareness";
+import type { PersonalChat } from "@/lib/awareness";
+import { supabase } from "@/lib/supabase";
 
 type GalaxyTab = "people" | "plans" | "memories";
 
@@ -45,13 +39,51 @@ function GalaxyContent() {
   const { user } = useAuth(userName || undefined);
   const [activeTab, setActiveTab] = useState<GalaxyTab>("people");
   const [tabDirection, setTabDirection] = useState(0);
-  const [greetingVisible, setGreetingVisible] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const userId = user?.uid ?? makeUserId("name", userName);
 
   // Dream input state
   const [dream, setDream] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Known contacts — derived from space members
+  const [knownContacts, setKnownContacts] = useState<string[]>([]);
+  const [firstChatDone, setFirstChatDone] = useState(false);
+  // Playground spaces — computed client-side only (uses Date.now())
+  const [pgSpaces, setPgSpaces] = useState<ReturnType<typeof getPlaygroundSpaces>>([]);
+  useEffect(() => { setPgSpaces(getPlaygroundSpaces()); }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    // Fetch unique contact names from all spaces
+    supabase
+      .from("space_members")
+      .select("user_id")
+      .neq("user_id", userId)
+      .then(({ data }) => {
+        if (data) {
+          const ids = [...new Set(data.map((r) => r.user_id))];
+          // Get display names
+          supabase
+            .from("users")
+            .select("display_name")
+            .in("id", ids)
+            .then(({ data: users }) => {
+              if (users) {
+                setKnownContacts(users.map((u) => u.display_name).filter(Boolean));
+              }
+            });
+        }
+      });
+    // Check if user has ever created a chat
+    if (typeof window !== "undefined") {
+      setFirstChatDone(!!localStorage.getItem("xark_first_chat"));
+    }
+  }, [userId]);
 
   // Auto-resize textarea (max ~4 lines)
   const autoResize = useCallback(() => {
@@ -65,33 +97,52 @@ function GalaxyContent() {
     autoResize();
   }, [dream, autoResize]);
 
-  const userId = user?.uid ?? makeUserId("name", userName);
-
   const handleSpaceTap = (spaceId: string, viewMode?: "decide") => {
     const viewParam = viewMode ? `&view=${viewMode}` : "";
-    router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}${viewParam}`);
+    const playgroundParam = isPlaygroundSpace(spaceId) ? "&playground=true" : "";
+    router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}${viewParam}${playgroundParam}`);
   };
 
   const handlePersonTap = (spaceId: string) => {
     router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}`);
   };
 
+  // Start a chat with a contact (People tab)
+  const startChat = useCallback((contactName: string) => {
+    setIsCreating(true);
+    const title = `chat with ${contactName}`;
+    const spaceId = getOptimisticSpaceId(title);
+    handlePersonTap(spaceId);
+    createSpace(title, userId, contactName).catch(() => {});
+    setDream("");
+    setIsCreating(false);
+    if (typeof window !== "undefined") localStorage.setItem("xark_first_chat", "1");
+    setFirstChatDone(true);
+  }, [userId, handlePersonTap]);
+
   const manifestDream = useCallback(async () => {
     const raw = dream.trim();
     if (!raw || isCreating) return;
     setIsCreating(true);
 
-    // Strip "@xark create group/space/trip" prefix — but preserve place names like "New York"
-    // Only strip "create/make/start/new" when followed by "group", "space", "trip", "plan"
+    // People tab: treat input as a contact name → create sanctuary
+    if (activeTab === "people") {
+      startChat(raw);
+      return;
+    }
+
+    // Plans tab: strip "@xark create group/space/trip" prefix — preserve place names like "New York"
     const txt = raw
       .replace(/^@xark\s+(?:create|make|start|new)\s+(?:group|space|trip|plan)\s*/i, "")
       .replace(/^@xark\s+/i, "")
       .trim() || raw;
 
     const spaceId = getOptimisticSpaceId(txt);
+    setDream("");
+    setIsCreating(false);
     handleSpaceTap(spaceId);
     createSpace(txt, userId).catch(() => {});
-  }, [dream, isCreating, userId]);
+  }, [dream, isCreating, userId, activeTab, startChat]);
 
   // ── Swipe to switch tabs ──
   const tabs: GalaxyTab[] = ["people", "plans", "memories"];
@@ -120,7 +171,7 @@ function GalaxyContent() {
   }, [activeTab]);
 
   return (
-    <div className="relative" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <div className="relative" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column", background: surface.chrome }}>
       {/* ── Spectrum Wash — warmer, more present ── */}
       <div
         className="pointer-events-none fixed inset-0"
@@ -141,10 +192,10 @@ function GalaxyContent() {
         }}
       />
 
-      {/* ── Tab header ── */}
+      {/* ── Tab header — chrome surface ── */}
       <div
         className="relative z-10 px-6"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)", flexShrink: 0 }}
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)", flexShrink: 0, paddingBottom: "8px" }}
       >
         <div
           className="mx-auto flex items-center"
@@ -211,7 +262,7 @@ function GalaxyContent() {
       {/* ── Scrollable content — crossfade + slide on tab switch ── */}
       <div
         className="relative z-10"
-        style={{ flex: 1, overflowY: "auto", paddingTop: "12px", paddingBottom: "120px" }}
+        style={{ flex: 1, overflowY: "auto", paddingTop: "16px", paddingBottom: "120px" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -245,6 +296,7 @@ function GalaxyContent() {
                 userId={userId}
                 userName={userName}
                 onSpaceTap={handleSpaceTap}
+                playgroundSpaces={pgSpaces}
               />
             </motion.div>
           )}
@@ -263,28 +315,96 @@ function GalaxyContent() {
         </AnimatePresence>
       </div>
 
-      {/* ── Dream input — fixed above ControlCaret ── */}
+      {/* ── Tab-aware dream input ── */}
       <div
         className="fixed inset-x-0 z-[20]"
         style={{
           bottom: "56px",
-          background: colors.void,
+          background: `linear-gradient(to top, ${surface.canvas}, ${surface.canvas} 80%, transparent)`,
           paddingTop: "8px",
-          paddingBottom: "8px",
+          paddingBottom: "12px",
         }}
       >
         <div className="mx-auto px-6" style={{ maxWidth: layout.maxWidth }}>
-          <div
-            style={{
-              height: "1px",
-              background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
-              opacity: inputFocused ? 0.3 : 0.12,
-              marginBottom: "10px",
-              transition: "opacity 0.4s ease",
-            }}
-          />
 
+          {/* ── Zero-State Contact Reveal — appears on focus, People tab ── */}
+          {mounted && activeTab === "people" && inputFocused && dream.length === 0 && knownContacts.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                gap: "16px",
+                overflowX: "auto",
+                paddingBottom: "12px",
+                scrollbarWidth: "none",
+              }}
+            >
+              {knownContacts.slice(0, 8).map((name) => (
+                <div
+                  key={name}
+                  role="button"
+                  tabIndex={0}
+                  onMouseDown={(e) => { e.preventDefault(); startChat(name); }}
+                  className="cursor-pointer outline-none"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "4px",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Avatar name={name} size={44} />
+                  <span style={{ fontSize: "11px", fontWeight: 400, color: ink.secondary }}>
+                    {name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Actionable contact suggestion — when typing a name on People tab ── */}
+          {mounted && activeTab === "people" && dream.length > 0 && (() => {
+            const q = dream.toLowerCase();
+            const matches = knownContacts.filter((n) => n.toLowerCase().includes(q));
+            if (matches.length === 0) return null;
+            return (
+              <div style={{ paddingBottom: "8px" }}>
+                {matches.slice(0, 3).map((name) => (
+                  <div
+                    key={name}
+                    role="button"
+                    tabIndex={0}
+                    onMouseDown={(e) => { e.preventDefault(); startChat(name); }}
+                    className="cursor-pointer outline-none"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "8px 0",
+                    }}
+                  >
+                    <Avatar name={name} size={32} />
+                    <span style={{ fontSize: "15px", fontWeight: 400, color: ink.primary }}>
+                      start chat with {name}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontSize: "14px", color: ink.tertiary }}>
+                      →
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* ── Input row ── */}
           <div className="flex items-end gap-3">
+            {/* Persistent ghost prefix on People tab */}
+            {mounted && activeTab === "people" && inputFocused && (
+              <span style={{ fontSize: "18px", fontWeight: 300, color: ink.tertiary, flexShrink: 0, marginBottom: "2px" }}>
+                chat:
+              </span>
+            )}
+
             <div className="flex-1">
               <textarea
                 ref={inputRef}
@@ -296,7 +416,11 @@ function GalaxyContent() {
                     manifestDream();
                   }
                 }}
-                placeholder="a trip, a dinner, a plan..."
+                placeholder={
+                  activeTab === "people"
+                    ? "type a name to start chatting..."
+                    : "a trip, a dinner, a plan..."
+                }
                 enterKeyHint="send"
                 disabled={isCreating}
                 spellCheck={false}
@@ -307,13 +431,16 @@ function GalaxyContent() {
                 onBlur={() => setInputFocused(false)}
                 className="w-full bg-transparent outline-none resize-none"
                 style={{
-                  ...text.input,
+                  fontSize: "18px",
+                  fontWeight: 300,
+                  letterSpacing: "0.02em",
                   color: colors.white,
                   caretColor: colors.cyan,
                   opacity: isCreating ? 0.3 : 1,
-                  lineHeight: 1.4,
+                  lineHeight: 1.5,
                   maxHeight: "100px",
                   overflow: "hidden",
+                  textShadow: dream.length > 0 ? "0 2px 12px rgba(20,20,20,0.08)" : "none",
                 }}
               />
             </div>
@@ -338,27 +465,27 @@ function GalaxyContent() {
             )}
           </div>
 
-          {/* Living ambient line */}
-          <div
-            style={{
-              marginTop: "4px",
-              height: "1px",
-              width: dream.length > 0
-                ? `min(${Math.max(dream.length * 6, 40)}px, 100%)`
-                : inputFocused ? "60px" : "0px",
-              background: `linear-gradient(90deg, ${colors.cyan}, transparent)`,
-              opacity: dream.length > 0 ? 0.4 : 0.2,
-              animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
-              transition: `width 0.3s ease, opacity ${timing.transition} ease`,
-            }}
-          />
+          {/* ── First-time training whisper (People tab only, dismisses after first chat) ── */}
+          {mounted && activeTab === "people" && !firstChatDone && !inputFocused && (
+            <p
+              style={{
+                fontSize: "12px",
+                fontWeight: 300,
+                color: ink.tertiary,
+                marginTop: "6px",
+                animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+              }}
+            >
+              tap here and type a name to start chatting
+            </p>
+          )}
         </div>
       </div>
 
       {/* ── Void fill below input ── */}
       <div
         className="fixed inset-x-0 z-[19]"
-        style={{ bottom: 0, height: "56px", background: colors.void }}
+        style={{ bottom: 0, height: "56px", background: surface.canvas, transition: "background 0.3s ease" }}
       />
 
       <style jsx>{`
@@ -367,8 +494,8 @@ function GalaxyContent() {
           50% { opacity: 1; }
         }
         textarea::placeholder {
-          color: ${colors.white};
-          opacity: ${opacity.whisper};
+          color: var(--xark-ink-tertiary);
+          opacity: 1;
           letter-spacing: 0.04em;
         }
         @keyframes ambientBreath {
