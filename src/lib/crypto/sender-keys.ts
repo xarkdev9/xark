@@ -24,7 +24,9 @@ export function generateSenderKey(): SenderKeyState {
   };
 }
 
-/** Encrypt a group message with the sender's Sender Key */
+/** Encrypt a group message with the sender's Sender Key.
+ *  Returns the 1-indexed message sequence number as `iteration`.
+ *  Decrypt's `targetIteration` must match this value. */
 export function senderKeyEncrypt(
   state: SenderKeyState,
   plaintext: Uint8Array
@@ -32,7 +34,12 @@ export function senderKeyEncrypt(
   // Derive message key from chain and advance
   const { messageKey, nextChainKey } = kdfChain(state.chainKey);
   state.chainKey = nextChainKey;
+
+  // Advance iteration BEFORE capturing — iteration is a 1-indexed message
+  // sequence number (first message = 1, second = 2, etc.). Decrypt expects
+  // this post-increment value as targetIteration.
   state.iteration++;
+  const messageIteration = state.iteration;
 
   // Encrypt with derived message key
   const { ciphertext, nonce } = aesEncrypt(plaintext, messageKey);
@@ -43,10 +50,11 @@ export function senderKeyEncrypt(
   toSign.set(nonce, ciphertext.length);
   const signature = sign(toSign, state.signingKey.privateKey);
 
-  return { ciphertext, nonce, signature, iteration: state.iteration };
+  return { ciphertext, nonce, signature, iteration: messageIteration };
 }
 
-/** Decrypt a group message using the sender's Sender Key */
+/** Decrypt a group message using the sender's Sender Key.
+ *  `targetIteration` is the 1-indexed message sequence number from encrypt. */
 export function senderKeyDecrypt(
   state: SenderKeyState,
   ciphertext: Uint8Array,
