@@ -55,6 +55,7 @@ export interface SessionState {
   recvMessageNumber: number;
   previousSendCount: number;
   skippedKeys: Map<string, Uint8Array>;  // "pubkey:msgNum" -> message key
+  headerSecret: Uint8Array;  // stable secret for header encryption (derived from initial shared secret)
 }
 
 /** Ratchet header sent with each encrypted message */

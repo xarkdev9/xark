@@ -20,6 +20,10 @@ export function initSessionAsInitiator(
   const dhOutput = dh(sendRatchetKey.privateKey, peerRatchetKey);
   const { newRootKey, chainKey } = kdfRatchet(sharedSecret, dhOutput);
 
+  // Derive a stable header secret from the original shared secret
+  // This MUST be the same on both sides
+  const headerSecret = hkdf(sharedSecret, new Uint8Array(32), 'XarkE2EE-header-secret', 32);
+
   return {
     rootKey: newRootKey,
     sendChainKey: chainKey,
@@ -30,6 +34,7 @@ export function initSessionAsInitiator(
     recvMessageNumber: 0,
     previousSendCount: 0,
     skippedKeys: new Map(),
+    headerSecret,  // stable across both sides
   };
 }
 
@@ -38,6 +43,8 @@ export function initSessionAsResponder(
   sharedSecret: Uint8Array,
   myRatchetKey: RawKeyPair
 ): SessionState {
+  const headerSecret = hkdf(sharedSecret, new Uint8Array(32), 'XarkE2EE-header-secret', 32);
+
   return {
     rootKey: sharedSecret,
     sendChainKey: null,
@@ -48,6 +55,7 @@ export function initSessionAsResponder(
     recvMessageNumber: 0,
     previousSendCount: 0,
     skippedKeys: new Map(),
+    headerSecret,
   };
 }
 
@@ -74,8 +82,8 @@ export function ratchetEncrypt(
   // Encrypt message body
   const { ciphertext, nonce } = aesEncrypt(plaintext, messageKey);
 
-  // P1-1 fix: encrypt the header with a key derived from the root key
-  const headerKey = hkdf(session.rootKey, new Uint8Array(32), HEADER_KEY_INFO, 32);
+  // P1-1 fix: encrypt the header with a key derived from the stable header secret
+  const headerKey = hkdf(session.headerSecret, new Uint8Array(32), HEADER_KEY_INFO, 32);
   const headerJson = new TextEncoder().encode(JSON.stringify({
     publicKey: toBase64(headerObj.publicKey),
     previousCount: headerObj.previousCount,
@@ -99,7 +107,7 @@ export function ratchetDecrypt(
   encryptedHeader: Uint8Array  // P1-1: was RatchetHeader, now encrypted bytes
 ): Uint8Array {
   // P1-1 fix: decrypt the header first
-  const headerKey = hkdf(session.rootKey, new Uint8Array(32), HEADER_KEY_INFO, 32);
+  const headerKey = hkdf(session.headerSecret, new Uint8Array(32), HEADER_KEY_INFO, 32);
   const headerNonce = encryptedHeader.slice(0, 24);  // XChaCha20 nonce is 24 bytes
   const headerCiphertext = encryptedHeader.slice(24);
   const headerJson = aesDecrypt(headerCiphertext, headerNonce, headerKey);
@@ -208,6 +216,7 @@ export function serializeSession(session: SessionState): Uint8Array {
     skippedKeys: Object.fromEntries(
       Array.from(session.skippedKeys.entries()).map(([k, v]) => [k, toBase64(v)])
     ),
+    headerSecret: toBase64(session.headerSecret),
   };
   return new TextEncoder().encode(JSON.stringify(obj));
 }
@@ -232,5 +241,6 @@ export function deserializeSession(data: Uint8Array): SessionState {
         ([k, v]) => [k, fromBase64(v)]
       )
     ),
+    headerSecret: fromBase64(obj.headerSecret),
   };
 }

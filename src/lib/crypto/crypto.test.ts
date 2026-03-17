@@ -335,7 +335,7 @@ describe("Double Ratchet", () => {
   // The .fails() marker documents this — when the bug is fixed, these tests will
   // start passing and vitest will flag them for removal of .fails().
 
-  it.fails("encrypts and decrypts a message (P1-1 header key mismatch — tracked)", () => {
+  it("encrypts and decrypts a message (P1-1 header key fixed)", () => {
     const sharedSecret = randomBytes(32);
     const bobRatchetKey = generateDHKeyPair();
 
@@ -348,7 +348,7 @@ describe("Double Ratchet", () => {
     expect(fromBytes(decrypted)).toBe("hey, checking out hotels in coronado");
   });
 
-  it.fails("handles multiple messages in sequence (P1-1 header key mismatch — tracked)", () => {
+  it("handles multiple messages in sequence (P1-1 header key fixed)", () => {
     const sharedSecret = randomBytes(32);
     const bobRatchetKey = generateDHKeyPair();
 
@@ -423,7 +423,7 @@ describe("Double Ratchet", () => {
     expect(header.length).toBeGreaterThan(24);
   });
 
-  it.fails("decryption succeeds after session serialization round-trip (P1-1 header key mismatch — tracked)", () => {
+  it("decryption succeeds after session serialization round-trip (P1-1 header key fixed)", () => {
     const sharedSecret = randomBytes(32);
     const bobRatchetKey = generateDHKeyPair();
 
@@ -548,7 +548,7 @@ describe("Sender Keys", () => {
   // uses the CURRENT chainId (advanced again after msg3), which doesn't match the stored key.
   // This cache-key drift is a known issue in sender-keys.ts — the fix should use the
   // ORIGINAL chainKey at time of cache storage, not the mutating state.chainKey.
-  it.fails("decrypts out-of-order messages via skipped-key cache (BUG 16 — cache key drift tracked)", () => {
+  it("decrypts out-of-order messages via skipped-key cache (BUG 16 — cache key drift fixed)", () => {
     const sk = generateSenderKey();
     clearSkippedSenderKeys();
 
