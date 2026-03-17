@@ -601,10 +601,74 @@ function GalaxyContent() {
                   </div>
                 )}
 
-                {/* User picker */}
+                {/* User picker — contacts API + Xark users */}
                 {showUserPicker && (
                   <div>
-                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "12px" }}>pick a friend</p>
+                    {/* Contact Picker API button (Android Chrome) */}
+                    {"contacts" in navigator && (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={async () => {
+                          try {
+                            const contacts = await (navigator as any).contacts.select(
+                              ["name", "tel"],
+                              { multiple: false }
+                            );
+                            if (contacts?.[0]) {
+                              const contact = contacts[0];
+                              const phone = contact.tel?.[0]?.replace(/\D/g, "").slice(-10);
+                              const name = contact.name?.[0] ?? phone?.slice(-4) ?? "friend";
+                              if (phone) {
+                                // Check if this phone is already on Xark
+                                const { data: existing } = await supabase
+                                  .from("users")
+                                  .select("id, display_name")
+                                  .eq("phone", `+91${phone}`)
+                                  .single();
+                                if (existing) {
+                                  handleNewChat(existing);
+                                } else {
+                                  // Also try without country code
+                                  const { data: existing2 } = await supabase
+                                    .from("users")
+                                    .select("id, display_name")
+                                    .like("phone", `%${phone}`)
+                                    .single();
+                                  if (existing2) {
+                                    handleNewChat(existing2);
+                                  } else {
+                                    // User not on Xark — share invite link
+                                    if (navigator.share) {
+                                      navigator.share({
+                                        title: "join me on xark",
+                                        text: `${userName} wants to chat on xark`,
+                                        url: "https://xark.app",
+                                      });
+                                    }
+                                    setShowUserPicker(false);
+                                    setShowNewSheet(false);
+                                  }
+                                }
+                              }
+                            }
+                          } catch {
+                            // User cancelled or API not supported
+                          }
+                        }}
+                        className="outline-none cursor-pointer"
+                        style={{ padding: "14px 0", display: "flex", alignItems: "center", gap: "14px", marginBottom: "8px" }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2" />
+                          <circle cx="12" cy="10" r="3" />
+                          <path d="M7 20v-1a5 5 0 0110 0v1" />
+                        </svg>
+                        <span style={{ ...text.body, color: "#FF6B35" }}>pick from contacts</span>
+                      </div>
+                    )}
+
+                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "8px", marginTop: "4px" }}>on xark</p>
                     {allUsers.length === 0 && (
                       <p style={{ ...text.hint, color: ink.tertiary }}>no other users on xark yet</p>
                     )}
