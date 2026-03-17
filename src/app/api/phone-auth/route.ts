@@ -21,7 +21,8 @@ function getFirebaseAdmin() {
   if (serviceAccountJson) {
     try {
       // Handle literal newlines in private_key (Vercel env vars may have actual \n bytes)
-      const sanitized = serviceAccountJson.replace(/\n/g, "\\n").replace(/\\\\n/g, "\\n");
+      const trimmed = serviceAccountJson.trim();
+      const sanitized = trimmed.replace(/\n/g, "\\n").replace(/\\\\n/g, "\\n");
       const serviceAccount = JSON.parse(sanitized) as ServiceAccount;
       const app = initializeApp({ credential: cert(serviceAccount) });
       return getAuth(app);
