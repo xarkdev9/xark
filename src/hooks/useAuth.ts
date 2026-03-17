@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { setSupabaseToken } from "@/lib/supabase";
+import { makeUserId } from "@/lib/user-id";
 
 export interface XarkUser {
   uid: string;
@@ -17,6 +18,9 @@ export interface XarkUser {
 }
 
 const SESSION_KEY = "xark_session";
+
+// Transient password — never persisted to storage. Set by login page, cleared after use.
+let _transientPassword = "";
 
 interface CachedSession {
   token: string;
@@ -46,16 +50,19 @@ function cacheSession(token: string, user: XarkUser) {
     expiresAt: Date.now() + 23 * 60 * 60 * 1000, // 23h (JWT is 24h)
   };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  // E2EE key-manager reads userId from localStorage
+  localStorage.setItem("xark_user_id", user.uid);
 }
+
+/** Set the transient password for dev login. Called by login page — never persisted. */
+export function setDevPassword(pw: string) { _transientPassword = pw; }
 
 // Password-gated login: call /api/dev-auto-login with username + password.
 async function devAutoLogin(
   username: string
 ): Promise<{ user: XarkUser; token: string } | null> {
   try {
-    const password = typeof window !== "undefined"
-      ? sessionStorage.getItem("xark_pass") || ""
-      : "";
+    const password = _transientPassword;
 
     const res = await fetch("/api/dev-auto-login", {
       method: "POST",
@@ -84,6 +91,7 @@ function restoreCachedToken(): { user: XarkUser; restored: boolean } | null {
   const cached = getCachedSession();
   if (cached) {
     setSupabaseToken(cached.token);
+    localStorage.setItem("xark_user_id", cached.user.uid);
     return { user: cached.user, restored: true };
   }
   return null;
@@ -106,9 +114,10 @@ export function useAuth(fallbackName?: string): {
 
   const handleFallback = useCallback(
     async (name: string) => {
-      // 1. Try cached session first (survives refresh)
+      // 1. Try cached session first — but ONLY if it matches the requested name.
+      //    Tab duplication copies sessionStorage, so Myna's tab can inherit Ram's session.
       const cached = getCachedSession();
-      if (cached) {
+      if (cached && cached.user.displayName.toLowerCase() === name.toLowerCase()) {
         setSupabaseToken(cached.token);
         setUser(cached.user);
         setIsLoading(false);
@@ -123,7 +132,9 @@ export function useAuth(fallbackName?: string): {
       } else {
         // 3. No auth available — use name fallback (no RLS, demo mode)
         console.warn("[xark-auth] NO JWT — name-only fallback (RLS will block writes)");
-        setUser({ uid: `name_${name}`, displayName: name });
+        const fallbackUser = { uid: makeUserId("name", name), displayName: name };
+        localStorage.setItem("xark_user_id", fallbackUser.uid);
+        setUser(fallbackUser);
       }
       setIsLoading(false);
     },
@@ -133,8 +144,19 @@ export function useAuth(fallbackName?: string): {
   useEffect(() => {
     // Firebase unconfigured — use dev login or fallback
     if (!auth) {
-      // If we already restored from cache, skip
-      if (initialSession.current?.restored) return;
+      // If we restored from cache, verify it matches the requested fallbackName.
+      // Tab duplication copies sessionStorage — Myna's tab can inherit Ram's session.
+      if (initialSession.current?.restored) {
+        if (fallbackName && initialSession.current.user.displayName.toLowerCase() !== fallbackName.toLowerCase()) {
+          // Cached user doesn't match — clear stale session and re-login
+          sessionStorage.removeItem(SESSION_KEY);
+          initialSession.current = null;
+          setUser(null); // Clear stale user from useState init
+          // Fall through to handleFallback below
+        } else {
+          return; // Cached user matches or no fallbackName to compare
+        }
+      }
       if (fallbackName) {
         handleFallback(fallbackName);
       } else {
@@ -149,27 +171,47 @@ export function useAuth(fallbackName?: string): {
     // but we may have a valid dev-auto-login JWT that must not be cleared.
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Production: get Firebase ID token and set on Supabase
-        const token = await firebaseUser.getIdToken();
-        setSupabaseToken(token);
-        cacheSession(token, {
-          uid: firebaseUser.uid,
-          displayName:
-            firebaseUser.displayName ??
-            firebaseUser.phoneNumber ??
-            "anon",
-        });
-        setUser({
-          uid: firebaseUser.uid,
-          displayName:
-            firebaseUser.displayName ??
-            firebaseUser.phoneNumber ??
-            "anon",
-        });
+        // Check if we already have a valid cached Supabase JWT — don't overwrite
+        const cached = getCachedSession();
+        if (cached) {
+          setSupabaseToken(cached.token);
+          setUser(cached.user);
+          setIsLoading(false);
+          return;
+        }
+
+        // No cached session — exchange Firebase token for Supabase JWT
+        try {
+          const firebaseToken = await firebaseUser.getIdToken();
+          const res = await fetch("/api/phone-auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ firebaseToken, displayName: firebaseUser.displayName ?? undefined }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setSupabaseToken(data.token);
+            cacheSession(data.token, { uid: data.user.id, displayName: data.user.displayName });
+            setUser({ uid: data.user.id, displayName: data.user.displayName });
+          } else {
+            // phone-auth failed — use Firebase UID as fallback
+            setUser({
+              uid: firebaseUser.uid,
+              displayName: firebaseUser.displayName ?? firebaseUser.phoneNumber ?? "anon",
+            });
+          }
+        } catch {
+          setUser({
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName ?? firebaseUser.phoneNumber ?? "anon",
+          });
+        }
       } else if (fallbackName) {
         // No Firebase user — try dev login path
-        // But don't re-run if we already restored from cache
-        if (!initialSession.current?.restored) {
+        // But don't re-run if we already restored from cache AND user matches
+        const restoredMatches = initialSession.current?.restored
+          && initialSession.current.user.displayName.toLowerCase() === fallbackName.toLowerCase();
+        if (!restoredMatches) {
           await handleFallback(fallbackName);
         }
       } else {
