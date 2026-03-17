@@ -9,6 +9,11 @@ import {
 } from './primitives';
 import type { SenderKeyState, RawKeyPair } from './types';
 
+// BUG 16 fix: bounded skipped-key dictionary for out-of-order group messages
+const MAX_SK_SKIP = 1000;
+// Cache: "chainKeyB64:iteration" -> messageKey (Uint8Array)
+const skippedSenderKeys = new Map<string, Uint8Array>();
+
 /** Generate a new Sender Key for a group space */
 export function generateSenderKey(): SenderKeyState {
   return {
@@ -49,7 +54,7 @@ export function senderKeyDecrypt(
   signature: Uint8Array,
   targetIteration: number
 ): Uint8Array {
-  // Verify signature first
+  // Verify signature first (always, even for cached keys)
   const toVerify = new Uint8Array(ciphertext.length + nonce.length);
   toVerify.set(ciphertext, 0);
   toVerify.set(nonce, ciphertext.length);
@@ -57,17 +62,37 @@ export function senderKeyDecrypt(
     throw new Error('SenderKey: Invalid message signature');
   }
 
-  // Advance chain to one step before target (sender advanced AFTER deriving messageKey)
+  // BUG 16 fix: check skipped key cache first
+  const chainId = toBase64(state.chainKey);
+  const skipKey = `${chainId}:${targetIteration}`;
+  const cachedMk = skippedSenderKeys.get(skipKey);
+  if (cachedMk) {
+    skippedSenderKeys.delete(skipKey);
+    return aesDecrypt(ciphertext, nonce, cachedMk);
+  }
+
+  // Advance chain to target, caching intermediate keys
   let currentChainKey = state.chainKey;
   let currentIteration = state.iteration;
 
   while (currentIteration < targetIteration - 1) {
-    const { nextChainKey } = kdfChain(currentChainKey);
-    currentChainKey = nextChainKey;
+    const { messageKey: skippedMk, nextChainKey } = kdfChain(currentChainKey);
     currentIteration++;
+
+    // Cache the skipped message key
+    const cacheKey = `${chainId}:${currentIteration}`;
+    skippedSenderKeys.set(cacheKey, skippedMk);
+
+    // Enforce bounded dictionary — evict oldest
+    if (skippedSenderKeys.size > MAX_SK_SKIP) {
+      const firstKey = skippedSenderKeys.keys().next().value;
+      if (firstKey) skippedSenderKeys.delete(firstKey);
+    }
+
+    currentChainKey = nextChainKey;
   }
 
-  // Derive the message key at this chain position (same kdfChain the sender used)
+  // Derive the actual message key at targetIteration
   const { messageKey, nextChainKey } = kdfChain(currentChainKey);
 
   // Update state to latest known position
@@ -77,6 +102,11 @@ export function senderKeyDecrypt(
   }
 
   return aesDecrypt(ciphertext, nonce, messageKey);
+}
+
+/** Clear the skipped key cache — used in testing and on space leave */
+export function clearSkippedSenderKeys(): void {
+  skippedSenderKeys.clear();
 }
 
 // ── Serialization ──
