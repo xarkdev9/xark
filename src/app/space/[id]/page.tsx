@@ -897,10 +897,19 @@ function SpacePageInner() {
     setDebugLog(prev => [...prev.slice(-4), msg]);
   }, []);
 
-  // Log auth state on mount
+  // Log auth state on mount — decode JWT sub to verify identity
   useEffect(() => {
-    addDebug(`uid: ${resolvedUserId ?? 'null'} | jwt: ${getSupabaseToken() ? 'yes' : 'NO'} | e2ee: ${e2ee.available ? 'ON' : 'off'}`);
-  }, [resolvedUserId, e2ee.available, addDebug]);
+    const token = getSupabaseToken();
+    let jwtSub = 'none';
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        jwtSub = payload.sub ?? 'missing';
+      } catch { jwtSub = 'decode-fail'; }
+    }
+    addDebug(`uid: ${resolvedUserId ?? 'null'} | jwt-sub: ${jwtSub} | e2ee: ${e2ee.available ? 'ON' : 'off'}`);
+    addDebug(`space: ${spaceId} | token: ${token ? token.slice(-8) : 'NULL'}`);
+  }, [resolvedUserId, e2ee.available, addDebug, spaceId]);
 
   return (
     <div className="relative min-h-svh" style={{ background: colors.void }}>
