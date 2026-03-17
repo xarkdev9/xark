@@ -91,23 +91,50 @@ export class IndexedDBKeyStore {
     return this.db;
   }
 
-  // ── Identity Key ──
+  // ── Identity Key (WebCrypto — non-extractable private key) ──
 
-  async saveIdentityKey(publicKey: Uint8Array, privateKey: Uint8Array): Promise<void> {
+  async saveIdentityKey(
+    publicKeyRaw: Uint8Array,
+    privateKeyCryptoKey: CryptoKey,
+    publicKeyCryptoKey: CryptoKey
+  ): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.identity, 'readwrite');
+    // CryptoKey objects are stored natively by IndexedDB (structured clone algorithm)
     await idbPut(store, 'identity', {
-      pub: toBase64(publicKey),
-      priv: toBase64(privateKey),
+      publicKeyRaw: toBase64(publicKeyRaw),
+      privateKeyCryptoKey,  // non-extractable CryptoKey — IndexedDB stores natively
+      publicKeyCryptoKey,   // CryptoKey for verification
     });
   }
 
-  async getIdentityKey(): Promise<RawKeyPair | null> {
+  async getIdentityKey(): Promise<{
+    publicKeyRaw: Uint8Array;
+    privateKeyCryptoKey: CryptoKey;
+    publicKeyCryptoKey: CryptoKey;
+  } | null> {
     const db = await this.getDB();
     const store = tx(db, STORES.identity, 'readonly');
-    const data = await idbGet<{ pub: string; priv: string }>(store, 'identity');
+    const data = await idbGet<{
+      publicKeyRaw: string;
+      privateKeyCryptoKey: CryptoKey;
+      publicKeyCryptoKey: CryptoKey;
+    }>(store, 'identity');
     if (!data) return null;
-    return deserializeKeyPair(data);
+    return {
+      publicKeyRaw: fromBase64(data.publicKeyRaw),
+      privateKeyCryptoKey: data.privateKeyCryptoKey,
+      publicKeyCryptoKey: data.publicKeyCryptoKey,
+    };
+  }
+
+  /** Legacy getter for old base64-format identity keys (migration path) */
+  async getIdentityKeyLegacy(): Promise<RawKeyPair | null> {
+    const db = await this.getDB();
+    const store = tx(db, STORES.identity, 'readonly');
+    const data = await idbGet<{ pub?: string; priv?: string }>(store, 'identity');
+    if (!data || !data.pub || !data.priv) return null;
+    return { publicKey: fromBase64(data.pub), privateKey: fromBase64(data.priv) };
   }
 
   // ── Signed Pre-Key ──
