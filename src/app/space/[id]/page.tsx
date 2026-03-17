@@ -6,6 +6,7 @@
 // ChatInput is always visible. XarkChat is display-only.
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { motion } from "framer-motion";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { XarkChat } from "@/components/os/XarkChat";
 import { PossibilityHorizon } from "@/components/os/PossibilityHorizon";
@@ -90,8 +91,10 @@ function SpacePageInner() {
   // never from raw URL param (e.g., "ram"). RLS checks user_id = auth.jwt()->>'sub'.
   const resolvedUserId = user?.uid ?? undefined;
 
-  // E2EE re-enabled after fixing BUGs 1,2,5,6,9,11,15,20
-  const e2ee = useE2EE(resolvedUserId ?? null);
+  // E2EE DISABLED until verified in browser with real 2-device testing.
+  // Fixes for BUGs 1,2,5,6,9,11,15,20 are committed but untested in production.
+  // Re-enable ONLY after 2-device verification passes.
+  const e2ee = useE2EE(null);
 
   const viewParam = searchParams.get("view");
   const [view, setView] = useState<ViewMode>(
@@ -513,9 +516,10 @@ function SpacePageInner() {
 
     // Guard: must have authenticated userId for RLS INSERT
     if (!resolvedUserId) {
-      console.warn("[xark] sendMessage blocked: no authenticated userId yet");
+      addDebug("BLOCKED: no userId");
       return;
     }
+    addDebug(`sending: "${txt.slice(0, 20)}" as ${resolvedUserId.slice(0, 15)} | jwt:${getSupabaseToken() ? 'yes' : 'NO'} | e2ee:${e2ee.available}`);
 
     const hasXark = txt.toLowerCase().includes("@xark");
 
@@ -585,6 +589,7 @@ function SpacePageInner() {
     // E2EE PATH — encrypt + /api/message
     // ══════════════════════════════════════════════
     if (e2ee.available) {
+      addDebug("E2EE PATH active — encrypting...");
       try {
         const envelope = await e2ee.encrypt(txt, spaceId);
         if (envelope) {
@@ -648,6 +653,7 @@ function SpacePageInner() {
     // ══════════════════════════════════════════════
     // LEGACY PATH — plaintext save + /api/xark
     // ══════════════════════════════════════════════
+    addDebug("LEGACY PATH — saving plaintext");
 
     // Broadcast for instant delivery to other users (~50ms)
     if (channelRef.current) {
@@ -670,7 +676,10 @@ function SpacePageInner() {
       content: userMsg.content,
       userId: resolvedUserId,
       senderName: user?.displayName ?? userName,
+    }).then(() => {
+      addDebug("DB SAVE OK");
     }).catch((err) => {
+      addDebug("DB SAVE FAIL: " + (err?.message ?? err));
       console.error("[xark] message not saved:", err?.message ?? err);
     });
 
@@ -882,8 +891,39 @@ function SpacePageInner() {
     );
   }
 
+  // Debug state for visible output
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const addDebug = useCallback((msg: string) => {
+    setDebugLog(prev => [...prev.slice(-4), msg]);
+  }, []);
+
+  // Log auth state on mount
+  useEffect(() => {
+    addDebug(`uid: ${resolvedUserId ?? 'null'} | jwt: ${getSupabaseToken() ? 'yes' : 'NO'} | e2ee: ${e2ee.available ? 'ON' : 'off'}`);
+  }, [resolvedUserId, e2ee.available, addDebug]);
+
   return (
     <div className="relative min-h-svh" style={{ background: colors.void }}>
+      {/* ── DEBUG BANNER — remove after fixing ── */}
+      <div
+        className="fixed inset-x-0 z-[99] px-3 py-1"
+        style={{ top: 0, background: "rgba(0,0,0,0.85)", fontSize: "10px", fontFamily: "monospace", color: "#0f0", lineHeight: 1.4 }}
+      >
+        {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+      </div>
+
+      {/* ── Background gradient shift — warm on discuss, cool on decide ── */}
+      <motion.div
+        animate={{
+          background: view === "discuss"
+            ? "radial-gradient(circle at 30% 60%, rgba(255,107,53,0.04), transparent 60%)"
+            : view === "decide"
+            ? "radial-gradient(circle at 70% 40%, rgba(64,224,255,0.04), transparent 60%)"
+            : "none",
+        }}
+        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+        style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}
+      />
       {/* ── Header: title + view toggle + share ── */}
       <div
         className="fixed inset-x-0 top-0 z-30 px-6 pt-14 pb-0"
@@ -921,9 +961,21 @@ function SpacePageInner() {
                   color: view === "discuss" ? colors.cyan : ink.tertiary,
                   cursor: "pointer",
                   transition: `color ${timing.transition} ease`,
+                  position: "relative",
                 }}
               >
                 discuss
+                {view === "discuss" && (
+                  <motion.span
+                    layoutId="space-tab-pill"
+                    style={{
+                      position: "absolute", bottom: "-4px", left: 0,
+                      width: "100%", height: "2px",
+                      background: colors.cyan, opacity: 0.6,
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                )}
               </span>
               <span
                 role="button"
@@ -938,9 +990,21 @@ function SpacePageInner() {
                   color: view === "decide" ? colors.cyan : ink.tertiary,
                   cursor: "pointer",
                   transition: `color ${timing.transition} ease`,
+                  position: "relative",
                 }}
               >
                 decide
+                {view === "decide" && (
+                  <motion.span
+                    layoutId="space-tab-pill"
+                    style={{
+                      position: "absolute", bottom: "-4px", left: 0,
+                      width: "100%", height: "2px",
+                      background: colors.cyan, opacity: 0.6,
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                )}
               </span>
               {showItinerary && !isSettled && (
                 <span
@@ -956,9 +1020,21 @@ function SpacePageInner() {
                     color: view === "itinerary" ? colors.cyan : ink.tertiary,
                     cursor: "pointer",
                     transition: `color ${timing.transition} ease`,
+                    position: "relative",
                   }}
                 >
                   itinerary
+                  {view === "itinerary" && (
+                    <motion.span
+                      layoutId="space-tab-pill"
+                      style={{
+                        position: "absolute", bottom: "-4px", left: 0,
+                        width: "100%", height: "2px",
+                        background: colors.cyan, opacity: 0.6,
+                      }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    />
+                  )}
                 </span>
               )}
               {isSettled && (
@@ -975,9 +1051,21 @@ function SpacePageInner() {
                     color: view === "memories" ? colors.cyan : ink.tertiary,
                     cursor: "pointer",
                     transition: `color ${timing.transition} ease`,
+                    position: "relative",
                   }}
                 >
                   memories
+                  {view === "memories" && (
+                    <motion.span
+                      layoutId="space-tab-pill"
+                      style={{
+                        position: "absolute", bottom: "-4px", left: 0,
+                        width: "100%", height: "2px",
+                        background: colors.cyan, opacity: 0.6,
+                      }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    />
+                  )}
                 </span>
               )}
             </div>
