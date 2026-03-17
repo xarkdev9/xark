@@ -87,7 +87,7 @@ export interface DecryptedMessage {
 }
 
 /** Message types in the database */
-export type MessageType = 'e2ee' | 'e2ee_xark' | 'xark' | 'system' | 'legacy' | 'sender_key_dist' | 'e2ee_crdt';
+export type MessageType = 'e2ee' | 'xark' | 'system' | 'legacy' | 'sender_key_dist';
 
 /** Key backup blob structure */
 export interface KeyBackupBlob {
