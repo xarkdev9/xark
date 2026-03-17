@@ -125,12 +125,14 @@ export async function POST(request: NextRequest) {
 
   if (!existingUser) {
     // Create new user
-    await supabaseAdmin.from("users").insert({
+    const { error: insertError } = await supabaseAdmin.from("users").insert({
       id: userId,
       display_name: name,
       phone: phoneNumber,
-      firebase_uid: firebaseUid,
     });
+    if (insertError) {
+      console.error("[phone-auth] user insert failed:", insertError.message);
+    }
   }
 
   const resolvedName = existingUser?.display_name ?? name;
