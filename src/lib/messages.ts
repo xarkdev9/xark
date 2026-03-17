@@ -6,6 +6,8 @@
 import { supabase, hasSupabaseAuth } from "./supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
+export type MessageType = 'e2ee' | 'e2ee_xark' | 'xark' | 'system' | 'legacy' | 'sender_key_dist';
+
 export interface ChatMessage {
   id: string;
   space_id: string;
@@ -14,6 +16,11 @@ export interface ChatMessage {
   user_id: string | null;
   sender_name: string | null;
   created_at: string;
+  message_type?: MessageType;
+  sender_device_id?: number | null;
+  // E2EE broadcast fields — included for instant decrypt by recipients
+  ciphertext_b64?: string;
+  ratchet_header_b64?: string | null;
 }
 
 // ── Fetch messages for a space with pagination ──
@@ -25,7 +32,7 @@ export async function fetchMessages(
 
   let query = supabase
     .from("messages")
-    .select("id, space_id, role, content, user_id, sender_name, created_at")
+    .select("id, space_id, role, content, user_id, sender_name, created_at, message_type, sender_device_id")
     .eq("space_id", spaceId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -53,23 +60,64 @@ export async function saveMessage(msg: {
   content: string;
   userId?: string;
   senderName?: string;
+  messageType?: MessageType;
+  senderDeviceId?: number;
 }): Promise<void> {
   const hasJWT = hasSupabaseAuth();
   if (!hasJWT) {
     console.error("[xark] saveMessage: NO JWT on Supabase client! userId:", msg.userId);
   }
-  const { error } = await supabase.from("messages").insert({
+  const row: Record<string, unknown> = {
     id: msg.id,
     space_id: msg.spaceId,
     role: msg.role,
     content: msg.content,
     user_id: msg.userId ?? null,
     sender_name: msg.senderName ?? null,
-  });
+  };
+  // E2EE columns — only include when migration 014 has been applied
+  if (msg.messageType && msg.messageType !== 'legacy') {
+    row.content = msg.messageType === 'e2ee' || msg.messageType === 'e2ee_xark' ? null : msg.content;
+    row.sender_name = msg.messageType === 'e2ee' || msg.messageType === 'e2ee_xark' ? null : (msg.senderName ?? null);
+    row.message_type = msg.messageType;
+    row.sender_device_id = msg.senderDeviceId ?? null;
+  }
+  const { error } = await supabase.from("messages").insert(row);
   if (error) {
     console.error("[xark] saveMessage failed:", error.message, { userId: msg.userId, spaceId: msg.spaceId, hasJWT });
     throw error;
   }
+}
+
+// ── Fetch ciphertexts for a message (client-side decryption) ──
+export async function fetchCiphertexts(
+  messageIds: string[],
+  recipientDeviceId?: number  // BUG 7/8 fix: filter to exact device
+): Promise<Array<{
+  message_id: string;
+  recipient_id: string;
+  recipient_device_id: number;
+  ciphertext: string;
+  ratchet_header: string | null;
+}>> {
+  if (messageIds.length === 0) return [];
+
+  let query = supabase
+    .from("message_ciphertexts")
+    .select("message_id, recipient_id, recipient_device_id, ciphertext, ratchet_header")
+    .in("message_id", messageIds);
+
+  // BUG 7/8 fix: when device ID is known, filter server-side
+  if (recipientDeviceId !== undefined) {
+    query = query.eq("recipient_device_id", recipientDeviceId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("[xark] fetchCiphertexts failed:", error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 // ── Subscribe via Broadcast — instant WebSocket delivery, bypasses DB WAL ──

@@ -15,7 +15,7 @@ import {
 } from './double-ratchet';
 import {
   generateSenderKey, senderKeyEncrypt, senderKeyDecrypt,
-  serializeSenderKey, deserializeSenderKey
+  serializeSenderKeyForStorage, serializeSenderKeyForDistribution, deserializeSenderKey
 } from './sender-keys';
 import { keyStore } from './keystore';
 import { fetchPeerKeyBundle } from './key-manager';
@@ -105,7 +105,7 @@ export async function distributeSenderKey(
   console.log(`[xark-sk-dist] Distributing SK to ${members.length} device(s) in space ${spaceId}`);
 
   // Serialize the sender key for distribution (BUG 15 fix: no private signing key)
-  const serializedKey = serializeSenderKey(senderKey, false);
+  const serializedKey = serializeSenderKeyForDistribution(senderKey);
 
   // Build ciphertext rows for each member device
   const ciphertextRows: Array<{
@@ -344,7 +344,7 @@ export async function processSenderKeyDistribution(
 
   // plaintext is a serialized SenderKeyState — store it keyed by spaceId:senderId
   const senderKey = deserializeSenderKey(plaintext);
-  await keyStore.saveSenderKey(`${spaceId}:${senderId}`, serializeSenderKey(senderKey));
+  await keyStore.saveSenderKey(`${spaceId}:${senderId}`, serializeSenderKeyForStorage(senderKey));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -448,7 +448,7 @@ export async function encryptForSpace(
   if (!senderKeyData) {
     // Generate new Sender Key and distribute to space members
     senderKey = generateSenderKey();
-    await keyStore.saveSenderKey(spaceId, serializeSenderKey(senderKey));
+    await keyStore.saveSenderKey(spaceId, serializeSenderKeyForStorage(senderKey));
 
     // Distribute to all space members via pairwise sessions
     try {
@@ -473,7 +473,7 @@ export async function encryptForSpace(
       if (!tsError && tombstones && tombstones.length > 0) {
         console.warn(`[e2ee] 🛑 Tombstone detected after key generation! Forcing Lazy Rotation.`);
         senderKey = generateSenderKey();
-        await keyStore.saveSenderKey(spaceId, serializeSenderKey(senderKey));
+        await keyStore.saveSenderKey(spaceId, serializeSenderKeyForStorage(senderKey));
         try {
           // get_space_member_devices intrinsically excludes kicked users, 
           // guaranteeing distribution only to SAFE devices.
@@ -488,7 +488,7 @@ export async function encryptForSpace(
   const { ciphertext, nonce, signature, iteration } = senderKeyEncrypt(senderKey, plaintext);
 
   // Persist advanced state
-  await keyStore.saveSenderKey(spaceId, serializeSenderKey(senderKey));
+  await keyStore.saveSenderKey(spaceId, serializeSenderKeyForStorage(senderKey));
 
   // Pack: nonce + signature + iteration(4 bytes) + ciphertext
   const iterBytes = new Uint8Array(4);
@@ -551,7 +551,7 @@ export async function decryptMessage(
     plaintext = senderKeyDecrypt(senderKey, ciphertext, nonce, signature, iteration);
 
     // Persist advanced state
-    await keyStore.saveSenderKey(`${spaceId}:${senderId}`, serializeSenderKey(senderKey));
+    await keyStore.saveSenderKey(`${spaceId}:${senderId}`, serializeSenderKeyForStorage(senderKey));
   } else {
     // 1:1 message — Double Ratchet
     if (!ratchetHeaderB64) throw new Error('Missing ratchet header for 1:1 message');
@@ -568,7 +568,13 @@ export async function decryptMessage(
       messageNumber: headerObj.messageNumber,
     };
 
-    let sessionData = await keyStore.getSession(senderId, senderDeviceId ?? 0);
+    // BUG 7/8 fix: missing device ID is an explicit error, not a silent 0-sentinel
+    if (senderDeviceId == null) {
+      console.error('[xark-e2ee] Missing sender device ID for message', messageId);
+      return { text: '[missing device info]', replyTo: null, mediaUrl: null, type: 'message' as const };
+    }
+
+    let sessionData = await keyStore.getSession(senderId, senderDeviceId);
     let session;
 
     if (!sessionData) {
@@ -617,7 +623,7 @@ export async function decryptMessage(
     }
 
     plaintext = ratchetDecrypt(session, ciphertext, nonce, header);
-    await keyStore.saveSession(senderId, senderDeviceId ?? 0, serializeSession(session));
+    await keyStore.saveSession(senderId, senderDeviceId, serializeSession(session));
   }
 
   const parsed = JSON.parse(fromBytes(plaintext)) as DecryptedMessage;
