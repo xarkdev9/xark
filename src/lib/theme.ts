@@ -28,6 +28,10 @@ export interface ThemeConfig {
   inkSecondary: string; // preview text, subtitles — distinct color, not opacity
   inkTertiary: string;  // timestamps, metadata — lighter but still readable
   inkSender: string;    // group message sender name
+  // 3-tone surface system — depth without borders
+  surfaceChrome: string;   // elevated UI (header, input area) — lightest
+  surfaceCanvas: string;   // content area (chat list, feed) — mid tone
+  surfaceRecessed: string; // recessed elements (avatars, wells) — darkest
 }
 
 export const themes: Record<ThemeName, ThemeConfig> = {
@@ -48,6 +52,9 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     inkSecondary: "#6B6B78",
     inkTertiary: "#8A8A94",
     inkSender: "#9E6A06",
+    surfaceChrome: "#F8F7F3",    // warm off-white — header, input
+    surfaceCanvas: "#EEEBE5",    // warm beige — content area
+    surfaceRecessed: "#E3DCD1",  // deeper beige — avatars, wells
   },
   hearth_dark: {
     label: "hearth dark",
@@ -65,6 +72,9 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     inkSecondary: "#9CA3AF",
     inkTertiary: "#6B7280",
     inkSender: "#D4A017",
+    surfaceChrome: "#141418",    // slightly lighter dark — header, input
+    surfaceCanvas: "#0A0A0F",    // deep dark — content area (same as bg)
+    surfaceRecessed: "#060608",  // deepest — avatars, wells
   },
   // ── VIBE: floating depth, HD photos, immersive ──
   vibe: {
@@ -80,15 +90,18 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     orange: "#DC4A20",
     gray: "#7C7C88",
     inkPrimary: "#000000",
-    inkSecondary: "#5A5A66",  // slightly darker for more contrast
+    inkSecondary: "#5A5A66",
     inkTertiary: "#7C7C88",
     inkSender: "#B07820",
+    surfaceChrome: "#FAF9F6",    // bright warm — header, input
+    surfaceCanvas: "#F0EDE6",    // warm parchment — content
+    surfaceRecessed: "#E5E0D6",  // deeper warmth — avatars, wells
   },
   vibe_dark: {
     label: "vibe dark",
     mode: "dark",
     style: "depth",
-    accent: "#50E8C0",       // warm teal-green
+    accent: "#FF6B35",       // Xark brand Action Orange
     text: "#ECE8E2",
     bg: "#08080C",           // deep warm black
     amber: "#E0A820",
@@ -100,6 +113,9 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     inkSecondary: "#A0A0AC",
     inkTertiary: "#6E6E7A",
     inkSender: "#E0A820",
+    surfaceChrome: "#121216",    // lifted dark — header, input
+    surfaceCanvas: "#08080C",    // deep — content (same as bg)
+    surfaceRecessed: "#040406",  // deepest — avatars, wells
   },
 };
 
@@ -133,6 +149,15 @@ export const colors = {
   green: "var(--xark-green)",
   orange: "var(--xark-orange)",
   gray: "var(--xark-gray)",
+} as const;
+
+// ── SURFACE TONES ────────────────────────────────────────────────────────────
+// 3-tone depth system: chrome (elevated), canvas (content), recessed (wells).
+// Replaces flat single-bg with warm surface hierarchy. No borders needed.
+export const surface = {
+  chrome: "var(--xark-surface-chrome)",     // header, input area, elevated panels
+  canvas: "var(--xark-surface-canvas)",     // content area, chat list, feed
+  recessed: "var(--xark-surface-recessed)", // avatars, input wells, recessed zones
 } as const;
 
 // ── SOLID TEXT COLORS ─────────────────────────────────────────────────────────
@@ -205,10 +230,10 @@ export const text = {
     letterSpacing: "0.01em",
   },
   subtitle: {
-    fontSize: "0.9375rem",
-    fontWeight: 300 as const,
-    lineHeight: 1.45,
-    letterSpacing: "0.01em",
+    fontSize: "1rem",
+    fontWeight: 400 as const,
+    lineHeight: 1.35,
+    letterSpacing: "0em",
   },
   label: {
     fontSize: "0.8125rem",
@@ -256,12 +281,12 @@ export const layout = {
 
 // ── FOVEAL OPACITY ──────────────────────────────────────────────────────────
 export const foveal = {
-  xark: [0.9, 0.7, 0.5, 0.35, 0.25] as readonly number[],
-  user: [0.6, 0.45, 0.35, 0.25] as readonly number[],
-  floor: 0.2,
+  xark: [0.95, 0.90, 0.85, 0.80, 0.75] as readonly number[],
+  user: [0.95, 0.90, 0.85, 0.78] as readonly number[],
+  floor: 0.70,
   roleCap: 0.4,
-  timestampFactor: 0.3,
-  timestampCap: 0.25,
+  timestampFactor: 0.5,
+  timestampCap: 0.38,
 } as const;
 
 // ── NEURO SIGNALS ───────────────────────────────────────────────────────────

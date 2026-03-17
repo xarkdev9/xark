@@ -173,8 +173,7 @@ export function XarkChat({
       <div
         className="pointer-events-none fixed inset-0"
         style={{
-          background:
-            "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(var(--xark-accent-rgb), 0.02) 0%, transparent 60%)",
+          background: "none",
         }}
       />
 
@@ -259,7 +258,7 @@ export function XarkChat({
             // ── System messages ──
             if (msg.role === "system") {
               const sysOpacity = Math.max(
-                0.15,
+                0.35,
                 fovealOpacity(index, msgOnlyList.length, "user") * 0.6
               );
               return (
@@ -373,7 +372,6 @@ export function XarkChat({
                         lineHeight: 1.4,
                         color:
                           msg.role === "xark" ? colors.cyan : colors.amber,
-                        opacity: msg.role === "xark" ? 0.7 : 0.85,
                         cursor: canOpenSanctuary ? "pointer" : "default",
                       }}
                     >
@@ -392,7 +390,7 @@ export function XarkChat({
                     style={{
                       ...text.subtitle,
                       color: colors.white,
-                      opacity: Math.max(0.55, msgOpacity),
+                      opacity: msgOpacity,
                       margin: 0,
                     }}
                   >
@@ -419,7 +417,7 @@ export function XarkChat({
                       style={{
                         ...text.timestamp,
                         color: colors.white,
-                        opacity: 0.2,
+                        opacity: 0.38,
                         marginLeft: "8px",
                       }}
                     >
@@ -796,7 +794,7 @@ export function XarkChat({
                               style={{
                                 ...text.timestamp,
                                 color: colors.white,
-                                opacity: 0.2,
+                                opacity: 0.38,
                                 marginLeft: "8px",
                               }}
                             >
