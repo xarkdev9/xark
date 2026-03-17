@@ -39,17 +39,22 @@ export function useE2EE(userId: string | null): E2EEState & {
 
     async function init() {
       try {
-        // BUG 1 fix: wait for JWT before key registration
+        // BUG 1 fix: wait for JWT with exponential backoff before key registration
         const { getSupabaseToken } = await import("@/lib/supabase");
         let retries = 0;
-        while (!getSupabaseToken() && retries < 10) {
-          await new Promise(r => setTimeout(r, 500));
+        const maxRetries = 8;
+        while (!getSupabaseToken() && retries < maxRetries) {
+          const delay = Math.min(500 * Math.pow(2, retries), 4000);
+          await new Promise(r => setTimeout(r, delay));
           retries++;
         }
         if (!getSupabaseToken()) {
-          console.warn("[e2ee] No JWT after 5s — skipping init");
+          console.error("[xark-e2ee] No JWT after retries — E2EE unavailable");
           setState({ ready: true, available: false, deviceId: null });
           return;
+        }
+        if (retries > 0) {
+          console.log(`[xark-e2ee] JWT ready after ${retries} retries`);
         }
 
         // Dynamic imports — avoid SSR issues with WASM (libsodium)
@@ -68,7 +73,7 @@ export function useE2EE(userId: string | null): E2EEState & {
             return;
           } catch (err) {
             // Migration 014 not applied — E2EE tables don't exist yet
-            console.warn("[e2ee] Key registration failed:", err);
+            console.warn("[xark-e2ee] Key registration failed:", err);
             setState({ ready: true, available: false, deviceId: null });
             return;
           }
@@ -81,7 +86,7 @@ export function useE2EE(userId: string | null): E2EEState & {
         // Replenish OTKs in background (fire-and-forget)
         replenishOTKsIfNeeded().catch(() => {});
       } catch (err) {
-        console.warn("[e2ee] Init failed:", err);
+        console.warn("[xark-e2ee] Init failed:", err);
         setState({ ready: true, available: false, deviceId: null });
       }
     }
@@ -98,7 +103,7 @@ export function useE2EE(userId: string | null): E2EEState & {
         );
         return await encryptForSpace(text, spaceId);
       } catch (err) {
-        console.warn("[e2ee] Encrypt failed:", err);
+        console.warn("[xark-e2ee] Encrypt failed:", err);
         return null;
       }
     },
@@ -130,7 +135,7 @@ export function useE2EE(userId: string | null): E2EEState & {
           spaceId
         );
       } catch (err) {
-        console.warn("[e2ee] Decrypt failed:", err);
+        console.warn("[xark-e2ee] Decrypt failed:", err);
         return null;
       }
     },
