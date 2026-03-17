@@ -18,6 +18,8 @@ import {
   serializeSenderKeyForStorage, serializeSenderKeyForDistribution, deserializeSenderKey
 } from './sender-keys';
 import { keyStore } from './keystore';
+// fetchPeerKeyBundle uses supabase.rpc('fetch_key_bundle') directly (not /api/keys/fetch).
+// This is intentional: client-side reads go through RPC (RLS enforced), writes go through API routes.
 import { fetchPeerKeyBundle } from './key-manager';
 import { supabase, getSupabaseToken } from '../supabase';
 import type { DecryptedMessage, MessageType, RawKeyPair } from './types';
@@ -162,6 +164,7 @@ async function getOrEstablishSession(
   const curve25519Private = ed25519SkToCurve25519(identity.privateKey);
   const curve25519Public = ed25519PkToCurve25519(identity.publicKey);
 
+  // Direct RPC read — RLS enforced, no rate limit needed for reads (BUG 10 documented)
   const peerBundle = await fetchPeerKeyBundle(peerId, peerDeviceId);
 
   const { sharedSecret, ephemeralKey } = x3dhInitiate(
