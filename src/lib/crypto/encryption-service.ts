@@ -20,14 +20,74 @@ import {
 import { keyStore } from './keystore';
 import { fetchPeerKeyBundle } from './key-manager';
 import { supabase, getSupabaseToken } from '../supabase';
-import type { DecryptedMessage, MessageType } from './types';
+import type { DecryptedMessage, MessageType, RawKeyPair } from './types';
 
 /** Encrypted message ready for server transmission */
 export interface EncryptedEnvelope {
   ciphertext: string;       // base64
-  ratchetHeader?: string;   // base64 (Double Ratchet only)
+  ratchetHeader?: string;   // base64 JSON envelope (Double Ratchet only)
   recipientId: string;      // user_id or '_group_'
   recipientDeviceId: number; // device_id or 0
+}
+
+// ── X3DH Session Metadata ──
+// Module-level map to track X3DH ephemeral keys for new sessions.
+// Replaces the old `(session as any)._x3dh*` hack with a proper typed approach.
+// Key: "peerId:peerDeviceId", Value: { ephemeralPub, identityPub }
+const x3dhSessionMeta = new Map<string, {
+  ephemeralPub: string;  // base64
+  identityPub: string;   // base64
+}>();
+
+// ── Identity Key Compatibility Layer ──
+
+/**
+ * Get raw Ed25519 identity key bytes for DH operations.
+ * Handles both formats:
+ * - Legacy: getIdentityKeyLegacy() returns { publicKey, privateKey } as Uint8Array
+ * - Transitional: getIdentityKey() returns { publicKeyRaw, privateKeyCryptoKey, publicKeyCryptoKey }
+ *   where privateKeyCryptoKey may actually be a Uint8Array (when key-manager.ts passes
+ *   libsodium raw bytes to the new saveIdentityKey signature).
+ */
+async function getIdentityKeyRaw(): Promise<RawKeyPair> {
+  // Try legacy format first (old base64 {pub, priv} storage)
+  const legacy = await keyStore.getIdentityKeyLegacy();
+  if (legacy) return legacy;
+
+  // Try new format — key-manager.ts still uses generateIdentityKeyPair() (libsodium)
+  // which returns raw bytes, but saveIdentityKey() now stores as { publicKeyRaw, privateKeyCryptoKey, ... }.
+  // The privateKeyCryptoKey field may actually hold a Uint8Array at runtime (type mismatch).
+  const webCrypto = await keyStore.getIdentityKey();
+  if (webCrypto) {
+    const { publicKeyRaw, privateKeyCryptoKey } = webCrypto;
+
+    // Check if privateKeyCryptoKey is actually raw bytes (Uint8Array) — transitional state
+    // where key-manager.ts passes libsodium bytes through the new saveIdentityKey signature
+    if (privateKeyCryptoKey instanceof Uint8Array) {
+      return { publicKey: publicKeyRaw, privateKey: privateKeyCryptoKey };
+    }
+
+    // It's a real CryptoKey (non-extractable) — cannot use for libsodium DH.
+    // This means WebCrypto key generation is fully wired. Raw bytes are not available.
+    throw new Error(
+      '[xark-e2ee] WebCrypto identity key found but raw private key needed for DH. Re-register keys.'
+    );
+  }
+
+  throw new Error('[xark-e2ee] No identity key found');
+}
+
+/**
+ * Get identity public key bytes (works with both old and new format).
+ */
+async function getIdentityPublicKeyRaw(): Promise<Uint8Array> {
+  const legacy = await keyStore.getIdentityKeyLegacy();
+  if (legacy) return legacy.publicKey;
+
+  const webCrypto = await keyStore.getIdentityKey();
+  if (webCrypto) return webCrypto.publicKeyRaw;
+
+  throw new Error('[xark-e2ee] No identity key found');
 }
 
 // ── Helpers ──
@@ -38,6 +98,53 @@ async function getCurrentUserId(): Promise<string> {
     if (stored) return stored;
   }
   throw new Error('No authenticated user');
+}
+
+/**
+ * Build the ratchet header envelope for transport.
+ * Contains the encrypted ratchet header + optional X3DH metadata for first-contact.
+ * Returns base64-encoded JSON string.
+ */
+function buildHeaderEnvelope(
+  encryptedHeader: Uint8Array,
+  x3dh?: { identityKey: string; ephemeralKey?: string }
+): string {
+  const envelope: Record<string, unknown> = {
+    eh: toBase64(encryptedHeader),  // encrypted header bytes
+  };
+  if (x3dh) {
+    envelope.x3dh = x3dh;
+  }
+  return toBase64(new TextEncoder().encode(JSON.stringify(envelope)));
+}
+
+/**
+ * Parse a ratchet header envelope from transport.
+ * Handles BOTH old format (plain JSON with publicKey/previousCount/messageNumber)
+ * and new format (JSON with eh + optional x3dh).
+ */
+function parseHeaderEnvelope(ratchetHeaderB64: string): {
+  encryptedHeader: Uint8Array;
+  x3dh?: { identityKey?: string; ephemeralKey?: string };
+} {
+  const raw = fromBase64(ratchetHeaderB64);
+  const obj = JSON.parse(new TextDecoder().decode(raw));
+
+  // New format: has 'eh' field (encrypted header bytes)
+  if (obj.eh) {
+    return {
+      encryptedHeader: fromBase64(obj.eh),
+      x3dh: obj.x3dh,
+    };
+  }
+
+  // Legacy format: plain JSON { publicKey, previousCount, messageNumber, x3dh? }
+  // This was the old unencrypted header format. Cannot be used with new ratchetDecrypt
+  // which expects encrypted header bytes. Throw with clear message.
+  throw new Error(
+    '[xark-e2ee] Legacy unencrypted ratchet header detected. ' +
+    'Cannot decrypt — re-establish session required.'
+  );
 }
 
 /** Get or establish a pairwise Double Ratchet session with a peer */
@@ -51,12 +158,11 @@ async function getOrEstablishSession(
   }
 
   // New session — X3DH key agreement as initiator
-  const identity = await keyStore.getIdentityKey();
-  if (!identity) throw new Error('No identity key. Register first.');
-
-  const peerBundle = await fetchPeerKeyBundle(peerId, peerDeviceId);
+  const identity = await getIdentityKeyRaw();
   const curve25519Private = ed25519SkToCurve25519(identity.privateKey);
   const curve25519Public = ed25519PkToCurve25519(identity.publicKey);
+
+  const peerBundle = await fetchPeerKeyBundle(peerId, peerDeviceId);
 
   const { sharedSecret, ephemeralKey } = x3dhInitiate(
     { publicKey: curve25519Public, privateKey: curve25519Private },
@@ -64,9 +170,14 @@ async function getOrEstablishSession(
   );
 
   const session = initSessionAsInitiator(sharedSecret, peerBundle.signedPreKey);
-  // Attach X3DH ephemeral public key — needed by responder for key agreement
-  (session as any)._x3dhEphemeralPub = toBase64(ephemeralKey.publicKey);
-  (session as any)._x3dhIdentityPub = toBase64(identity.publicKey);
+
+  // Store X3DH metadata in module-level map (replaces unsafe `as any` property hack)
+  const metaKey = `${peerId}:${peerDeviceId}`;
+  x3dhSessionMeta.set(metaKey, {
+    ephemeralPub: toBase64(ephemeralKey.publicKey),
+    identityPub: toBase64(identity.publicKey),
+  });
+
   return session;
 }
 
@@ -125,6 +236,7 @@ export async function distributeSenderKey(
       const session = await getOrEstablishSession(member.user_id, member.device_id);
 
       // Encrypt serialized Sender Key with Double Ratchet
+      // header is now Uint8Array (encrypted header bytes)
       const { ciphertext, nonce, header } = ratchetEncrypt(session, serializedKey);
 
       // Persist updated session
@@ -135,30 +247,18 @@ export async function distributeSenderKey(
       packed.set(nonce, 0);
       packed.set(ciphertext, nonce.length);
 
-      // Build ratchet header with X3DH metadata for first-contact sessions
-      const headerJson: Record<string, unknown> = {
-        publicKey: toBase64(header.publicKey),
-        previousCount: header.previousCount,
-        messageNumber: header.messageNumber,
-      };
+      // Build header envelope with X3DH metadata for first-contact sessions
+      const metaKey = `${member.user_id}:${member.device_id}`;
+      const meta = x3dhSessionMeta.get(metaKey);
+      let x3dh: { identityKey: string; ephemeralKey?: string } | undefined;
 
-      // Include X3DH metadata if this is the first message in the session
-      if (header.messageNumber === 0 && header.previousCount === 0) {
-        const x3dhEph = (session as any)._x3dhEphemeralPub;
-        const x3dhIdent = (session as any)._x3dhIdentityPub;
-        if (x3dhEph && x3dhIdent) {
-          headerJson.x3dh = {
-            identityKey: x3dhIdent,
-            ephemeralKey: x3dhEph,  // BUG 11 fix: include actual X3DH ephemeral key
-          };
-        } else {
-          const identity = await keyStore.getIdentityKey();
-          if (identity) {
-            headerJson.x3dh = {
-              identityKey: toBase64(identity.publicKey),
-            };
-          }
-        }
+      if (meta) {
+        x3dh = {
+          identityKey: meta.identityPub,
+          ephemeralKey: meta.ephemeralPub,
+        };
+        // Clean up — metadata only needed for first message
+        x3dhSessionMeta.delete(metaKey);
       }
 
       ciphertextRows.push({
@@ -167,7 +267,7 @@ export async function distributeSenderKey(
         recipient_id: member.user_id,
         recipient_device_id: member.device_id,
         ciphertext: toBase64(packed),
-        ratchet_header: toBase64(new TextEncoder().encode(JSON.stringify(headerJson))),
+        ratchet_header: buildHeaderEnvelope(header, x3dh),
       });
     } catch (err) {
       console.warn(`[xark-sk-dist] Failed to encrypt SK for ${member.user_id}:${member.device_id}:`, err);
@@ -285,21 +385,15 @@ export async function processSenderKeyDistribution(
   const nonce = packed.slice(0, nonceLen);
   const ciphertext = packed.slice(nonceLen);
 
-  const headerObj = JSON.parse(new TextDecoder().decode(fromBase64(ratchetHeaderB64)));
-  const header = {
-    publicKey: fromBase64(headerObj.publicKey),
-    previousCount: headerObj.previousCount,
-    messageNumber: headerObj.messageNumber,
-  };
+  // Parse header envelope (supports both new encrypted and legacy formats)
+  const { encryptedHeader, x3dh: x3dhMeta } = parseHeaderEnvelope(ratchetHeaderB64);
 
   let sessionData = await keyStore.getSession(senderId, senderDeviceId);
   let session;
 
   if (!sessionData) {
     // First contact — X3DH responder side
-    const identity = await keyStore.getIdentityKey();
-    if (!identity) throw new Error('No identity key');
-
+    const identity = await getIdentityKeyRaw();
     const curve25519Private = ed25519SkToCurve25519(identity.privateKey);
     const curve25519Public = ed25519PkToCurve25519(identity.publicKey);
 
@@ -307,18 +401,22 @@ export async function processSenderKeyDistribution(
     const signedPreKey = await keyStore.getSignedPreKey(spkId);
     if (!signedPreKey) throw new Error('No signed pre-key');
 
-    // Extract X3DH metadata from header
+    // Extract X3DH metadata from envelope
     let peerIdentityEd25519: Uint8Array | null = null;
-    if (headerObj.x3dh?.identityKey) {
-      peerIdentityEd25519 = fromBase64(headerObj.x3dh.identityKey);
+    if (x3dhMeta?.identityKey) {
+      peerIdentityEd25519 = fromBase64(x3dhMeta.identityKey);
     }
 
     if (peerIdentityEd25519) {
       const peerIdentityCurve = ed25519PkToCurve25519(peerIdentityEd25519);
-      // BUG 11 fix: use actual X3DH ephemeral key, NOT the ratchet key
-      const peerEphemeralPublic = headerObj.x3dh?.ephemeralKey
-        ? fromBase64(headerObj.x3dh.ephemeralKey)
-        : header.publicKey; // fallback for old messages without ephemeral key
+      // BUG 11 fix: use actual X3DH ephemeral key from envelope
+      const peerEphemeralPublic = x3dhMeta?.ephemeralKey
+        ? fromBase64(x3dhMeta.ephemeralKey)
+        : null;
+
+      if (!peerEphemeralPublic) {
+        throw new Error('[xark-e2ee] Missing X3DH ephemeral key in distribution message');
+      }
 
       const sharedSecret = x3dhRespond(
         { publicKey: curve25519Public, privateKey: curve25519Private },
@@ -339,7 +437,8 @@ export async function processSenderKeyDistribution(
     session = deserializeSession(sessionData);
   }
 
-  const plaintext = ratchetDecrypt(session, ciphertext, nonce, header);
+  // ratchetDecrypt now takes encrypted header bytes directly
+  const plaintext = ratchetDecrypt(session, ciphertext, nonce, encryptedHeader);
   await keyStore.saveSession(senderId, senderDeviceId, serializeSession(session));
 
   // plaintext is a serialized SenderKeyState — store it keyed by spaceId:senderId
@@ -371,27 +470,15 @@ export async function encryptForSanctuary(
   let sessionData = await keyStore.getSession(peerId, peerDeviceId);
   let session;
   let isNewSession = false;
-  let identity: Awaited<ReturnType<typeof keyStore.getIdentityKey>> = null;
 
   if (!sessionData) {
     isNewSession = true;
-    identity = await keyStore.getIdentityKey();
-    if (!identity) throw new Error('No identity key. Register first.');
-
-    const peerBundle = await fetchPeerKeyBundle(peerId, peerDeviceId);
-    const curve25519Private = ed25519SkToCurve25519(identity.privateKey);
-    const curve25519Public = ed25519PkToCurve25519(identity.publicKey);
-
-    const { sharedSecret } = x3dhInitiate(
-      { publicKey: curve25519Public, privateKey: curve25519Private },
-      peerBundle
-    );
-
-    session = initSessionAsInitiator(sharedSecret, peerBundle.signedPreKey);
+    session = await getOrEstablishSession(peerId, peerDeviceId);
   } else {
     session = deserializeSession(sessionData);
   }
 
+  // header is now Uint8Array (encrypted header bytes)
   const { ciphertext, nonce, header } = ratchetEncrypt(session, plaintext);
 
   // Persist updated session
@@ -402,25 +489,27 @@ export async function encryptForSanctuary(
   packed.set(nonce, 0);
   packed.set(ciphertext, nonce.length);
 
-  // Build ratchet header JSON
-  const headerJson: Record<string, unknown> = {
-    publicKey: toBase64(header.publicKey),
-    previousCount: header.previousCount,
-    messageNumber: header.messageNumber,
-  };
-
-  // Include X3DH metadata for first message (session establishment)
-  if (isNewSession && identity) {
-    const x3dhEph = (session as any)._x3dhEphemeralPub;
-    headerJson.x3dh = {
-      identityKey: toBase64(identity.publicKey),
-      ephemeralKey: x3dhEph ?? undefined,  // BUG 11 fix
-    };
+  // Build header envelope with X3DH metadata for first message
+  let x3dh: { identityKey: string; ephemeralKey?: string } | undefined;
+  if (isNewSession) {
+    const metaKey = `${peerId}:${peerDeviceId}`;
+    const meta = x3dhSessionMeta.get(metaKey);
+    if (meta) {
+      x3dh = {
+        identityKey: meta.identityPub,
+        ephemeralKey: meta.ephemeralPub,
+      };
+      x3dhSessionMeta.delete(metaKey);
+    } else {
+      // Fallback: include identity key without ephemeral
+      const identityPub = await getIdentityPublicKeyRaw();
+      x3dh = { identityKey: toBase64(identityPub) };
+    }
   }
 
   return {
     ciphertext: toBase64(packed),
-    ratchetHeader: toBase64(new TextEncoder().encode(JSON.stringify(headerJson))),
+    ratchetHeader: buildHeaderEnvelope(header, x3dh),
     recipientId: peerId,
     recipientDeviceId: peerDeviceId,
   };
@@ -471,11 +560,11 @@ export async function encryptForSpace(
         .limit(1);
 
       if (!tsError && tombstones && tombstones.length > 0) {
-        console.warn(`[e2ee] 🛑 Tombstone detected after key generation! Forcing Lazy Rotation.`);
+        console.warn(`[e2ee] Tombstone detected after key generation! Forcing Lazy Rotation.`);
         senderKey = generateSenderKey();
         await keyStore.saveSenderKey(spaceId, serializeSenderKeyForStorage(senderKey));
         try {
-          // get_space_member_devices intrinsically excludes kicked users, 
+          // get_space_member_devices intrinsically excludes kicked users,
           // guaranteeing distribution only to SAFE devices.
           await distributeSenderKey(spaceId, senderKey);
         } catch (err) {
@@ -561,12 +650,8 @@ export async function decryptMessage(
     const nonce = packed.slice(0, nonceLen);
     const ciphertext = packed.slice(nonceLen);
 
-    const headerObj = JSON.parse(new TextDecoder().decode(fromBase64(ratchetHeaderB64)));
-    const header = {
-      publicKey: fromBase64(headerObj.publicKey),
-      previousCount: headerObj.previousCount,
-      messageNumber: headerObj.messageNumber,
-    };
+    // Parse header envelope (encrypted header + X3DH metadata)
+    const { encryptedHeader, x3dh: x3dhMeta } = parseHeaderEnvelope(ratchetHeaderB64);
 
     // BUG 7/8 fix: missing device ID is an explicit error, not a silent 0-sentinel
     if (senderDeviceId == null) {
@@ -579,9 +664,7 @@ export async function decryptMessage(
 
     if (!sessionData) {
       // First message received — X3DH responder side
-      const identity = await keyStore.getIdentityKey();
-      if (!identity) throw new Error('No identity key');
-
+      const identity = await getIdentityKeyRaw();
       const curve25519Private = ed25519SkToCurve25519(identity.privateKey);
       const curve25519Public = ed25519PkToCurve25519(identity.publicKey);
 
@@ -589,19 +672,23 @@ export async function decryptMessage(
       const signedPreKey = await keyStore.getSignedPreKey(spkId);
       if (!signedPreKey) throw new Error('No signed pre-key');
 
-      // Extract X3DH metadata from ratchet header
+      // Extract X3DH metadata from envelope
       let peerIdentityEd25519: Uint8Array | null = null;
-      if (headerObj.x3dh?.identityKey) {
-        peerIdentityEd25519 = fromBase64(headerObj.x3dh.identityKey);
+      if (x3dhMeta?.identityKey) {
+        peerIdentityEd25519 = fromBase64(x3dhMeta.identityKey);
       }
 
       if (peerIdentityEd25519) {
         // Full X3DH responder flow
         const peerIdentityCurve = ed25519PkToCurve25519(peerIdentityEd25519);
-        // BUG 11 fix: use actual X3DH ephemeral key, NOT the ratchet key
-        const peerEphemeralPublic = headerObj.x3dh?.ephemeralKey
-          ? fromBase64(headerObj.x3dh.ephemeralKey)
-          : header.publicKey; // fallback for old messages
+        // BUG 11 fix: use actual X3DH ephemeral key from envelope
+        const peerEphemeralPublic = x3dhMeta?.ephemeralKey
+          ? fromBase64(x3dhMeta.ephemeralKey)
+          : null;
+
+        if (!peerEphemeralPublic) {
+          throw new Error('[xark-e2ee] Missing X3DH ephemeral key — cannot establish session');
+        }
 
         const sharedSecret = x3dhRespond(
           { publicKey: curve25519Public, privateKey: curve25519Private },
@@ -622,7 +709,8 @@ export async function decryptMessage(
       session = deserializeSession(sessionData);
     }
 
-    plaintext = ratchetDecrypt(session, ciphertext, nonce, header);
+    // ratchetDecrypt now takes encrypted header bytes directly
+    plaintext = ratchetDecrypt(session, ciphertext, nonce, encryptedHeader);
     await keyStore.saveSession(senderId, senderDeviceId, serializeSession(session));
   }
 
@@ -632,20 +720,17 @@ export async function decryptMessage(
 
 /** Client-side message type guard — anti-injection defense */
 export function resolveMessageContent(
-  messageType: MessageType,
+  messageType: MessageType | string,
   serverContent: string | null,
   decryptedContent: string | null
 ): string {
-  switch (messageType) {
-    case 'e2ee':
-    case 'e2ee_xark':
-      // NEVER trust server content for E2EE messages
-      return decryptedContent ?? '[decryption pending]';
-    case 'xark':
-    case 'system':
-    case 'legacy':
-      return serverContent ?? '';
-    default:
-      return serverContent ?? '';
+  // E2EE message types — NEVER trust server content
+  if (messageType === 'e2ee' || messageType === 'e2ee_xark') {
+    return decryptedContent ?? '[decryption pending]';
   }
+  // Unencrypted types — server content is authoritative
+  if (messageType === 'xark' || messageType === 'system' || messageType === 'legacy') {
+    return serverContent ?? '';
+  }
+  return serverContent ?? '';
 }

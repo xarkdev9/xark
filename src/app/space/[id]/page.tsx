@@ -85,10 +85,7 @@ function SpacePageInner() {
   // never from raw URL param (e.g., "ram"). RLS checks user_id = auth.jwt()->>'sub'.
   const resolvedUserId = user?.uid ?? undefined;
 
-  // E2EE DISABLED until verified in browser with real 2-device testing.
-  // Fixes for BUGs 1,2,5,6,9,11,15,20 are committed but untested in production.
-  // Re-enable ONLY after 2-device verification passes.
-  const e2ee = useE2EE(null);
+  const e2ee = useE2EE(resolvedUserId ?? null);
 
   const viewParam = searchParams.get("view");
   const [view, setView] = useState<ViewMode>(

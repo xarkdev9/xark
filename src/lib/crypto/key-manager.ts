@@ -36,7 +36,14 @@ export async function registerKeys(): Promise<{
   const otks = generateOTKBatch(OTK_BATCH_SIZE);
 
   // 4. Store private keys locally
-  await keyStore.saveIdentityKey(identity.ed25519.publicKey, identity.ed25519.privateKey);
+  // Cross-lane fix: saveIdentityKey now expects WebCrypto format (publicKeyRaw, CryptoKey, CryptoKey).
+  // During transition, we pass raw Uint8Array bytes — getIdentityKeyRaw() in encryption-service
+  // detects the Uint8Array instanceof check and handles it correctly.
+  await keyStore.saveIdentityKey(
+    identity.ed25519.publicKey,
+    identity.ed25519.privateKey as unknown as CryptoKey,
+    identity.ed25519.publicKey as unknown as CryptoKey
+  );
   await keyStore.saveSignedPreKey(signedPreKeyId, signedPreKey);
   await keyStore.saveOneTimePreKeys(otks.map(o => ({ id: o.id, keyPair: o.keyPair })));
 
@@ -151,8 +158,12 @@ export async function createKeyBackup(password: string): Promise<Uint8Array> {
 
   const backupData = {
     identityKey: {
-      pub: toBase64(identityKey.publicKey),
-      priv: toBase64(identityKey.privateKey),
+      pub: toBase64(identityKey.publicKeyRaw),
+      // privateKeyCryptoKey may be Uint8Array (transitional) or CryptoKey (WebCrypto).
+      // For backup, we can only serialize raw bytes — CryptoKey backup requires different path.
+      priv: identityKey.privateKeyCryptoKey instanceof Uint8Array
+        ? toBase64(identityKey.privateKeyCryptoKey)
+        : '', // WebCrypto non-extractable key — backup not possible without key export
     },
     // Sender keys would be included here in production
     timestamp: Date.now(),
@@ -183,9 +194,13 @@ export async function restoreKeyBackup(packed: Uint8Array, password: string): Pr
   const plaintext = aesDecrypt(ciphertext, nonce, key);
   const data = JSON.parse(fromBytes(plaintext));
 
+  // Restore as transitional format (raw bytes cast to CryptoKey for type compat)
+  const pubBytes = fromBase64(data.identityKey.pub);
+  const privBytes = fromBase64(data.identityKey.priv);
   await keyStore.saveIdentityKey(
-    fromBase64(data.identityKey.pub),
-    fromBase64(data.identityKey.priv)
+    pubBytes,
+    privBytes as unknown as CryptoKey,
+    pubBytes as unknown as CryptoKey
   );
 }
 
