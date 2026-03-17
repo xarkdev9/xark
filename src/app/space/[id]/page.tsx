@@ -30,13 +30,7 @@ import { detectConstraints } from "@/lib/constraints";
 import type { DetectedConstraint } from "@/lib/crypto/types";
 import type { SpaceStateItem } from "@/lib/space-state";
 import { colors, ink, text, textColor, timing, surface } from "@/lib/theme";
-import { tryLocalAgent } from "@/lib/local-agent";
-import type { LocalContext, LedgerEntry } from "@/lib/local-agent";
-import { isRecallQuestion, getRecallWhisper } from "@/lib/local-recall";
-import type { RecallResult } from "@/lib/local-recall";
-import { useLocalMemory } from "@/hooks/useLocalMemory";
-import { useDeviceTier } from "@/hooks/useDeviceTier";
-import { ContextCard } from "@/components/os/ContextCard";
+import type { LedgerEntry } from "@/lib/local-agent";
 import type { LedgerEvent } from "@/components/os/LedgerPill";
 import { markSpaceRead } from "@/lib/unread";
 import { PlaygroundSpace } from "@/components/os/PlaygroundSpace";
@@ -138,13 +132,7 @@ function SpacePageInner() {
     }
   }, [view]);
 
-  // ── Tier 1/2 state ──
-  const deviceTier = useDeviceTier();
-  const localMemory = useLocalMemory(spaceId);
   const [ledgerEvents, setLedgerEvents] = useState<LedgerEvent[]>([]);
-  const [localWhisper, setLocalWhisper] = useState<string | null>(null);
-  const [contextCard, setContextCard] = useState<RecallResult | null>(null);
-  const [recallWhisper, setRecallWhisper] = useState<string | null>(null);
 
   // ═══════════════════════════════════════════
   // CHAT STATE — lives here, shared across views
@@ -270,26 +258,13 @@ function SpacePageInner() {
 
             // Merge decrypted text into messages
             if (decryptedMap.size > 0) {
-              setMessages((prev) =>
-                prev.map((m) => {
-                  const decrypted = decryptedMap.get(m.id);
-                  return decrypted ? { ...m, content: decrypted } : m;
-                })
-              );
-            }
-          }
-        }
-
-        // Feed messages to Tier 2 memory index (delta sync via watermark)
-        if (localMemory.ready) {
-          for (const m of mapped) {
-            if (!localMemory.watermark || m.timestamp > localMemory.watermark) {
-              localMemory.indexMessage({
-                id: m.id,
-                content: m.content,
-                senderName: m.senderName,
-                timestamp: m.timestamp,
-              });
+              for (const m of mapped) {
+                const decrypted = decryptedMap.get(m.id);
+                if (decrypted) {
+                  m.content = decrypted;
+                }
+              }
+              setMessages([...mapped]);
             }
           }
         }
@@ -369,16 +344,6 @@ function SpacePageInner() {
       // Clear thinking indicator when @xark response arrives
       if (incoming.role === 'xark' && content && content !== 'thinking...') {
         setIsThinking(false);
-      }
-
-      // Feed to Tier 2 memory index
-      if (localMemory.ready && content) {
-        localMemory.indexMessage({
-          id: incoming.id,
-          content,
-          senderName: incoming.sender_name ?? "",
-          timestamp: new Date(incoming.created_at).getTime(),
-        });
       }
 
       setMessages((prev) => {
@@ -519,48 +484,10 @@ function SpacePageInner() {
       addDebug("BLOCKED: no userId");
       return;
     }
-    addDebug(`sending: "${txt.slice(0, 20)}" as ${resolvedUserId.slice(0, 15)} | jwt:${getSupabaseToken() ? 'yes' : 'NO'} | e2ee:${e2ee.available}`);
+    const token = getSupabaseToken();
+    addDebug(`sending: "${txt.slice(0, 20)}" as ${resolvedUserId.slice(0, 15)} | jwt:${token ? 'yes' : 'NO'} | e2ee:${e2ee.available}`);
 
-    const hasXark = txt.toLowerCase().includes("@xark");
-
-    // ── TIER 1: Fast-Path Router (runs even while isThinking) ──
-    if (hasXark) {
-      const localContext: LocalContext = {
-        spaceId,
-        userId: resolvedUserId,
-        userName: user?.displayName ?? userName ?? "",
-        spaceItems,
-        supabaseToken: getSupabaseToken(),
-      };
-
-      const localResult = tryLocalAgent(txt, localContext);
-      if (localResult) {
-        setInput("");
-        if (localResult.ledgerEntry) persistLedger(localResult.ledgerEntry);
-        if (localResult.uiAction) localResult.uiAction();
-        if (localResult.whisper) {
-          setLocalWhisper(localResult.whisper);
-          setTimeout(() => setLocalWhisper(null), 3000);
-        }
-        return; // Done. No E2EE, no network, no thinking indicator.
-      }
-
-      // ── TIER 2: E2EE Memory Engine ──
-      if (isRecallQuestion(txt)) {
-        const results = await localMemory.search(txt);
-        if (results.length > 0) {
-          setInput("");
-          setContextCard(results[0]);
-          return;
-        }
-        // Zero results — show tier-aware coaching whisper, preserve input
-        setRecallWhisper(getRecallWhisper(deviceTier));
-        setTimeout(() => setRecallWhisper(null), 5000);
-        return; // STRICT HALT: cloud is E2EE-blind
-      }
-    }
-
-    // isThinking gate: only blocks Tier 3 (network-dependent paths)
+    // isThinking gate: only blocks network-dependent paths
     if (isThinking) return;
 
     const userMsg: ChatMessage = {
@@ -583,7 +510,6 @@ function SpacePageInner() {
     }
 
     const hasXarkTrigger = txt.toLowerCase().includes("@xark");
-    const token = getSupabaseToken();
 
     // ══════════════════════════════════════════════
     // E2EE PATH — encrypt + /api/message
@@ -730,12 +656,14 @@ function SpacePageInner() {
       }
 
       // @xark response (persisted server-side via supabaseAdmin)
+      const finalContent = data.response ?? "i could not generate a response.";
+
       setMessages((prev) => [
         ...prev,
         {
           id: data.messageId ?? generateId(),
           role: "xark",
-          content: data.response ?? "i could not generate a response.",
+          content: finalContent,
           timestamp: Date.now(),
         },
       ]);
@@ -1332,57 +1260,6 @@ function SpacePageInner() {
               </span>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ── Context Card (Tier 2 recall result) ── */}
-      {contextCard && (
-        <div className="fixed inset-x-0 z-20 mx-auto px-6" style={{ bottom: "80px", maxWidth: "640px" }}>
-          <ContextCard
-            content={contextCard.content}
-            senderName={contextCard.senderName}
-            timestamp={contextCard.timestamp}
-            onJump={() => {
-              const el = document.getElementById(`msg-${contextCard.messageId}`);
-              if (el) {
-                el.scrollIntoView({ behavior: "smooth", block: "center" });
-                el.animate(
-                  [{ background: "rgba(var(--xark-accent-rgb), 0.15)" }, { background: "transparent" }],
-                  { duration: 1500 }
-                );
-              }
-              setContextCard(null);
-            }}
-            onQuote={(content, sender) => {
-              setInput(`> ${sender}: "${content.slice(0, 80)}"\n`);
-              setContextCard(null);
-            }}
-            onDismiss={() => setContextCard(null)}
-          />
-        </div>
-      )}
-
-      {/* ── Recall whisper (Tier 2 zero results) ── */}
-      {recallWhisper && (
-        <div className="fixed inset-x-0 z-20 mx-auto px-6" style={{ bottom: "80px", maxWidth: "640px" }}>
-          <p
-            style={{ ...text.hint, color: ink.tertiary, textAlign: "center", cursor: "pointer" }}
-            onClick={() => setRecallWhisper(null)}
-          >
-            {recallWhisper}
-          </p>
-        </div>
-      )}
-
-      {/* ── Local command whisper ── */}
-      {localWhisper && (
-        <div className="fixed inset-x-0 z-20 mx-auto px-6" style={{ bottom: "80px", maxWidth: "640px" }}>
-          <p
-            style={{ ...text.hint, color: ink.tertiary, textAlign: "center", cursor: "pointer" }}
-            onClick={() => setLocalWhisper(null)}
-          >
-            {localWhisper}
-          </p>
         </div>
       )}
 
