@@ -8,7 +8,7 @@ import {
   aesEncrypt, aesDecrypt, randomBytes, toBytes, fromBytes
 } from './primitives';
 import { keyStore } from './keystore';
-import { supabase } from '../supabase';
+import { supabase, getSupabaseToken } from '../supabase';
 import { rotateSenderKey, serializeSenderKeyForStorage } from './sender-keys';
 import type { IdentityKeyPair, SignedPreKey, OneTimePreKey, PublicKeyBundle, SenderKeyState } from './types';
 
@@ -48,9 +48,13 @@ export async function registerKeys(): Promise<{
   await keyStore.saveOneTimePreKeys(otks.map(o => ({ id: o.id, keyPair: o.keyPair })));
 
   // 5. Upload public keys via API route (rate limited + validated)
+  const token = getSupabaseToken();
+  if (!token) throw new Error('[xark-e2ee] No JWT — cannot upload keys');
+  const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
   const bundleRes = await fetch('/api/keys/bundle', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders,
     body: JSON.stringify({
       device_id: deviceId,
       identity_key: toBase64(identity.ed25519.publicKey),
@@ -71,7 +75,7 @@ export async function registerKeys(): Promise<{
   }));
   const otkRes = await fetch('/api/keys/otk', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders,
     body: JSON.stringify({ device_id: deviceId, keys: otkPayload }),
   });
   if (!otkRes.ok) {
@@ -145,13 +149,16 @@ export async function replenishOTKsIfNeeded(): Promise<void> {
   await keyStore.saveOneTimePreKeys(otks.map(o => ({ id: o.id, keyPair: o.keyPair })));
 
   // Upload public keys via API route (rate limited + validated)
+  const token = getSupabaseToken();
   const otkPayload = otks.map(o => ({
     id: o.id,
     public_key: toBase64(o.keyPair.publicKey),
   }));
   const otkRes = await fetch('/api/keys/otk', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: token
+      ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+      : { 'Content-Type': 'application/json' },
     body: JSON.stringify({ device_id: deviceId, keys: otkPayload }),
   });
   if (!otkRes.ok) {
