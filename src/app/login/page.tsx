@@ -345,14 +345,14 @@ export default function LoginPage() {
           {screen === "field" && (
             <motion.div
               key="field"
-              className="flex flex-1 flex-col px-9"
-              style={{ zIndex: 10 }}
+              className="flex flex-1 flex-col justify-center px-9"
+              style={{ zIndex: 10, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             >
               {/* Wordmark — morphs from brand via layoutId */}
-              <div style={{ paddingTop: "min(80px, 10dvh)" }}>
+              <div>
                 <motion.span
                   layoutId="wordmark"
                   style={{
@@ -367,7 +367,7 @@ export default function LoginPage() {
               </div>
 
               {/* THE FIELD — content morphs */}
-              <div style={{ marginTop: "min(100px, 12dvh)" }}>
+              <div style={{ marginTop: "32px" }}>
                 <AnimatePresence mode="wait">
 
                   {/* ── PHONE ── */}
@@ -378,7 +378,7 @@ export default function LoginPage() {
                           <p style={{ fontSize: "13px", fontWeight: 300, color: W, opacity: 0.9, letterSpacing: "0.04em", marginBottom: "16px", textShadow: TEXT_SHADOW }}>
                             your number
                           </p>
-                          <div style={{ display: "flex", alignItems: "center" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                             {/* Country code */}
                             <div
                               role="button" tabIndex={0}
@@ -387,10 +387,10 @@ export default function LoginPage() {
                               className="cursor-pointer outline-none"
                               style={{
                                 display: "flex", alignItems: "center", gap: "3px",
-                                paddingRight: "10px", position: "relative",
+                                paddingRight: "8px", position: "relative", flexShrink: 0,
                               }}
                             >
-                              <span style={{ fontSize: "22px", fontWeight: 400, color: W, opacity: 1, textShadow: TEXT_SHADOW }}>{countryCode}</span>
+                              <span style={{ fontSize: "18px", fontWeight: 400, color: W, opacity: 1, textShadow: TEXT_SHADOW }}>{countryCode}</span>
                               <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.7, marginTop: "2px", color: W }}>
                                 <path d="M2 3L4 5L6 3" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>
@@ -408,8 +408,8 @@ export default function LoginPage() {
                               disabled={isBusy}
                               className="flex-1 bg-transparent outline-none"
                               style={{
-                                fontSize: "22px", fontWeight: 400, color: W, letterSpacing: "0.06em",
-                                paddingLeft: "10px", caretColor: ACCENT, textShadow: TEXT_SHADOW,
+                                fontSize: "18px", fontWeight: 400, color: W, letterSpacing: "0.06em",
+                                paddingLeft: "8px", caretColor: ACCENT, textShadow: TEXT_SHADOW, minWidth: 0,
                                 opacity: isBusy ? 0.4 : 1,
                                 transition: `opacity ${timing.transition} ease`,
                               }}
@@ -425,6 +425,8 @@ export default function LoginPage() {
                                 opacity: phoneReady && !isBusy ? 0.9 : 0.15,
                                 cursor: phoneReady && !isBusy ? "pointer" : "default",
                                 transition: `opacity ${timing.transition} ease`, flexShrink: 0,
+                                padding: "8px",
+                                marginRight: "-8px",
                               }}
                             >
                               <ArrowIcon />
