@@ -5,16 +5,39 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { supabase } from "@/lib/supabase";
 import { setSupabaseToken } from "@/lib/supabase";
-import { colors, ink, text, timing } from "@/lib/theme";
+import { timing } from "@/lib/theme";
+import { makeUserId } from "@/lib/user-id";
+import { storageAdapter } from "@/lib/storage";
+import { setDevPassword } from "@/hooks/useAuth";
+import { WelcomeScreen } from "@/components/os/WelcomeScreen";
+
+// ── Video backgrounds — Pexels Free License, all verified 200 ──
+const VIDEO_SOURCES = [
+  "https://videos.pexels.com/video-files/3015510/3015510-hd_1280_720_24fps.mp4",  // friends gathering (3MB)
+  "https://videos.pexels.com/video-files/856973/856973-hd_1280_720_25fps.mp4",    // silhouette / warmth (2.5MB)
+  "https://videos.pexels.com/video-files/1093662/1093662-hd_1280_720_30fps.mp4",  // ocean rocks (2.7MB)
+  "https://videos.pexels.com/video-files/857195/857195-hd_1280_720_25fps.mp4",    // candle flame (2MB)
+];
 
 // ── Phases ──
 type Screen = "brand" | "field";
 type FieldStep = "phone" | "otp" | "name" | "photo";
 type PhoneAction = "idle" | "sending" | "verifying";
+
+// ── Shared text color tokens (white over dark video) ──
+const W = "#fff";
+const W90 = "rgba(255,255,255,0.9)";
+const W70 = "rgba(255,255,255,0.7)";
+const W50 = "rgba(255,255,255,0.5)";
+const W40 = "rgba(255,255,255,0.4)";
+const W25 = "rgba(255,255,255,0.25)";
+const W20 = "rgba(255,255,255,0.2)";
+const W12 = "rgba(255,255,255,0.12)";
+const ACCENT = "#40E0FF";
+const ERROR = "#FF6B35";
+const TEXT_SHADOW = "0 1px 4px rgba(0,0,0,0.5)";
 
 // ── Country codes (common ones first) ──
 const COUNTRY_CODES = [
@@ -73,7 +96,7 @@ const fieldTransition = {
 // ── Arrow icon ──
 function ArrowIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="5" y1="12" x2="19" y2="12" />
       <polyline points="12 5 19 12 12 19" />
     </svg>
@@ -95,6 +118,10 @@ export default function LoginPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Video state — round-robin, client-only
+  const [videoSrc, setVideoSrc] = useState(VIDEO_SOURCES[0]);
+  const videoEl = useRef<HTMLVideoElement>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const confirmationRef = useRef<ConfirmationResult | null>(null);
@@ -109,7 +136,17 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
     setCountryCode(detectCountryCode());
+    // Round-robin video (client-only, avoids hydration mismatch)
+    const last = parseInt(sessionStorage.getItem("xark_video_idx") ?? "-1", 10);
+    const next = (last + 1) % VIDEO_SOURCES.length;
+    sessionStorage.setItem("xark_video_idx", String(next));
+    setVideoSrc(VIDEO_SOURCES[next]);
   }, []);
+
+  // Safari needs explicit play() call
+  useEffect(() => {
+    videoEl.current?.play().catch(() => {});
+  }, [videoSrc]);
 
   // Focus input when field step changes
   useEffect(() => {
@@ -207,7 +244,7 @@ export default function LoginPage() {
   // ── Dev auth ──
   const handleDevEnter = useCallback(() => {
     if (name.trim().length > 0 && password.trim().length > 0) {
-      sessionStorage.setItem("xark_pass", password.trim());
+      setDevPassword(password.trim());
       setAuthError("");
       setFieldStep("photo");
     }
@@ -215,14 +252,11 @@ export default function LoginPage() {
 
   // ── Photo ──
   const handlePhotoSelect = useCallback(async (file: File) => {
-    if (!storage) { goToGalaxy(); return; }
     if (file.size > 2 * 1024 * 1024) { goToGalaxy(); return; }
     setPhotoUploading(true);
     try {
-      const userId = `name_${name.trim().toLowerCase()}`;
-      const storageRef = ref(storage, `profiles/${userId}/avatar`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const userId = makeUserId("name", name.trim().toLowerCase());
+      const downloadUrl = await storageAdapter.upload(`profiles/${userId}/avatar`, file);
       await supabase.from("users").update({ photo_url: downloadUrl }).eq("id", userId);
     } catch { /* continue */ }
     setPhotoUploading(false);
@@ -245,114 +279,68 @@ export default function LoginPage() {
   // ── Computed states ──
   const phoneReady = phoneInput.replace(/\D/g, "").length >= 7;
   const isBusy = phoneAction !== "idle";
-  const accentWashIntensity = fieldStep === "phone" ? 0.03 : fieldStep === "otp" ? 0.035 : fieldStep === "name" ? 0.04 : 0.05;
 
   return (
     <LayoutGroup>
-      <div className="relative flex min-h-svh flex-col overflow-hidden" style={{ background: colors.void }}>
+      <div className="relative flex min-h-svh flex-col overflow-hidden" style={{ background: "#050508" }}>
         <div id="recaptcha-container" />
 
-        {/* ── Progressive accent wash ── */}
-        <div
-          className="pointer-events-none fixed inset-0"
-          style={{
-            background: `radial-gradient(ellipse 80% 60% at 50% 40%, rgba(255,107,53,${accentWashIntensity}) 0%, transparent 60%)`,
-            transition: "background 1s ease",
-          }}
-        />
+        {/* ══════════════════════════════════════
+            VIDEO BACKGROUND — persists across ALL screens
+            ══════════════════════════════════════ */}
+        <div style={{ position: "fixed", inset: 0, zIndex: 0 }}>
+          <video
+            key={videoSrc}
+            ref={videoEl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
+          >
+            <source src={videoSrc} type="video/mp4" />
+          </video>
+
+          {/* Dark scrim — 75% for maximum text readability */}
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)" }} />
+
+          {/* Vignette */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%)",
+            }}
+          />
+        </div>
 
         {/* ── Grain ── */}
         <div
           className="pointer-events-none fixed inset-0"
           style={{
-            opacity: 0.02, zIndex: 50,
+            opacity: 0.04, zIndex: 50,
             backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
             backgroundSize: "128px",
           }}
         />
 
         {/* ══════════════════════════════════════
-            BRAND SCREEN
+            BRAND SCREEN — cinematic entrance
             ══════════════════════════════════════ */}
+        {screen === "brand" && (
+          <WelcomeScreen onBegin={handleBegin} />
+        )}
+
         <AnimatePresence mode="wait">
-          {screen === "brand" && (
-            <motion.div
-              key="brand"
-              className="flex flex-1 flex-col justify-center px-9"
-              style={{ zIndex: 10 }}
-              exit={{ opacity: 0, transition: { duration: 0.3 } }}
-            >
-              {/* Wordmark */}
-              <motion.span
-                layoutId="wordmark"
-                style={{
-                  fontSize: "64px", fontWeight: 300, letterSpacing: "-0.03em",
-                  color: colors.white,
-                  opacity: mounted ? 0.88 : 0,
-                  display: "inline-block",
-                }}
-                transition={{ layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }}
-              >
-                xark
-              </motion.span>
-
-              {/* Three lines */}
-              <div style={{ marginTop: "36px" }}>
-                <motion.p
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: mounted ? 0.45 : 0, y: mounted ? 0 : 14 }}
-                  transition={{ delay: 0.5, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontSize: "14px", fontWeight: 400, color: colors.white, lineHeight: 2, letterSpacing: "0.02em" }}
-                >
-                  people, plans and memories.
-                </motion.p>
-                <motion.p
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: mounted ? 0.28 : 0, y: mounted ? 0 : 14 }}
-                  transition={{ delay: 1.0, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontSize: "14px", fontWeight: 400, color: colors.white, lineHeight: 2, letterSpacing: "0.02em" }}
-                >
-                  decide together, effortlessly.
-                </motion.p>
-                <motion.p
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: mounted ? 0.15 : 0, y: mounted ? 0 : 14 }}
-                  transition={{ delay: 1.5, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ fontSize: "14px", fontWeight: 400, color: colors.white, lineHeight: 2, letterSpacing: "0.02em" }}
-                >
-                  encrypted, always.
-                </motion.p>
-              </div>
-
-              {/* Begin */}
-              <motion.div
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: mounted ? 1 : 0, y: mounted ? 0 : 14 }}
-                transition={{ delay: 2.2, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                style={{ marginTop: "56px" }}
-              >
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={handleBegin}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleBegin(); }}
-                  className="cursor-pointer outline-none"
-                  style={{
-                    fontSize: "11px", fontWeight: 300, letterSpacing: "0.15em",
-                    color: colors.cyan, opacity: 0.5,
-                    transition: `opacity ${timing.transition} ease`,
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.5"; }}
-                >
-                  begin
-                </span>
-              </motion.div>
-            </motion.div>
-          )}
 
           {/* ══════════════════════════════════════
-              FIELD SCREEN
+              FIELD SCREEN — phone, OTP, name, photo
               ══════════════════════════════════════ */}
           {screen === "field" && (
             <motion.div
@@ -364,12 +352,12 @@ export default function LoginPage() {
               transition={{ duration: 0.3 }}
             >
               {/* Wordmark — morphs from brand via layoutId */}
-              <div style={{ paddingTop: "80px" }}>
+              <div style={{ paddingTop: "min(80px, 10dvh)" }}>
                 <motion.span
                   layoutId="wordmark"
                   style={{
                     fontSize: "28px", fontWeight: 300, letterSpacing: "-0.03em",
-                    color: colors.white, opacity: 0.5,
+                    color: W, opacity: 0.8, textShadow: TEXT_SHADOW,
                     display: "inline-block",
                   }}
                   transition={{ layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }}
@@ -378,8 +366,8 @@ export default function LoginPage() {
                 </motion.span>
               </div>
 
-              {/* THE FIELD — fixed position, content morphs */}
-              <div style={{ marginTop: "100px" }}>
+              {/* THE FIELD — content morphs */}
+              <div style={{ marginTop: "min(100px, 12dvh)" }}>
                 <AnimatePresence mode="wait">
 
                   {/* ── PHONE ── */}
@@ -387,7 +375,7 @@ export default function LoginPage() {
                     <motion.div key="phone" {...fieldTransition}>
                       {usePhoneAuth ? (
                         <>
-                          <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                          <p style={{ fontSize: "13px", fontWeight: 300, color: W, opacity: 0.9, letterSpacing: "0.04em", marginBottom: "16px", textShadow: TEXT_SHADOW }}>
                             your number
                           </p>
                           <div style={{ display: "flex", alignItems: "center" }}>
@@ -402,11 +390,11 @@ export default function LoginPage() {
                                 paddingRight: "10px", position: "relative",
                               }}
                             >
-                              <span style={{ fontSize: "22px", fontWeight: 400, color: colors.white, opacity: 0.5 }}>{countryCode}</span>
-                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.2, marginTop: "2px" }}>
+                              <span style={{ fontSize: "22px", fontWeight: 400, color: W, opacity: 1, textShadow: TEXT_SHADOW }}>{countryCode}</span>
+                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.7, marginTop: "2px", color: W }}>
                                 <path d="M2 3L4 5L6 3" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>
-                              <div style={{ position: "absolute", right: 0, top: "4px", bottom: "4px", width: "1px", background: "#111111", opacity: 0.06 }} />
+                              <div style={{ position: "absolute", right: 0, top: "4px", bottom: "4px", width: "1px", background: W, opacity: 0.1 }} />
                             </div>
 
                             <input
@@ -420,9 +408,9 @@ export default function LoginPage() {
                               disabled={isBusy}
                               className="flex-1 bg-transparent outline-none"
                               style={{
-                                fontSize: "22px", fontWeight: 400, color: colors.white, letterSpacing: "0.06em",
-                                paddingLeft: "10px", caretColor: colors.cyan,
-                                opacity: isBusy ? 0.3 : 0.85,
+                                fontSize: "22px", fontWeight: 400, color: W, letterSpacing: "0.06em",
+                                paddingLeft: "10px", caretColor: ACCENT, textShadow: TEXT_SHADOW,
+                                opacity: isBusy ? 0.4 : 1,
                                 transition: `opacity ${timing.transition} ease`,
                               }}
                             />
@@ -433,7 +421,8 @@ export default function LoginPage() {
                               onKeyDown={(e) => { if (e.key === "Enter" && phoneReady && !isBusy) sendOtp(); }}
                               className="outline-none"
                               style={{
-                                opacity: phoneReady && !isBusy ? 0.5 : 0.08,
+                                color: W,
+                                opacity: phoneReady && !isBusy ? 0.9 : 0.15,
                                 cursor: phoneReady && !isBusy ? "pointer" : "default",
                                 transition: `opacity ${timing.transition} ease`, flexShrink: 0,
                               }}
@@ -445,7 +434,7 @@ export default function LoginPage() {
                       ) : (
                         /* Dev auth */
                         <>
-                          <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                          <p style={{ fontSize: "13px", fontWeight: 300, color: W, opacity: 0.9, letterSpacing: "0.04em", marginBottom: "16px", textShadow: TEXT_SHADOW }}>
                             your name
                           </p>
                           <div style={{ display: "flex", alignItems: "center", marginBottom: "24px" }}>
@@ -456,10 +445,10 @@ export default function LoginPage() {
                               onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) document.getElementById("xark-pass")?.focus(); }}
                               placeholder="name" autoFocus spellCheck={false} autoComplete="off"
                               className="flex-1 bg-transparent outline-none"
-                              style={{ fontSize: "22px", fontWeight: 400, color: colors.white, letterSpacing: "0.04em", caretColor: colors.cyan }}
+                              style={{ fontSize: "22px", fontWeight: 400, color: W, letterSpacing: "0.04em", caretColor: ACCENT, textShadow: TEXT_SHADOW }}
                             />
                           </div>
-                          <p style={{ fontSize: "13px", fontWeight: 300, color: ink.tertiary, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                          <p style={{ fontSize: "13px", fontWeight: 300, color: W, opacity: 0.9, letterSpacing: "0.04em", marginBottom: "16px", textShadow: TEXT_SHADOW }}>
                             password
                           </p>
                           <div style={{ display: "flex", alignItems: "center" }}>
@@ -469,7 +458,7 @@ export default function LoginPage() {
                               onKeyDown={(e) => { if (e.key === "Enter") handleDevEnter(); }}
                               placeholder="password" spellCheck={false} autoComplete="off"
                               className="flex-1 bg-transparent outline-none"
-                              style={{ fontSize: "16px", fontWeight: 400, color: colors.white, letterSpacing: "0.08em", caretColor: colors.cyan, opacity: 0.6 }}
+                              style={{ fontSize: "16px", fontWeight: 400, color: W, letterSpacing: "0.08em", caretColor: ACCENT, opacity: 1, textShadow: TEXT_SHADOW }}
                             />
                             <span
                               role="button" tabIndex={0}
@@ -477,7 +466,8 @@ export default function LoginPage() {
                               onKeyDown={(e) => { if (e.key === "Enter") handleDevEnter(); }}
                               className="outline-none"
                               style={{
-                                opacity: name.trim() && password.trim() ? 0.5 : 0.08,
+                                color: W,
+                                opacity: name.trim() && password.trim() ? 0.9 : 0.15,
                                 cursor: name.trim() && password.trim() ? "pointer" : "default",
                                 transition: `opacity ${timing.transition} ease`, flexShrink: 0,
                               }}
@@ -494,7 +484,7 @@ export default function LoginPage() {
                   {fieldStep === "phone" && showPicker && (
                     <motion.div key="picker" {...fieldTransition}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={W} strokeWidth="1.5" opacity="0.8">
                           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                         </svg>
                         <input
@@ -511,14 +501,14 @@ export default function LoginPage() {
                           placeholder="search country"
                           autoFocus spellCheck={false} autoComplete="off"
                           className="flex-1 bg-transparent outline-none"
-                          style={{ fontSize: "15px", fontWeight: 400, color: colors.white, letterSpacing: "0.02em", caretColor: colors.cyan }}
+                          style={{ fontSize: "15px", fontWeight: 400, color: W, letterSpacing: "0.02em", caretColor: ACCENT, textShadow: TEXT_SHADOW }}
                         />
                         <span
                           role="button" tabIndex={0}
                           onClick={() => setShowPicker(false)}
                           onKeyDown={(e) => { if (e.key === "Enter") setShowPicker(false); }}
                           className="cursor-pointer outline-none"
-                          style={{ fontSize: "11px", fontWeight: 300, color: colors.white, opacity: 0.2 }}
+                          style={{ fontSize: "11px", fontWeight: 300, color: W, opacity: 0.8, textShadow: TEXT_SHADOW }}
                         >
                           cancel
                         </span>
@@ -534,11 +524,11 @@ export default function LoginPage() {
                             style={{
                               display: "flex", alignItems: "baseline", justifyContent: "space-between",
                               padding: "10px 0",
-                              borderBottom: "1px solid rgba(20,20,20,0.03)",
+                              borderBottom: `1px solid ${W12}`,
                             }}
                           >
-                            <span style={{ fontSize: "14px", fontWeight: 400, color: colors.white, opacity: 0.6 }}>{c.name}</span>
-                            <span style={{ fontSize: "13px", fontWeight: 300, color: colors.cyan, opacity: 0.5 }}>{c.code}</span>
+                            <span style={{ fontSize: "14px", fontWeight: 400, color: W, opacity: 1, textShadow: TEXT_SHADOW }}>{c.name}</span>
+                            <span style={{ fontSize: "13px", fontWeight: 300, color: ACCENT, opacity: 0.9 }}>{c.code}</span>
                           </div>
                         ))}
                       </div>
@@ -548,8 +538,8 @@ export default function LoginPage() {
                   {/* ── OTP ── */}
                   {fieldStep === "otp" && (
                     <motion.div key="otp" {...fieldTransition}>
-                      <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.2, letterSpacing: "0.04em", marginBottom: "16px" }}>
-                        <span style={{ opacity: 0.6 }}>{countryCode} {phoneInput}</span> · enter code
+                      <p style={{ fontSize: "13px", fontWeight: 300, color: W, opacity: 0.9, letterSpacing: "0.04em", marginBottom: "16px", textShadow: TEXT_SHADOW }}>
+                        {countryCode} {phoneInput} · enter code
                       </p>
                       <div style={{ display: "flex", alignItems: "center" }}>
                         <input
@@ -562,9 +552,9 @@ export default function LoginPage() {
                           disabled={isBusy}
                           className="flex-1 bg-transparent outline-none"
                           style={{
-                            fontSize: "32px", fontWeight: 400, color: colors.white, letterSpacing: "0.3em",
-                            caretColor: colors.cyan,
-                            opacity: isBusy ? 0.3 : 0.9,
+                            fontSize: "32px", fontWeight: 400, color: W, letterSpacing: "0.3em",
+                            caretColor: ACCENT, textShadow: TEXT_SHADOW,
+                            opacity: isBusy ? 0.4 : 1,
                             transition: `opacity ${timing.transition} ease`,
                           }}
                         />
@@ -575,7 +565,7 @@ export default function LoginPage() {
                   {/* ── NAME ── */}
                   {fieldStep === "name" && (
                     <motion.div key="name" {...fieldTransition}>
-                      <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                      <p style={{ fontSize: "13px", fontWeight: 300, color: W, opacity: 0.9, letterSpacing: "0.04em", marginBottom: "16px", textShadow: TEXT_SHADOW }}>
                         your friends call you
                       </p>
                       <div style={{ display: "flex", alignItems: "center" }}>
@@ -587,7 +577,7 @@ export default function LoginPage() {
                           placeholder="name"
                           autoFocus spellCheck={false} autoComplete="off"
                           className="flex-1 bg-transparent outline-none"
-                          style={{ fontSize: "26px", fontWeight: 400, color: colors.white, letterSpacing: "0.02em", caretColor: colors.cyan, opacity: 0.88 }}
+                          style={{ fontSize: "26px", fontWeight: 400, color: W, letterSpacing: "0.02em", caretColor: ACCENT, opacity: 1, textShadow: TEXT_SHADOW }}
                         />
                         <span
                           role="button" tabIndex={0}
@@ -595,7 +585,8 @@ export default function LoginPage() {
                           onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) saveName(); }}
                           className="outline-none"
                           style={{
-                            opacity: name.trim() ? 0.5 : 0.08,
+                            color: W,
+                            opacity: name.trim() ? 0.9 : 0.15,
                             cursor: name.trim() ? "pointer" : "default",
                             transition: `opacity ${timing.transition} ease`, flexShrink: 0,
                           }}
@@ -609,7 +600,7 @@ export default function LoginPage() {
                   {/* ── PHOTO ── */}
                   {fieldStep === "photo" && (
                     <motion.div key="photo" {...fieldTransition}>
-                      <p style={{ fontSize: "13px", fontWeight: 300, color: colors.white, opacity: 0.25, letterSpacing: "0.04em", marginBottom: "16px" }}>
+                      <p style={{ fontSize: "13px", fontWeight: 300, color: W, opacity: 0.9, letterSpacing: "0.04em", marginBottom: "16px", textShadow: TEXT_SHADOW }}>
                         hey {name.trim().toLowerCase()} — add a face?
                       </p>
                       <input ref={fileRef} type="file" accept="image/*" className="hidden"
@@ -622,15 +613,15 @@ export default function LoginPage() {
                             onClick={() => fileRef.current?.click()}
                             onKeyDown={(e) => { if (e.key === "Enter") fileRef.current?.click(); }}
                             className="cursor-pointer outline-none"
-                            style={{ width: "56px", height: "56px", borderRadius: "50%", position: "relative" }}
+                            style={{ width: "56px", height: "56px", borderRadius: "50%", position: "relative", color: W }}
                           >
                             <svg width="56" height="56" viewBox="0 0 56 56" fill="none" style={{ position: "absolute", inset: 0 }}>
-                              <circle cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="0.6" strokeDasharray="4 5" opacity="0.12"/>
+                              <circle cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="1" strokeDasharray="4 5" opacity="0.8"/>
                             </svg>
                             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" opacity="0.15">
-                                <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" strokeWidth="0.8"/>
-                                <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="0.8"/>
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" opacity="0.8">
+                                <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" strokeWidth="1.2"/>
+                                <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="1.2"/>
                               </svg>
                             </div>
                           </div>
@@ -640,19 +631,19 @@ export default function LoginPage() {
                             onKeyDown={(e) => { if (e.key === "Enter") goToGalaxy(); }}
                             className="cursor-pointer outline-none"
                             style={{
-                              fontSize: "11px", fontWeight: 300, color: ink.tertiary, letterSpacing: "0.04em",
+                              fontSize: "13px", fontWeight: 300, color: W, opacity: 0.9, letterSpacing: "0.04em", textShadow: TEXT_SHADOW,
                               transition: `opacity ${timing.transition} ease`,
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.3"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.12"; }}
+                            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
                           >
                             skip
                           </span>
                         </div>
                       ) : (
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: colors.cyan, animation: "ambientBreath 4.5s ease-in-out infinite" }} />
-                          <span style={{ fontSize: "12px", fontWeight: 300, color: colors.white, opacity: 0.35 }}>uploading</span>
+                          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: ACCENT, animation: "ambientBreath 4.5s ease-in-out infinite" }} />
+                          <span style={{ fontSize: "12px", fontWeight: 300, color: W, opacity: 0.9, textShadow: TEXT_SHADOW }}>uploading</span>
                         </div>
                       )}
                     </motion.div>
@@ -665,9 +656,9 @@ export default function LoginPage() {
                   style={{
                     marginTop: fieldStep === "photo" ? "18px" : "10px",
                     height: "1px",
-                    background: `linear-gradient(90deg, ${colors.cyan}, transparent)`,
+                    background: `linear-gradient(90deg, ${ACCENT}, transparent)`,
                     animation: isBusy ? "none" : "ambientBreath 4.5s ease-in-out infinite",
-                    opacity: isBusy ? 0.1 : 0.3,
+                    opacity: isBusy ? 0.2 : 0.6,
                   }}
                   animate={{ width: fieldStep === "otp" ? "100px" : fieldStep === "name" ? "60px" : fieldStep === "photo" ? "56px" : "100px" }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -678,9 +669,9 @@ export default function LoginPage() {
                   {authError && (
                     <motion.p
                       initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 0.7, y: 0 }}
+                      animate={{ opacity: 0.9, y: 0 }}
                       exit={{ opacity: 0 }}
-                      style={{ fontSize: "11px", fontWeight: 300, color: colors.orange, marginTop: "12px", letterSpacing: "0.02em" }}
+                      style={{ fontSize: "11px", fontWeight: 300, color: ERROR, marginTop: "12px", letterSpacing: "0.02em" }}
                     >
                       {authError}
                     </motion.p>
@@ -696,22 +687,22 @@ export default function LoginPage() {
                   onKeyDown={(e) => { if (e.key === "Enter") setAuthMode(authMode === "phone" ? "dev" : "phone"); }}
                   className="cursor-pointer outline-none"
                   style={{
-                    fontSize: "13px", fontWeight: 300, color: ink.tertiary, letterSpacing: "0.04em",
-                    marginTop: "32px", transition: `opacity ${timing.transition} ease`,
+                    fontSize: "13px", fontWeight: 300, color: W, opacity: 0.8, letterSpacing: "0.04em",
+                    marginTop: "32px", transition: `opacity ${timing.transition} ease`, textShadow: TEXT_SHADOW,
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.25"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.12"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.8"; }}
                 >
                   {authMode === "phone" ? "use name + password" : "use phone number"}
                 </span>
               )}
 
               {/* Encrypted badge — persistent */}
-              <div style={{ position: "fixed", bottom: "56px", left: "36px", display: "flex", alignItems: "center", gap: "6px", zIndex: 10, color: ink.tertiary }}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <div style={{ position: "fixed", bottom: "56px", left: "36px", display: "flex", alignItems: "center", gap: "6px", zIndex: 10, color: W }}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.7 }}>
                   <path d="M6 1L3 3.5V5.5C3 7.98 4.28 10.28 6 11C7.72 10.28 9 7.98 9 5.5V3.5L6 1Z" stroke="currentColor" strokeWidth="0.8" strokeLinejoin="round"/>
                 </svg>
-                <span style={{ fontSize: "11px", letterSpacing: "0.12em", color: ink.tertiary, textTransform: "uppercase" as const }}>
+                <span style={{ fontSize: "11px", letterSpacing: "0.12em", color: W, opacity: 0.7, textTransform: "uppercase" as const, textShadow: TEXT_SHADOW }}>
                   encrypted
                 </span>
               </div>
@@ -721,12 +712,13 @@ export default function LoginPage() {
 
         <style jsx>{`
           input::placeholder {
-            color: var(--xark-ink-tertiary);
+            color: rgba(255,255,255,0.6);
             opacity: 1;
             letter-spacing: 0.08em;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
           }
           input:focus::placeholder {
-            opacity: 0.4;
+            opacity: 0.7;
             transition: opacity 0.6s ease;
           }
         `}</style>
