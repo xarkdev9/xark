@@ -617,42 +617,14 @@ function GalaxyContent() {
                             );
                             if (contacts?.[0]) {
                               const contact = contacts[0];
-                              // Try all phone numbers from the contact
-                              const phones = (contact.tel ?? []) as string[];
-                              const name = contact.name?.[0] ?? "friend";
-                              let found = false;
+                              const contactName = (contact.name?.[0] ?? "").trim();
+                              if (!contactName) return;
 
-                              for (const rawPhone of phones) {
-                                const digits = rawPhone.replace(/\D/g, "");
-                                const last10 = digits.slice(-10);
-                                if (!last10 || last10.length < 10) continue;
-
-                                // Match against DB using last 10 digits (handles any country code format)
-                                const { data: match } = await supabase
-                                  .from("users")
-                                  .select("id, display_name")
-                                  .like("phone", `%${last10}`)
-                                  .single();
-
-                                if (match) {
-                                  handleNewChat(match);
-                                  found = true;
-                                  break;
-                                }
-                              }
-
-                              if (!found) {
-                                // User not on Xark — share invite link
-                                if (navigator.share) {
-                                  await navigator.share({
-                                    title: "join me on xark",
-                                    text: `${userName} wants to chat on xark`,
-                                    url: "https://xark.app",
-                                  }).catch(() => {});
-                                }
-                                setShowUserPicker(false);
-                                setShowNewSheet(false);
-                              }
+                              // Just create a chat with this person's name
+                              // If they're on Xark, they'll be matched by display_name
+                              // If not, the space is created and they can join via invite
+                              const firstName = contactName.split(" ")[0].toLowerCase();
+                              handleNewChat({ id: "", display_name: firstName });
                             }
                           } catch {
                             // User cancelled or API not supported
