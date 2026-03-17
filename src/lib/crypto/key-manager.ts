@@ -9,7 +9,8 @@ import {
 } from './primitives';
 import { keyStore } from './keystore';
 import { supabase } from '../supabase';
-import type { IdentityKeyPair, SignedPreKey, OneTimePreKey, PublicKeyBundle } from './types';
+import { rotateSenderKey, serializeSenderKeyForStorage } from './sender-keys';
+import type { IdentityKeyPair, SignedPreKey, OneTimePreKey, PublicKeyBundle, SenderKeyState } from './types';
 
 const OTK_BATCH_SIZE = 100;
 const OTK_REPLENISH_THRESHOLD = 20;
@@ -192,6 +193,89 @@ export async function restoreKeyBackup(packed: Uint8Array, password: string): Pr
 export async function hasRegisteredKeys(): Promise<boolean> {
   const identity = await keyStore.getIdentityKey();
   return identity !== null;
+}
+
+// ── Sender Key Rotation (member departure) ──
+
+/**
+ * Handle member departure — rotate Sender Key for forward secrecy.
+ * 1. Archive current key (for decrypting historical messages)
+ * 2. Delete active key
+ * 3. Generate new key
+ * 4. Save new key locally
+ * Caller is responsible for distributing the new key to remaining members.
+ */
+export async function onMemberLeave(
+  spaceId: string,
+  leftUserId: string
+): Promise<SenderKeyState> {
+  await initCrypto();
+
+  // 1. Archive current key for historical message decryption
+  const currentKey = await keyStore.getSenderKey(spaceId);
+  if (currentKey) {
+    await keyStore.saveHistoricalSenderKey(spaceId, currentKey);
+    console.log(`[xark-e2ee] Archived old Sender Key for space ${spaceId}`);
+  }
+
+  // 2. Delete active key — departed member had access to this
+  await keyStore.deleteSenderKey(spaceId);
+
+  // 3. Generate fresh key material
+  const newKey = rotateSenderKey();
+
+  // 4. Save new key locally
+  await keyStore.saveSenderKey(spaceId, serializeSenderKeyForStorage(newKey));
+
+  console.log(`[xark-e2ee] Rotated Sender Key for space ${spaceId} (member ${leftUserId} left)`);
+  return newKey;
+}
+
+/**
+ * Subscribe to member departures for automatic SK rotation.
+ * Leader election: lowest alphabetical user_id triggers rotation (deterministic, no coordination).
+ * Non-leaders receive the new SK via sender_key_dist message.
+ */
+export function subscribeToMemberChanges(
+  spaceId: string,
+  myUserId: string,
+  currentMembers: string[],
+  onRotation: (newKey: SenderKeyState) => Promise<void>
+): () => void {
+  const channel = supabase
+    .channel(`sk-members:${spaceId}`)
+    .on('postgres_changes', {
+      event: 'DELETE',
+      schema: 'public',
+      table: 'space_members',
+      filter: `space_id=eq.${spaceId}`,
+    }, async (payload) => {
+      const leftUserId = (payload.old as Record<string, string>)?.user_id;
+      if (!leftUserId) return;
+
+      // Leader election: lowest alphabetical user_id among remaining members
+      const remaining = currentMembers.filter(m => m !== leftUserId).sort();
+      const isLeader = remaining.length > 0 && remaining[0] === myUserId;
+
+      if (isLeader) {
+        console.log(`[xark-e2ee] I am SK rotation leader for ${spaceId}`);
+        try {
+          const newKey = await onMemberLeave(spaceId, leftUserId);
+          await onRotation(newKey);
+        } catch (err) {
+          console.error(`[xark-e2ee] SK rotation failed for ${spaceId}:`, err);
+        }
+      } else {
+        console.log(`[xark-e2ee] Waiting for leader to rotate SK for ${spaceId}`);
+        // Non-leaders will receive new SK via sender_key_dist distribution
+      }
+    })
+    .subscribe();
+
+  // Return cleanup function
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
 
 // ── Helpers ──
