@@ -52,6 +52,26 @@ export async function fetchMessages(
   return (data as ChatMessage[]).reverse();
 }
 
+// ── Fetch ALL sender_key_dist messages for a space (no pagination limit) ──
+// Must be called BEFORE regular message fetch to ensure Sender Keys are available.
+// BUG 9 fix: sender_key_dist may fall outside the 50-message window.
+export async function fetchSenderKeyDistributions(
+  spaceId: string
+): Promise<ChatMessage[]> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("id, space_id, role, content, user_id, sender_name, created_at, message_type, sender_device_id")
+    .eq("space_id", spaceId)
+    .eq("message_type", "sender_key_dist")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("[xark] fetchSenderKeyDistributions failed:", error.message);
+    return [];
+  }
+  return (data as ChatMessage[]) ?? [];
+}
+
 // ── Persist a single message ──
 export async function saveMessage(msg: {
   id: string;
