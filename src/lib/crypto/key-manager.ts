@@ -1,0 +1,215 @@
+// XARK OS v2.0 — Key Management Service
+// Registration, key bundle upload, OTK replenishment, backup/restore.
+// Bridges local KeyStore with server-side key distribution.
+
+import {
+  initCrypto, generateIdentityKeyPair, generateDHKeyPair,
+  sign, toBase64, fromBase64, deriveBackupKey,
+  aesEncrypt, aesDecrypt, randomBytes, toBytes, fromBytes
+} from './primitives';
+import { keyStore } from './keystore';
+import { supabase } from '../supabase';
+import type { IdentityKeyPair, SignedPreKey, OneTimePreKey, PublicKeyBundle } from './types';
+
+const OTK_BATCH_SIZE = 100;
+const OTK_REPLENISH_THRESHOLD = 20;
+
+/** Full key registration — called once after Firebase Auth signup */
+export async function registerKeys(): Promise<{
+  deviceId: number;
+  identityPublicKey: string;
+}> {
+  await initCrypto();
+
+  const deviceId = await keyStore.getDeviceId();
+
+  // 1. Generate Identity Key pair (Ed25519 + Curve25519)
+  const identity = generateIdentityKeyPair();
+
+  // 2. Generate Signed Pre-Key
+  const signedPreKeyId = 1;
+  const signedPreKey = generateDHKeyPair();
+  const spkSignature = sign(signedPreKey.publicKey, identity.ed25519.privateKey);
+
+  // 3. Generate One-Time Pre-Keys
+  const otks = generateOTKBatch(OTK_BATCH_SIZE);
+
+  // 4. Store private keys locally
+  await keyStore.saveIdentityKey(identity.ed25519.publicKey, identity.ed25519.privateKey);
+  await keyStore.saveSignedPreKey(signedPreKeyId, signedPreKey);
+  await keyStore.saveOneTimePreKeys(otks.map(o => ({ id: o.id, keyPair: o.keyPair })));
+
+  // 5. Upload public keys to server
+  const { error: bundleError } = await supabase.from('key_bundles').upsert({
+    user_id: await getCurrentUserId(),
+    device_id: deviceId,
+    identity_key: toBase64(identity.ed25519.publicKey),
+    signed_pre_key: toBase64(signedPreKey.publicKey),
+    signed_pre_key_id: signedPreKeyId,
+    pre_key_sig: toBase64(spkSignature),
+  });
+  if (bundleError) throw new Error(`Failed to upload key bundle: ${bundleError.message}`);
+
+  // 6. Upload OTK public keys
+  const otkRows = otks.map(o => ({
+    id: o.id,
+    user_id: '', // will be set by getCurrentUserId
+    device_id: deviceId,
+    public_key: toBase64(o.keyPair.publicKey),
+  }));
+  // Set user_id
+  const userId = await getCurrentUserId();
+  for (const row of otkRows) row.user_id = userId;
+
+  const { error: otkError } = await supabase.from('one_time_pre_keys').insert(otkRows);
+  if (otkError) throw new Error(`Failed to upload OTKs: ${otkError.message}`);
+
+  return {
+    deviceId,
+    identityPublicKey: toBase64(identity.ed25519.publicKey),
+  };
+}
+
+/** Fetch a peer's key bundle for establishing a session */
+export async function fetchPeerKeyBundle(
+  userId: string,
+  deviceId: number
+): Promise<PublicKeyBundle> {
+  const { data, error } = await supabase.rpc('fetch_key_bundle', {
+    p_user_id: userId,
+    p_device_id: deviceId,
+  });
+
+  if (error) throw new Error(`Failed to fetch key bundle: ${error.message}`);
+  if (!data || data.length === 0) throw new Error(`No key bundle for ${userId}:${deviceId}`);
+
+  const row = data[0];
+  const bundle: PublicKeyBundle = {
+    identityKey: fromBase64(row.identity_key),
+    signedPreKey: fromBase64(row.signed_pre_key),
+    signedPreKeyId: row.signed_pre_key_id,
+    preKeySig: fromBase64(row.pre_key_sig),
+    oneTimePreKey: row.otk_public ? fromBase64(row.otk_public) : undefined,
+    oneTimePreKeyId: row.otk_id ?? undefined,
+  };
+
+  // BUG 3 fix: consume the OTK locally after use
+  if (row.otk_id) {
+    await keyStore.deleteOneTimePreKey(row.otk_id);
+    console.log(`[xark-e2ee] Consumed OTK ${row.otk_id}`);
+  }
+
+  return bundle;
+}
+
+/** Check and replenish OTKs if below threshold */
+export async function replenishOTKsIfNeeded(): Promise<void> {
+  await initCrypto();
+  const deviceId = await keyStore.getDeviceId();
+  const userId = await getCurrentUserId();
+
+  // BUG 19 fix: query SERVER count, not local (server is source of truth for available OTKs)
+  const { count, error: countError } = await supabase
+    .from('one_time_pre_keys')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('device_id', deviceId);
+
+  if (countError) {
+    console.warn('[xark-e2ee] Failed to query OTK count:', countError.message);
+    return;
+  }
+
+  const serverCount = count ?? 0;
+  if (serverCount >= OTK_REPLENISH_THRESHOLD) return;
+
+  console.log(`[xark-e2ee] OTK count ${serverCount}, replenishing to ${OTK_BATCH_SIZE}...`);
+  const otks = generateOTKBatch(OTK_BATCH_SIZE);
+
+  // Store locally
+  await keyStore.saveOneTimePreKeys(otks.map(o => ({ id: o.id, keyPair: o.keyPair })));
+
+  // Upload public keys
+  const otkRows = otks.map(o => ({
+    id: o.id,
+    user_id: userId,
+    device_id: deviceId,
+    public_key: toBase64(o.keyPair.publicKey),
+  }));
+
+  const { error } = await supabase.from('one_time_pre_keys').upsert(otkRows, { onConflict: 'id' });
+  if (error) console.warn('[xark-e2ee] OTK upload failed:', error.message);
+  else console.log(`[xark-e2ee] Replenished ${OTK_BATCH_SIZE} OTKs`);
+}
+
+/** Create encrypted backup of keys */
+export async function createKeyBackup(password: string): Promise<Uint8Array> {
+  await initCrypto();
+  const identityKey = await keyStore.getIdentityKey();
+  if (!identityKey) throw new Error('No identity key to backup');
+
+  const backupData = {
+    identityKey: {
+      pub: toBase64(identityKey.publicKey),
+      priv: toBase64(identityKey.privateKey),
+    },
+    // Sender keys would be included here in production
+    timestamp: Date.now(),
+  };
+
+  const plaintext = toBytes(JSON.stringify(backupData));
+  const { key, salt } = deriveBackupKey(password);
+  const { ciphertext, nonce } = aesEncrypt(plaintext, key);
+
+  // Pack: salt (16) + nonce (12) + ciphertext
+  const packed = new Uint8Array(salt.length + nonce.length + ciphertext.length);
+  packed.set(salt, 0);
+  packed.set(nonce, salt.length);
+  packed.set(ciphertext, salt.length + nonce.length);
+  return packed;
+}
+
+/** Restore keys from encrypted backup */
+export async function restoreKeyBackup(packed: Uint8Array, password: string): Promise<void> {
+  await initCrypto();
+  const saltLen = 16;
+  const nonceLen = 12;
+  const salt = packed.slice(0, saltLen);
+  const nonce = packed.slice(saltLen, saltLen + nonceLen);
+  const ciphertext = packed.slice(saltLen + nonceLen);
+
+  const { key } = deriveBackupKey(password, salt);
+  const plaintext = aesDecrypt(ciphertext, nonce, key);
+  const data = JSON.parse(fromBytes(plaintext));
+
+  await keyStore.saveIdentityKey(
+    fromBase64(data.identityKey.pub),
+    fromBase64(data.identityKey.priv)
+  );
+}
+
+/** Check if this device has registered keys */
+export async function hasRegisteredKeys(): Promise<boolean> {
+  const identity = await keyStore.getIdentityKey();
+  return identity !== null;
+}
+
+// ── Helpers ──
+
+function generateOTKBatch(count: number): OneTimePreKey[] {
+  const otks: OneTimePreKey[] = [];
+  for (let i = 0; i < count; i++) {
+    const id = `otk_${toBase64(randomBytes(8))}`;
+    otks.push({ id, keyPair: generateDHKeyPair() });
+  }
+  return otks;
+}
+
+async function getCurrentUserId(): Promise<string> {
+  // Read from localStorage (set by useAuth hook)
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('xark_user_id');
+    if (stored) return stored;
+  }
+  throw new Error('No authenticated user');
+}
