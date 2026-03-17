@@ -15,6 +15,7 @@ import { useHandshake } from "@/hooks/useHandshake";
 import { fetchMessages } from "@/lib/messages";
 import {
   colors,
+  ink,
   opacity,
   timing,
   layout,
@@ -24,8 +25,18 @@ import {
 } from "@/lib/theme";
 import { Avatar } from "@/components/os/Avatar";
 import { LedgerPill } from "@/components/os/LedgerPill";
+import { InlineCardPreview } from "@/components/os/InlineCardPreview";
+import { PlaygroundWhisper } from "@/components/os/PlaygroundWhisper";
 import type { LedgerEvent } from "@/components/os/LedgerPill";
 import type { ChatMessage } from "@/app/space/[id]/page";
+
+interface InlineCard {
+  title: string;
+  imageUrl?: string;
+  price?: string;
+  score: number;
+  onTap?: () => void;
+}
 
 interface XarkChatProps {
   spaceId: string;
@@ -35,6 +46,11 @@ interface XarkChatProps {
   e2eeActive?: boolean;
   ledgerEvents?: LedgerEvent[];
   onLedgerUndo?: (ledgerId: string, action: string, previous: Record<string, unknown>) => void;
+  typingIndicator?: { name: string; visible: boolean } | null;
+  inlineCards?: InlineCard[];
+  inlineCardsWhisper?: string;
+  onInvite?: () => void;
+  memberCount?: number;
 }
 
 // ── Sanctuary mapping — sender name → private space ID ──
@@ -50,6 +66,11 @@ export function XarkChat({
   e2eeActive,
   ledgerEvents,
   onLedgerUndo,
+  typingIndicator,
+  inlineCards,
+  inlineCardsWhisper,
+  onInvite,
+  memberCount,
 }: XarkChatProps) {
   const [groundingContext, setGroundingContext] =
     useState<GroundingContext | null>(null);
@@ -495,7 +516,43 @@ export function XarkChat({
           </div>
         )}
 
-        {/* ── Thinking state ── */}
+        {/* ── Inline Card Previews (playground @xark results) ── */}
+        {inlineCards && inlineCards.length > 0 && (
+          <div style={{ maxWidth: "640px", marginTop: "14px", paddingLeft: "32px" }}>
+            {inlineCards.map((card, i) => (
+              <InlineCardPreview
+                key={`inline-${i}`}
+                title={card.title}
+                imageUrl={card.imageUrl}
+                price={card.price}
+                score={card.score}
+                onTap={card.onTap}
+              />
+            ))}
+            {inlineCardsWhisper && (
+              <div style={{ marginTop: "4px" }}>
+                <PlaygroundWhisper text={inlineCardsWhisper} visible={true} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Typing Indicator (playground presence) ── */}
+        {typingIndicator?.visible && (
+          <div style={{ maxWidth: "640px", marginTop: "14px", paddingLeft: "32px" }}>
+            <span
+              style={{
+                ...text.subtitle,
+                color: ink.tertiary,
+                animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+              }}
+            >
+              {typingIndicator.name} is typing...
+            </span>
+          </div>
+        )}
+
+        {/* ── Thinking state — shimmer sweep ── */}
         {isThinking && (
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-1">
@@ -531,13 +588,17 @@ export function XarkChat({
                 @xark
               </span>
             </div>
-            <div className="flex items-center gap-3" style={{ paddingLeft: "32px" }}>
+            <div style={{ paddingLeft: "32px" }}>
               <span
+                className="xark-shimmer-text"
                 style={{
                   ...text.subtitle,
-                  color: colors.cyan,
-                  opacity: 0.4,
-                  animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+                  background: `linear-gradient(90deg, rgba(255,107,53,0.3) 0%, rgba(255,107,53,0.3) 35%, rgba(255,107,53,0.9) 50%, rgba(255,107,53,0.3) 65%, rgba(255,107,53,0.3) 100%)`,
+                  backgroundSize: "200% 100%",
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  color: "transparent",
+                  WebkitTextFillColor: "transparent",
                 }}
               >
                 thinking...
@@ -593,7 +654,53 @@ export function XarkChat({
                 ? getGreeting(groundingContext, spaceTitle)
                 : `try "@xark find a few options" or "@xark add an idea"`}
             </p>
+
+            {/* ── Invite prompt — in thumb arc, appears when solo ── */}
+            {onInvite && (memberCount ?? 0) <= 1 && (
+              <p
+                role="button"
+                tabIndex={0}
+                onClick={onInvite}
+                onKeyDown={(e) => { if (e.key === "Enter") onInvite(); }}
+                className="cursor-pointer outline-none"
+                style={{
+                  ...text.subtitle,
+                  color: "#FF6B35",
+                  opacity: 0.7,
+                  paddingLeft: "32px",
+                  marginTop: "12px",
+                  transition: "opacity 0.3s ease",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+              >
+                invite someone to this space →
+              </p>
+            )}
           </div>
+        )}
+
+        {/* ── Inline invite — after messages, when still solo ── */}
+        {onInvite && (memberCount ?? 0) <= 1 && allMessages.length > 0 && (
+          <p
+            role="button"
+            tabIndex={0}
+            onClick={onInvite}
+            onKeyDown={(e) => { if (e.key === "Enter") onInvite(); }}
+            className="cursor-pointer outline-none"
+            style={{
+              ...text.subtitle,
+              color: "#FF6B35",
+              opacity: 0.6,
+              marginTop: "20px",
+              paddingLeft: "32px",
+              transition: "opacity 0.3s ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+          >
+            invite someone →
+          </p>
         )}
 
         <div ref={bottomRef} />
@@ -708,6 +815,13 @@ export function XarkChat({
       </AnimatePresence>
 
       <style jsx>{`
+        @keyframes xarkShimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        .xark-shimmer-text {
+          animation: xarkShimmer 2s ease-in-out infinite;
+        }
         @keyframes goldBurstPulse {
           0% { opacity: 0; }
           20% { opacity: 1; }

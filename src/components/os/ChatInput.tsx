@@ -1,15 +1,26 @@
 "use client";
 
-// XARK OS v2.0 — Shared Chat Input
-// Textarea + mic/send toggle. 2-step mic: tap=dictation, slide up=@xark.
-// Send arrow appears when text present. Mic appears when empty.
+// XARK OS v2.0 — The Magnetic Input
+// Zero boxes, zero borders. Presence through lighting, color, and motion.
+// @xark detection turns text cyan. Icons fade when typing. Mic slides to send.
 
 import { useRef, useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useKeyboard } from "@/hooks/useKeyboard";
-import { colors, text, timing, layout, opacity, textColor } from "@/lib/theme";
+import { colors, text, timing, layout, opacity, textColor, surface, ink } from "@/lib/theme";
 
 const URL_PATTERN = /https?:\/\/[^\s]+/i;
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+const XARK_HINTS = [
+  "@xark find hotels near downtown",
+  "@xark plan dinner tonight",
+  "@xark who hasn't voted?",
+  "@xark set dates to march 20-25",
+  "@xark find restaurants nearby",
+  "@xark add flights to bali",
+];
 
 interface ChatInputProps {
   input: string;
@@ -21,7 +32,7 @@ interface ChatInputProps {
   onUrlDetected?: (url: string) => void;
 }
 
-// ── Minimal SVG icons — thin stroke, atmospheric ──
+// ── Minimal SVG icons ──
 function AttachIcon({ color }: { color: string }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -87,7 +98,7 @@ export function ChatInput({
   const micAreaRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number | null>(null);
 
-  // ── Voice Input — 2-step ──
+  // ── Voice Input ──
   const {
     isListening,
     isXarkListening,
@@ -100,11 +111,52 @@ export function ChatInput({
 
   const isRecording = voiceMode !== "off";
 
+  // ── Typewriter placeholder — cycle @xark command examples ──
+  const [twPlaceholder, setTwPlaceholder] = useState("");
+
+  useEffect(() => {
+    if (isRecording || isThinking) return;
+
+    let phraseIdx = 0;
+    let charIdx = 0;
+    let deleting = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const tick = () => {
+      const phrase = XARK_HINTS[phraseIdx];
+      if (!deleting) {
+        if (charIdx <= phrase.length) {
+          setTwPlaceholder(phrase.slice(0, charIdx));
+          charIdx++;
+          timer = setTimeout(tick, 70);
+        } else {
+          timer = setTimeout(() => {
+            deleting = true;
+            tick();
+          }, 2500);
+        }
+      } else {
+        if (charIdx > 0) {
+          charIdx--;
+          setTwPlaceholder(phrase.slice(0, charIdx));
+          timer = setTimeout(tick, 35);
+        } else {
+          deleting = false;
+          phraseIdx = (phraseIdx + 1) % XARK_HINTS.length;
+          timer = setTimeout(tick, 300);
+        }
+      }
+    };
+
+    timer = setTimeout(tick, 100);
+    return () => clearTimeout(timer);
+  }, [isRecording, isThinking]);
+
   useEffect(() => {
     if (transcript) onInputChange(transcript);
   }, [transcript, onInputChange]);
 
-  // ── Auto-resize textarea (max ~6 lines) ──
+  // ── Auto-resize textarea ──
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -120,135 +172,86 @@ export function ChatInput({
   useEffect(() => {
     if (urlPromptDismissed) return;
     const match = input.match(URL_PATTERN);
-    if (match) {
-      setDetectedUrl(match[0]);
-      setShowUrlPrompt(true);
-    } else {
-      setDetectedUrl(null);
-      setShowUrlPrompt(false);
-    }
+    if (match) { setDetectedUrl(match[0]); setShowUrlPrompt(true); }
+    else { setDetectedUrl(null); setShowUrlPrompt(false); }
   }, [input, urlPromptDismissed]);
 
-  // ── Reset URL prompt dismissed when input clears ──
   useEffect(() => {
-    if (input.trim().length === 0) {
-      setUrlPromptDismissed(false);
-    }
+    if (input.trim().length === 0) setUrlPromptDismissed(false);
   }, [input]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      onSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); }
   };
 
-  const handleAttachClick = () => {
-    if (onAttach) onAttach();
-    else fileRef.current?.click();
-  };
+  const handleAttachClick = () => { if (onAttach) onAttach(); else fileRef.current?.click(); };
+  const handleCameraClick = () => { if (onCamera) onCamera(); else cameraRef.current?.click(); };
 
-  const handleCameraClick = () => {
-    if (onCamera) onCamera();
-    else cameraRef.current?.click();
-  };
-
-  // ── Mic slide-up gesture for @xark mode ──
+  // ── Mic slide-up ──
   const handleMicPointerDown = (e: React.PointerEvent) => {
-    if (isRecording) {
-      // Already recording — stop on any tap
-      stopVoice();
-      return;
-    }
+    if (isRecording) { stopVoice(); return; }
     dragStartY.current = e.clientY;
   };
-
   const handleMicPointerUp = (e: React.PointerEvent) => {
     if (dragStartY.current === null) return;
     const deltaY = dragStartY.current - e.clientY;
     dragStartY.current = null;
-
-    if (deltaY > 40) {
-      // Slide up detected — @xark mode
-      startXarkMode();
-    } else {
-      // Regular tap — dictation
-      toggleDictation();
-    }
+    if (deltaY > 40) startXarkMode();
+    else toggleDictation();
   };
 
   const hasText = input.trim().length > 0;
-
-  // Recording state colors
+  const isAskingAI = input.includes("@xark");
   const recordingBorderColor = isXarkListening ? colors.cyan : colors.orange;
+
+  // Dynamic text color: cyan when @xark invoked
+  const inputTextColor = isAskingAI ? colors.cyan : colors.white;
+  const inputTextShadow = isAskingAI
+    ? "0 0 20px rgba(64, 224, 255, 0.3), 0 2px 8px rgba(64, 224, 255, 0.15)"
+    : hasText ? "0 2px 12px rgba(20, 20, 20, 0.08)" : "none";
 
   return (
     <>
-      {/* Hidden file inputs */}
       <input ref={fileRef} type="file" className="hidden" accept="*/*" />
       <input ref={cameraRef} type="file" className="hidden" accept="image/*" capture="environment" />
 
-      {/* ═══ TEXTAREA ZONE — at inputBottom ═══ */}
+      {/* ═══ THE MAGNETIC INPUT — ambient floor, no boxes ═══ */}
       <div
-        className="fixed inset-x-0 z-20 px-6"
+        className="fixed inset-x-0 z-20"
         style={{
           bottom: isKeyboardOpen ? `${keyboardHeight}px` : "56px",
+          background: `linear-gradient(to top, ${surface.canvas}, ${surface.canvas} 80%, transparent)`,
+          paddingTop: "16px",
           paddingBottom: "12px",
-          background: colors.void,
           transition: "bottom 0.2s ease",
         }}
       >
-        <div className="mx-auto" style={{ maxWidth: "640px" }}>
-          {/* ── Top line ── */}
-          <div
-            style={{
-              height: "1px",
-              background: isRecording
-                ? `linear-gradient(90deg, transparent, ${recordingBorderColor}, transparent)`
-                : `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
-              opacity: isRecording ? 0.5 : 0.15,
-              marginBottom: "10px",
-              transition: "opacity 0.3s ease",
-            }}
-          />
+        <div className="mx-auto px-6" style={{ maxWidth: "640px" }}>
 
-          {/* ── Recording Banner — unmissable ── */}
+          {/* ── Recording Banner ── */}
           {isRecording && (
             <div
-              className="flex items-center justify-between mb-2"
+              className="flex items-center justify-between mb-3"
               style={{ opacity: 0.9 }}
             >
               <div className="flex items-center gap-3">
                 <div
                   style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
+                    width: "8px", height: "8px", borderRadius: "50%",
                     backgroundColor: isXarkListening ? colors.cyan : colors.orange,
                     animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
                   }}
                 />
-                <span
-                  style={{
-                    ...text.subtitle,
-                    color: isXarkListening ? colors.cyan : colors.white,
-                    letterSpacing: "0.08em",
-                  }}
-                >
+                <span style={{ ...text.subtitle, color: isXarkListening ? colors.cyan : colors.white, letterSpacing: "0.08em" }}>
                   {isXarkListening ? "@xark listening..." : "listening..."}
                 </span>
               </div>
               <span
-                role="button"
-                tabIndex={0}
+                role="button" tabIndex={0}
                 onClick={stopVoice}
                 onKeyDown={(e) => { if (e.key === "Enter") stopVoice(); }}
                 className="cursor-pointer outline-none flex items-center gap-2"
-                style={{
-                  ...text.subtitle,
-                  color: isXarkListening ? colors.cyan : colors.orange,
-                  opacity: 0.8,
-                }}
+                style={{ ...text.subtitle, color: isXarkListening ? colors.cyan : colors.orange, opacity: 0.8 }}
               >
                 <StopIcon color={isXarkListening ? colors.cyan : colors.orange} />
                 stop
@@ -256,18 +259,38 @@ export function ChatInput({
             </div>
           )}
 
+          {/* ── Input row ── */}
           <div className="flex items-end gap-3">
+            {/* Inline attach + camera when keyboard is open */}
+            {isKeyboardOpen && !hasText && (
+              <div className="flex items-center gap-2" style={{ flexShrink: 0, marginBottom: "4px" }}>
+                <span
+                  role="button" tabIndex={0}
+                  onClick={handleAttachClick}
+                  className="cursor-pointer outline-none"
+                  style={{ opacity: 0.4, color: ink.tertiary }}
+                >
+                  <AttachIcon color="currentColor" />
+                </span>
+                <span
+                  role="button" tabIndex={0}
+                  onClick={handleCameraClick}
+                  className="cursor-pointer outline-none"
+                  style={{ opacity: 0.4, color: ink.tertiary }}
+                >
+                  <CameraIcon color="currentColor" />
+                </span>
+              </div>
+            )}
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                isXarkListening
-                  ? "@xark is listening..."
-                  : isListening
-                    ? "listening..."
-                    : "message, or @xark for ideas"
+                isXarkListening ? "@xark is listening..."
+                : isListening ? "listening..."
+                : twPlaceholder || "@xark ..."
               }
               disabled={isThinking}
               enterKeyHint="send"
@@ -280,205 +303,165 @@ export function ChatInput({
               onBlur={() => setInputFocused(false)}
               className="w-full resize-none bg-transparent outline-none"
               style={{
-                ...text.input,
-                color: colors.white,
+                fontSize: "18px",
+                fontWeight: 300,
+                letterSpacing: "0.02em",
+                color: inputTextColor,
                 caretColor: colors.cyan,
-                backgroundColor: "var(--xark-void)",
                 opacity: isThinking ? 0.3 : 1,
                 lineHeight: 1.5,
                 maxHeight: "144px",
                 overflow: "hidden",
-                colorScheme: "light",
+                textShadow: inputTextShadow,
+                transition: "color 0.3s ease, text-shadow 0.3s ease",
               }}
             />
 
-            {/* ── Right icon: Send arrow OR Mic ── */}
-            {hasText ? (
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={onSend}
-                onKeyDown={(e) => { if (e.key === "Enter") onSend(); }}
-                className="outline-none cursor-pointer select-none"
-                style={{
-                  flexShrink: 0,
-                  marginBottom: "2px",
-                  opacity: 0.8,
-                  transition: `opacity ${timing.transition} ease`,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.8"; }}
-              >
-                <SendIcon color={colors.cyan} />
-              </span>
-            ) : (
-              <div
-                ref={micAreaRef}
-                role="button"
-                tabIndex={0}
-                onPointerDown={handleMicPointerDown}
-                onPointerUp={handleMicPointerUp}
-                className="outline-none select-none cursor-pointer"
-                style={{
-                  flexShrink: 0,
-                  marginBottom: "2px",
-                  opacity: isRecording ? 1 : 0.5,
-                  transition: `opacity ${timing.transition} ease`,
-                  touchAction: "none",
-                }}
-                onMouseEnter={(e) => { if (!isRecording) e.currentTarget.style.opacity = "0.8"; }}
-                onMouseLeave={(e) => { if (!isRecording) e.currentTarget.style.opacity = "0.5"; }}
-              >
-                {isRecording ? (
-                  <div
-                    style={{
-                      width: "20px",
-                      height: "20px",
-                      borderRadius: "50%",
-                      backgroundColor: isXarkListening ? colors.cyan : colors.orange,
-                      animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
-                    }}
-                  />
-                ) : (
-                  <MicIcon color={textColor(0.5)} />
-                )}
-              </div>
-            )}
+            {/* ── Right icon: Send or Mic ── */}
+            <AnimatePresence mode="wait">
+              {hasText ? (
+                <motion.span
+                  key="send"
+                  role="button" tabIndex={0}
+                  onClick={onSend}
+                  onKeyDown={(e) => { if (e.key === "Enter") onSend(); }}
+                  className="outline-none cursor-pointer select-none"
+                  style={{ flexShrink: 0, marginBottom: "2px" }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 0.8, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2, ease: EASE }}
+                >
+                  <SendIcon color={isAskingAI ? colors.cyan : colors.cyan} />
+                </motion.span>
+              ) : (
+                <motion.div
+                  key="mic"
+                  ref={micAreaRef}
+                  role="button" tabIndex={0}
+                  onPointerDown={handleMicPointerDown}
+                  onPointerUp={handleMicPointerUp}
+                  className="outline-none select-none cursor-pointer"
+                  style={{ flexShrink: 0, marginBottom: "2px", touchAction: "none" }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: isRecording ? 1 : 0.5, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2, ease: EASE }}
+                >
+                  {isRecording ? (
+                    <div
+                      style={{
+                        width: "20px", height: "20px", borderRadius: "50%",
+                        backgroundColor: isXarkListening ? colors.cyan : colors.orange,
+                        animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+                      }}
+                    />
+                  ) : (
+                    <MicIcon color={ink.tertiary} />
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* ── Mic hint — slide up for @xark ── */}
-          {!isRecording && !hasText && (
-            <p
-              style={{
-                ...text.timestamp,
-                color: textColor(0.15),
-                marginTop: "6px",
-                textAlign: "right",
-              }}
-            >
+          {/* ── Mic hint ── */}
+          {!isRecording && !hasText && !isKeyboardOpen && (
+            <p style={{ ...text.timestamp, color: ink.tertiary, marginTop: "6px", textAlign: "right" }}>
               slide mic up for @xark
             </p>
           )}
 
-          {/* ── Ambient line — lives below text only, breathes when focused ── */}
-          <div
-            style={{
-              marginTop: "4px",
-              height: "1px",
-              width: input.length > 0
-                ? `min(${Math.max(input.length * 6, 40)}px, 100%)`
-                : inputFocused ? "60px" : "0px",
-              background: isRecording
-                ? `linear-gradient(90deg, ${recordingBorderColor}, transparent)`
-                : `linear-gradient(90deg, ${colors.cyan}, transparent)`,
-              opacity: isRecording ? 0.5 : input.length > 0 ? 0.4 : 0.2,
-              animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
-              transition: `width 0.3s ease, opacity ${timing.transition} ease`,
-            }}
-          />
-
           {/* ── URL detection prompt ── */}
           {showUrlPrompt && detectedUrl && (
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6 }}>
-              <span style={{ ...text.timestamp, color: textColor(0.4) }}>
-                add to decisions?
-              </span>
+              <span style={{ ...text.timestamp, color: ink.secondary }}>add to decisions?</span>
               <span
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  onUrlDetected?.(detectedUrl);
-                  setShowUrlPrompt(false);
-                  setUrlPromptDismissed(true);
-                }}
+                role="button" tabIndex={0}
+                onClick={() => { onUrlDetected?.(detectedUrl); setShowUrlPrompt(false); setUrlPromptDismissed(true); }}
                 style={{ ...text.timestamp, color: colors.cyan, cursor: "pointer", opacity: 0.7 }}
-              >
-                yes
-              </span>
+              >yes</span>
               <span
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  setShowUrlPrompt(false);
-                  setUrlPromptDismissed(true);
-                }}
-                style={{ ...text.timestamp, color: textColor(0.3), cursor: "pointer" }}
-              >
-                no
-              </span>
+                role="button" tabIndex={0}
+                onClick={() => { setShowUrlPrompt(false); setUrlPromptDismissed(true); }}
+                style={{ ...text.timestamp, color: ink.tertiary, cursor: "pointer" }}
+              >no</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* ═══ VOID FILL ═══ */}
+      {/* ═══ AMBIENT FLOOR — void fill below ═══ */}
       <div
         className="fixed inset-x-0 z-[19]"
         style={{
           bottom: 0,
           height: isKeyboardOpen ? "0px" : "56px",
-          background: colors.void,
+          background: surface.canvas,
           transition: "height 0.2s ease",
         }}
       />
 
-      {/* ═══ ATTACH — left of dot ═══ */}
-      <div
-        className="fixed z-20"
-        style={{
-          bottom: layout.caretBottom,
-          left: "25%",
-          transform: "translate(-50%, 50%)",
-        }}
-      >
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={handleAttachClick}
-          onKeyDown={(e) => { if (e.key === "Enter") handleAttachClick(); }}
-          className="cursor-pointer outline-none"
-          style={{
-            opacity: 0.4,
-            transition: `opacity ${timing.transition} ease`,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.4"; }}
-        >
-          <AttachIcon color={colors.white} />
-        </span>
-      </div>
+      {/* ═══ ATTACH — left of caret ═══ */}
+      <AnimatePresence>
+        {!hasText && !isKeyboardOpen && (
+          <motion.div
+            className="fixed z-20"
+            style={{ bottom: layout.caretBottom, left: "25%", transform: "translate(-50%, 50%)" }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2, ease: EASE }}
+          >
+            <span
+              role="button" tabIndex={0}
+              onClick={handleAttachClick}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAttachClick(); }}
+              className="cursor-pointer outline-none"
+              style={{ opacity: 0.4, transition: `opacity ${timing.transition} ease`, color: ink.tertiary }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.4"; }}
+            >
+              <AttachIcon color="currentColor" />
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* ═══ CAMERA — right of dot ═══ */}
-      <div
-        className="fixed z-20"
-        style={{
-          bottom: layout.caretBottom,
-          left: "75%",
-          transform: "translate(-50%, 50%)",
-        }}
-      >
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={handleCameraClick}
-          onKeyDown={(e) => { if (e.key === "Enter") handleCameraClick(); }}
-          className="cursor-pointer outline-none"
-          style={{
-            opacity: 0.4,
-            transition: `opacity ${timing.transition} ease`,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.4"; }}
-        >
-          <CameraIcon color={colors.white} />
-        </span>
-      </div>
+      {/* ═══ CAMERA — right of caret ═══ */}
+      <AnimatePresence>
+        {!hasText && !isKeyboardOpen && (
+          <motion.div
+            className="fixed z-20"
+            style={{ bottom: layout.caretBottom, left: "75%", transform: "translate(-50%, 50%)" }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2, ease: EASE }}
+          >
+            <span
+              role="button" tabIndex={0}
+              onClick={handleCameraClick}
+              onKeyDown={(e) => { if (e.key === "Enter") handleCameraClick(); }}
+              className="cursor-pointer outline-none"
+              style={{ opacity: 0.4, transition: `opacity ${timing.transition} ease`, color: ink.tertiary }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.4"; }}
+            >
+              <CameraIcon color="currentColor" />
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style jsx>{`
         textarea::placeholder {
-          color: ${colors.white};
-          opacity: ${opacity.ghost};
+          color: var(--xark-ink-tertiary);
+          opacity: 1;
           letter-spacing: 0.04em;
+        }
+        @keyframes placeholderPulse {
+          0%, 100% { opacity: 0.8; }
+          50% { opacity: 1; }
         }
       `}</style>
     </>
