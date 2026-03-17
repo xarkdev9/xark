@@ -61,7 +61,7 @@ export interface ChatMessage {
   content: string;
   timestamp: number;
   senderName?: string;
-  messageType?: string;  // 'e2ee' | 'e2ee_xark' | 'xark' | 'system' | 'legacy'
+  messageType?: string;  // 'e2ee' | 'xark' | 'system' | 'legacy'
 }
 
 type ViewMode = "discuss" | "decide" | "itinerary" | "memories";
@@ -98,11 +98,6 @@ function SpacePageInner() {
   const [spaceItems, setSpaceItems] = useState<SpaceStateItem[]>([]);
   const [joining, setJoining] = useState(false);
   const [shareWhisper, setShareWhisper] = useState(false);
-  const [pendingConfirmation, setPendingConfirmation] = useState<{
-    response: string;
-    action: string;
-    payload: Record<string, unknown>;
-  } | null>(null);
   const [constraintWhisper, setConstraintWhisper] = useState<DetectedConstraint | null>(null);
   const [memberCount, setMemberCount] = useState(0);
 
@@ -228,7 +223,7 @@ function SpacePageInner() {
 
           // Now decrypt regular E2EE messages
           const e2eeMsgs = persisted.filter(
-            (m) => m.message_type === 'e2ee' || m.message_type === 'e2ee_xark'
+            (m) => m.message_type === 'e2ee'
           );
           if (e2eeMsgs.length > 0) {
             const e2eeIds = e2eeMsgs.map((m) => m.id);
@@ -317,7 +312,7 @@ function SpacePageInner() {
       let content = incoming.content ?? '';
       const msgType = incoming.message_type ?? 'legacy';
 
-      if (e2ee.available && (msgType === 'e2ee' || msgType === 'e2ee_xark')) {
+      if (e2ee.available && msgType === 'e2ee') {
         if (incoming.ciphertext_b64) {
           try {
             const decrypted = await e2ee.decrypt(
@@ -339,11 +334,6 @@ function SpacePageInner() {
         } else {
           content = '[decryption pending]';
         }
-      }
-
-      // Clear thinking indicator when @xark response arrives
-      if (incoming.role === 'xark' && content && content !== 'thinking...') {
-        setIsThinking(false);
       }
 
       setMessages((prev) => {
@@ -474,7 +464,7 @@ function SpacePageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spaceId, authLoading]);
 
-  // ── Send message — works from any view, E2EE when available ──
+  // ── Send message — works from any view, pure E2EE when available ──
   const sendMessage = useCallback(async () => {
     const txt = input.trim();
     if (!txt) return;
@@ -487,7 +477,7 @@ function SpacePageInner() {
     const token = getSupabaseToken();
     addDebug(`sending: "${txt.slice(0, 20)}" as ${resolvedUserId.slice(0, 15)} | jwt:${token ? 'yes' : 'NO'} | e2ee:${e2ee.available}`);
 
-    // isThinking gate: only blocks network-dependent paths
+    // isThinking gate: blocks double-send while network request in flight
     if (isThinking) return;
 
     const userMsg: ChatMessage = {
@@ -509,8 +499,6 @@ function SpacePageInner() {
       setConstraintWhisper(constraint);
     }
 
-    const hasXarkTrigger = txt.toLowerCase().includes("@xark");
-
     // ══════════════════════════════════════════════
     // E2EE PATH — encrypt + /api/message
     // ══════════════════════════════════════════════
@@ -519,8 +507,6 @@ function SpacePageInner() {
       try {
         const envelope = await e2ee.encrypt(txt, spaceId);
         if (envelope) {
-          // BUG 5 fix: send to server FIRST, then broadcast
-          // (ensures ciphertext rows exist in DB before recipients try to fetch)
           const res = await fetch("/api/message", {
             method: "POST",
             headers: {
@@ -534,9 +520,6 @@ function SpacePageInner() {
               ratchet_header: envelope.ratchetHeader ?? null,
               recipient_id: envelope.recipientId,
               recipient_device_id: envelope.recipientDeviceId,
-              xark_trigger: hasXarkTrigger
-                ? { plaintext_command: txt }
-                : undefined,
             }),
           });
 
@@ -546,7 +529,7 @@ function SpacePageInner() {
             console.error("[e2ee] /api/message failed:", data.error);
             // Fall through to legacy path below
           } else {
-            // Success — NOW broadcast for instant delivery (BUG 5 fix: after DB write)
+            // Broadcast for instant delivery (after DB write)
             if (channelRef.current) {
               broadcastMessage(channelRef.current, {
                 id: userMsg.id,
@@ -556,18 +539,14 @@ function SpacePageInner() {
                 user_id: resolvedUserId ?? null,
                 sender_name: user?.displayName ?? userName ?? null,
                 created_at: new Date().toISOString(),
-                message_type: hasXarkTrigger ? "e2ee_xark" : "e2ee",
+                message_type: "e2ee",
                 sender_device_id: e2ee.deviceId,
                 ciphertext_b64: envelope.ciphertext,
                 ratchet_header_b64: envelope.ratchetHeader ?? null,
               });
             }
 
-            if (!hasXarkTrigger) {
-              setIsThinking(false);
-            } else {
-              setTimeout(() => setIsThinking(false), 30_000);
-            }
+            setIsThinking(false);
             return;
           }
         }
@@ -577,7 +556,7 @@ function SpacePageInner() {
     }
 
     // ══════════════════════════════════════════════
-    // LEGACY PATH — plaintext save + /api/xark
+    // LEGACY PATH — plaintext save (no AI trigger)
     // ══════════════════════════════════════════════
     addDebug("LEGACY PATH — saving plaintext");
 
@@ -606,80 +585,10 @@ function SpacePageInner() {
       addDebug("DB SAVE OK");
     }).catch((err) => {
       addDebug("DB SAVE FAIL: " + (err?.message ?? err));
-      console.error("[xark] message not saved:", err?.message ?? err);
+      console.error("[chat] message not saved:", err?.message ?? err);
     });
 
-    try {
-      const response = await fetch("/api/xark", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          message: txt,
-          spaceId,
-          userId: resolvedUserId,
-        }),
-      });
-
-      const data = await response.json();
-
-      // Surface server errors
-      if (!response.ok && data.response) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: generateId(),
-            role: "xark",
-            content: data.response,
-            timestamp: Date.now(),
-          },
-        ]);
-        setIsThinking(false);
-        return;
-      }
-
-      // Silent mode: @xark returns null when not invoked
-      if (data.response === null) {
-        setIsThinking(false);
-        return;
-      }
-
-      // Check for pending confirmation (e.g., set_dates, populate_logistics)
-      if (data.pendingConfirmation) {
-        setPendingConfirmation({
-          response: data.response,
-          action: data.action,
-          payload: data.payload || {},
-        });
-      }
-
-      // @xark response (persisted server-side via supabaseAdmin)
-      const finalContent = data.response ?? "i could not generate a response.";
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: data.messageId ?? generateId(),
-          role: "xark",
-          content: finalContent,
-          timestamp: Date.now(),
-        },
-      ]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "xark",
-          content: "connection interrupted. try again.",
-          timestamp: Date.now(),
-        },
-      ]);
-    } finally {
-      setIsThinking(false);
-    }
+    setIsThinking(false);
   }, [input, isThinking, spaceId, resolvedUserId, user, userName, e2ee]);
 
   // ═══════════════════════════════════════════
@@ -1163,46 +1072,6 @@ function SpacePageInner() {
             </div>
           </div>
         </>
-      )}
-
-      {/* ── Pending confirmation whisper ── */}
-      {pendingConfirmation && (
-        <div style={{ textAlign: "center", padding: "12px 0" }}>
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={async () => {
-              const confirmToken = getSupabaseToken();
-              await fetch("/api/xark", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  ...(confirmToken ? { Authorization: `Bearer ${confirmToken}` } : {}),
-                },
-                body: JSON.stringify({
-                  confirm_action: pendingConfirmation.action,
-                  spaceId,
-                  payload: pendingConfirmation.payload,
-                }),
-              });
-              setPendingConfirmation(null);
-            }}
-            className="cursor-pointer outline-none"
-            style={{ ...text.body, color: colors.gold, opacity: 0.8 }}
-          >
-            confirm
-          </span>
-          <span style={{ ...text.body, color: ink.tertiary, margin: "0 16px" }}>·</span>
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={() => setPendingConfirmation(null)}
-            className="cursor-pointer outline-none"
-            style={{ ...text.body, color: ink.tertiary }}
-          >
-            wait
-          </span>
-        </div>
       )}
 
       {/* ── Constraint whisper — detected from encrypted message text ── */}

@@ -2,7 +2,7 @@
 
 // XARK OS v2.0 — The Magnetic Input
 // Zero boxes, zero borders. Presence through lighting, color, and motion.
-// @xark detection turns text cyan. Icons fade when typing. Mic slides to send.
+// Pure E2EE messaging. Icons fade when typing. Mic slides to send.
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,14 +13,6 @@ import { colors, text, timing, layout, opacity, textColor, surface, ink } from "
 const URL_PATTERN = /https?:\/\/[^\s]+/i;
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-const XARK_HINTS = [
-  "@xark find hotels near downtown",
-  "@xark plan dinner tonight",
-  "@xark who hasn't voted?",
-  "@xark set dates to march 20-25",
-  "@xark find restaurants nearby",
-  "@xark add flights to bali",
-];
 
 interface ChatInputProps {
   input: string;
@@ -96,61 +88,18 @@ export function ChatInput({
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const micAreaRef = useRef<HTMLDivElement>(null);
-  const dragStartY = useRef<number | null>(null);
 
-  // ── Voice Input ──
+  // ── Voice Input (pure dictation, no AI modes) ──
   const {
     isListening,
-    isXarkListening,
     mode: voiceMode,
     transcript,
     toggleDictation,
-    startXarkMode,
     stop: stopVoice,
   } = useVoiceInput();
 
   const isRecording = voiceMode !== "off";
 
-  // ── Typewriter placeholder — cycle @xark command examples ──
-  const [twPlaceholder, setTwPlaceholder] = useState("");
-
-  useEffect(() => {
-    if (isRecording || isThinking) return;
-
-    let phraseIdx = 0;
-    let charIdx = 0;
-    let deleting = false;
-    let timer: ReturnType<typeof setTimeout>;
-
-    const tick = () => {
-      const phrase = XARK_HINTS[phraseIdx];
-      if (!deleting) {
-        if (charIdx <= phrase.length) {
-          setTwPlaceholder(phrase.slice(0, charIdx));
-          charIdx++;
-          timer = setTimeout(tick, 70);
-        } else {
-          timer = setTimeout(() => {
-            deleting = true;
-            tick();
-          }, 2500);
-        }
-      } else {
-        if (charIdx > 0) {
-          charIdx--;
-          setTwPlaceholder(phrase.slice(0, charIdx));
-          timer = setTimeout(tick, 35);
-        } else {
-          deleting = false;
-          phraseIdx = (phraseIdx + 1) % XARK_HINTS.length;
-          timer = setTimeout(tick, 300);
-        }
-      }
-    };
-
-    timer = setTimeout(tick, 100);
-    return () => clearTimeout(timer);
-  }, [isRecording, isThinking]);
 
   useEffect(() => {
     if (transcript) onInputChange(transcript);
@@ -187,28 +136,15 @@ export function ChatInput({
   const handleAttachClick = () => { if (onAttach) onAttach(); else fileRef.current?.click(); };
   const handleCameraClick = () => { if (onCamera) onCamera(); else cameraRef.current?.click(); };
 
-  // ── Mic slide-up ──
-  const handleMicPointerDown = (e: React.PointerEvent) => {
+  // ── Mic toggle (pure dictation) ──
+  const handleMicTap = () => {
     if (isRecording) { stopVoice(); return; }
-    dragStartY.current = e.clientY;
-  };
-  const handleMicPointerUp = (e: React.PointerEvent) => {
-    if (dragStartY.current === null) return;
-    const deltaY = dragStartY.current - e.clientY;
-    dragStartY.current = null;
-    if (deltaY > 40) startXarkMode();
-    else toggleDictation();
+    toggleDictation();
   };
 
   const hasText = input.trim().length > 0;
-  const isAskingAI = input.includes("@xark");
-  const recordingBorderColor = isXarkListening ? colors.cyan : colors.orange;
-
-  // Dynamic text color: cyan when @xark invoked
-  const inputTextColor = isAskingAI ? colors.cyan : colors.white;
-  const inputTextShadow = isAskingAI
-    ? "0 0 20px rgba(64, 224, 255, 0.3), 0 2px 8px rgba(64, 224, 255, 0.15)"
-    : hasText ? "0 2px 12px rgba(20, 20, 20, 0.08)" : "none";
+  const inputTextColor = colors.white;
+  const inputTextShadow = hasText ? "0 2px 12px rgba(20, 20, 20, 0.08)" : "none";
 
   return (
     <>
@@ -238,12 +174,12 @@ export function ChatInput({
                 <div
                   style={{
                     width: "8px", height: "8px", borderRadius: "50%",
-                    backgroundColor: isXarkListening ? colors.cyan : colors.orange,
+                    backgroundColor: colors.orange,
                     animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
                   }}
                 />
-                <span style={{ ...text.subtitle, color: isXarkListening ? colors.cyan : colors.white, letterSpacing: "0.08em" }}>
-                  {isXarkListening ? "@xark listening..." : "listening..."}
+                <span style={{ ...text.subtitle, color: colors.white, letterSpacing: "0.08em" }}>
+                  listening...
                 </span>
               </div>
               <span
@@ -251,9 +187,9 @@ export function ChatInput({
                 onClick={stopVoice}
                 onKeyDown={(e) => { if (e.key === "Enter") stopVoice(); }}
                 className="cursor-pointer outline-none flex items-center gap-2"
-                style={{ ...text.subtitle, color: isXarkListening ? colors.cyan : colors.orange, opacity: 0.8 }}
+                style={{ ...text.subtitle, color: colors.orange, opacity: 0.8 }}
               >
-                <StopIcon color={isXarkListening ? colors.cyan : colors.orange} />
+                <StopIcon color={colors.orange} />
                 stop
               </span>
             </div>
@@ -287,11 +223,7 @@ export function ChatInput({
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={
-                isXarkListening ? "@xark is listening..."
-                : isListening ? "listening..."
-                : twPlaceholder || "@xark ..."
-              }
+              placeholder={isListening ? "listening..." : "message..."}
               disabled={isThinking}
               enterKeyHint="send"
               spellCheck={false}
@@ -332,17 +264,16 @@ export function ChatInput({
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.2, ease: EASE }}
                 >
-                  <SendIcon color={isAskingAI ? colors.cyan : colors.cyan} />
+                  <SendIcon color={colors.cyan} />
                 </motion.span>
               ) : (
                 <motion.div
                   key="mic"
                   ref={micAreaRef}
                   role="button" tabIndex={0}
-                  onPointerDown={handleMicPointerDown}
-                  onPointerUp={handleMicPointerUp}
+                  onClick={handleMicTap}
                   className="outline-none select-none cursor-pointer"
-                  style={{ flexShrink: 0, marginBottom: "2px", touchAction: "none" }}
+                  style={{ flexShrink: 0, marginBottom: "2px" }}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: isRecording ? 1 : 0.5, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
@@ -352,7 +283,7 @@ export function ChatInput({
                     <div
                       style={{
                         width: "20px", height: "20px", borderRadius: "50%",
-                        backgroundColor: isXarkListening ? colors.cyan : colors.orange,
+                        backgroundColor: colors.orange,
                         animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
                       }}
                     />
@@ -364,12 +295,6 @@ export function ChatInput({
             </AnimatePresence>
           </div>
 
-          {/* ── Mic hint ── */}
-          {!isRecording && !hasText && !isKeyboardOpen && (
-            <p style={{ ...text.timestamp, color: ink.tertiary, marginTop: "6px", textAlign: "right" }}>
-              slide mic up for @xark
-            </p>
-          )}
 
           {/* ── URL detection prompt ── */}
           {showUrlPrompt && detectedUrl && (
