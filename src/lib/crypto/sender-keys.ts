@@ -11,7 +11,7 @@ import type { SenderKeyState, RawKeyPair } from './types';
 
 // BUG 16 fix: bounded skipped-key dictionary for out-of-order group messages
 const MAX_SK_SKIP = 1000;
-// Cache: "chainKeyB64:iteration" -> messageKey (Uint8Array)
+// Cache: "signingPubKeyB64:iteration" -> messageKey (Uint8Array)
 const skippedSenderKeys = new Map<string, Uint8Array>();
 
 /** Generate a new Sender Key for a group space */
@@ -63,8 +63,9 @@ export function senderKeyDecrypt(
   }
 
   // BUG 16 fix: check skipped key cache first
-  const chainId = toBase64(state.chainKey);
-  const skipKey = `${chainId}:${targetIteration}`;
+  // Use signing key public as stable cache prefix (chainKey mutates on each decrypt)
+  const stableId = toBase64(state.signingKey.publicKey);
+  const skipKey = `${stableId}:${targetIteration}`;
   const cachedMk = skippedSenderKeys.get(skipKey);
   if (cachedMk) {
     skippedSenderKeys.delete(skipKey);
@@ -80,7 +81,7 @@ export function senderKeyDecrypt(
     currentIteration++;
 
     // Cache the skipped message key
-    const cacheKey = `${chainId}:${currentIteration}`;
+    const cacheKey = `${stableId}:${currentIteration}`;
     skippedSenderKeys.set(cacheKey, skippedMk);
 
     // Enforce bounded dictionary — evict oldest
