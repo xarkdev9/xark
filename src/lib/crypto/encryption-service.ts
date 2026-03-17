@@ -94,13 +94,15 @@ export async function distributeSenderKey(
   });
 
   if (error) {
-    console.warn('[e2ee] Failed to fetch space member devices:', error.message);
+    console.warn('[xark-sk-dist] Failed to fetch space member devices:', error.message);
     return;
   }
   if (!members || members.length === 0) {
-    // Solo space or no members with key bundles — nothing to distribute
+    console.log('[xark-sk-dist] No peer devices — solo space, skipping distribution');
     return;
   }
+
+  console.log(`[xark-sk-dist] Distributing SK to ${members.length} device(s) in space ${spaceId}`);
 
   // Serialize the sender key for distribution (BUG 15 fix: no private signing key)
   const serializedKey = serializeSenderKey(senderKey, false);
@@ -168,20 +170,23 @@ export async function distributeSenderKey(
         ratchet_header: toBase64(new TextEncoder().encode(JSON.stringify(headerJson))),
       });
     } catch (err) {
-      console.warn(`[e2ee] Failed to encrypt SK for ${member.user_id}:${member.device_id}:`, err);
+      console.warn(`[xark-sk-dist] Failed to encrypt SK for ${member.user_id}:${member.device_id}:`, err);
       // Continue with other members — partial distribution is better than none
     }
   }
 
   if (ciphertextRows.length === 0) return;
 
-  // Send distribution message via /api/message-like flow
+  // Send distribution message via /api/message — DB write MUST succeed before broadcast
   const token = getSupabaseToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
 
+  console.log(`[xark-sk-dist] POSTing distribution message (${ciphertextRows.length} ciphertexts)`);
+
+  let res: Response;
   try {
-    const res = await fetch('/api/message', {
+    res = await fetch('/api/message', {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -194,40 +199,71 @@ export async function distributeSenderKey(
         distribution_ciphertexts: ciphertextRows,
       }),
     });
+  } catch (fetchErr) {
+    console.error('[xark-sk-dist] Network error during distribution POST:', fetchErr);
+    return;
+  }
 
-    if (!res.ok) {
-      console.warn('[e2ee] /api/message distribution failed');
-    } else {
-      // BUG 20 fix: broadcast the distribution event so live recipients process it immediately
-      const data = await res.json();
-      if (data.messageId) {
-        try {
-          const { supabase } = await import('@/lib/supabase');
-          const channel = supabase.channel(`chat:${spaceId}`);
-          await channel.subscribe();
-          channel.send({
-            type: 'broadcast',
-            event: 'message',
-            payload: {
-              id: data.messageId,
-              space_id: spaceId,
-              role: 'user',
-              content: null,
-              user_id: myUserId,
-              sender_name: null,
-              created_at: new Date().toISOString(),
-              message_type: 'sender_key_dist',
-              sender_device_id: myDeviceId,
-            },
-          });
-          supabase.removeChannel(channel);
-        } catch {
-          // Non-critical — recipients will get it on next page load
+  // BUG 5 fix: verify DB write succeeded before broadcasting
+  if (!res.ok) {
+    const errText = await res.text().catch(() => 'unknown');
+    throw new Error(`[xark-sk-dist] Distribution POST failed: ${res.status} ${errText}`);
+  }
+
+  console.log('[xark-sk-dist] DB write confirmed, broadcasting...');
+
+  const data = await res.json();
+  if (!data.messageId) {
+    console.warn('[xark-sk-dist] No messageId returned — skipping broadcast');
+    return;
+  }
+
+  // BUG 20 fix: broadcast with retry so live recipients process immediately
+  const distributionPayload = {
+    id: data.messageId,
+    space_id: spaceId,
+    role: 'user',
+    content: null,
+    user_id: myUserId,
+    sender_name: null,
+    created_at: new Date().toISOString(),
+    message_type: 'sender_key_dist',
+    sender_device_id: myDeviceId,
+  };
+
+  try {
+    const { supabase: supa } = await import('@/lib/supabase');
+    const channel = supa.channel(`chat:${spaceId}`);
+    await channel.subscribe();
+
+    // Retry broadcast up to 3 times with linear backoff
+    let broadcastSuccess = false;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await channel.send({
+          type: 'broadcast',
+          event: 'message',
+          payload: distributionPayload,
+        });
+        console.log(`[xark-sk-dist] Broadcast confirmed (attempt ${attempt})`);
+        broadcastSuccess = true;
+        break;
+      } catch (err) {
+        console.warn(`[xark-sk-dist] Broadcast attempt ${attempt} failed:`, err);
+        if (attempt < 3) {
+          await new Promise(r => setTimeout(r, 1000 * attempt));
         }
       }
     }
-  } catch {
-    console.warn('[e2ee] Distribution message send failed');
+
+    if (!broadcastSuccess) {
+      console.error('[xark-sk-dist] Broadcast failed after 3 attempts — recipients will fetch on next load');
+    }
+
+    supa.removeChannel(channel);
+  } catch (broadcastErr) {
+    console.error('[xark-sk-dist] Broadcast setup failed:', broadcastErr);
+    // Non-critical — DB row exists, recipients will pick it up on next load
   }
 }
 
@@ -423,6 +459,30 @@ export async function encryptForSpace(
     }
   } else {
     senderKey = deserializeSenderKey(senderKeyData);
+
+    // ── TOMBSTONE LAZY ROTATION RECOVERY ──
+    // If a tombstone was issued AFTER this key was created, it may exist on a compromised device.
+    if (senderKey.createdAt) {
+      const { data: tombstones, error: tsError } = await supabase
+        .from('space_tombstones')
+        .select('id')
+        .eq('space_id', spaceId)
+        .gt('created_at', new Date(senderKey.createdAt).toISOString())
+        .limit(1);
+
+      if (!tsError && tombstones && tombstones.length > 0) {
+        console.warn(`[e2ee] 🛑 Tombstone detected after key generation! Forcing Lazy Rotation.`);
+        senderKey = generateSenderKey();
+        await keyStore.saveSenderKey(spaceId, serializeSenderKey(senderKey));
+        try {
+          // get_space_member_devices intrinsically excludes kicked users, 
+          // guaranteeing distribution only to SAFE devices.
+          await distributeSenderKey(spaceId, senderKey);
+        } catch (err) {
+          console.warn('[e2ee] Lazy rotation distribution failed:', err);
+        }
+      }
+    }
   }
 
   const { ciphertext, nonce, signature, iteration } = senderKeyEncrypt(senderKey, plaintext);
