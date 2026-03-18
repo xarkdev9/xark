@@ -93,6 +93,7 @@ function SpacePageInner() {
     viewParam === "decide" ? "decide" : "discuss"
   );
   const [spaceTitle, setSpaceTitle] = useState<string>("");
+  const [atmosphere, setAtmosphere] = useState<string>("cyan_horizon");
   const [spaceItems, setSpaceItems] = useState<SpaceStateItem[]>([]);
   const [joining, setJoining] = useState(false);
   const [shareWhisper, setShareWhisper] = useState(false);
@@ -120,7 +121,7 @@ function SpacePageInner() {
   }, [resolvedUserId]);
 
   // ── Swipe to switch discuss ↔ decide ──
-  const viewTabs: ViewMode[] = ["discuss", "decide"];
+  const viewTabs: ViewMode[] = atmosphere === "sanctuary" ? ["discuss"] : ["discuss", "decide"];
   const swipeStartX = useRef(0);
   const swipeStartY = useRef(0);
 
@@ -688,9 +689,35 @@ function SpacePageInner() {
       try {
         const { data } = await supabase
           .from("spaces")
-          .select("title")
+          .select("title, atmosphere")
           .eq("id", spaceId)
           .single();
+        
+        if (data?.atmosphere) {
+          setAtmosphere(data.atmosphere);
+        }
+
+        if (data?.atmosphere === "sanctuary" && resolvedUserId) {
+          const { data: otherMember } = await supabase
+            .from("space_members")
+            .select("user_id")
+            .eq("space_id", spaceId)
+            .neq("user_id", resolvedUserId)
+            .limit(1)
+            .single();
+          if (otherMember?.user_id) {
+            const { data: otherUser } = await supabase
+              .from("users")
+              .select("display_name")
+              .eq("id", otherMember.user_id)
+              .single();
+            if (otherUser?.display_name) {
+              setSpaceTitle(otherUser.display_name);
+              return;
+            }
+          }
+        }
+
         if (data?.title) {
           setSpaceTitle(data.title);
           return;
@@ -704,7 +731,7 @@ function SpacePageInner() {
       );
     }
     loadTitle();
-  }, [spaceId, authLoading]);
+  }, [spaceId, authLoading, resolvedUserId]);
 
   // ── Fetch decision items for space state computation (after auth resolves) ──
   useEffect(() => {
@@ -881,96 +908,100 @@ function SpacePageInner() {
                   />
                 )}
               </span>
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={() => setView("decide")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") setView("decide");
-                }}
-                className="outline-none"
-                style={{
-                  ...text.label,
-                  color: view === "decide" ? colors.cyan : ink.tertiary,
-                  cursor: "pointer",
-                  transition: `color ${timing.transition} ease`,
-                  position: "relative",
-                }}
-              >
-                decide
-                {view === "decide" && (
-                  <motion.span
-                    layoutId="space-tab-pill"
-                    style={{
-                      position: "absolute", bottom: "-4px", left: 0,
-                      width: "100%", height: "2px",
-                      background: colors.cyan, opacity: 0.6,
+              {atmosphere !== "sanctuary" && (
+                <>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setView("decide")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") setView("decide");
                     }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  />
-                )}
-              </span>
-              {showItinerary && !isSettled && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setView("itinerary")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") setView("itinerary");
-                  }}
-                  className="outline-none"
-                  style={{
-                    ...text.label,
-                    color: view === "itinerary" ? colors.cyan : ink.tertiary,
-                    cursor: "pointer",
-                    transition: `color ${timing.transition} ease`,
-                    position: "relative",
-                  }}
-                >
-                  itinerary
-                  {view === "itinerary" && (
-                    <motion.span
-                      layoutId="space-tab-pill"
-                      style={{
-                        position: "absolute", bottom: "-4px", left: 0,
-                        width: "100%", height: "2px",
-                        background: colors.cyan, opacity: 0.6,
+                    className="outline-none"
+                    style={{
+                      ...text.label,
+                      color: view === "decide" ? colors.cyan : ink.tertiary,
+                      cursor: "pointer",
+                      transition: `color ${timing.transition} ease`,
+                      position: "relative",
+                    }}
+                  >
+                    decide
+                    {view === "decide" && (
+                      <motion.span
+                        layoutId="space-tab-pill"
+                        style={{
+                          position: "absolute", bottom: "-4px", left: 0,
+                          width: "100%", height: "2px",
+                          background: colors.cyan, opacity: 0.6,
+                        }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      />
+                    )}
+                  </span>
+                  {showItinerary && !isSettled && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setView("itinerary")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") setView("itinerary");
                       }}
-                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    />
-                  )}
-                </span>
-              )}
-              {isSettled && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setView("memories")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") setView("memories");
-                  }}
-                  className="outline-none"
-                  style={{
-                    ...text.label,
-                    color: view === "memories" ? colors.cyan : ink.tertiary,
-                    cursor: "pointer",
-                    transition: `color ${timing.transition} ease`,
-                    position: "relative",
-                  }}
-                >
-                  memories
-                  {view === "memories" && (
-                    <motion.span
-                      layoutId="space-tab-pill"
+                      className="outline-none"
                       style={{
-                        position: "absolute", bottom: "-4px", left: 0,
-                        width: "100%", height: "2px",
-                        background: colors.cyan, opacity: 0.6,
+                        ...text.label,
+                        color: view === "itinerary" ? colors.cyan : ink.tertiary,
+                        cursor: "pointer",
+                        transition: `color ${timing.transition} ease`,
+                        position: "relative",
                       }}
-                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    />
+                    >
+                      itinerary
+                      {view === "itinerary" && (
+                        <motion.span
+                          layoutId="space-tab-pill"
+                          style={{
+                            position: "absolute", bottom: "-4px", left: 0,
+                            width: "100%", height: "2px",
+                            background: colors.cyan, opacity: 0.6,
+                          }}
+                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        />
+                      )}
+                    </span>
                   )}
-                </span>
+                  {isSettled && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setView("memories")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") setView("memories");
+                      }}
+                      className="outline-none"
+                      style={{
+                        ...text.label,
+                        color: view === "memories" ? colors.cyan : ink.tertiary,
+                        cursor: "pointer",
+                        transition: `color ${timing.transition} ease`,
+                        position: "relative",
+                      }}
+                    >
+                      memories
+                      {view === "memories" && (
+                        <motion.span
+                          layoutId="space-tab-pill"
+                          style={{
+                            position: "absolute", bottom: "-4px", left: 0,
+                            width: "100%", height: "2px",
+                            background: colors.cyan, opacity: 0.6,
+                          }}
+                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        />
+                      )}
+                    </span>
+                  )}
+                </>
               )}
             </div>
 
