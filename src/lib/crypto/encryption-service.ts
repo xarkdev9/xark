@@ -837,8 +837,18 @@ export async function decryptMessage(
     await keyStore.saveSession(senderId, senderDeviceId, serializeSession(session));
   }
 
-  const parsed = JSON.parse(fromBytes(plaintext)) as DecryptedMessage;
-  return parsed;
+  // Runtime payload validation — prevents prototype pollution from crafted E2EE payloads
+  const raw = JSON.parse(fromBytes(plaintext));
+
+  // Strict type check — only accept expected fields, reject everything else
+  const validated: DecryptedMessage = {
+    text: typeof raw.text === 'string' ? raw.text : '[invalid message]',
+    replyTo: typeof raw.replyTo === 'string' ? raw.replyTo : null,
+    mediaUrl: typeof raw.mediaUrl === 'string' ? raw.mediaUrl : null,
+    type: raw.type === 'media' ? 'media' : 'message',
+  };
+
+  return validated;
 }
 
 /** Client-side message type guard — anti-injection defense */
