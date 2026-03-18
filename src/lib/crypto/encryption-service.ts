@@ -256,49 +256,69 @@ export async function distributeSenderKey(
 
   const msgId = `msg_skd_${crypto.randomUUID()}`;
 
-  for (const member of members as Array<{ user_id: string; device_id: number }>) {
-    try {
-      // Get or establish pairwise session
-      const session = await getOrEstablishSession(member.user_id, member.device_id);
+  // Parallelize in chunks of 10 to prevent DOM freeze
+  // Each chunk yields to the main thread between batches
+  const CHUNK_SIZE = 10;
 
-      // Encrypt serialized Sender Key with Double Ratchet
-      // header is now Uint8Array (encrypted header bytes)
-      const { ciphertext, nonce, header } = ratchetEncrypt(session, serializedKey);
+  for (let i = 0; i < members.length; i += CHUNK_SIZE) {
+    const chunk = (members as Array<{ user_id: string; device_id: number }>).slice(i, i + CHUNK_SIZE);
 
-      // Persist updated session
-      await keyStore.saveSession(member.user_id, member.device_id, serializeSession(session));
+    const results = await Promise.allSettled(
+      chunk.map(async (member) => {
+        try {
+          // Get or establish pairwise session
+          const session = await getOrEstablishSession(member.user_id, member.device_id);
 
-      // Pack nonce + ciphertext
-      const packed = new Uint8Array(nonce.length + ciphertext.length);
-      packed.set(nonce, 0);
-      packed.set(ciphertext, nonce.length);
+          // Encrypt serialized Sender Key with Double Ratchet
+          const { ciphertext, nonce, header } = ratchetEncrypt(session, serializedKey);
 
-      // Build header envelope with X3DH metadata for first-contact sessions
-      const metaKey = `${member.user_id}:${member.device_id}`;
-      const meta = x3dhSessionMeta.get(metaKey);
-      let x3dh: { identityKey: string; ephemeralKey?: string; otkId?: string } | undefined;
+          // Persist updated session
+          await keyStore.saveSession(member.user_id, member.device_id, serializeSession(session));
 
-      if (meta) {
-        x3dh = {
-          identityKey: meta.identityPub,
-          ephemeralKey: meta.ephemeralPub,
-          otkId: meta.otkId,
-        };
-        // Clean up — metadata only needed for first message
-        x3dhSessionMeta.delete(metaKey);
+          // Pack nonce + ciphertext
+          const packed = new Uint8Array(nonce.length + ciphertext.length);
+          packed.set(nonce, 0);
+          packed.set(ciphertext, nonce.length);
+
+          // Build header envelope with X3DH metadata for first-contact sessions
+          const metaKey = `${member.user_id}:${member.device_id}`;
+          const meta = x3dhSessionMeta.get(metaKey);
+          let x3dh: { identityKey: string; ephemeralKey?: string; otkId?: string } | undefined;
+
+          if (meta) {
+            x3dh = {
+              identityKey: meta.identityPub,
+              ephemeralKey: meta.ephemeralPub,
+              otkId: meta.otkId,
+            };
+            x3dhSessionMeta.delete(metaKey);
+          }
+
+          return {
+            id: `mc_${crypto.randomUUID()}`,
+            message_id: msgId,
+            recipient_id: member.user_id,
+            recipient_device_id: member.device_id,
+            ciphertext: toBase64(packed),
+            ratchet_header: buildHeaderEnvelope(header, x3dh),
+          };
+        } catch (err) {
+          console.warn(`[xark-sk-dist] Failed to encrypt SK for ${member.user_id}:${member.device_id}:`, err);
+          return null;
+        }
+      })
+    );
+
+    // Collect successful results
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        ciphertextRows.push(result.value);
       }
+    }
 
-      ciphertextRows.push({
-        id: `mc_${crypto.randomUUID()}`,
-        message_id: msgId,
-        recipient_id: member.user_id,
-        recipient_device_id: member.device_id,
-        ciphertext: toBase64(packed),
-        ratchet_header: buildHeaderEnvelope(header, x3dh),
-      });
-    } catch (err) {
-      console.warn(`[xark-sk-dist] Failed to encrypt SK for ${member.user_id}:${member.device_id}:`, err);
-      // Continue with other members — partial distribution is better than none
+    // Yield to main thread between chunks (prevents DOM freeze)
+    if (i + CHUNK_SIZE < members.length) {
+      await new Promise(r => setTimeout(r, 0));
     }
   }
 
@@ -525,12 +545,22 @@ export async function encryptForSanctuary(
   // header is now Uint8Array (encrypted header bytes)
   const { ciphertext, nonce, header } = ratchetEncrypt(session, plaintext);
 
-  // TWO-PHASE COMMIT: serialize session but DON'T persist yet.
-  // Caller must invoke commit() after network ACK to persist ratchet advancement.
-  // If network fails, ratchet stays at pre-encrypt state (no desync).
+  // TWO-PHASE COMMIT with durable pre-commit state.
+  // Write advanced ratchet state to IDB BEFORE the network call so it survives tab close.
+  // On ACK: persist the session and delete the unacked entry.
+  // On reopen after crash: getUnackedRatchets() recovers the advanced state.
   const serializedSession = serializeSession(session);
+  const pendingMsgId = `pending_${crypto.randomUUID()}`;
+  await keyStore.saveUnackedRatchet(pendingMsgId, {
+    sessionKey: `${peerId}:${peerDeviceId}`,
+    sessionType: 'ratchet',
+    serializedState: toBase64(serializedSession),
+  });
+
   const commitSession = async () => {
+    // ACK received — persist the advanced session state and clean up
     await keyStore.saveSession(peerId, peerDeviceId, serializedSession);
+    await keyStore.ackRatchet(pendingMsgId);
   };
 
   // Pack nonce + ciphertext
