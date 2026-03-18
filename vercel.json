@@ -8,7 +8,7 @@
     },
     {
       "path": "/api/cron/consensus",
-      "schedule": "0 * * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
