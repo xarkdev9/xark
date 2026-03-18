@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseToken } from "@/lib/supabase";
 import {
   fetchSpaceList,
   recencyLabel,
@@ -12,9 +12,13 @@ import {
   DEMO_SPACES,
 } from "@/lib/space-data";
 import type { SpaceListItem } from "@/lib/space-data";
-import { colors, opacity, timing, layout, text, ink } from "@/lib/theme";
+import { colors, opacity, timing, layout, text, ink, surface } from "@/lib/theme";
 import { useAuth } from "@/hooks/useAuth";
+import { useKeyboard } from "@/hooks/useKeyboard";
 import { Avatar } from "@/components/os/Avatar";
+import { SpotlightSheet } from "@/components/os/SpotlightSheet";
+import { useSpotlight } from "@/hooks/useSpotlight";
+import { useWhispers } from "@/hooks/useWhispers";
 
 // ── Search icon ──
 function SearchIcon({ color, size = 18 }: { color: string; size?: number }) {
@@ -44,6 +48,17 @@ export function ControlCaret() {
   const userName = searchParams.get("name") ?? "";
   const { user } = useAuth(userName || undefined);
   const isInsideSpace = pathname.startsWith("/space/");
+  const { isKeyboardOpen } = useKeyboard();
+
+  // ── Spotlight + Whispers ──
+  const getTokenFn = useCallback(() => getSupabaseToken(), []);
+  const spotlight = useSpotlight(getTokenFn);
+  const userId = user?.uid ?? null;
+  const { currentWhisper, hasWhispers, consumeWhisper, dismissWhisper } = useWhispers(userId);
+
+  // ── Long-press detection: tap → Spotlight, long-press → space panel ──
+  const longPressRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const isLongPress = useRef(false);
 
   useEffect(() => {
     const userId = user?.uid;
@@ -109,45 +124,75 @@ export function ControlCaret() {
 
   return (
     <>
-      {/* ── The Dot ── */}
-      <div
+      {/* ── Living Brand Anchor — "xark" as persistent home trigger ── */}
+      {!isKeyboardOpen && <div
         className="fixed left-1/2 z-50"
-        style={{ bottom: layout.caretBottom, transform: "translateX(-50%)" }}
+        style={{
+          bottom: 0,
+          transform: "translateX(-50%)",
+          paddingBottom: "32px",
+          pointerEvents: "auto",
+        }}
       >
-        <div
+        <motion.div
           role="button"
           tabIndex={0}
-          onClick={() => {
-            if (isInsideSpace) {
-              router.push(`/galaxy?name=${encodeURIComponent(userName)}`);
-            } else {
-              setIsOpen((prev) => !prev);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
+          onPointerDown={() => {
+            isLongPress.current = false;
+            longPressRef.current = setTimeout(() => {
+              isLongPress.current = true;
               if (isInsideSpace) {
                 router.push(`/galaxy?name=${encodeURIComponent(userName)}`);
               } else {
                 setIsOpen((prev) => !prev);
               }
+            }, 500);
+          }}
+          onPointerUp={() => {
+            if (longPressRef.current) clearTimeout(longPressRef.current);
+            if (!isLongPress.current) {
+              spotlight.open();
             }
           }}
-          className="cursor-pointer outline-none"
+          onPointerCancel={() => {
+            if (longPressRef.current) clearTimeout(longPressRef.current);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              spotlight.open();
+            }
+          }}
+          className="cursor-pointer outline-none select-none"
+          style={{
+            fontSize: "18px",
+            fontWeight: 300,
+            letterSpacing: "0.2em",
+            color: "#FF6B35",
+            WebkitTapHighlightColor: "transparent",
+          }}
+          animate={{
+            opacity: isOpen || spotlight.isOpen ? 1 : [0.7, 0.9, 0.7],
+            textShadow: hasWhispers
+              ? "0 0 12px rgba(64,224,255,0.5), 0 0 24px rgba(64,224,255,0.25)"
+              : isOpen || spotlight.isOpen
+                ? "0 0 20px rgba(255,107,53,0.6), 0 0 40px rgba(255,107,53,0.3)"
+                : "0 0 8px rgba(255,107,53,0.15)",
+          }}
+          transition={isOpen || spotlight.isOpen ? { duration: 0.15 } : {
+            opacity: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+            textShadow: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+          }}
+          whileTap={{
+            scale: 0.95,
+            opacity: 1,
+            textShadow: hasWhispers
+              ? "0 0 20px rgba(64,224,255,0.7), 0 0 40px rgba(64,224,255,0.35)"
+              : "0 0 20px rgba(255,107,53,0.6), 0 0 40px rgba(255,107,53,0.3)",
+          }}
         >
-          <div
-            style={{
-              width: layout.caretSize,
-              height: layout.caretSize,
-              borderRadius: "50%",
-              backgroundColor: colors.cyan,
-              animation: isOpen ? "none" : `ambientBreath ${timing.breath} ease-in-out infinite`,
-              opacity: isOpen ? 1 : undefined,
-              transition: "opacity 0.3s ease",
-            }}
-          />
-        </div>
-      </div>
+          xark
+        </motion.div>
+      </div>}
 
       {/* ── Galaxy Slide-Up ── */}
       <AnimatePresence>
@@ -366,6 +411,22 @@ export function ControlCaret() {
           </>
         )}
       </AnimatePresence>
+
+      {/* ── Spotlight Sheet ── */}
+      <SpotlightSheet
+        isOpen={spotlight.isOpen}
+        morphText={spotlight.morphText}
+        targetSpaceId={spotlight.targetSpaceId}
+        isInsideSpace={spotlight.isInsideSpace}
+        ghostText={currentWhisper?.ghostText ?? null}
+        ghostSpaceId={currentWhisper?.spaceId ?? null}
+        getToken={getTokenFn}
+        onClose={spotlight.close}
+        onSend={spotlight.send}
+        onSetTargetSpace={spotlight.setTargetSpace}
+        onGhostAccepted={consumeWhisper}
+        onGhostDismissed={dismissWhisper}
+      />
 
       <style jsx>{`
         input::placeholder {
