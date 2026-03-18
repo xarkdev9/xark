@@ -57,23 +57,54 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
         }}
       >
         {/* Wordmark — slides up from below with skew */}
-        <div style={{ overflow: "hidden", padding: "16px 0" }}>
-          <motion.h1
-            initial={{ y: "100%", opacity: 0, skewY: 10 }}
-            animate={phase !== "spark" ? { y: 0, opacity: 1, skewY: 0 } : {}}
+        <div style={{ padding: "16px 0", perspective: "1000px" }}>
+          <motion.div
+            initial={{ y: "100%", opacity: 0, rotateX: 20 }}
+            animate={phase !== "spark" ? { y: 0, opacity: 1, rotateX: 0 } : {}}
             transition={{ duration: 1.2, ease: EASE_OUT_EXPO, delay: 0.2 }}
+            onClick={onBegin}
+            whileTap={{
+              scale: 0.92,
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
+              transition: { type: "spring", stiffness: 400, damping: 25 }
+            }}
+            className="cursor-pointer select-none flex items-center justify-center gap-6"
             style={{
-              fontSize: "clamp(6rem, 20vw, 16rem)",
-              fontWeight: 100,
-              letterSpacing: "-0.04em",
-              lineHeight: 0.8,
-              color: ink.primary,
-              textAlign: "center",
-              margin: 0,
+              background: "rgba(255, 255, 255, 0.7)",
+              backdropFilter: "blur(40px) saturate(200%)",
+              WebkitBackdropFilter: "blur(40px) saturate(200%)",
+              boxShadow: "0 16px 64px rgba(0, 0, 0, 0.08)",
+              borderRadius: "999px",
+              padding: "24px 64px",
+              WebkitTapHighlightColor: "transparent",
             }}
           >
-            Xark
-          </motion.h1>
+            {/* Ultra-Light OS Text */}
+            <span
+              style={{
+                fontSize: "clamp(4rem, 12vw, 8rem)",
+                fontWeight: 100,
+                letterSpacing: "-0.04em",
+                lineHeight: 0.8,
+                color: ink.primary,
+              }}
+            >
+              xark
+            </span>
+
+            {/* Giant Cyan Heartbeat */}
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+              style={{
+                width: "clamp(12px, 3vw, 24px)",
+                height: "clamp(12px, 3vw, 24px)",
+                borderRadius: "50%",
+                backgroundColor: colors.cyan,
+                boxShadow: `0 0 16px ${colors.cyan}`,
+              }}
+            />
+          </motion.div>
         </div>
 
         {/* Tagline — two lines, slide-up reveal */}
@@ -115,41 +146,7 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
         </div>
       </div>
 
-      {/* ── BEGIN — buttonless trigger ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={phase === "idle" ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 1 }}
-        style={{ position: "absolute", bottom: "96px", zIndex: 20 }}
-      >
-        <motion.div
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          onTouchStart={() => setIsHovered(true)}
-          onTouchEnd={() => setIsHovered(false)}
-          whileHover={{ letterSpacing: "0.6em" }}
-          animate={{
-            opacity: isHovered ? 1 : 0.4,
-            scale: isHovered ? 1.1 : 1,
-          }}
-          onClick={onBegin}
-          style={{
-            fontSize: "1rem",
-            fontWeight: 600,
-            letterSpacing: "0.1em",
-            color: "#FFFFFF",
-            backgroundColor: colors.accent,
-            borderRadius: "99px",
-            cursor: "pointer",
-            padding: "16px 48px",
-            transition: "all 0.5s ease",
-            WebkitTapHighlightColor: "transparent",
-            boxShadow: "0 8px 32px rgba(255, 69, 0, 0.3)",
-          }}
-        >
-          Begin
-        </motion.div>
-      </motion.div>
+
 
       {/* ── SECURITY HALLMARK ── */}
       <motion.div
