@@ -31,6 +31,9 @@ export interface EncryptedEnvelope {
   ratchetHeader?: string;   // base64 JSON envelope (Double Ratchet only)
   recipientId: string;      // user_id or '_group_'
   recipientDeviceId: number; // device_id or 0
+  /** Two-phase commit: call ONLY after network ACK to persist ratchet advancement.
+   *  If network fails, do NOT call — ratchet state stays at pre-encrypt position. */
+  commit: () => Promise<void>;
 }
 
 // ── X3DH Session Metadata ──
@@ -522,8 +525,13 @@ export async function encryptForSanctuary(
   // header is now Uint8Array (encrypted header bytes)
   const { ciphertext, nonce, header } = ratchetEncrypt(session, plaintext);
 
-  // Persist updated session
-  await keyStore.saveSession(peerId, peerDeviceId, serializeSession(session));
+  // TWO-PHASE COMMIT: serialize session but DON'T persist yet.
+  // Caller must invoke commit() after network ACK to persist ratchet advancement.
+  // If network fails, ratchet stays at pre-encrypt state (no desync).
+  const serializedSession = serializeSession(session);
+  const commitSession = async () => {
+    await keyStore.saveSession(peerId, peerDeviceId, serializedSession);
+  };
 
   // Pack nonce + ciphertext
   const packed = new Uint8Array(nonce.length + ciphertext.length);
@@ -554,6 +562,7 @@ export async function encryptForSanctuary(
     ratchetHeader: buildHeaderEnvelope(header, x3dh),
     recipientId: peerId,
     recipientDeviceId: peerDeviceId,
+    commit: commitSession,
   };
   }); // End withEncryptLock
 }
@@ -621,8 +630,11 @@ export async function encryptForSpace(
 
   const { ciphertext, nonce, signature, iteration } = senderKeyEncrypt(senderKey, plaintext);
 
-  // Persist advanced state
-  await keyStore.saveSenderKey(spaceId, serializeSenderKeyForStorage(senderKey));
+  // TWO-PHASE COMMIT: serialize but don't persist until network ACK
+  const serializedSK = serializeSenderKeyForStorage(senderKey);
+  const commitSK = async () => {
+    await keyStore.saveSenderKey(spaceId, serializedSK);
+  };
 
   // Pack: nonce + signature + iteration(4 bytes) + ciphertext
   const iterBytes = new Uint8Array(4);
@@ -638,6 +650,7 @@ export async function encryptForSpace(
     ciphertext: toBase64(packed),
     recipientId: '_group_',
     recipientDeviceId: 0,
+    commit: commitSK,
   };
   }); // End withEncryptLock
 }

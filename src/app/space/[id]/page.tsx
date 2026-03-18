@@ -523,9 +523,19 @@ function SpacePageInner() {
           const data = await res.json();
 
           if (!res.ok) {
-            console.error("[e2ee] /api/message failed:", data.error);
-            // Fall through to legacy path below
+            console.error("[xark-e2ee] /api/message failed:", data.error);
+            // FAIL CLOSED — never fall through to plaintext
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === userMsg.id ? { ...m, content: "[send failed — tap to retry]" } : m
+              )
+            );
+            setIsThinking(false);
+            return;
           } else {
+            // TWO-PHASE COMMIT: persist ratchet state only after network ACK
+            if (envelope.commit) await envelope.commit();
+
             // Broadcast for instant delivery (after DB write)
             if (channelRef.current) {
               broadcastMessage(channelRef.current, {
@@ -548,42 +558,32 @@ function SpacePageInner() {
           }
         }
       } catch (err) {
-        console.warn("[e2ee] Encrypt path failed, falling back to legacy:", err);
+        console.error("[xark-e2ee] Encrypt failed — message NOT sent (fail-closed):", err);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === userMsg.id ? { ...m, content: "[encryption failed — tap to retry]" } : m
+          )
+        );
+        setIsThinking(false);
+        return;
       }
     }
 
     // ══════════════════════════════════════════════
-    // LEGACY PATH — plaintext save (no AI trigger)
+    // FAIL-CLOSED: E2EE not available — refuse to send plaintext
     // ══════════════════════════════════════════════
-    addDebug("LEGACY PATH — saving plaintext");
-
-    // Broadcast for instant delivery to other users (~50ms)
-    if (channelRef.current) {
-      broadcastMessage(channelRef.current, {
-        id: userMsg.id,
-        space_id: spaceId,
-        role: "user",
-        content: userMsg.content,
-        user_id: resolvedUserId ?? null,
-        sender_name: user?.displayName ?? userName ?? null,
-        created_at: new Date().toISOString(),
-      });
+    if (!e2ee.available) {
+      console.error("[xark-e2ee] E2EE not available — refusing to send plaintext");
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === userMsg.id
+            ? { ...m, content: "[encryption unavailable — check your connection]" }
+            : m
+        )
+      );
+      setIsThinking(false);
+      return;
     }
-
-    // Persist to DB for durability (async, RLS-aware)
-    saveMessage({
-      id: userMsg.id,
-      spaceId,
-      role: "user",
-      content: userMsg.content,
-      userId: resolvedUserId,
-      senderName: user?.displayName ?? userName,
-    }).then(() => {
-      addDebug("DB SAVE OK");
-    }).catch((err) => {
-      addDebug("DB SAVE FAIL: " + (err?.message ?? err));
-      console.error("[chat] message not saved:", err?.message ?? err);
-    });
 
     setIsThinking(false);
   }, [input, isThinking, spaceId, resolvedUserId, user, userName, e2ee]);
