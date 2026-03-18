@@ -16,6 +16,7 @@ import {
 } from "@/lib/theme";
 import { GhostInput } from "@/components/os/GhostInput";
 import { fetchSpaceList, type SpaceListItem } from "@/lib/space-data";
+import { spring, ambient, tap } from "@/lib/motion";
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -32,11 +33,12 @@ interface SpotlightSheetProps {
   onSetTargetSpace: (spaceId: string) => void;
   onGhostAccepted: () => void;
   onGhostDismissed: () => void;
+  knownContacts?: string[];
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const SPRING = { damping: 30, stiffness: 300 };
+// Spring config now imported from @/lib/motion (spring.fluid)
 const MAX_CHIPS = 8;
 const BRAND_ORANGE = "#FF6B35";
 
@@ -55,9 +57,11 @@ export function SpotlightSheet({
   onSetTargetSpace,
   onGhostAccepted,
   onGhostDismissed,
+  knownContacts = [],
 }: SpotlightSheetProps) {
   const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [spacesLoaded, setSpacesLoaded] = useState(false);
+  const [summonName, setSummonName] = useState<string | null>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
 
   // Fetch space list when sheet opens on Galaxy (not inside a space)
@@ -82,10 +86,11 @@ export function SpotlightSheet({
     };
   }, [isOpen, isInsideSpace, spacesLoaded, targetSpaceId, onSetTargetSpace]);
 
-  // Reset spaces cache when sheet closes
+  // Reset spaces cache and summon state when sheet closes
   useEffect(() => {
     if (!isOpen) {
       setSpacesLoaded(false);
+      setSummonName(null);
     }
   }, [isOpen]);
 
@@ -119,6 +124,23 @@ export function SpotlightSheet({
         return;
       }
 
+      // Summon intercept: short name not starting with "@", not a known contact
+      if (
+        !wasGhost &&
+        text.trim().length > 0 &&
+        !text.startsWith("@") &&
+        text.trim().split(/\s+/).length <= 3
+      ) {
+        const trimmed = text.trim();
+        const isKnown = knownContacts.some(
+          (c) => c.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (!isKnown) {
+          setSummonName(trimmed);
+          return;
+        }
+      }
+
       // Normal send: must have a target space
       if (!targetSpaceId) return;
       onSend(text, targetSpaceId, activeSpaceTitle ?? undefined);
@@ -128,6 +150,7 @@ export function SpotlightSheet({
       targetSpaceId,
       activeSpaceTitle,
       getToken,
+      knownContacts,
       onSend,
       onGhostAccepted,
       onClose,
@@ -141,18 +164,20 @@ export function SpotlightSheet({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* ── Overlay scrim ── */}
+          {/* ── Glass Overlay — frosted blur backdrop, not flat black ── */}
           <motion.div
             key="spotlight-overlay"
             initial={{ opacity: 0 }}
-            animate={{ opacity: opacityTokens.overlay }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={spring.gentle}
             onClick={onClose}
             style={{
               position: "fixed",
               inset: 0,
-              backgroundColor: colors.overlay,
+              backgroundColor: "rgba(0, 0, 0, 0.4)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
               zIndex: 9998,
             }}
           />
@@ -163,7 +188,7 @@ export function SpotlightSheet({
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", ...SPRING }}
+            transition={spring.fluid}
             style={{
               position: "fixed",
               bottom: 0,
@@ -285,9 +310,13 @@ export function SpotlightSheet({
               </div>
             )}
 
-            {/* ── Morph state: breathing dot + status text ── */}
+            {/* ── Morph state: scouting cyan dot + status text ── */}
             {isMorphing && (
-              <div
+              <motion.div
+                key="morph-status"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={spring.snappy}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -297,18 +326,15 @@ export function SpotlightSheet({
                 }}
               >
                 <motion.div
-                  animate={{ opacity: [0.5, 1, 0.5] }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
+                  animate={ambient.scoutDot}
+                  transition={ambient.scoutDotTiming}
                   style={{
                     width: "8px",
                     height: "8px",
                     borderRadius: "50%",
-                    backgroundColor: BRAND_ORANGE,
+                    backgroundColor: colors.cyan,
                     flexShrink: 0,
+                    boxShadow: "0 0 8px rgba(64,224,255,0.4)",
                   }}
                 />
                 <span
@@ -320,17 +346,58 @@ export function SpotlightSheet({
                 >
                   {morphText}
                 </span>
-              </div>
+              </motion.div>
             )}
 
-            {/* ── Ghost Input (when not morphing) ── */}
+            {/* ── Ghost Input or Summon Prompt (when not morphing) ── */}
             {!isMorphing && (
-              <GhostInput
-                ghostText={ghostText}
-                onSend={handleSend}
-                onGhostDismissed={onGhostDismissed}
-                autoFocus
-              />
+              summonName ? (
+                <div
+                  onClick={async () => {
+                    const token = getToken();
+                    try {
+                      const res = await fetch("/api/summon", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        },
+                      });
+                      const { url } = await res.json();
+                      if (navigator.share) {
+                        await navigator.share({
+                          title: "xark",
+                          text: `hey ${summonName}, join me on xark`,
+                          url,
+                        });
+                      } else {
+                        await navigator.clipboard.writeText(url);
+                      }
+                    } catch { /* ignore share cancel */ }
+                    setSummonName(null);
+                    onClose();
+                  }}
+                  style={{ padding: "16px", cursor: "pointer" }}
+                >
+                  <span
+                    style={{
+                      ...textTokens.subtitle,
+                      color: colors.cyan,
+                      opacity: 0.8,
+                      fontWeight: 300,
+                    }}
+                  >
+                    {summonName} isn&apos;t in your orbit. tap to summon.
+                  </span>
+                </div>
+              ) : (
+                <GhostInput
+                  ghostText={ghostText}
+                  onSend={handleSend}
+                  onGhostDismissed={onGhostDismissed}
+                  autoFocus
+                />
+              )
             )}
           </motion.div>
         </>
