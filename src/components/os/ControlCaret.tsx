@@ -13,7 +13,6 @@ import {
 } from "@/lib/space-data";
 import type { SpaceListItem } from "@/lib/space-data";
 import { colors, opacity, timing, layout, text, ink, surface } from "@/lib/theme";
-import { spring, ambient, tap } from "@/lib/motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useKeyboard } from "@/hooks/useKeyboard";
 import { Avatar } from "@/components/os/Avatar";
@@ -148,56 +147,9 @@ export function ControlCaret() {
           pointerEvents: "auto",
         }}
       >
-        {/* ── Breathing Aura — ambient glow behind the text ── */}
-        <AnimatePresence>
-          {hasWhispers && (
-            <motion.div
-              key="whisper-aura"
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{
-                opacity: [0.15, 0.4, 0.15],
-                scale: [0.8, 1.2, 0.8],
-              }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              transition={ambient.whisperPulseTiming}
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: "120px",
-                height: "40px",
-                borderRadius: "50%",
-                background: "radial-gradient(ellipse, rgba(64,224,255,0.35) 0%, rgba(64,224,255,0) 70%)",
-                pointerEvents: "none",
-                zIndex: -1,
-              }}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* ── Resting Aura — faint radial behind text ── */}
-        {!hasWhispers && (
-          <motion.div
-            animate={{ opacity: isOpen || spotlight.isOpen ? 0.5 : [0.05, 0.12, 0.05] }}
-            transition={isOpen || spotlight.isOpen ? spring.snappy : ambient.breatheTiming}
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "100px",
-              height: "32px",
-              borderRadius: "50%",
-              background: "radial-gradient(ellipse, rgba(255,107,53,0.3) 0%, rgba(255,107,53,0) 70%)",
-              pointerEvents: "none",
-              zIndex: -1,
-            }}
-          />
-        )}
-
-        {/* ── Brand Text — spring physics tap, no CSS transitions ── */}
+        {/* ── The Physical Morphing Pill ── */}
         <motion.div
+          layoutId="spotlight-morph"
           role="button"
           tabIndex={0}
           onPointerDown={() => {
@@ -233,37 +185,48 @@ export function ControlCaret() {
               spotlight.open();
             }
           }}
-          className="cursor-pointer outline-none select-none"
+          className="cursor-pointer outline-none select-none flex items-center justify-center gap-2"
           style={{
-            position: "relative",
-            fontSize: "18px",
-            fontWeight: 300,
-            letterSpacing: "0.2em",
-            color: "#FF6B35",
+            background: "rgba(255, 255, 255, 0.7)",
+            backdropFilter: "blur(40px) saturate(200%)",
+            WebkitBackdropFilter: "blur(40px) saturate(200%)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
+            borderRadius: "99px",
+            padding: "12px 32px",
             WebkitTapHighlightColor: "transparent",
+            opacity: isOpen || spotlight.isOpen ? 0 : 1,
+            pointerEvents: isOpen || spotlight.isOpen ? "none" : "auto",
           }}
-          animate={{
-            opacity: isOpen || spotlight.isOpen ? 1 : undefined,
-            textShadow: hasWhispers
-              ? "0 0 12px rgba(64,224,255,0.5), 0 0 24px rgba(64,224,255,0.25)"
-              : isOpen || spotlight.isOpen
-                ? "0 0 20px rgba(255,107,53,0.6), 0 0 40px rgba(255,107,53,0.3)"
-                : "0 0 8px rgba(255,107,53,0.15)",
-          }}
-          transition={spring.gentle}
           whileTap={{
-            scale: tap.heavy.scale,
-            textShadow: hasWhispers
-              ? "0 0 20px rgba(64,224,255,0.7), 0 0 40px rgba(64,224,255,0.35)"
-              : "0 0 20px rgba(255,107,53,0.6), 0 0 40px rgba(255,107,53,0.3)",
+            scale: 0.92,
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+            transition: { type: "spring", stiffness: 400, damping: 25 }
           }}
         >
-          <motion.span
-            animate={isOpen || spotlight.isOpen ? { opacity: 1 } : ambient.breathe}
-            transition={isOpen || spotlight.isOpen ? spring.snappy : ambient.breatheTiming}
+          {/* Heavy Geometric Brand Text */}
+          <span
+            style={{
+              fontSize: "20px",
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              color: ink.primary,
+            }}
           >
             xark
-          </motion.span>
+          </span>
+
+          {/* Cyan Heartbeat Dot */}
+          <motion.div
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              backgroundColor: colors.cyan,
+              boxShadow: `0 0 8px ${colors.cyan}`,
+            }}
+          />
         </motion.div>
         
         {showHint && (
