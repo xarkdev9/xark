@@ -2,7 +2,86 @@
 
 > For AI agents: Read this FIRST before any code work. It tells you what changed recently and what to watch for. Updated after every session.
 
-## Last Session: Mar 17, 2026 (E2EE Security Sprint — 44 commits, 6 audits)
+## Last Session: Mar 17, 2026 (XarkSpotlight — @xark Reconnected)
+
+### What was built
+
+76. **XarkSpotlight — The Intelligence Surface** — @xark is back. No longer inline in chat. Now invoked via ControlCaret → half-sheet overlay → Ghost Prompt. 11 tasks shipped as a monolith:
+    - **SpotlightSheet.tsx** — half-sheet overlay from ControlCaret. Context pill (inside space) or space chips (Galaxy). 800ms morph dismiss with breathing brand orange dot. Auto-navigates to target space from Galaxy.
+    - **GhostInput.tsx** — input with ghost text pre-fill. Type = override (ghost shatters via AnimatePresence). Send = accept. Opacity-based differentiation (no italic).
+    - **ControlCaret transformation** — tap opens Spotlight, long-press opens space panel. Cyan breathing aura when whispers pending. SpotlightSheet mounted here (global via layout).
+    - **Whisper Engine** (src/lib/whispers.ts + useWhispers.ts) — Layer 3 deterministic checks: onboarding (P2), consensus_ready (P0), missing_category (P1), nudge_vote (P2). Priority queue. Batched hotel check (no N+1). 60s poll interval.
+    - **Taste Graph** (src/lib/taste.ts + /api/taste) — Day 1 Ghost Prompt onboarding ("tell me how you travel and what you eat" → Gemini parses → JSONB constraints). Implicit weights from reaction trigger (migration 027). Group intersection at search time with 800ms graceful timeout.
+    - **Consensus Closer** — gold pulsing border on cards when agreement > 80%. Live countdown timer (ConsensusTimer.tsx). Pinned ConsensusBanner above chat. Ghost Prompt: "hit send to lock, type to object." Manual "finalize" button when timer expires. Auto-lock via /api/cron/consensus every minute.
+    - **/api/xark wiring** — taste profiles fetched in parallel (Promise.race 800ms), injected as GROUP TASTE PROFILE into Gemini prompt. Hard constraints = vetoes, soft preferences = flavor text.
+
+77. **Security Hardening (9 fixes)** — from Puppeteer Exploit audit:
+    - HSTS header (63072000s, includeSubDomains, preload)
+    - Cross-Origin-Opener-Policy: same-origin (Spectre defense for WebCrypto keys)
+    - Removed `data:` from CSP img-src (login SVG uses CSS backgroundImage, unaffected)
+    - Added `frame-ancestors 'none'` to CSP
+    - Added `upgrade-insecure-requests` to CSP
+    - Firebase SW origin check fixed (empty string bypass)
+    - Firebase SW notificationclick URL scheme-validated (relative paths only)
+    - userName URL-encoded in invite returnUrl
+    - UPI pa= parameter URI-encoded in ledger.ts
+
+### Files created
+- src/components/os/SpotlightSheet.tsx — half-sheet overlay with Ghost Prompt + space chips
+- src/components/os/GhostInput.tsx — ghost text input (accept/override)
+- src/components/os/ConsensusTimer.tsx — live countdown timer for cards
+- src/components/os/ConsensusBanner.tsx — pinned banner above chat during countdown
+- src/lib/whispers.ts — proactive whisper engine (Layer 3 deterministic checks)
+- src/lib/taste.ts — taste graph intersection + prompt injection
+- src/hooks/useWhispers.ts — whisper queue management hook
+- src/hooks/useSpotlight.ts — sheet state + morph + routing hook
+- src/app/api/cron/consensus/route.ts — auto-lock cron (every minute)
+- src/app/api/taste/route.ts — Day 1 onboarding constraint parser
+- src/lib/__tests__/taste.test.ts — 6 tests for taste intersection
+- supabase/migrations/027_taste_graph_consensus.sql — user_taste_profiles table, triggers, RPCs, RLS
+- docs/superpowers/plans/2026-03-17-xark-spotlight.md — full implementation plan
+
+### Files significantly modified
+- src/components/os/ControlCaret.tsx — tap→Spotlight, long-press→panel, cyan whisper aura, SpotlightSheet mounted
+- src/components/os/DecisionCard.tsx — gold pulsing border, lockDeadline prop, ConsensusTimer overlay, finalize button
+- src/components/os/PossibilityHorizon.tsx — lock_deadline in type/query/Realtime, handleFinalize via claimItem
+- src/app/space/[id]/page.tsx — ConsensusBanner mounted, userName URL-encoded
+- src/app/api/xark/route.ts — taste profile fetch (800ms timeout), tasteContext passed to orchestrator
+- src/lib/intelligence/orchestrator.ts — OrchestratorInput gains tasteContext, buildDynamicPrompt injects GROUP TASTE PROFILE
+- src/middleware.ts — HSTS, COOP, frame-ancestors, upgrade-insecure-requests, removed data: from img-src
+- public/firebase-messaging-sw.js — origin check fix, notificationclick URL validation
+- src/lib/ledger.ts — UPI pa= encoded
+- vercel.json — consensus cron added
+
+### Architecture decisions made
+- **Spotlight is the OS command line** — ControlCaret brand anchor IS the invoke surface. Sheet = individual intent, PossibilityHorizon = shared reality.
+- **Ghost Prompt pattern** — Copilot-style ghost text for whispers. Send = accept, type = override. Priority queue (P0 consensus, P1 missing category, P2 nudge).
+- **Taste Graph: Explicit + Implicit** — Day 1 onboarding via Ghost Prompt → Gemini parses → JSONB constraints. Implicit weights accumulate from reactions via Postgres trigger. Group intersection = union of hard constraints (vetoes) + summed soft weights (top 5 injected into Gemini). No vector DB.
+- **Consensus Closer via Layer 3 UI** — no chat messages. Card elevates (gold shadow), timer ticks, banner pins. Server cron auto-locks. Manual "finalize" fallback.
+- **Graceful degradation everywhere** — taste timeout 800ms → generic search. Trigger failure → reaction sticks. Cron failure → manual finalize button.
+
+### Migrations applied
+- 027_taste_graph_consensus.sql — user_taste_profiles, lock_deadline, triggers, RPCs, RLS, GIN indexes
+
+### Known issues
+- **WebAuthn PRF not implemented** — encrypted store still uses Argon2id password prompt
+- **Pexels API key client-side** — should be server-side proxy
+- **Whisper engine makes multiple sequential queries** — could be batched into a single RPC for speed
+- **Cross-Space Awareness (Tier 3)** — deterministic date overlap check not yet built
+- **Structured Memory** — Gold Burst moments not yet saved to user profile
+- **Key rotation on member leave** — deferred
+
+### What to do next
+- Deploy to production and browser test full Spotlight flow
+- WebAuthn PRF biometric prompt for encrypted store unlock
+- Pexels API key proxy
+- Cross-Space date overlap (Tier 3)
+- Structured Memory (save finalized decisions to user profile)
+- First real users
+
+---
+
+## Previous Session: Mar 17, 2026 (E2EE Security Sprint — 44 commits, 6 audits)
 
 ### What was built
 

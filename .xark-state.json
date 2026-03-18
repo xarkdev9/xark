@@ -1,7 +1,7 @@
 {
   "version": "2.0.0-omega",
-  "foveal_focus": "E2EE ENABLED — 6 security audits passed, 44 commits, 54 tests. @xark disconnected from chat (Spotlight not built yet). Next: build XarkSpotlight.tsx, simplify /api/xark, WebAuthn PRF for encrypted store.",
-  "phase": "E2EE_HARDENED",
+  "foveal_focus": "XARK SPOTLIGHT LIVE — @xark reconnected via Spotlight Sheet (ControlCaret → half-sheet overlay → Ghost Prompt). Taste Graph (explicit + implicit JSONB), Consensus Closer (gold card elevation + 10min auto-lock cron), Proactive Whispers (priority queue, ghost text pre-fill). 119 tests passing. Migration 027 applied. Next: deploy to production, browser test full flow, WebAuthn PRF for encrypted store.",
+  "phase": "SPOTLIGHT_SHIPPED",
   "algo_source": "/Users/ramchitturi/algo",
   "algo_record": "/Users/ramchitturi/algo/mar10_algo.md",
   "algo_status": "198 tests, 0 type errors, hexagonal architecture",
@@ -50,13 +50,13 @@
     "MessagingPort": "Slack / Discord / Telegram"
   },
   "xark_behavior": {
-    "default_mode": "DISCONNECTED — @xark removed from chat pipeline. XarkSpotlight.tsx not built yet. /api/xark exists but is not wired into /api/message flow.",
+    "default_mode": "SPOTLIGHT — @xark invoked via SpotlightSheet (ControlCaret tap → half-sheet → Ghost Prompt). Global invoke from Galaxy (space chips) or contextual from inside a space. Results route to PossibilityHorizon via Supabase Realtime. Proactive Whispers pre-fill Ghost Prompt. Consensus Closer auto-locks at 80%.",
     "persona": "cool friend — brief, lowercase, punchy, max 20 words. warm but never corny, never robotic.",
     "anti_cringe": "BANNED: OMG, epic, vibes, dive in, delve, mission accomplished, bestie, legendary, sparkle, party, rocket, robot. Max ONE contextual emoji. Zero is usually better. No exclamation points.",
     "never": ["reacts to messages", "summarizes unprompted", "inserts into banter", "proactive suggestions"],
     "one_exception": "handshake whisper at >80% consensus (automated)",
     "passive_display": "decision state subtitles, grounding constraints when asked",
-    "next_step": "Build XarkSpotlight.tsx — a dedicated component that handles @xark invocation outside the E2EE chat pipeline. Simplify /api/xark to work with Spotlight, not inline chat.",
+    "next_step": "Browser test Spotlight flow end-to-end. WebAuthn PRF for encrypted store. Pexels API key proxy.",
     "social_reasoning": {
       "names_for_advocacy": "nina and raj aren't feeling italian — want to explore other options?",
       "counts_for_opposition": "3 people aren't feeling this one (never name opponents)",
