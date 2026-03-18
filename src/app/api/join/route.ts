@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SignJWT } from "jose";
+import { makeUserId } from "@/lib/user-id";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit by IP — prevent invite token brute-force
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!checkRateLimit(`join:${ip}`, 10)) {
+      return NextResponse.json({ error: "too many attempts" }, { status: 429 });
+    }
+
     const { token, displayName } = await req.json();
     if (!token || !displayName) {
       return NextResponse.json({ error: "token and displayName required" }, { status: 400 });
@@ -37,7 +45,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "invalid name" }, { status: 400 });
     }
 
-    const userId = `name_${safeName}`;
+    const userId = makeUserId("name", safeName);
 
     await supabaseAdmin.from("users").upsert(
       { id: userId, display_name: safeName },

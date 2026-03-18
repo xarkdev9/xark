@@ -26,7 +26,7 @@ export function listTools(): string[] {
 
 registerTool("hotel", {
   tier: "apify",
-  actorId: "voyager/booking-scraper",
+  actorId: process.env.APIFY_HOTEL_ACTOR || "voyager/booking-scraper",
   description: "Search hotels by location, dates, and price range",
   paramMap: (p) => ({
     search: p.location,
@@ -43,7 +43,7 @@ registerTool("hotel", {
 
 registerTool("flight", {
   tier: "apify",
-  actorId: "johnvc/Google-Flights-Data-Scraper-Flight-and-Price-Search",
+  actorId: process.env.APIFY_FLIGHT_ACTOR || "johnvc/Google-Flights-Data-Scraper-Flight-and-Price-Search",
   description: "Search flights by origin, destination, and dates",
   paramMap: (p) => ({
     departure_id: p.origin,
@@ -57,7 +57,7 @@ registerTool("flight", {
 
 registerTool("activity", {
   tier: "apify",
-  actorId: "compass/crawler-google-places",
+  actorId: process.env.APIFY_ACTIVITY_ACTOR || "compass/crawler-google-places",
   description: "Find activities and experiences by location",
   paramMap: (p) => ({
     searchStringsArray: [
@@ -72,7 +72,7 @@ registerTool("activity", {
 
 registerTool("restaurant", {
   tier: "apify",
-  actorId: "compass/crawler-google-places",
+  actorId: process.env.APIFY_RESTAURANT_ACTOR || "compass/crawler-google-places",
   description: "Search restaurants by location and cuisine",
   paramMap: (p) => ({
     searchStringsArray: [

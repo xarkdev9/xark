@@ -3,6 +3,8 @@
 // One entry per space. Aggregates decision state into a single summary.
 // "What do I need to know right now?" — usually nothing. Peace.
 
+import { extractDisplayName } from "@/lib/user-id";
+
 import { supabase } from "./supabase";
 
 // ── Types ──
@@ -273,7 +275,7 @@ export async function fetchPersonalChats(userId: string): Promise<PersonalChat[]
     const contactBySpace = new Map<string, string>();
     for (const member of allMembers ?? []) {
       if (member.user_id !== userId) {
-        contactBySpace.set(member.space_id, member.user_id.replace(/^name_/, ""));
+        contactBySpace.set(member.space_id, extractDisplayName(member.user_id));
       }
     }
 

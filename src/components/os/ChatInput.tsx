@@ -155,7 +155,7 @@ export function ChatInput({
       <div
         className="fixed inset-x-0 z-20"
         style={{
-          bottom: isKeyboardOpen ? `${keyboardHeight}px` : "56px",
+          bottom: isKeyboardOpen ? `${keyboardHeight}px` : "76px",
           background: `linear-gradient(to top, ${surface.canvas}, ${surface.canvas} 80%, transparent)`,
           paddingTop: "16px",
           paddingBottom: "12px",

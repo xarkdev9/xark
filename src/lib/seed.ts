@@ -6,6 +6,7 @@
 import { createClient } from "@supabase/supabase-js";
 import * as dotenv from "dotenv";
 import { resolve } from "path";
+import { makeUserId } from "./user-id";
 
 // Load .env.local from project root
 dotenv.config({ path: resolve(process.cwd(), ".env.local") });
@@ -59,7 +60,7 @@ export async function seedXarkGalaxy() {
   // 1. TEST USERS
   // ══════════════════════════════════
   const users = userDefs.map((u) => ({
-    id: `name_${u.name}`,
+    id: makeUserId("name", u.name),
     display_name: u.name,
     password_hash: hashes[u.name],
   }));

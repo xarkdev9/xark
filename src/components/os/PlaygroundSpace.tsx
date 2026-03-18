@@ -6,6 +6,7 @@
 // No Supabase, no Realtime, no E2EE. Pure React state.
 
 import { useState, useCallback, useRef, type TouchEvent } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { XarkChat } from "@/components/os/XarkChat";
 import { PossibilityHorizon } from "@/components/os/PossibilityHorizon";
@@ -211,7 +212,17 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
   }, [router, userName]);
 
   return (
-    <div style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column", background: surface.chrome }}>
+    <div style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column", background: surface.chrome, position: "relative" }}>
+      {/* ── Background gradient shift — warm on discuss, cool on decide ── */}
+      <motion.div
+        animate={{
+          background: view === "discuss"
+            ? "radial-gradient(circle at 30% 60%, rgba(255,107,53,0.04), transparent 60%)"
+            : "radial-gradient(circle at 70% 40%, rgba(64,224,255,0.04), transparent 60%)",
+        }}
+        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+        style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}
+      />
       {/* ── Header ── */}
       <div
         className="relative z-10 px-6"
@@ -252,9 +263,10 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
                   }}
                 >
                   {tab}
-                  {/* Active underline */}
+                  {/* Layout ID pill — slides between tabs */}
                   {isActive && (
-                    <span
+                    <motion.span
+                      layoutId="pg-tab-pill"
                       style={{
                         position: "absolute",
                         bottom: "-4px",
@@ -264,6 +276,7 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
                         background: colors.cyan,
                         opacity: 0.6,
                       }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
                     />
                   )}
                   {/* Tab badge — pulsing orange dot */}
@@ -355,16 +368,30 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
         </div>
       )}
 
-      {/* ── Gold Burst — consensus celebration ── */}
+      {/* ── Gold Burst — consensus celebration + rotating ring ── */}
       {goldBurst && (
-        <div
-          className="pointer-events-none fixed inset-0 z-50"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 50%, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.05) 40%, transparent 70%)",
-            animation: "pgGoldBurst 3s ease-out forwards",
-          }}
-        />
+        <>
+          <div
+            className="pointer-events-none fixed inset-0 z-50"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 50%, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.05) 40%, transparent 70%)",
+              animation: "pgGoldBurst 3s ease-out forwards",
+            }}
+          />
+          <motion.div
+            animate={{ rotate: 360, scale: [0.6, 2.5], opacity: [0.4, 0] }}
+            transition={{ duration: 2.5, ease: "easeOut" }}
+            className="pointer-events-none fixed z-50"
+            style={{
+              top: "50%", left: "50%",
+              width: "180px", height: "180px",
+              marginTop: "-90px", marginLeft: "-90px",
+              borderRadius: "50%",
+              border: "1px dashed rgba(255,215,0,0.4)",
+            }}
+          />
+        </>
       )}
 
       <style>{`

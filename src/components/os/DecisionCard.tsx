@@ -7,6 +7,7 @@ import type { ConsensusState } from "@/lib/heart-sort";
 import type { ReactionType } from "@/hooks/useReactions";
 import { ConsensusTimer } from "@/components/os/ConsensusTimer";
 import { colors, text as textTokens } from "@/lib/theme";
+import { spring, ambient, tap } from "@/lib/motion";
 
 /** Validate URL protocol before opening — prevents javascript: XSS */
 function isSafeUrl(url: string): boolean {
@@ -161,24 +162,30 @@ export function DecisionCard({
         borderRadius: "28px",
         scrollSnapAlign: "center",
         cursor: onClick || (isCommitted && (bookingUrl || bookingPhone)) ? "pointer" : "default",
+      }}
+      initial={{ opacity: 0, scale: 0.92, filter: "blur(8px)", y: 0 }}
+      animate={{
+        opacity: 1,
+        scale: 1,
+        filter: "blur(0px)",
+        // Consensus elevation — card physically lifts off the surface
+        y: isCountdown ? -4 : 0,
         boxShadow: isCountdown
-          ? "0 0 20px rgba(255,215,0,0.3), 0 0 40px rgba(255,215,0,0.15), inset 0 0 0 2px rgba(255,215,0,0.4)"
+          ? "0 10px 30px -10px rgba(255,215,0,0.4), 0 0 20px rgba(255,215,0,0.2), inset 0 0 0 2px rgba(255,215,0,0.4)"
           : isFreshDrop
           ? "0 0 24px rgba(64, 224, 255, 0.3), 0 8px 24px rgba(0,0,0,0.15)"
           : consensusState === "ignited"
           ? "0 4px 20px rgba(255, 207, 64, 0.15), 0 8px 32px rgba(0,0,0,0.15)"
           : "0 4px 20px rgba(0,0,0,0.12)",
       }}
-      initial={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
-      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
       transition={{
-        type: "spring",
-        stiffness: 100,
-        damping: 20,
+        ...spring.entrance,
         delay: entranceDelay,
+        y: spring.fluid,
+        boxShadow: spring.fluid,
       }}
+      whileTap={onClick || (isCommitted && (bookingUrl || bookingPhone)) ? tap.light : { scale: 0.97 }}
       onClick={handleCardTap}
-      whileTap={{ scale: 0.97 }}
     >
       {/* ── Full-bleed photo ── */}
       {imageUrl && !imgError ? (

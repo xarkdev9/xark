@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { colors, text, textColor, accentColor, opacity as op } from "@/lib/theme";
+import { extractDisplayName } from "@/lib/user-id";
 import { supabase } from "@/lib/supabase";
 
 interface PurchaseSheetProps {
@@ -19,6 +20,7 @@ interface PurchaseSheetProps {
   userId: string;
   currentVersion: number;
   onPurchased?: (itemId: string) => void;
+  prefillAmount?: string;
 }
 
 const UNITS = ["total", "per night", "per person"] as const;
@@ -32,8 +34,9 @@ export default function PurchaseSheet({
   userId,
   currentVersion,
   onPurchased,
+  prefillAmount,
 }: PurchaseSheetProps) {
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(prefillAmount ?? "");
   const [unit, setUnit] = useState<Unit>("total");
   const [proof, setProof] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,7 +80,7 @@ export default function PurchaseSheet({
     setIsSubmitting(false);
 
     if (!error) {
-      const name = userId.replace(/^name_/, "");
+      const name = extractDisplayName(userId);
       setWhisper(`${name} booked ${itemTitle} for ${priceStr}`);
       onPurchased?.(itemId);
       setTimeout(onClose, 2000);
@@ -209,7 +212,7 @@ export default function PurchaseSheet({
                     alignSelf: "flex-start",
                   }}
                 >
-                  {isSubmitting ? "saving..." : "done"}
+                  {isSubmitting ? "saving..." : prefillAmount ? `confirm $${prefillAmount}` : "done"}
                 </span>
               </>
             )}

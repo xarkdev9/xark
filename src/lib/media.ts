@@ -1,8 +1,7 @@
 // XARK OS v2.0 — Media Service
 // Firebase Storage for blobs, Supabase for metadata.
 
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storageAdapter } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 
 function generateId(): string {
@@ -31,18 +30,15 @@ export async function uploadMedia(
   userId: string,
   caption?: string
 ): Promise<MediaItem | null> {
-  if (!storage) {
-    console.warn("Firebase Storage not configured");
-    return null;
-  }
-
   const mediaId = `media_${generateId()}`;
   const storagePath = `spaces/${spaceId}/media/${mediaId}`;
-  const storageRef = ref(storage, storagePath);
-
-  // Upload to Firebase Storage
-  await uploadBytes(storageRef, file);
-  const downloadUrl = await getDownloadURL(storageRef);
+  let downloadUrl: string;
+  try {
+    downloadUrl = await storageAdapter.upload(storagePath, file, file.type);
+  } catch {
+    console.warn("Storage not configured");
+    return null;
+  }
 
   // Save metadata to Supabase
   const { error } = await supabase.from("media").insert({

@@ -1,16 +1,29 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { UserMenu } from "./UserMenu";
 
-export function GlobalUserMenu() {
+function GlobalUserMenuInner() {
   const pathname = usePathname();
-  // Only show on galaxy (home screen) — not on login or inside spaces
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+
   if (pathname !== "/galaxy") return null;
+
+  const userName = user?.displayName ?? searchParams.get("name") ?? "";
+  const userId = user?.uid ?? "";
+
+  if (!userName) return null;
+
+  return <UserMenu userName={userName} userId={userId} />;
+}
+
+export function GlobalUserMenu() {
   return (
     <Suspense>
-      <UserMenu />
+      <GlobalUserMenuInner />
     </Suspense>
   );
 }

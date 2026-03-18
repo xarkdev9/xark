@@ -33,4 +33,18 @@ export const auth: Auth | null = app ? getAuth(app) : null;
 // E2EE Multimedia — binary blob storage with bucket-level security rules
 export const storage: FirebaseStorage | null = app ? getStorage(app) : null;
 
+// FCM push notifications — lazy import to avoid SSR issues.
+// Only call getMessagingInstance() on client-side after user enables notifications.
+export async function getMessagingInstance() {
+  if (!app) return null;
+  if (typeof window === "undefined") return null;
+  try {
+    const { getMessaging, getToken } = await import("firebase/messaging");
+    const messaging = getMessaging(app);
+    return { messaging, getToken };
+  } catch {
+    return null;
+  }
+}
+
 export default app;

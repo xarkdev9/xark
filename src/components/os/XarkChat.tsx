@@ -213,7 +213,7 @@ export function XarkChat({
         className="flex-1 overflow-y-auto px-6"
         style={{
           paddingTop: "140px",
-          paddingBottom: "160px",
+          paddingBottom: "240px",
           display: "flex",
           flexDirection: "column",
         }}
@@ -572,7 +572,7 @@ export function XarkChat({
                     height: 6,
                     borderRadius: "50%",
                     backgroundColor: colors.cyan,
-                    animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
+                    animation: `ambientBreath ${timing.breath} ease-in-out infinite, xarkFloat 3s ease-in-out infinite`,
                   }}
                 />
               </div>
@@ -813,6 +813,10 @@ export function XarkChat({
       </AnimatePresence>
 
       <style jsx>{`
+        @keyframes xarkFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-3px); }
+        }
         @keyframes xarkShimmer {
           0% { background-position: -200% center; }
           100% { background-position: 200% center; }

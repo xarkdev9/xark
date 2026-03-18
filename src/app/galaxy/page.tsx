@@ -98,6 +98,15 @@ function GalaxyContent() {
   // New chat/group flow
   const [showNewSheet, setShowNewSheet] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
+
+  // ── Listen for Thumb Arc 'Compose' trigger ──
+  useEffect(() => {
+    const handleCompose = () => setShowNewSheet(true);
+    if (typeof window !== "undefined") {
+      window.addEventListener("xark-compose", handleCompose);
+      return () => window.removeEventListener("xark-compose", handleCompose);
+    }
+  }, []);
   const [allUsers, setAllUsers] = useState<Array<{ id: string; display_name: string }>>([]);
   const [showGroupInput, setShowGroupInput] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -328,18 +337,6 @@ function GalaxyContent() {
           })}
           </div>
           <div style={{ marginLeft: "auto", paddingBottom: "10px", display: "flex", gap: "16px", alignItems: "center" }}>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => { setShowNewSheet(true); }}
-              onKeyDown={(e) => { if (e.key === "Enter") setShowNewSheet(true); }}
-              className="cursor-pointer outline-none"
-              style={{ color: colors.accent }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </div>
             <UserMenu userName={userName} userId={userId} />
           </div>
         </div>

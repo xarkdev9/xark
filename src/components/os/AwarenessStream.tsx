@@ -80,13 +80,8 @@ export function AwarenessStream({ userId, userName, onSpaceTap, playgroundSpaces
 
   const handleSpaceTap = useCallback((spaceId: string) => {
     dismissOnboardingWhisper("galaxy_tap");
-    if (isPlayground) {
-      // Playground spaces navigate with ?playground=true
-      onSpaceTap(spaceId, "decide");
-    } else {
-      onSpaceTap(spaceId, "decide");
-    }
-  }, [onSpaceTap, isPlayground]);
+    onSpaceTap(spaceId);
+  }, [onSpaceTap]);
 
   return (
     <div className="px-6">

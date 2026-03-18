@@ -1,9 +1,11 @@
 // Tracks virtual keyboard height via visualViewport API.
-// iOS 13+, all Android. Falls back to 0 height if unsupported.
+// iOS: viewport doesn't resize, keyboard overlaps — need explicit offset.
+// Android: viewport resizes with keyboard — no extra offset needed.
+// Detects platform to avoid double-offset on Android.
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface KeyboardState {
   keyboardHeight: number;
@@ -15,17 +17,36 @@ export function useKeyboard(): KeyboardState {
     keyboardHeight: 0,
     isKeyboardOpen: false,
   });
+  const initialHeight = useRef(0);
 
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
 
+    // Capture initial viewport height (before keyboard)
+    initialHeight.current = vv.height;
+
+    // Detect if Android (viewport resizes with keyboard — no extra offset needed)
+    const isAndroid = /android/i.test(navigator.userAgent);
+
     const update = () => {
-      const keyboardHeight = Math.max(0, window.innerHeight - vv.height);
-      setState({
-        keyboardHeight,
-        isKeyboardOpen: keyboardHeight > 50,
-      });
+      if (isAndroid) {
+        // Android: viewport resizes, so CSS `bottom` values already work correctly.
+        // Only report isKeyboardOpen for conditional logic, but keyboardHeight stays 0.
+        const heightDrop = initialHeight.current - vv.height;
+        setState({
+          keyboardHeight: 0, // Don't offset — viewport already resized
+          isKeyboardOpen: heightDrop > 100,
+        });
+      } else {
+        // iOS: viewport doesn't resize, keyboard overlaps content.
+        // Need explicit offset to push input above keyboard.
+        const keyboardHeight = Math.max(0, window.innerHeight - vv.height);
+        setState({
+          keyboardHeight,
+          isKeyboardOpen: keyboardHeight > 50,
+        });
+      }
     };
 
     vv.addEventListener("resize", update);

@@ -5,6 +5,7 @@
 // Deep links to venmo:// and upi:// for settlement.
 
 import { supabase } from "./supabase";
+import { extractDisplayName } from "./user-id";
 
 // ── Types ──
 
@@ -43,12 +44,7 @@ function parsePrice(metadata: Record<string, string> | null): number {
   return parseFloat(match[0].replace(/,/g, ""));
 }
 
-// ── Display name from userId ──
-// Strips "user_" prefix for display. Simple, no external lookup needed.
-
-function displayName(userId: string): string {
-  return userId.replace(/^user_/, "").replace(/^name_/, "");
-}
+// Display name from userId — uses extractDisplayName from user-id.ts
 
 // ── Fetch Settlement ──
 // Queries all locked items for a space, groups by owner, calculates deltas.
@@ -77,7 +73,7 @@ export async function fetchSettlement(spaceId: string): Promise<Settlement> {
     if (!ownerMap.has(ownerId)) {
       ownerMap.set(ownerId, {
         userId: ownerId,
-        displayName: displayName(ownerId),
+        displayName: extractDisplayName(ownerId),
         totalPaid: 0,
         items: [],
       });
@@ -157,5 +153,5 @@ export function generateUPILink(
 ): string {
   const encodedName = encodeURIComponent(recipientName);
   const encodedNote = encodeURIComponent(note);
-  return `upi://pay?pa=${upiId}&pn=${encodedName}&am=${amount}&tn=${encodedNote}&cu=INR`;
+  return `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodedName}&am=${amount}&tn=${encodedNote}&cu=INR`;
 }

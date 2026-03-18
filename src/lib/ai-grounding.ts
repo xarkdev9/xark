@@ -3,6 +3,8 @@
 // Locked categories become forbidden — @xark will not suggest alternatives.
 // Source of truth: /Users/ramchitturi/algo/src/engine/ai-grounding.ts
 
+import { extractDisplayName } from "@/lib/user-id";
+
 import { supabase } from "./supabase";
 
 // ── Reaction Weights (Section 5 of mar10_algo.md) ──
@@ -166,7 +168,7 @@ export async function buildGroundingContext(
     const ownerId = newest.ownership?.ownerId ?? "";
     recentlyLocked = {
       title: newest.title,
-      ownerName: ownerId.replace(/^user_/, "").replace(/^name_/, ""),
+      ownerName: extractDisplayName(ownerId),
     };
   }
 

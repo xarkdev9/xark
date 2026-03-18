@@ -48,12 +48,16 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
-    const msg = error.message || "invalid credentials";
+    const msg = error.message || "";
     const status =
       msg.includes("invalid_credentials") || msg.includes("user_not_found")
         ? 401
         : 500;
-    return NextResponse.json({ error: msg }, { status });
+    // Generic error — never expose internal DB error messages to client
+    return NextResponse.json(
+      { error: status === 401 ? "invalid credentials" : "authentication failed" },
+      { status }
+    );
   }
 
   // Sign JWT with jose

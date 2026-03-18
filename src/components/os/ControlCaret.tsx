@@ -137,16 +137,44 @@ export function ControlCaret() {
 
   return (
     <>
-      {/* ── Living Brand Anchor — "xark" as persistent home trigger ── */}
-      {!isKeyboardOpen && <div
-        className="fixed left-1/2 z-50"
-        style={{
-          bottom: 0,
-          transform: "translateX(-50%)",
-          paddingBottom: "32px",
-          pointerEvents: "auto",
-        }}
-      >
+      {/* ── LIVING BRAND ANCHOR — "xark" Triad (The Thumb Arc) ── */}
+      <AnimatePresence>
+        {!isKeyboardOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            className="fixed inset-x-0 z-50 flex items-end justify-between pointer-events-none"
+            style={{
+              bottom: 0,
+              paddingBottom: "env(safe-area-inset-bottom, 24px)",
+              paddingLeft: "24px",
+              paddingRight: "24px",
+              paddingTop: "16px",
+            }}
+          >
+            {/* ── LEFT THUMB: Contextual Escape Hatch (`< Chats`) ── */}
+            <div className="flex-1 pointer-events-auto flex flex-col justify-end" style={{ paddingBottom: "10px" }}>
+              {isInsideSpace && (
+                <button
+                  onClick={() => router.push(`/galaxy?name=${encodeURIComponent(userName)}`)}
+                  className="outline-none tracking-wide text-left"
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: 400,
+                    color: ink.secondary,
+                    textShadow: "0 2px 12px rgba(20,20,20,0.08)",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  ᐸ Chats
+                </button>
+              )}
+            </div>
+
+            {/* ── CENTER: The Anchor (`xark`) ── */}
+            <div className="flex-none pointer-events-auto flex flex-col items-center">
         <motion.div
           layoutId="spotlight-morph"
           role="button"
@@ -226,26 +254,43 @@ export function ControlCaret() {
             }}
           />
         </motion.div>
-        
-        {showHint && (
-          <motion.span
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 4, repeat: Infinity }}
-            style={{
-              position: "fixed",
-              bottom: 56,
-              left: "50%",
-              transform: "translateX(-50%)",
-              ...text.hint,
-              color: ink.tertiary,
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-            }}
-          >
-            tap to ask xark anything
-          </motion.span>
+            </div>
+
+            {/* ── RIGHT THUMB: Primary Action ── */}
+            <div className="flex-1 pointer-events-auto flex flex-col justify-end items-end" style={{ paddingBottom: "10px" }}>
+              {!isInsideSpace ? (
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent("xark-compose"))}
+                  className="outline-none tracking-wide text-right"
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: 400,
+                    color: ink.primary,
+                    textShadow: "0 2px 12px rgba(20,20,20,0.08)",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  + Compose
+                </button>
+              ) : (
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent("xark-info"))}
+                  className="outline-none tracking-wide text-right"
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: 400,
+                    color: ink.tertiary,
+                    textShadow: "0 2px 12px rgba(20,20,20,0.08)",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  i Info
+                </button>
+              )}
+            </div>
+          </motion.div>
         )}
-      </div>}
+      </AnimatePresence>
 
       {/* ── Galaxy Slide-Up ── */}
       <AnimatePresence>

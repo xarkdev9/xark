@@ -4,7 +4,7 @@
 // First-letter fallback when no photo. No border (Zero-Box).
 // shape="circle" (default, people) or "square" (plans, spaces in vibe mode).
 
-import { colors } from "@/lib/theme";
+import { colors, surface } from "@/lib/theme";
 
 interface AvatarProps {
   name: string;
@@ -42,7 +42,7 @@ export function Avatar({ name, photoUrl, size = 28, shape = "circle" }: AvatarPr
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "rgba(var(--xark-white-rgb), 0.08)",
+        backgroundColor: surface.recessed,
         flexShrink: 0,
       }}
     >
