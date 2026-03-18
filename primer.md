@@ -2,7 +2,39 @@
 
 > For AI agents: Read this FIRST before any code work. It tells you what changed recently and what to watch for. Updated after every session.
 
-## Last Session: Mar 18, 2026 (Summon Paradigm + Onboarding Fixes)
+## Last Session: Mar 18, 2026 (Production v1 — Summon + Spotlight + Apple-Tier UI)
+
+### What was built (late session — UI overhaul by coding agent)
+
+84. **Apple-Tier Login** — glass pill logo, 6-cell OTP morph with Framer Motion transitions, zero-box floating typography (no input rectangles), functional country picker with Android text clamping.
+85. **Galaxy Home Overhaul** — text input eradicated and replaced with glass morphing "xark" pill (Framer Motion). Frosted glass footer. FABs removed. iOS-grade layout. Capitalized copy.
+86. **ControlCaret Zero-Box** — cyan dot references removed. Pure Action Orange #FF6B35 floating typography. Zero-box doctrine enforced on the brand anchor.
+87. **GlobalMesh** — new `src/components/os/GlobalMesh.tsx` component added to layout.tsx for ambient background.
+88. **Light Mode Polish** — hearth light forced on boot, apple-grade glass and crisp contrast.
+89. **3 Critical Bug Fixes** — ON CONFLICT DO NOTHING on space_members (duplicate key), Spotlight overflow + summon intercept removed, orphaned "thinking..." messages cleaned up in /api/xark catch block.
+
+### Files created (late session)
+- src/components/os/GlobalMesh.tsx — ambient mesh gradient background
+
+### Files significantly modified (late session)
+- src/app/login/page.tsx — complete rewrite: glass pill, 6-cell OTP, zero-box floating
+- src/app/galaxy/page.tsx — glass morphing pill, frosted footer, no FABs
+- src/components/os/ControlCaret.tsx — Action Orange, no cyan dot, zero-box
+- src/components/os/WelcomeScreen.tsx — restructured for glass pill physics
+- src/components/os/SpotlightSheet.tsx — overflow fix, summon intercept removed
+- src/components/os/GhostInput.tsx — updated styling
+- src/components/os/ChatInput.tsx — minor fixes
+- src/components/os/PossibilityHorizon.tsx — minor fixes
+- src/lib/theme.ts — updated tokens for light mode polish
+- src/app/globals.css — updated global styles
+- src/app/layout.tsx — GlobalMesh added
+- src/app/api/xark/route.ts — orphaned thinking message cleanup in catch block
+- supabase/migrations/008_join_via_invite.sql — ON CONFLICT DO NOTHING
+- supabase/migrations/028_summon_links.sql — ON CONFLICT DO NOTHING
+
+---
+
+## Previous Session: Mar 18, 2026 (Summon Paradigm + Onboarding Fixes)
 
 ### What was built
 

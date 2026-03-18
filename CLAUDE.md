@@ -201,6 +201,18 @@ KEY MODULE MAP (read the source for implementation details):
 - src/lib/media.ts — Firebase Storage upload/download + Supabase metadata.
 - src/lib/notifications.ts — Server-side FCM push. Lazy init from FIREBASE_SERVICE_ACCOUNT_JSON. /api/notify uses get_push_tokens_for_space RPC (single query replaces 2-query chain).
 - src/lib/seed.ts — Demo data: san diego trip (4 items, 10 msgs), ananya sanctuary (5 msgs), tokyo neon nights (2 items), summer 2026 (empty). Run: npx tsx src/lib/seed.ts
+- src/lib/taste.ts — Taste Graph: intersectTasteProfiles() (union hard constraints, sum implicit weights), buildTastePromptInjection() for Gemini. Pure functions.
+- src/lib/whispers.ts — Proactive whisper engine: Layer 3 deterministic checks (onboarding P2, consensus_ready P0, missing_category P1, nudge_vote P2). Priority queue.
+- src/hooks/useWhispers.ts — Whisper queue hook: currentWhisper, consumeWhisper, dismissWhisper. 60s poll.
+- src/hooks/useSpotlight.ts — Sheet state, morph animation, send-to-space routing, auto-navigate from Galaxy.
+- src/app/api/summon/route.ts — POST: generate single-use 128-bit hex cryptographic invite link.
+- src/app/api/summon/validate/route.ts — GET: public, validate code, return creator name.
+- src/app/api/summon/claim/route.ts — POST: Firebase auth → atomic claim RPC → create 2-player space → JWT.
+- src/app/s/[code]/page.tsx — Summon landing page: invitation + phone auth + claim + redirect.
+- src/app/api/taste/route.ts — Day 1 Taste onboarding: Gemini parses natural language → JSONB constraints.
+- src/app/api/cron/consensus/route.ts — Auto-lock cron: fires Green-Lock on expired countdowns (daily, Hobby plan).
+- supabase/migrations/027_taste_graph_consensus.sql — user_taste_profiles, lock_deadline, triggers, RPCs.
+- supabase/migrations/028_summon_links.sql — summon_links table, claim_summon_link RPC, purge RPC.
 - src/hooks/useHandshake.ts — Wraps handshake protocol for React. Returns { proposal, whisper, confirm, dismiss, isCommitting, goldBurst }.
 - src/hooks/useVoiceInput.ts — On-device SpeechRecognition. Long-press auto-prefixes "@xark ".
 - src/components/os/ClaimSheet.tsx — Slide-up for claiming locked items. "i'll handle this" stamps owner.
@@ -213,7 +225,13 @@ KEY MODULE MAP (read the source for implementation details):
 - src/components/os/Avatar.tsx — Reusable avatar component. Letter fallback uses surface.recessed background.
 - src/components/os/WelcomeScreen.tsx — Cinematic login entrance. Phase-based choreography (spark→collision→reveal→idle). Transparent overlay — video background lives in login page.
 - src/components/os/ChatInput.tsx — The Magnetic Input. Gradient floor (transparent→canvas). 18px weight-300 text. @xark detection turns text cyan with glow. Attach/camera icons animate out when typing. Mic↔send crossfade. Placeholder uses ink.tertiary.
-- src/components/os/ControlCaret.tsx — Living Brand Anchor. "xark" text (18px, weight 300, tracking 0.2em, Action Orange #FF6B35) replaces the dot. Breathing animation (0.7→0.9 opacity, 4s). Neon glow on tap. Persistent text-shadow for light background readability. Same slide-up panel for space navigation.
+- src/components/os/ControlCaret.tsx — Living Brand Anchor. "xark" text (18px, weight 300, tracking 0.2em, Action Orange #FF6B35). Zero-box floating — no cyan dot. Breathing 0.7→0.9. Tap opens SpotlightSheet (short) or space panel (long-press). Cyan aura when whispers pending. Onboarding hint for new users. SpotlightSheet + useSpotlight + useWhispers mounted here.
+- src/components/os/SpotlightSheet.tsx — Half-sheet overlay for @xark invocation. GhostInput with whisper pre-fill. Space chips on Galaxy. 800ms morph dismiss. Context pill inside spaces.
+- src/components/os/GhostInput.tsx — Input with ghost text pre-fill. Type = shatter ghost. Send = accept. Opacity-based differentiation.
+- src/components/os/SummonSurface.tsx — Mesh gradient People tab empty state. "summon co-pilot" → navigator.share() with cryptographic deep link.
+- src/components/os/ConsensusTimer.tsx — Live countdown timer on DecisionCard when lock_deadline set.
+- src/components/os/ConsensusBanner.tsx — Pinned banner above chat during consensus countdown. Unique Realtime channel per effect (prevents WebSocket leak).
+- src/components/os/GlobalMesh.tsx — Ambient mesh gradient background, mounted in layout.tsx.
 - src/components/os/OnboardingWhispers.tsx — Gentle onboarding hints that dismiss after first interaction.
 - src/components/os/XarkChat.tsx — Display-only chat stream. WhatsApp-precision spacing (20px different sender, 2px same sender, 4px name-to-message). text.subtitle at 16px/400/1.35 for message body. Typing indicator + inline card previews + inline invite prompt (onInvite + memberCount props). Sender names 13px amber (humans) / cyan (@xark). Opacity floor 0.55.
 - src/components/os/PlaygroundSpace.tsx — Complete playground space view. Mock reactions (local state), mock @xark (hardcoded restaurants), choreography engine, swipe discuss↔decide. No Supabase.
