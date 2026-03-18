@@ -1,9 +1,17 @@
 // XARK OS v2.0 — KeyStore (IndexedDB)
 // Persistent key storage for E2EE. IndexedDB for PWA.
 // Interface is abstract — swap for native Keychain on iOS/Android.
+// At-rest encryption via Argon2id-derived wrapping key (Signal Desktop approach).
 
 import type { RawKeyPair } from './types';
 import { toBase64, fromBase64 } from './primitives';
+import {
+  encryptForStorage,
+  decryptFromStorage,
+  encryptObjectForStorage,
+  decryptObjectFromStorage,
+  isStoreUnlocked,
+} from './encrypted-store';
 
 const DB_NAME = 'xark-keystore';
 const DB_VERSION = 1;
@@ -92,6 +100,8 @@ export class IndexedDBKeyStore {
   }
 
   // ── Identity Key (WebCrypto — non-extractable private key) ──
+  // When encrypted store is active, serializes key material as bytes and encrypts.
+  // When not active, stores CryptoKey natively via structured clone (legacy behavior).
 
   async saveIdentityKey(
     publicKeyRaw: Uint8Array,
@@ -100,12 +110,44 @@ export class IndexedDBKeyStore {
   ): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.identity, 'readwrite');
-    // CryptoKey objects are stored natively by IndexedDB (structured clone algorithm)
-    await idbPut(store, 'identity', {
-      publicKeyRaw: toBase64(publicKeyRaw),
-      privateKeyCryptoKey,  // non-extractable CryptoKey — IndexedDB stores natively
-      publicKeyCryptoKey,   // CryptoKey for verification
-    });
+
+    if (isStoreUnlocked()) {
+      // Encrypted mode: serialize key bytes and encrypt.
+      // privateKeyCryptoKey may be Uint8Array (transitional cast from key-manager.ts)
+      // or a real CryptoKey. We can only encrypt raw bytes — true non-extractable
+      // CryptoKey objects cannot be serialized, so they stay as structured clone.
+      const privBytes = privateKeyCryptoKey instanceof Uint8Array
+        ? privateKeyCryptoKey
+        : null;
+      const pubCryptoBytes = publicKeyCryptoKey instanceof Uint8Array
+        ? publicKeyCryptoKey
+        : null;
+
+      if (privBytes && pubCryptoBytes) {
+        // Raw bytes path: encrypt the entire identity object
+        const encrypted = encryptObjectForStorage({
+          publicKeyRaw: toBase64(publicKeyRaw),
+          privateKeyRaw: toBase64(privBytes),
+          publicKeyCryptoRaw: toBase64(pubCryptoBytes),
+        });
+        await idbPut(store, 'identity', { _encrypted: encrypted });
+      } else {
+        // True CryptoKey: cannot serialize for encryption, store natively
+        // (WebCrypto non-extractable keys are already hardware-protected)
+        await idbPut(store, 'identity', {
+          publicKeyRaw: toBase64(publicKeyRaw),
+          privateKeyCryptoKey,
+          publicKeyCryptoKey,
+        });
+      }
+    } else {
+      // Legacy unencrypted mode: CryptoKey objects stored natively by IndexedDB
+      await idbPut(store, 'identity', {
+        publicKeyRaw: toBase64(publicKeyRaw),
+        privateKeyCryptoKey,
+        publicKeyCryptoKey,
+      });
+    }
   }
 
   async getIdentityKey(): Promise<{
@@ -115,12 +157,27 @@ export class IndexedDBKeyStore {
   } | null> {
     const db = await this.getDB();
     const store = tx(db, STORES.identity, 'readonly');
-    const data = await idbGet<{
-      publicKeyRaw: string;
-      privateKeyCryptoKey: CryptoKey;
-      publicKeyCryptoKey: CryptoKey;
-    }>(store, 'identity');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await idbGet<any>(store, 'identity');
     if (!data) return null;
+
+    // Encrypted format: has _encrypted field
+    if (data._encrypted && typeof data._encrypted === 'string') {
+      const decrypted = decryptObjectFromStorage<{
+        publicKeyRaw: string;
+        privateKeyRaw: string;
+        publicKeyCryptoRaw: string;
+      }>(data._encrypted);
+      return {
+        publicKeyRaw: fromBase64(decrypted.publicKeyRaw),
+        // Return raw bytes cast to CryptoKey (transitional format)
+        privateKeyCryptoKey: fromBase64(decrypted.privateKeyRaw) as unknown as CryptoKey,
+        publicKeyCryptoKey: fromBase64(decrypted.publicKeyCryptoRaw) as unknown as CryptoKey,
+      };
+    }
+
+    // Legacy unencrypted format: CryptoKey objects stored natively
+    if (!data.publicKeyRaw) return null;
     return {
       publicKeyRaw: fromBase64(data.publicKeyRaw),
       privateKeyCryptoKey: data.privateKeyCryptoKey,
@@ -132,8 +189,28 @@ export class IndexedDBKeyStore {
   async getIdentityKeyLegacy(): Promise<RawKeyPair | null> {
     const db = await this.getDB();
     const store = tx(db, STORES.identity, 'readonly');
-    const data = await idbGet<{ pub?: string; priv?: string }>(store, 'identity');
-    if (!data || !data.pub || !data.priv) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await idbGet<any>(store, 'identity');
+    if (!data) return null;
+
+    // Encrypted format
+    if (data._encrypted && typeof data._encrypted === 'string') {
+      try {
+        const decrypted = decryptObjectFromStorage<{
+          publicKeyRaw: string;
+          privateKeyRaw: string;
+        }>(data._encrypted);
+        return {
+          publicKey: fromBase64(decrypted.publicKeyRaw),
+          privateKey: fromBase64(decrypted.privateKeyRaw),
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    // Legacy base64 format
+    if (!data.pub || !data.priv) return null;
     return { publicKey: fromBase64(data.pub), privateKey: fromBase64(data.priv) };
   }
 
@@ -142,14 +219,27 @@ export class IndexedDBKeyStore {
   async saveSignedPreKey(id: number, keyPair: RawKeyPair): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.signedPreKeys, 'readwrite');
-    await idbPut(store, `spk_${id}`, serializeKeyPair(keyPair));
+    if (isStoreUnlocked()) {
+      const encrypted = encryptObjectForStorage(serializeKeyPair(keyPair));
+      await idbPut(store, `spk_${id}`, encrypted);
+    } else {
+      await idbPut(store, `spk_${id}`, serializeKeyPair(keyPair));
+    }
   }
 
   async getSignedPreKey(id: number): Promise<RawKeyPair | null> {
     const db = await this.getDB();
     const store = tx(db, STORES.signedPreKeys, 'readonly');
-    const data = await idbGet<{ pub: string; priv: string }>(store, `spk_${id}`);
+    const data = await idbGet<string | { pub: string; priv: string }>(store, `spk_${id}`);
     if (!data) return null;
+
+    // Encrypted or plaintext-prefixed string format
+    if (typeof data === 'string') {
+      const obj = decryptObjectFromStorage<{ pub: string; priv: string }>(data);
+      return deserializeKeyPair(obj);
+    }
+
+    // Legacy object format (unencrypted)
     return deserializeKeyPair(data);
   }
 
@@ -158,16 +248,30 @@ export class IndexedDBKeyStore {
   async saveOneTimePreKeys(keys: Array<{ id: string; keyPair: RawKeyPair }>): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.oneTimePreKeys, 'readwrite');
+    const encrypt = isStoreUnlocked();
     for (const k of keys) {
-      await idbPut(store, k.id, serializeKeyPair(k.keyPair));
+      if (encrypt) {
+        const encrypted = encryptObjectForStorage(serializeKeyPair(k.keyPair));
+        await idbPut(store, k.id, encrypted);
+      } else {
+        await idbPut(store, k.id, serializeKeyPair(k.keyPair));
+      }
     }
   }
 
   async getOneTimePreKey(id: string): Promise<RawKeyPair | null> {
     const db = await this.getDB();
     const store = tx(db, STORES.oneTimePreKeys, 'readonly');
-    const data = await idbGet<{ pub: string; priv: string }>(store, id);
+    const data = await idbGet<string | { pub: string; priv: string }>(store, id);
     if (!data) return null;
+
+    // Encrypted or plaintext-prefixed string format
+    if (typeof data === 'string') {
+      const obj = decryptObjectFromStorage<{ pub: string; priv: string }>(data);
+      return deserializeKeyPair(obj);
+    }
+
+    // Legacy object format (unencrypted)
     return deserializeKeyPair(data);
   }
 
@@ -188,7 +292,11 @@ export class IndexedDBKeyStore {
   async saveSenderKey(spaceId: string, state: Uint8Array): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.senderKeys, 'readwrite');
-    await idbPut(store, `active_${spaceId}`, toBase64(state));
+    if (isStoreUnlocked()) {
+      await idbPut(store, `active_${spaceId}`, encryptForStorage(state));
+    } else {
+      await idbPut(store, `active_${spaceId}`, toBase64(state));
+    }
   }
 
   async getSenderKey(spaceId: string): Promise<Uint8Array | null> {
@@ -196,6 +304,13 @@ export class IndexedDBKeyStore {
     const store = tx(db, STORES.senderKeys, 'readonly');
     const data = await idbGet<string>(store, `active_${spaceId}`);
     if (!data) return null;
+
+    // Encrypted or plaintext-prefixed: decryptFromStorage handles all formats
+    if (data.startsWith('enc:') || data.startsWith('plain:')) {
+      return decryptFromStorage(data);
+    }
+
+    // Legacy raw base64 (no prefix)
     return fromBase64(data);
   }
 
@@ -209,7 +324,11 @@ export class IndexedDBKeyStore {
     const db = await this.getDB();
     const store = tx(db, STORES.senderKeys, 'readwrite');
     const existing = await idbGet<string[]>(store, `hist_${spaceId}`) ?? [];
-    existing.push(toBase64(state));
+    if (isStoreUnlocked()) {
+      existing.push(encryptForStorage(state));
+    } else {
+      existing.push(toBase64(state));
+    }
     await idbPut(store, `hist_${spaceId}`, existing);
   }
 
@@ -218,7 +337,11 @@ export class IndexedDBKeyStore {
   async saveSession(userId: string, deviceId: number, state: Uint8Array): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.sessions, 'readwrite');
-    await idbPut(store, `${userId}:${deviceId}`, toBase64(state));
+    if (isStoreUnlocked()) {
+      await idbPut(store, `${userId}:${deviceId}`, encryptForStorage(state));
+    } else {
+      await idbPut(store, `${userId}:${deviceId}`, toBase64(state));
+    }
   }
 
   async getSession(userId: string, deviceId: number): Promise<Uint8Array | null> {
@@ -226,6 +349,13 @@ export class IndexedDBKeyStore {
     const store = tx(db, STORES.sessions, 'readonly');
     const data = await idbGet<string>(store, `${userId}:${deviceId}`);
     if (!data) return null;
+
+    // Encrypted or plaintext-prefixed: decryptFromStorage handles all formats
+    if (data.startsWith('enc:') || data.startsWith('plain:')) {
+      return decryptFromStorage(data);
+    }
+
+    // Legacy raw base64 (no prefix)
     return fromBase64(data);
   }
 

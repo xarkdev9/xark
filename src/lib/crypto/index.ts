@@ -3,6 +3,7 @@
 
 export * from './types';
 export * from './primitives';
+export * from './encrypted-store';
 export * from './keystore';
 export * from './x3dh';
 export * from './double-ratchet';
