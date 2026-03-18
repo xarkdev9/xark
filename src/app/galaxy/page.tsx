@@ -59,20 +59,26 @@ function GalaxyContent() {
   const [allUsers, setAllUsers] = useState<Array<{ id: string; display_name: string }>>([]);
   const [showGroupInput, setShowGroupInput] = useState(false);
   const [groupName, setGroupName] = useState("");
+  // Spaces count (for onboarding)
+  const [spacesCount, setSpacesCount] = useState<number | null>(null);
   // Playground spaces — computed client-side only (uses Date.now())
   const [pgSpaces, setPgSpaces] = useState<ReturnType<typeof getPlaygroundSpaces>>([]);
   useEffect(() => { setPgSpaces(getPlaygroundSpaces()); }, []);
 
   useEffect(() => {
     if (!userId) return;
-    // Fetch unique contact names from all spaces
+    // Fetch unique contact names from all spaces and get total space count
     supabase
       .from("space_members")
-      .select("user_id")
+      .select("user_id, space_id")
       .neq("user_id", userId)
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
           const ids = [...new Set(data.map((r) => r.user_id))];
+          // Get total distinct spaces this user is in (proxy for real space count since we only care if it's 0)
+          const { count } = await supabase.from('space_members').select('space_id', { count: 'exact', head: true }).eq('user_id', userId);
+          setSpacesCount(count ?? 0);
+
           // Get display names
           supabase
             .from("users")
@@ -308,11 +314,34 @@ function GalaxyContent() {
               exit={{ opacity: 0, x: tabDirection * -30 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             >
-              <PeopleDock
-                userId={userId}
-                userName={userName}
-                onPersonTap={handlePersonTap}
-              />
+              {spacesCount === 0 && knownContacts.length === 0 ? (
+                <div style={{
+                  padding: "32px 24px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px"
+                }}>
+                  <span style={{
+                    ...text.subtitle,
+                    color: ink.primary,
+                    opacity: 0.7
+                  }}>
+                    this is your galaxy.
+                  </span>
+                  <span style={{
+                    ...text.hint,
+                    color: ink.tertiary
+                  }}>
+                    tap the xark logo below to search restaurants, plan trips, or start a group.
+                  </span>
+                </div>
+              ) : (
+                <PeopleDock
+                  userId={userId}
+                  userName={userName}
+                  onPersonTap={handlePersonTap}
+                />
+              )}
             </motion.div>
           )}
           {activeTab === "plans" && (
