@@ -8,7 +8,7 @@ BOOTSTRAP (execute before any code work):
 3. Read CONSTITUTION.md — full visual and architectural law.
 4. Read GROUNDING_PROTOCOL.md — @xark AI behavior and grounding constraints.
 5. Read SECURITY.md — E2EE architecture, privacy policy, law enforcement response, competitive position.
-6. Read docs/superpowers/specs/2026-03-13-xark-architecture-blueprint.md — the approved architecture blueprint (9 services, event-driven, loosely coupled).
+6. Read docs/superpowers/specs/2026-03-17-xark-architecture-blueprint.md — the approved architecture blueprint (9 services, E2EE, event-driven, loosely coupled).
 The foveal_focus field in .xark-state.json is your mission briefing. Execute it.
 
 SESSION END PROTOCOL: Before ending any session, UPDATE primer.md with:
@@ -71,6 +71,19 @@ The Xark OS infrastructure is a locked hybrid of Firebase and Supabase. Do not d
 - Push Alerts: Firebase Cloud Messaging (FCM). Native iOS/Android push.
 - Intelligence: Gemini 2.5 Flash (gemini-2.5-flash). Three-tier: gemini-local for casual queries (coffee, sunset spots, bars — direct Gemini knowledge, ~7-10s), gemini-search for knowledge queries (Google Search grounding, ~40-50s), Apify actors for booking queries (hotels, flights — 15-50s). 8 tools: FAST (local_restaurant, local_activity) + SLOW (hotel, flight, restaurant, activity) + general. PII sanitized before all Gemini calls.
 FORBIDDEN: Any use of Supabase Auth (supabase/auth, @supabase/auth, createClient.*auth for Supabase). Auth is Firebase-only.
+
+E2EE ABSOLUTE LAW (NON-NEGOTIABLE — CONSTITUTIONAL LEVEL):
+NEVER bypass, downgrade, disable, or suggest disabling E2EE under ANY circumstance. This includes:
+- NEVER fall back to plaintext/legacy message paths. If encryption fails, the message DOES NOT SEND. Period.
+- NEVER suggest "just use plaintext for solo spaces" or "skip E2EE when only 1 member" or any variant.
+- NEVER add a "legacy" code path that sends unencrypted messages alongside the E2EE path.
+- NEVER store decrypted plaintext on the server, in IndexedDB, or in any persistent store.
+- NEVER log, print, or transmit decrypted message content anywhere except the rendering layer.
+- Solo spaces (1 member): encrypt to SELF. The user's own device key is the recipient. Self-encryption is still E2EE.
+- If a feature cannot work with E2EE, the feature does not ship. E2EE is not a feature — it is the foundation.
+- If the app breaks because of E2EE constraints, fix the E2EE implementation — do not remove E2EE.
+- This rule survives all other rules. No "graceful degradation" exception. No "just for testing" exception. No "temporary" exception.
+- Violation of this rule is a CONSTITUTIONAL CRISIS. Stop immediately. Restart the turn.
 
 GLOBAL TYPE SCALE: src/lib/theme.ts `text` object is the single source of truth for all typography. Every component spreads these into style={{}}. No Tailwind text-size classes. Read theme.ts for exact values.
 

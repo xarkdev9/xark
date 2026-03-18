@@ -1,5 +1,13 @@
 # Xark OS v2.0 — The Human-Centric Constitution
 
+## 0. THE E2EE ABSOLUTE LAW (ABOVE ALL OTHER LAWS)
+- **E2EE is NEVER bypassed, downgraded, or disabled. Not for any reason. Not temporarily. Not for testing. Not for solo spaces. Not for convenience. NEVER.**
+- If encryption fails → message does not send. User sees an error. This is correct behavior.
+- Solo spaces (1 member) → encrypt to self. User's own device key is the recipient.
+- If a feature conflicts with E2EE → the feature does not ship. E2EE is the foundation, not a feature.
+- Plaintext write paths are forbidden in code. Legacy types exist only for reading pre-E2EE history.
+- Any AI agent that suggests bypassing E2EE is in CONSTITUTIONAL CRISIS. Stop. Restart the turn.
+
 ## 1. THE NO-BOLD MANDATE
 - Hierarchy is achieved through Scale (24px vs 12px), Spacing, and Opacity (100% vs 30%). Bold is strictly forbidden.
 - Weight 400 (Regular): Primary text, group names, all interactive elements.

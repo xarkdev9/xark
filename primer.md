@@ -59,11 +59,14 @@
 - **Taste Graph: Explicit + Implicit** — Day 1 onboarding via Ghost Prompt → Gemini parses → JSONB constraints. Implicit weights accumulate from reactions via Postgres trigger. Group intersection = union of hard constraints (vetoes) + summed soft weights (top 5 injected into Gemini). No vector DB.
 - **Consensus Closer via Layer 3 UI** — no chat messages. Card elevates (gold shadow), timer ticks, banner pins. Server cron auto-locks. Manual "finalize" fallback.
 - **Graceful degradation everywhere** — taste timeout 800ms → generic search. Trigger failure → reaction sticks. Cron failure → manual finalize button.
+- **E2EE ABSOLUTE LAW** — NEVER bypass E2EE for any reason. Solo spaces encrypt to self (user's own device key). Plaintext write paths are FORBIDDEN. If encryption fails, message does not send. If a feature conflicts with E2EE, the feature does not ship. This law added to ALL guardrail files (CLAUDE.md, CONSTITUTION.md, SECURITY.md, GROUNDING_PROTOCOL.md, .xark-state.json) after an AI agent almost suggested plaintext fallback for solo spaces.
 
 ### Migrations applied
 - 027_taste_graph_consensus.sql — user_taste_profiles, lock_deadline, triggers, RPCs, RLS, GIN indexes
 
 ### Known issues
+- **CRITICAL: Solo space messaging broken** — E2EE encrypt fails in 1-member spaces because Sender Keys needs OTHER members to distribute to. Fix: implement self-encryption (encrypt to own device key). NEVER fall back to plaintext.
+- **CRITICAL: CSP + login page** — proxy.ts deployed but login page WelcomeScreen starts all content at opacity:0 (Framer Motion). If JS is delayed, page appears black. Need SSR-visible fallback state.
 - **WebAuthn PRF not implemented** — encrypted store still uses Argon2id password prompt
 - **Pexels API key client-side** — should be server-side proxy
 - **Whisper engine makes multiple sequential queries** — could be batched into a single RPC for speed
