@@ -18,6 +18,10 @@ const inter = Inter({
   weight: "variable",
 });
 
+// Force dynamic rendering for ALL pages — required for CSP nonce injection.
+// Static pages are pre-built without nonces → CSP blocks all JS → blank page.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "XARK OS",
   description: "Privacy focussed group operating system",
