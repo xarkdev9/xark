@@ -15,7 +15,7 @@ describe("intersectTasteProfiles", () => {
   });
 
   it("sums implicit weights across members", () => {
-    const profiles = [
+    const profiles: import("../taste").TasteProfile[] = [
       { user_id: "a", hard_constraints: [], implicit_weights: { japanese: 5, italian: -3 }, onboarded: true },
       { user_id: "b", hard_constraints: [], implicit_weights: { japanese: 5, mexican: 1 }, onboarded: true },
     ];
