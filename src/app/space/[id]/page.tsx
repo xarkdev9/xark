@@ -565,117 +565,131 @@ function SpacePageInner() {
     setInput("");
     setIsThinking(true);
 
-    // ── Constraint detection (sender's device only) ──
-    const constraint = detectConstraints(txt);
-    if (constraint) {
-      setConstraintWhisper(constraint);
-    }
+    const SEND_TIMEOUT_MS = 15_000;
+    const sendTimeout = setTimeout(() => {
+      setIsThinking(false);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === userMsg.id ? { ...m, content: "[send timed out — tap to retry]" } : m
+        )
+      );
+    }, SEND_TIMEOUT_MS);
 
-    // ══════════════════════════════════════════════
-    // E2EE PATH — encrypt + /api/message
-    // ══════════════════════════════════════════════
-    if (e2ee.available) {
-      try {
-        const envelope = await e2ee.encrypt(txt, spaceId);
-        if (envelope) {
-          const res = await fetch("/api/message", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify({
-              space_id: spaceId,
-              sender_device_id: e2ee.deviceId,
-              ciphertext: envelope.ciphertext,
-              ratchet_header: envelope.ratchetHeader ?? null,
-              recipient_id: envelope.recipientId,
-              recipient_device_id: envelope.recipientDeviceId,
-            }),
-          });
+    try {
+      // ── Constraint detection (sender's device only) ──
+      const constraint = detectConstraints(txt);
+      if (constraint) {
+        setConstraintWhisper(constraint);
+      }
 
-          const data = await res.json();
-
-          if (!res.ok) {
-            console.error("[xark-e2ee] /api/message failed:", data.error);
-            // Queue for automatic retry instead of just showing error
-            const { enqueueMessage } = await import("@/lib/crypto/outbox");
-            await enqueueMessage({
-              id: userMsg.id,
-              spaceId,
-              envelope: {
-                ciphertext: envelope.ciphertext,
-                ratchetHeader: envelope.ratchetHeader,
-                recipientId: envelope.recipientId,
-                recipientDeviceId: envelope.recipientDeviceId,
+      // ══════════════════════════════════════════════
+      // E2EE PATH — encrypt + /api/message
+      // ══════════════════════════════════════════════
+      if (e2ee.available) {
+        try {
+          const envelope = await e2ee.encrypt(txt, spaceId);
+          if (envelope) {
+            const res = await fetch("/api/message", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
               },
-              senderDeviceId: e2ee.deviceId!,
-              createdAt: Date.now(),
-              attempts: 1,
-            });
-            // Commit ratchet — message IS encrypted and queued, will be sent on retry
-            if (envelope.commit) await envelope.commit();
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === userMsg.id ? { ...m, content: "[queued — will send when online]" } : m
-              )
-            );
-            setIsThinking(false);
-            return;
-          } else {
-            // TWO-PHASE COMMIT: persist ratchet state only after network ACK
-            if (envelope.commit) await envelope.commit();
-
-            // Broadcast for instant delivery (after DB write)
-            if (channelRef.current) {
-              broadcastMessage(channelRef.current, {
-                id: userMsg.id,
+              body: JSON.stringify({
                 space_id: spaceId,
-                role: "user",
-                content: null as unknown as string,
-                user_id: resolvedUserId ?? null,
-                sender_name: user?.displayName ?? userName ?? null,
-                created_at: new Date().toISOString(),
-                message_type: "e2ee",
                 sender_device_id: e2ee.deviceId,
-                ciphertext_b64: envelope.ciphertext,
-                ratchet_header_b64: envelope.ratchetHeader ?? null,
-              });
-            }
+                ciphertext: envelope.ciphertext,
+                ratchet_header: envelope.ratchetHeader ?? null,
+                recipient_id: envelope.recipientId,
+                recipient_device_id: envelope.recipientDeviceId,
+              }),
+            });
 
-            setIsThinking(false);
-            return;
+            const data = await res.json();
+
+            if (!res.ok) {
+              console.error("[xark-e2ee] /api/message failed:", data.error);
+              // Queue for automatic retry instead of just showing error
+              const { enqueueMessage } = await import("@/lib/crypto/outbox");
+              await enqueueMessage({
+                id: userMsg.id,
+                spaceId,
+                envelope: {
+                  ciphertext: envelope.ciphertext,
+                  ratchetHeader: envelope.ratchetHeader,
+                  recipientId: envelope.recipientId,
+                  recipientDeviceId: envelope.recipientDeviceId,
+                },
+                senderDeviceId: e2ee.deviceId!,
+                createdAt: Date.now(),
+                attempts: 1,
+              });
+              // Commit ratchet — message IS encrypted and queued, will be sent on retry
+              if (envelope.commit) await envelope.commit();
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === userMsg.id ? { ...m, content: "[queued — will send when online]" } : m
+                )
+              );
+              setIsThinking(false);
+              return;
+            } else {
+              // TWO-PHASE COMMIT: persist ratchet state only after network ACK
+              if (envelope.commit) await envelope.commit();
+
+              // Broadcast for instant delivery (after DB write)
+              if (channelRef.current) {
+                broadcastMessage(channelRef.current, {
+                  id: userMsg.id,
+                  space_id: spaceId,
+                  role: "user",
+                  content: null as unknown as string,
+                  user_id: resolvedUserId ?? null,
+                  sender_name: user?.displayName ?? userName ?? null,
+                  created_at: new Date().toISOString(),
+                  message_type: "e2ee",
+                  sender_device_id: e2ee.deviceId,
+                  ciphertext_b64: envelope.ciphertext,
+                  ratchet_header_b64: envelope.ratchetHeader ?? null,
+                });
+              }
+
+              setIsThinking(false);
+              return;
+            }
           }
+        } catch (err) {
+          console.error("[xark-e2ee] Encrypt failed — message NOT sent (fail-closed):", err);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === userMsg.id ? { ...m, content: "[encryption failed — tap to retry]" } : m
+            )
+          );
+          setIsThinking(false);
+          return;
         }
-      } catch (err) {
-        console.error("[xark-e2ee] Encrypt failed — message NOT sent (fail-closed):", err);
+      }
+
+      // ══════════════════════════════════════════════
+      // FAIL-CLOSED: E2EE not available — refuse to send plaintext
+      // ══════════════════════════════════════════════
+      if (!e2ee.available) {
+        console.error("[xark-e2ee] E2EE not available — refusing to send plaintext");
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === userMsg.id ? { ...m, content: "[encryption failed — tap to retry]" } : m
+            m.id === userMsg.id
+              ? { ...m, content: "[encryption unavailable — check your connection]" }
+              : m
           )
         );
         setIsThinking(false);
         return;
       }
-    }
 
-    // ══════════════════════════════════════════════
-    // FAIL-CLOSED: E2EE not available — refuse to send plaintext
-    // ══════════════════════════════════════════════
-    if (!e2ee.available) {
-      console.error("[xark-e2ee] E2EE not available — refusing to send plaintext");
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === userMsg.id
-            ? { ...m, content: "[encryption unavailable — check your connection]" }
-            : m
-        )
-      );
       setIsThinking(false);
-      return;
+    } finally {
+      clearTimeout(sendTimeout);
     }
-
-    setIsThinking(false);
   }, [input, isThinking, spaceId, resolvedUserId, user, userName, e2ee]);
 
   // ═══════════════════════════════════════════
