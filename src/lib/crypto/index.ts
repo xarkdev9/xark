@@ -9,4 +9,5 @@ export * from './double-ratchet';
 export * from './sender-keys';
 export * from './key-manager';
 export * from './encryption-service';
+export * from './sk-recovery';
 export * from './dm-routing';

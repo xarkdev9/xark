@@ -23,6 +23,7 @@ import { keyStore } from './keystore';
 import { fetchPeerKeyBundle } from './key-manager';
 import { supabase, getSupabaseToken } from '../supabase';
 import type { DecryptedMessage, MessageType, RawKeyPair } from './types';
+import { requestMissingSenderKey, waitForSenderKey, notifySenderKeyArrived } from './sk-recovery';
 
 /** Encrypted message ready for server transmission */
 export interface EncryptedEnvelope {
@@ -480,6 +481,9 @@ export async function processSenderKeyDistribution(
   // plaintext is a serialized SenderKeyState — store it keyed by spaceId:senderId
   const senderKey = deserializeSenderKey(plaintext);
   await keyStore.saveSenderKey(`${spaceId}:${senderId}`, serializeSenderKeyForStorage(senderKey));
+
+  // Notify any pending SK recovery waiters that this key is now available
+  notifySenderKeyArrived(spaceId, senderId);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -675,7 +679,18 @@ export async function decryptMessage(
       senderKeyData = await keyStore.getSenderKey(`${spaceId}:${senderId}`);
     }
     if (!senderKeyData) {
-      return { text: '[encrypted message - sender key not available]', replyTo: null, mediaUrl: null, type: 'message' };
+      // P2P SK recovery: request the missing key from the sender and wait
+      const myUserId = await getCurrentUserId();
+      const myDeviceId = await keyStore.getDeviceId();
+      requestMissingSenderKey(spaceId, senderId, myUserId, myDeviceId);
+
+      const arrived = await waitForSenderKey(spaceId, senderId, 10000);
+      if (arrived) {
+        senderKeyData = await keyStore.getSenderKey(`${spaceId}:${senderId}`);
+      }
+    }
+    if (!senderKeyData) {
+      return { text: '[decrypting...]', replyTo: null, mediaUrl: null, type: 'message' };
     }
 
     const senderKey = deserializeSenderKey(senderKeyData);
