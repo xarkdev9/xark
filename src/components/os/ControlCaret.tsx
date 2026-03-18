@@ -60,6 +60,19 @@ export function ControlCaret() {
   const longPressRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const isLongPress = useRef(false);
 
+  // ── Onboarding Hint ──
+  const [showHint, setShowHint] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const dismissed = localStorage.getItem("xark_spotlight_hint_dismissed");
+      if (!dismissed && spaces.length === 0) {
+        setShowHint(true);
+      } else {
+        setShowHint(false);
+      }
+    }
+  }, [spaces.length]);
+
   useEffect(() => {
     const userId = user?.uid;
     fetchSpaceList(userId).then(setSpaces).catch(() => setSpaces(DEMO_SPACES));
@@ -151,6 +164,10 @@ export function ControlCaret() {
           onPointerUp={() => {
             if (longPressRef.current) clearTimeout(longPressRef.current);
             if (!isLongPress.current) {
+              if (showHint) {
+                localStorage.setItem("xark_spotlight_hint_dismissed", "1");
+                setShowHint(false);
+              }
               spotlight.open();
             }
           }}
@@ -159,6 +176,10 @@ export function ControlCaret() {
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
+              if (showHint) {
+                localStorage.setItem("xark_spotlight_hint_dismissed", "1");
+                setShowHint(false);
+              }
               spotlight.open();
             }
           }}
@@ -192,6 +213,25 @@ export function ControlCaret() {
         >
           xark
         </motion.div>
+        
+        {showHint && (
+          <motion.span
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            style={{
+              position: "fixed",
+              bottom: 56,
+              left: "50%",
+              transform: "translateX(-50%)",
+              ...text.hint,
+              color: ink.tertiary,
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+            }}
+          >
+            tap to ask xark anything
+          </motion.span>
+        )}
       </div>}
 
       {/* ── Galaxy Slide-Up ── */}
