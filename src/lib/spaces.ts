@@ -57,16 +57,16 @@ export async function createSpace(
   inviteUsername?: string
 ): Promise<CreateSpaceResult> {
   const title = dream.toLowerCase().trim();
-  const spaceId = generateSpaceId(title);
   const seedItemTitle = generateSeedTitle(dream);
 
   const isPersonalChat = !!inviteUsername;
 
+  let finalSpaceId: string = "";
   // Route through /api/local-action (server-side, supabaseAdmin)
   // This handles: space creation + creator as member + invite + seed message atomically
   try {
     const token = (await import("./supabase")).getSupabaseToken();
-    await fetch("/api/local-action", {
+    const res = await fetch("/api/local-action", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -74,7 +74,7 @@ export async function createSpace(
       },
       body: JSON.stringify({
         action: "create_space",
-        spaceId,
+        spaceId: generateSpaceId(title), // We still pass a base ID, backend appends a UUID
         payload: {
           title,
           invite_username: inviteUsername ?? null,
@@ -83,9 +83,23 @@ export async function createSpace(
         actorName: null,
       }),
     });
+    
+    if (!res.ok) {
+        throw new Error(`API responded with ${res.status}`);
+    }
+    
+    const data = await res.json();
+    if (data.spaceId) {
+        finalSpaceId = data.spaceId;
+    } else {
+        throw new Error("API did not return a spaceId");
+    }
   } catch (err) {
     console.error("[spaces] createSpace via API failed:", err);
+    throw err;
   }
+
+  if (!finalSpaceId) throw new Error("API did not return a valid spaceId");
 
   // 6. Fetch Unsplash hero → upload to Firebase Storage → store Firebase CDN URL
   // Fire-and-forget. Non-blocking. Space is already navigable.
@@ -96,7 +110,7 @@ export async function createSpace(
 
     // Upload to storage adapter — eliminates Unsplash dependency
     try {
-      const storagePath = `heroes/${spaceId}/hero.jpg`;
+      const storagePath = `heroes/${finalSpaceId}/hero.jpg`;
       heroUrl = await storageAdapter.upload(storagePath, photo.imageBlob, "image/jpeg");
     } catch {
       // Storage upload failed — fall back to Unsplash URL
@@ -111,17 +125,11 @@ export async function createSpace(
           hero_photographer_url: photo.photographerUrl,
         },
       })
-      .eq("id", spaceId)
+      .eq("id", finalSpaceId)
       .then(() => {});
   }).catch(() => {});
 
-  return { spaceId, title, seedItemTitle };
-}
-
-// ── Get the optimistic space ID for immediate navigation ──
-// Call this BEFORE createSpace() to navigate instantly.
-export function getOptimisticSpaceId(dream: string): string {
-  return generateSpaceId(dream.toLowerCase().trim());
+  return { spaceId: finalSpaceId, title, seedItemTitle };
 }
 
 /** Generate a shareable invite link for a space */

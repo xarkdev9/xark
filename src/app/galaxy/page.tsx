@@ -10,7 +10,7 @@ import { AwarenessStream } from "@/components/os/AwarenessStream";
 import { PeopleDock } from "@/components/os/PeopleDock";
 import { MemoriesTab } from "@/components/os/MemoriesTab";
 import { useAuth } from "@/hooks/useAuth";
-import { createSpace, getOptimisticSpaceId } from "@/lib/spaces";
+import { createSpace } from "@/lib/spaces";
 import { colors, opacity, timing, layout, text, surface, ink } from "@/lib/theme";
 import { makeUserId } from "@/lib/user-id";
 import { UserMenu } from "@/components/os/UserMenu";
@@ -125,37 +125,56 @@ function GalaxyContent() {
     router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}`);
   };
 
-  const handleNewChat = useCallback((contact: { id: string; display_name: string }) => {
+  const handleNewChat = useCallback(async (contact: { id: string; display_name: string }) => {
+    setIsCreating(true);
     const title = `${userName} & ${contact.display_name}`;
-    const spaceId = getOptimisticSpaceId(title);
-    setShowUserPicker(false);
-    setShowNewSheet(false);
-    handlePersonTap(spaceId);
-    createSpace(title, userId, contact.display_name).catch(() => {});
+    try {
+      const { spaceId } = await createSpace(title, userId, contact.display_name);
+      if (!spaceId) throw new Error("No spaceId returned");
+      setShowUserPicker(false);
+      setShowNewSheet(false);
+      handlePersonTap(spaceId);
+    } catch {
+      // Handle error visually if necessary
+    } finally {
+      setIsCreating(false);
+    }
   }, [userId, userName, handlePersonTap]);
 
-  const handleNewGroup = useCallback(() => {
+  const handleNewGroup = useCallback(async () => {
     const name = groupName.trim();
     if (!name) return;
-    const spaceId = getOptimisticSpaceId(name);
-    setShowGroupInput(false);
-    setShowNewSheet(false);
-    setGroupName("");
-    handleSpaceTap(spaceId);
-    createSpace(name, userId).catch(() => {});
+    setIsCreating(true);
+    try {
+      const { spaceId } = await createSpace(name, userId);
+      if (!spaceId) throw new Error("No spaceId returned");
+      setShowGroupInput(false);
+      setShowNewSheet(false);
+      setGroupName("");
+      handleSpaceTap(spaceId);
+    } catch {
+      // Handle error visually if necessary
+    } finally {
+      setIsCreating(false);
+    }
   }, [groupName, userId, handleSpaceTap]);
 
   // Start a chat with a contact (People tab)
-  const startChat = useCallback((contactName: string) => {
+  const startChat = useCallback(async (contactName: string) => {
     setIsCreating(true);
     const title = `chat with ${contactName}`;
-    const spaceId = getOptimisticSpaceId(title);
-    handlePersonTap(spaceId);
-    createSpace(title, userId, contactName).catch(() => {});
-    setDream("");
-    setIsCreating(false);
-    if (typeof window !== "undefined") localStorage.setItem("xark_first_chat", "1");
-    setFirstChatDone(true);
+    try {
+      const { spaceId } = await createSpace(title, userId, contactName);
+      if (!spaceId) throw new Error("No spaceId returned");
+      handlePersonTap(spaceId);
+      setDream("");
+      if (typeof window !== "undefined") localStorage.setItem("xark_first_chat", "1");
+      setFirstChatDone(true);
+    } catch {
+      // Handle error visually if necessary
+    } finally {
+      setIsCreating(false);
+    }
   }, [userId, handlePersonTap]);
 
   const manifestDream = useCallback(async () => {
@@ -175,12 +194,17 @@ function GalaxyContent() {
       .replace(/^@xark\s+/i, "")
       .trim() || raw;
 
-    const spaceId = getOptimisticSpaceId(txt);
-    setDream("");
-    setIsCreating(false);
-    handleSpaceTap(spaceId);
-    createSpace(txt, userId).catch(() => {});
-  }, [dream, isCreating, userId, activeTab, startChat]);
+    try {
+      const { spaceId } = await createSpace(txt, userId);
+      if (!spaceId) throw new Error("No spaceId returned");
+      setDream("");
+      handleSpaceTap(spaceId);
+    } catch {
+      // Handle error visually
+    } finally {
+      setIsCreating(false);
+    }
+  }, [dream, isCreating, userId, activeTab, startChat, handleSpaceTap]);
 
   // ── Swipe to switch tabs ──
   const tabs: GalaxyTab[] = ["people", "plans", "memories"];
