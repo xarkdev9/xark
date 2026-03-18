@@ -14,6 +14,43 @@
 
 ---
 
+## Task 0: Fix stuck "xark thinking" — sendMessage timeout guard
+
+**Files:** Modify `src/app/space/[id]/page.tsx`
+
+**Problem:** When `e2ee.encrypt()` hangs (never resolves — e.g., libsodium WASM fails to init, or IndexedDB read stalls), `isThinking` stays `true` forever. The chat shows "xark thinking..." permanently with no way to recover.
+
+**Fix:** Wrap the entire E2EE encrypt + send block in a timeout. If it doesn't complete within 15 seconds, force `setIsThinking(false)` and show an error.
+
+In `sendMessage()` (around line 576), wrap the E2EE block:
+
+```typescript
+// Add timeout guard — prevents isThinking from being stuck forever
+const SEND_TIMEOUT_MS = 15_000;
+const sendTimeout = setTimeout(() => {
+  setIsThinking(false);
+  setMessages((prev) =>
+    prev.map((m) =>
+      m.id === userMsg.id ? { ...m, content: "[send timed out — tap to retry]" } : m
+    )
+  );
+}, SEND_TIMEOUT_MS);
+
+try {
+  // ... existing E2EE encrypt + send code ...
+} finally {
+  clearTimeout(sendTimeout);
+}
+```
+
+The `finally` block ensures the timeout is always cleared, whether the send succeeds, fails, or throws.
+
+Also: nuke any stale messages in the DB that have null content and are older than 5 minutes (these are orphaned "thinking..." messages from /api/xark that were never cleaned up). Run this once via the debug script.
+
+Commit: `fix(chat): timeout guard on sendMessage — prevents permanent "thinking" state`
+
+---
+
 ## File Structure
 
 ### New Files
