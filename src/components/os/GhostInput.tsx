@@ -8,8 +8,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { colors, text as textTokens, ink, surface } from "@/lib/theme";
-
-const EASE = [0.22, 1, 0.36, 1] as const;
+import { spring, exit, tap } from "@/lib/motion";
 
 interface GhostInputProps {
   ghostText: string | null;
@@ -97,10 +96,10 @@ export function GhostInput({
         {ghostVisible && ghostText && (
           <motion.div
             key="ghost-layer"
-            initial={{ opacity: 0.4, scale: 1 }}
-            animate={{ opacity: 0.4, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.15, ease: EASE }}
+            initial={{ opacity: 0.4, scale: 1, filter: "blur(0.5px)" }}
+            animate={{ opacity: 0.4, scale: 1, filter: "blur(0.5px)" }}
+            exit={exit.shatter}
+            transition={exit.shatterTiming}
             style={{
               position: "absolute",
               top: "16px",
@@ -148,7 +147,7 @@ export function GhostInput({
             letterSpacing: "0.02em",
             lineHeight: 1.5,
             color: ghostVisible ? "transparent" : ink.primary,
-            caretColor: colors.cyan,
+            caretColor: colors.accent,
             maxHeight: "144px",
             overflow: "hidden",
             background: "transparent",
@@ -164,11 +163,12 @@ export function GhostInput({
           onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
           className="outline-none cursor-pointer select-none"
           animate={{ opacity: hasContent ? 0.9 : 0.3 }}
-          transition={{ duration: 0.2, ease: EASE }}
+          transition={spring.snappy}
+          whileTap={tap.micro}
           style={{
             flexShrink: 0,
             marginBottom: "4px",
-            color: colors.cyan,
+            color: colors.accent,
             ...textTokens.hint,
             fontSize: "14px",
             fontWeight: 300,

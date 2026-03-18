@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Syne, Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/os/ThemeProvider";
+import { GlobalMesh } from "@/components/os/GlobalMesh";
 import { GlobalCaret } from "@/components/os/GlobalCaret";
 import { GlobalUserMenu } from "@/components/os/GlobalUserMenu";
 import { ServiceWorkerRegistration } from "@/components/os/ServiceWorkerRegistration";
@@ -64,6 +65,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${syne.variable} ${inter.variable}`}>
         <ThemeProvider>
+          <GlobalMesh />
           {children}
           <GlobalUserMenu />
           <GlobalCaret />

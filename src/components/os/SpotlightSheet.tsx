@@ -166,6 +166,7 @@ export function SpotlightSheet({
           {/* ── Sheet ── */}
           <motion.div
             key="spotlight-sheet"
+            className="glass-sheet"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -176,7 +177,6 @@ export function SpotlightSheet({
               left: 0,
               right: 0,
               zIndex: 9999,
-              backgroundColor: surface.chrome,
               borderRadius: "20px 20px 0 0",
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
               maxHeight: "70dvh",
@@ -214,7 +214,7 @@ export function SpotlightSheet({
                 <span
                   style={{
                     ...textTokens.label,
-                    color: colors.cyan,
+                    color: colors.accent,
                     opacity: 0.7,
                     letterSpacing: "0.06em",
                   }}
@@ -267,7 +267,7 @@ export function SpotlightSheet({
                           padding: "6px 14px",
                           borderRadius: "16px",
                           backgroundColor: isActive
-                            ? colors.cyan
+                            ? colors.accent
                             : surface.recessed,
                           color: isActive ? colors.void : ink.secondary,
                           ...textTokens.label,
@@ -312,7 +312,7 @@ export function SpotlightSheet({
                     width: "8px",
                     height: "8px",
                     borderRadius: "50%",
-                    backgroundColor: colors.cyan,
+                    backgroundColor: colors.accent,
                     flexShrink: 0,
                     boxShadow: "0 0 8px rgba(64,224,255,0.4)",
                   }}

@@ -239,7 +239,7 @@ export function ChatInput({
                 fontWeight: 300,
                 letterSpacing: "0.02em",
                 color: inputTextColor,
-                caretColor: colors.cyan,
+                caretColor: colors.accent,
                 opacity: isThinking ? 0.3 : 1,
                 lineHeight: 1.5,
                 maxHeight: "144px",
@@ -264,7 +264,7 @@ export function ChatInput({
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.2, ease: EASE }}
                 >
-                  <SendIcon color={colors.cyan} />
+                  <SendIcon color={colors.accent} />
                 </motion.span>
               ) : (
                 <motion.div
@@ -303,7 +303,7 @@ export function ChatInput({
               <span
                 role="button" tabIndex={0}
                 onClick={() => { onUrlDetected?.(detectedUrl); setShowUrlPrompt(false); setUrlPromptDismissed(true); }}
-                style={{ ...text.timestamp, color: colors.cyan, cursor: "pointer", opacity: 0.7 }}
+                style={{ ...text.timestamp, color: colors.accent, cursor: "pointer", opacity: 0.7 }}
               >yes</span>
               <span
                 role="button" tabIndex={0}

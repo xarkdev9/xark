@@ -601,12 +601,12 @@ export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking, p
               <div
                 style={{
                   width: "8px", height: "8px", borderRadius: "50%",
-                  backgroundColor: colors.cyan,
+                  backgroundColor: colors.accent,
                   animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
-                  boxShadow: `0 0 12px ${colors.cyan}`,
+                  boxShadow: `0 0 12px ${colors.accent}`,
                 }}
               />
-              <span style={{ ...text.label, color: colors.cyan }}>
+              <span style={{ ...text.label, color: colors.accent }}>
                 scanning options...
               </span>
             </motion.div>
@@ -631,7 +631,7 @@ export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking, p
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 0.8 }}
             >
-              <span style={{ ...text.label, color: colors.cyan, opacity: 0.4 }}>@xark</span>
+              <span style={{ ...text.label, color: colors.accent, opacity: 0.4 }}>@xark</span>
               <p className="mt-1" style={{ ...text.hint, color: ink.tertiary }}>
                 {`try "@xark find hotels near the beach" or "@xark add dates aug 15–25"`}
               </p>

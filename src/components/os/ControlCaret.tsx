@@ -13,6 +13,7 @@ import {
 } from "@/lib/space-data";
 import type { SpaceListItem } from "@/lib/space-data";
 import { colors, opacity, timing, layout, text, ink, surface } from "@/lib/theme";
+import { spring, ambient, tap } from "@/lib/motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useKeyboard } from "@/hooks/useKeyboard";
 import { Avatar } from "@/components/os/Avatar";
@@ -147,6 +148,55 @@ export function ControlCaret() {
           pointerEvents: "auto",
         }}
       >
+        {/* ── Breathing Aura — ambient glow behind the text ── */}
+        <AnimatePresence>
+          {hasWhispers && (
+            <motion.div
+              key="whisper-aura"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{
+                opacity: [0.15, 0.4, 0.15],
+                scale: [0.8, 1.2, 0.8],
+              }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              transition={ambient.whisperPulseTiming}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "120px",
+                height: "40px",
+                borderRadius: "50%",
+                background: "radial-gradient(ellipse, rgba(64,224,255,0.35) 0%, rgba(64,224,255,0) 70%)",
+                pointerEvents: "none",
+                zIndex: -1,
+              }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ── Resting Aura — faint radial behind text ── */}
+        {!hasWhispers && (
+          <motion.div
+            animate={{ opacity: isOpen || spotlight.isOpen ? 0.5 : [0.05, 0.12, 0.05] }}
+            transition={isOpen || spotlight.isOpen ? spring.snappy : ambient.breatheTiming}
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "100px",
+              height: "32px",
+              borderRadius: "50%",
+              background: "radial-gradient(ellipse, rgba(255,107,53,0.3) 0%, rgba(255,107,53,0) 70%)",
+              pointerEvents: "none",
+              zIndex: -1,
+            }}
+          />
+        )}
+
+        {/* ── Brand Text — spring physics tap, no CSS transitions ── */}
         <motion.div
           role="button"
           tabIndex={0}
@@ -185,6 +235,7 @@ export function ControlCaret() {
           }}
           className="cursor-pointer outline-none select-none"
           style={{
+            position: "relative",
             fontSize: "18px",
             fontWeight: 300,
             letterSpacing: "0.2em",
@@ -192,26 +243,27 @@ export function ControlCaret() {
             WebkitTapHighlightColor: "transparent",
           }}
           animate={{
-            opacity: isOpen || spotlight.isOpen ? 1 : [0.7, 0.9, 0.7],
+            opacity: isOpen || spotlight.isOpen ? 1 : undefined,
             textShadow: hasWhispers
               ? "0 0 12px rgba(64,224,255,0.5), 0 0 24px rgba(64,224,255,0.25)"
               : isOpen || spotlight.isOpen
                 ? "0 0 20px rgba(255,107,53,0.6), 0 0 40px rgba(255,107,53,0.3)"
                 : "0 0 8px rgba(255,107,53,0.15)",
           }}
-          transition={isOpen || spotlight.isOpen ? { duration: 0.15 } : {
-            opacity: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-            textShadow: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-          }}
+          transition={spring.gentle}
           whileTap={{
-            scale: 0.95,
-            opacity: 1,
+            scale: tap.heavy.scale,
             textShadow: hasWhispers
               ? "0 0 20px rgba(64,224,255,0.7), 0 0 40px rgba(64,224,255,0.35)"
               : "0 0 20px rgba(255,107,53,0.6), 0 0 40px rgba(255,107,53,0.3)",
           }}
         >
-          xark
+          <motion.span
+            animate={isOpen || spotlight.isOpen ? { opacity: 1 } : ambient.breathe}
+            transition={isOpen || spotlight.isOpen ? spring.snappy : ambient.breatheTiming}
+          >
+            xark
+          </motion.span>
         </motion.div>
         
         {showHint && (
@@ -312,7 +364,7 @@ export function ControlCaret() {
                                   width: layout.emberSize,
                                   height: layout.emberSize,
                                   borderRadius: "50%",
-                                  backgroundColor: colors.cyan,
+                                  backgroundColor: colors.accent,
                                   animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
                                 }}
                               />
@@ -422,7 +474,7 @@ export function ControlCaret() {
                   <div
                     style={{
                       height: "1px",
-                      background: `linear-gradient(90deg, transparent, ${colors.cyan}, transparent)`,
+                      background: `linear-gradient(90deg, transparent, ${colors.accent}, transparent)`,
                       opacity: 0.1,
                       marginBottom: "10px",
                     }}
@@ -441,7 +493,7 @@ export function ControlCaret() {
                       style={{
                         ...text.input,
                         color: ink.primary,
-                        caretColor: colors.cyan,
+                        caretColor: colors.accent,
                       }}
                     />
                   </div>

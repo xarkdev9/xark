@@ -14,7 +14,8 @@ export interface ThemeConfig {
   label: string;
   mode: "light" | "dark";
   style: ThemeStyle;    // flat = clean utility, depth = floating shadows + HD photos
-  accent: string;       // identity color (dots, underlines, @xark labels)
+  accent: string;       // human action color (Send, Lock, Summon, branding)
+  cyan: string;         // AI / Machine Intelligence color
   text: string;         // foreground text (hierarchy via opacity)
   bg: string;           // background canvas
   // Engine signal colors — adjusted per mode for contrast
@@ -35,75 +36,79 @@ export interface ThemeConfig {
 }
 
 export const themes: Record<ThemeName, ThemeConfig> = {
-  // ── HEARTH: clean, flat, WhatsApp-like ──
+  // ── HEARTH: Apple-Grade Light Mode (Very clear yet very strong) ──
   hearth: {
     label: "hearth",
     mode: "light",
     style: "flat",
-    accent: "#FF6B35",
-    text: "#111111",
-    bg: "#F8F7F4",
+    accent: "#FF4500",           // Searing Action Orange (Human intent)
+    cyan: "#40E0FF",             // Cool Cyan (AI state / Ghost text)
+    text: "#111111",             // Off-black to prevent halation
+    bg: "#FFFFFF",               // Pristine pure white canvas
     amber: "#9E6A06",
     gold: "#8B6914",
     green: "#047857",
     orange: "#C43D08",
     gray: "#8A8A94",
-    inkPrimary: "#000000",
-    inkSecondary: "#6B6B78",
-    inkTertiary: "#8A8A94",
+    inkPrimary: "#111111",
+    inkSecondary: "#8E8E93",     // Classic Apple gray (strong legible contrast)
+    inkTertiary: "#A1A1A6",
     inkSender: "#9E6A06",
-    surfaceChrome: "#F8F7F3",    // warm off-white — header, input
-    surfaceCanvas: "#EEEBE5",    // warm beige — content area
-    surfaceRecessed: "#E3DCD1",  // deeper beige — avatars, wells
+    surfaceChrome: "#FFFFFF",    // Will be frosted via .glass-sheet
+    surfaceCanvas: "#FFFFFF",    // Absolute stark contrast
+    surfaceRecessed: "#F2F2F7",  // Apple systemGray6
   },
   hearth_dark: {
     label: "hearth dark",
     mode: "dark",
     style: "flat",
-    accent: "#40E0FF",
-    text: "#E8E6E1",
-    bg: "#0A0A0F",
+    accent: "#FF4500",           // Searing Action Orange
+    cyan: "#40E0FF",
+    text: "#F4F4F5",
+    bg: "#000000",               // OLED Black
     amber: "#D4A017",
     gold: "#C9A81E",
     green: "#10B981",
     orange: "#E8590C",
     gray: "#8A8A94",
     inkPrimary: "#FFFFFF",
-    inkSecondary: "#9CA3AF",
-    inkTertiary: "#6B7280",
+    inkSecondary: "#8E8E93",
+    inkTertiary: "#636366",
     inkSender: "#D4A017",
-    surfaceChrome: "#141418",    // slightly lighter dark — header, input
-    surfaceCanvas: "#0A0A0F",    // deep dark — content area (same as bg)
-    surfaceRecessed: "#060608",  // deepest — avatars, wells
+    surfaceChrome: "#1C1C1E",    // Apple systemGray6 for dark mode
+    surfaceCanvas: "#000000",
+    surfaceRecessed: "#1C1C1E",
   },
-  // ── VIBE: floating depth, HD photos, immersive ──
+  // ── VIBE: Base definitions (to be refactored) ──
   vibe: {
     label: "vibe",
     mode: "light",
     style: "depth",
-    accent: "#E87040",       // warmer orange
-    text: "#0F0F0F",
-    bg: "#FAF9F6",           // slightly brighter warm canvas
+    accent: "#FF4500",
+    cyan: "#40E0FF",
+    text: "#111111",
+    bg: "#FAF9F6",
     amber: "#B07820",
     gold: "#9A7A18",
     green: "#059669",
     orange: "#DC4A20",
     gray: "#7C7C88",
-    inkPrimary: "#000000",
+    inkPrimary: "#111111",
     inkSecondary: "#5A5A66",
     inkTertiary: "#7C7C88",
     inkSender: "#B07820",
-    surfaceChrome: "#FAF9F6",    // bright warm — header, input
-    surfaceCanvas: "#F0EDE6",    // warm parchment — content
-    surfaceRecessed: "#E5E0D6",  // deeper warmth — avatars, wells
+    surfaceChrome: "#FAF9F6",
+    surfaceCanvas: "#F0EDE6",
+    surfaceRecessed: "#E5E0D6",
   },
   vibe_dark: {
     label: "vibe dark",
     mode: "dark",
     style: "depth",
-    accent: "#FF6B35",       // Xark brand Action Orange
-    text: "#ECE8E2",
-    bg: "#08080C",           // deep warm black
+    accent: "#FF4500",
+    cyan: "#40E0FF",
+    text: "#F4F4F5",
+    bg: "#08080C",
     amber: "#E0A820",
     gold: "#D4A018",
     green: "#10B981",
@@ -113,9 +118,9 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     inkSecondary: "#A0A0AC",
     inkTertiary: "#6E6E7A",
     inkSender: "#E0A820",
-    surfaceChrome: "#121216",    // lifted dark — header, input
-    surfaceCanvas: "#08080C",    // deep — content (same as bg)
-    surfaceRecessed: "#040406",  // deepest — avatars, wells
+    surfaceChrome: "#1C1C1E",
+    surfaceCanvas: "#08080C",
+    surfaceRecessed: "#1C1C1E",
   },
 };
 
@@ -140,7 +145,8 @@ export function hexToRgb(hex: string): string {
 // ALL colors are CSS variables — theme-aware across light and dark.
 export const colors = {
   white: "var(--xark-white)",       // text/foreground
-  cyan: "var(--xark-accent)",       // accent/identity
+  cyan: "var(--xark-cyan)",         // separate AI color from accent
+  accent: "var(--xark-accent)",     // primary brand action color
   void: "var(--xark-void)",         // background/canvas
   overlay: "#000000",               // always black (dimming scrim)
   // Engine signals — now CSS variables for light/dark contrast
@@ -332,6 +338,10 @@ export function textColor(alpha: number): string {
 
 export function accentColor(alpha: number): string {
   return `rgba(var(--xark-accent-rgb), ${alpha})`;
+}
+
+export function cyanColor(alpha: number): string {
+  return `rgba(var(--xark-cyan-rgb), ${alpha})`;
 }
 
 // Backwards compatibility
