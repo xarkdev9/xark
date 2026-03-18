@@ -14,9 +14,12 @@ CREATE POLICY mc_select_v2 ON message_ciphertexts
     recipient_id = auth.jwt()->>'sub'
     OR (
       recipient_id = '_group_'
-      AND message_id IN (
-        SELECT id FROM messages
-        WHERE space_id = ANY(auth_user_space_ids())
+      AND EXISTS (
+        SELECT 1 FROM messages m
+        WHERE m.id = message_ciphertexts.message_id
+          AND m.space_id = ANY(
+            (SELECT auth_user_space_ids())
+          )
       )
     )
   );
