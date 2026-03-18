@@ -1,7 +1,7 @@
 {
   "version": "2.0.0-omega",
-  "foveal_focus": "XARK SPOTLIGHT LIVE — @xark reconnected via Spotlight Sheet (ControlCaret → half-sheet overlay → Ghost Prompt). Taste Graph (explicit + implicit JSONB), Consensus Closer (gold card elevation + 10min auto-lock cron), Proactive Whispers (priority queue, ghost text pre-fill). 119 tests passing. Migration 027 applied. Next: deploy to production, browser test full flow, WebAuthn PRF for encrypted store.",
-  "phase": "SPOTLIGHT_SHIPPED",
+  "foveal_focus": "SUMMON PARADIGM LIVE — cryptographic invite links replace broken contact flow. SummonSurface on People tab, /s/[code] landing page, atomic claim RPC, auto-created 2-player spaces. Server-authoritative spaceIds. E2EE self-key fallback. SendMessage timeout guard. Next: browser test full Summon flow end-to-end, fix login black screen, first real users.",
+  "phase": "SUMMON_SHIPPED",
   "algo_source": "/Users/ramchitturi/algo",
   "algo_record": "/Users/ramchitturi/algo/mar10_algo.md",
   "algo_status": "198 tests, 0 type errors, hexagonal architecture",

@@ -2,7 +2,79 @@
 
 > For AI agents: Read this FIRST before any code work. It tells you what changed recently and what to watch for. Updated after every session.
 
-## Last Session: Mar 17, 2026 (XarkSpotlight — @xark Reconnected)
+## Last Session: Mar 18, 2026 (Summon Paradigm + Onboarding Fixes)
+
+### What was built
+
+78. **Summon Paradigm** — complete 1-on-1 invite system replacing broken contact flow:
+    - `summon_links` table (migration 028): single-use cryptographic deep links, 7-day expiry, atomic claim RPC
+    - `POST /api/summon`: generate 128-bit hex link, rate limited 10/hr
+    - `GET /api/summon/validate`: public, returns creator name + validity
+    - `POST /api/summon/claim`: Firebase auth → atomic space creation (both members + seed message) → JWT
+    - `/s/[code]` landing page: invitation screen → phone auth → claim → redirect to 2-player space
+    - `SummonSurface.tsx`: mesh gradient People tab empty state, triggers `navigator.share()`
+    - Galaxy People tab: SummonSurface when 0 contacts, "summon another" when contacts exist
+    - Spotlight fallback: name not found → "isn't in your orbit. tap to summon."
+    - Cron cleanup: `purge_expired_summon_links()` added to daily purge job
+
+79. **New User Onboarding Fixes** (4 issues):
+    - "chat:" prefix hidden when 0 contacts
+    - Spotlight discovery hint ("tap to ask xark anything") for new users
+    - E2EE self-key fallback (decrypt own echoed messages in solo/group spaces)
+    - Galaxy onboarding message for empty state
+
+80. **Server-Authoritative SpaceId** — eliminated optimistic navigation. Client awaits server response for spaceId (random UUID suffix for security). Prevents spaceId mismatch → 403 → "[queued]".
+
+81. **Sanctuary Chat UX** — 1-on-1 spaces show other person's name as title, hide decide/itinerary/memories tabs, viewTabs locked to ["discuss"].
+
+82. **SendMessage Timeout Guard** — 15s timeout prevents permanent "thinking..." state when e2ee.encrypt() hangs.
+
+83. **E2EE Absolute Law** — added to ALL 5 guardrail files (CLAUDE.md, CONSTITUTION.md, SECURITY.md, GROUNDING_PROTOCOL.md, .xark-state.json). Never bypass E2EE for any reason. Solo spaces encrypt to self.
+
+### Files created
+- supabase/migrations/028_summon_links.sql
+- src/app/api/summon/route.ts, src/app/api/summon/validate/route.ts, src/app/api/summon/claim/route.ts
+- src/app/s/[code]/page.tsx — summon landing page
+- src/components/os/SummonSurface.tsx — mesh gradient summon UI
+- docs/superpowers/specs/2026-03-18-summon-paradigm-design.md
+- docs/superpowers/plans/2026-03-18-summon-paradigm.md
+- docs/prompts/fix-new-user-onboarding.md
+
+### Files significantly modified
+- src/app/galaxy/page.tsx — SummonSurface wiring, chat: prefix fix, onboarding text, server-authoritative createSpace
+- src/lib/spaces.ts — awaits server spaceId, removed getOptimisticSpaceId
+- src/app/space/[id]/page.tsx — sanctuary dynamic title, tab hiding, ConsensusBanner, sendMessage timeout, userName encoding
+- src/lib/crypto/encryption-service.ts — self-key fallback for own-message decrypt
+- src/components/os/ControlCaret.tsx — Spotlight hint, whisper glow
+- src/components/os/SpotlightSheet.tsx — summon fallback for unknown names
+- src/app/api/cron/purge/route.ts — summon link cleanup
+
+### Architecture decisions made
+- **Summon > Contacts**: No contact sync. Every connection is a deliberate cryptographic handshake via deep link.
+- **Server-authoritative IDs**: Client never generates spaceIds. Server returns them.
+- **E2EE Absolute Law**: Constitutional-level rule. No exceptions. No degradation. Solo = encrypt to self.
+- **Sanctuary = pure chat**: 1-on-1 spaces hide tabs, show other person's name. Decide accessible via Spotlight only.
+
+### Migrations applied
+- 028_summon_links.sql — summon_links table, claim_summon_link RPC, purge_expired_summon_links RPC
+
+### Known issues
+- **E2EE in solo spaces**: self-key fallback added but needs browser testing
+- **Sender Key distribution**: requires both users to have key bundles registered (useE2EE must run)
+- **Login page black screen**: WelcomeScreen Framer Motion starts at opacity:0. If JS delayed, page is dark.
+- **Pexels API key client-side**: should be server-side proxy
+- **Cross-Space Awareness (Tier 3)**: not yet built
+- **Structured Memory**: Gold Burst moments not saved to profile
+
+### What to do next
+- Browser test the full Summon flow end-to-end (generate link → share → claim → space → chat)
+- Test E2EE message exchange between 2 real phone users in a summon-created space
+- Fix login page black screen (add SSR-visible fallback for WelcomeScreen)
+- First real users
+
+---
+
+## Previous Session: Mar 17, 2026 (XarkSpotlight — @xark Reconnected)
 
 ### What was built
 
