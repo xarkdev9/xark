@@ -13,13 +13,7 @@ import { storageAdapter } from "@/lib/storage";
 import { setDevPassword } from "@/hooks/useAuth";
 import { WelcomeScreen } from "@/components/os/WelcomeScreen";
 
-// ── Video backgrounds — Pexels Free License, all verified 200 ──
-const VIDEO_SOURCES = [
-  "https://videos.pexels.com/video-files/3015510/3015510-hd_1280_720_24fps.mp4",  // friends gathering (3MB)
-  "https://videos.pexels.com/video-files/856973/856973-hd_1280_720_25fps.mp4",    // silhouette / warmth (2.5MB)
-  "https://videos.pexels.com/video-files/1093662/1093662-hd_1280_720_30fps.mp4",  // ocean rocks (2.7MB)
-  "https://videos.pexels.com/video-files/857195/857195-hd_1280_720_25fps.mp4",    // candle flame (2MB)
-];
+// Videos removed — plain dark background for reliability.
 
 // ── Phases ──
 type Screen = "brand" | "field";
@@ -118,10 +112,6 @@ export default function LoginPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Video state — round-robin, client-only
-  const [videoSrc, setVideoSrc] = useState(VIDEO_SOURCES[0]);
-  const videoEl = useRef<HTMLVideoElement>(null);
-
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const confirmationRef = useRef<ConfirmationResult | null>(null);
@@ -136,17 +126,7 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
     setCountryCode(detectCountryCode());
-    // Round-robin video (client-only, avoids hydration mismatch)
-    const last = parseInt(sessionStorage.getItem("xark_video_idx") ?? "-1", 10);
-    const next = (last + 1) % VIDEO_SOURCES.length;
-    sessionStorage.setItem("xark_video_idx", String(next));
-    setVideoSrc(VIDEO_SOURCES[next]);
   }, []);
-
-  // Safari needs explicit play() call
-  useEffect(() => {
-    videoEl.current?.play().catch(() => {});
-  }, [videoSrc]);
 
   // Focus input when field step changes
   useEffect(() => {
@@ -285,50 +265,8 @@ export default function LoginPage() {
       <div className="relative flex min-h-svh flex-col overflow-hidden" style={{ background: "#050508" }}>
         <div id="recaptcha-container" />
 
-        {/* ══════════════════════════════════════
-            VIDEO BACKGROUND — persists across ALL screens
-            ══════════════════════════════════════ */}
-        <div style={{ position: "fixed", inset: 0, zIndex: 0 }}>
-          <video
-            key={videoSrc}
-            ref={videoEl}
-            autoPlay
-            loop
-            muted
-            playsInline
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
-          >
-            <source src={videoSrc} type="video/mp4" />
-          </video>
-
-          {/* Dark scrim — 75% for maximum text readability */}
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)" }} />
-
-          {/* Vignette */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%)",
-            }}
-          />
-        </div>
-
-        {/* ── Grain ── */}
-        <div
-          className="pointer-events-none fixed inset-0"
-          style={{
-            opacity: 0.04, zIndex: 50,
-            backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-            backgroundSize: "128px",
-          }}
-        />
+        {/* ── Plain dark background ── */}
+        <div style={{ position: "fixed", inset: 0, zIndex: 0, background: "#050508" }} />
 
         {/* ══════════════════════════════════════
             BRAND SCREEN — cinematic entrance
