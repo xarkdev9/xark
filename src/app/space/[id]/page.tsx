@@ -817,28 +817,23 @@ function SpacePageInner() {
   const [showShareOptions, setShowShareOptions] = useState(false);
 
   const handleShare = useCallback(async () => {
-    const shareUrl = `${window.location.origin}/space/${spaceId}?invite=true`;
-    const shareText = `join ${spaceTitle || "this space"} on xark: ${shareUrl}`;
-
-    // Native share sheet (HTTPS / localhost)
-    if (typeof navigator !== "undefined" && navigator.share) {
+    // Generate a proper invite link via /api/summon (creates a cryptographic deep link)
+    try {
+      const { generateAndShareInvite } = await import("@/components/os/InviteSurface");
+      await generateAndShareInvite(user?.displayName ?? userName ?? "someone");
+    } catch {
+      // User cancelled share or generation failed — try clipboard fallback with space URL
+      const fallbackUrl = `${window.location.origin}/space/${spaceId}`;
       try {
-        await navigator.share({
-          title: spaceTitle || "xark space",
-          text: `join ${spaceTitle || "this space"} on xark`,
-          url: shareUrl,
-        });
-        return;
-      } catch {
-        // User cancelled — fall through
-      }
+        await navigator.clipboard.writeText(fallbackUrl);
+        setShareWhisper(true);
+        setTimeout(() => setShareWhisper(false), 2000);
+      } catch { /* silent */ }
     }
+  }, [spaceId, user, userName]);
 
-    // Fallback: show inline share options (WhatsApp, SMS, copy)
-    setShowShareOptions(true);
-  }, [spaceId, spaceTitle]);
-
-  const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/space/${spaceId}?invite=true`;
+  // Fallback share text for WhatsApp/SMS options (when native share was cancelled)
+  const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/space/${spaceId}`;
   const shareText = `join ${spaceTitle || "this space"} on xark: ${shareUrl}`;
 
   // ── Joining whisper ──

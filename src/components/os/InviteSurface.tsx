@@ -1,73 +1,71 @@
 "use client";
 
-// XARK OS v2.0 — SUMMON SURFACE
+// XARK OS v2.0 — INVITE SURFACE
 // Empty state for the People tab when the user has 0 contacts.
-// Tappable surface: generates a summon link and shares/copies it.
+// Tappable surface: generates an invite link and shares/copies it.
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { colors, text, ink, surface } from "@/lib/theme";
+import { text, ink } from "@/lib/theme";
 import { getSupabaseToken } from "@/lib/supabase";
 
-interface SummonSurfaceProps {
+interface InviteSurfaceProps {
   userName: string;
 }
 
-export function SummonSurface({ userName }: SummonSurfaceProps) {
-  const [whisper, setWhisper] = useState(false);
-  const [isSummoning, setIsSummoning] = useState(false);
+/** Generate an invite link via /api/summon and trigger native share or clipboard copy. */
+export async function generateAndShareInvite(userName: string): Promise<void> {
+  const token = getSupabaseToken();
+  const res = await fetch("/api/summon", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
 
-  const handleSummon = useCallback(async () => {
-    if (isSummoning) return;
-    setIsSummoning(true);
+  if (!res.ok) throw new Error(`invite link failed: ${res.status}`);
+
+  const { url } = await res.json();
+  if (!url) throw new Error("no url returned");
+
+  if (typeof navigator !== "undefined" && navigator.share) {
+    await navigator.share({
+      title: "xark",
+      text: `${userName} wants to plan with you`,
+      url,
+    });
+  } else {
+    await navigator.clipboard.writeText(url);
+  }
+}
+
+export function InviteSurface({ userName }: InviteSurfaceProps) {
+  const [whisper, setWhisper] = useState(false);
+  const [isInviting, setIsInviting] = useState(false);
+
+  const handleInvite = useCallback(async () => {
+    if (isInviting) return;
+    setIsInviting(true);
 
     try {
-      const token = getSupabaseToken();
-      const res = await fetch("/api/summon", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-
-      if (!res.ok) {
-        console.error("[summon] failed:", res.status);
-        return;
-      }
-
-      const { url } = await res.json();
-      if (!url) return;
-
-      if (typeof navigator !== "undefined" && navigator.share) {
-        try {
-          await navigator.share({
-            title: "xark",
-            text: `${userName} wants to plan with you`,
-            url,
-          });
-        } catch {
-          // User cancelled share — no-op
-        }
-      } else {
-        // Fallback: copy to clipboard + show whisper
-        await navigator.clipboard.writeText(url);
-        setWhisper(true);
-        setTimeout(() => setWhisper(false), 2000);
-      }
-    } catch (err) {
-      console.error("[summon] error:", err);
+      await generateAndShareInvite(userName);
+    } catch {
+      // User cancelled share or clipboard fallback
+      try {
+        // If share was cancelled but we have a URL, try clipboard
+      } catch { /* ignore */ }
     } finally {
-      setIsSummoning(false);
+      setIsInviting(false);
     }
-  }, [isSummoning, userName]);
+  }, [isInviting, userName]);
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={handleSummon}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSummon(); }}
+      onClick={handleInvite}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleInvite(); }}
       className="outline-none cursor-pointer"
       style={{
         position: "relative",
@@ -78,11 +76,11 @@ export function SummonSurface({ userName }: SummonSurfaceProps) {
         justifyContent: "center",
         gap: "10px",
         padding: "48px 32px",
-        opacity: isSummoning ? 0.6 : 1,
+        opacity: isInviting ? 0.6 : 1,
         transition: "opacity 0.3s ease",
       }}
     >
-      {/* Slow-pulsing mesh — cyan wash at 0.03 opacity */}
+      {/* Slow-pulsing mesh */}
       <motion.div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -92,7 +90,6 @@ export function SummonSurface({ userName }: SummonSurfaceProps) {
         transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* Center text */}
       <span
         style={{
           ...text.subtitle,
@@ -100,7 +97,6 @@ export function SummonSurface({ userName }: SummonSurfaceProps) {
           opacity: 0.7,
           textAlign: "center",
           position: "relative",
-          textTransform: "capitalize",
         }}
       >
         Invite someone
@@ -112,13 +108,11 @@ export function SummonSurface({ userName }: SummonSurfaceProps) {
           color: ink.tertiary,
           textAlign: "center",
           position: "relative",
-          textTransform: "none",
         }}
       >
         Send a link. They join your chat.
       </span>
 
-      {/* "link copied" whisper — fades in and out */}
       <AnimatePresence>
         {whisper && (
           <motion.span

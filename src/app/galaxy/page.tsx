@@ -18,42 +18,25 @@ import { Avatar } from "@/components/os/Avatar";
 import { isPlaygroundMode, getPlaygroundSpaces, isPlaygroundSpace } from "@/lib/playground";
 import { fetchPersonalChats } from "@/lib/awareness";
 import type { PersonalChat } from "@/lib/awareness";
-import { supabase, getSupabaseToken } from "@/lib/supabase";
-import { SummonSurface } from "@/components/os/SummonSurface";
+import { supabase } from "@/lib/supabase";
+import { InviteSurface, generateAndShareInvite } from "@/components/os/InviteSurface";
 
 type GalaxyTab = "people" | "plans" | "memories";
 
-// ── Summon Another — inline nudge below PeopleDock ──
-function SummonAnother({ userName }: { userName: string }) {
-  const handleSummon = useCallback(async () => {
+// ── Invite Another — inline nudge below PeopleDock ──
+function InviteAnother({ userName }: { userName: string }) {
+  const handleInvite = useCallback(async () => {
     try {
-      const token = getSupabaseToken();
-      const res = await fetch("/api/summon", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (!res.ok) return;
-      const { url } = await res.json();
-      if (!url) return;
-      if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share({ title: "xark", text: `${userName} wants to plan with you`, url }).catch(() => {});
-      } else {
-        await navigator.clipboard.writeText(url).catch(() => {});
-      }
-    } catch {
-      // silent
-    }
+      await generateAndShareInvite(userName);
+    } catch { /* user cancelled or silent */ }
   }, [userName]);
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={handleSummon}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSummon(); }}
+      onClick={handleInvite}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleInvite(); }}
       className="outline-none cursor-pointer"
       style={{ textAlign: "center", padding: "20px 24px 8px" }}
     >
@@ -342,7 +325,7 @@ function GalaxyContent() {
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             >
               {spacesCount === 0 ? (
-                <SummonSurface userName={userName} />
+                <InviteSurface userName={userName} />
               ) : (
                 <>
                   <PeopleDock
@@ -350,7 +333,7 @@ function GalaxyContent() {
                     userName={userName}
                     onPersonTap={handlePersonTap}
                   />
-                  <SummonAnother userName={userName} />
+                  <InviteAnother userName={userName} />
                 </>
               )}
             </motion.div>
