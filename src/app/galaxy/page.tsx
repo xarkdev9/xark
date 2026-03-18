@@ -58,7 +58,7 @@ function SummonAnother({ userName }: { userName: string }) {
       style={{ textAlign: "center", padding: "20px 24px 8px" }}
     >
       <span style={{ ...text.hint, color: ink.tertiary, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-        Summon another
+        Invite someone
       </span>
     </div>
   );
@@ -93,7 +93,6 @@ function GalaxyContent() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Known contacts — derived from space members
-  const [knownContacts, setKnownContacts] = useState<string[]>([]);
   const [firstChatDone, setFirstChatDone] = useState(false);
   // New chat/group flow
   const [showNewSheet, setShowNewSheet] = useState(false);
@@ -118,29 +117,12 @@ function GalaxyContent() {
 
   useEffect(() => {
     if (!userId) return;
-    // Fetch unique contact names from all spaces and get total space count
-    supabase
-      .from("space_members")
-      .select("user_id, space_id")
-      .neq("user_id", userId)
-      .then(async ({ data }) => {
-        if (data) {
-          const ids = [...new Set(data.map((r) => r.user_id))];
-          // Get total distinct spaces this user is in (proxy for real space count since we only care if it's 0)
-          const { count } = await supabase.from('space_members').select('space_id', { count: 'exact', head: true }).eq('user_id', userId);
-          setSpacesCount(count ?? 0);
-
-          // Get display names
-          supabase
-            .from("users")
-            .select("display_name")
-            .in("id", ids)
-            .then(({ data: users }) => {
-              if (users) {
-                setKnownContacts(users.map((u) => u.display_name).filter(Boolean));
-              }
-            });
-        }
+    // Fetch only the total space count (lightning fast head query) to determine UI empty state
+    supabase.from('space_members')
+      .select('space_id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .then(({ count }) => {
+        setSpacesCount(count ?? 0);
       });
     // Check if user has ever created a chat
     if (typeof window !== "undefined") {
@@ -180,7 +162,7 @@ function GalaxyContent() {
     setIsCreating(true);
     const title = `${userName} & ${contact.display_name}`;
     try {
-      const { spaceId } = await createSpace(title, userId, contact.display_name);
+      const { spaceId } = await createSpace(title, userId, contact.display_name, contact.id);
       if (!spaceId) throw new Error("No spaceId returned");
       setShowUserPicker(false);
       setShowNewSheet(false);
@@ -359,7 +341,7 @@ function GalaxyContent() {
               exit={{ opacity: 0, x: tabDirection * -30 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             >
-              {spacesCount === 0 && knownContacts.length === 0 ? (
+              {spacesCount === 0 ? (
                 <SummonSurface userName={userName} />
               ) : (
                 <>

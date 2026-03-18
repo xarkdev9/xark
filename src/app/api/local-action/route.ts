@@ -209,8 +209,15 @@ export async function POST(req: Request) {
         role: "owner",
       });
 
-      // Invite another user by display_name
-      if (invite_username) {
+      // Invite another user explicitly by precise ID or fallback to display_name match
+      const inviteUserId = payload?.invite_user_id;
+      if (inviteUserId) {
+        await supabaseAdmin.from("space_members").insert({
+          space_id: newSpaceId,
+          user_id: String(inviteUserId),
+          role: "member",
+        });
+      } else if (invite_username) {
         const { data: invitedUser } = await supabaseAdmin
           .from("users")
           .select("id")

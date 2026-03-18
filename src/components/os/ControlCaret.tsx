@@ -524,6 +524,7 @@ export function ControlCaret() {
         onSetTargetSpace={spotlight.setTargetSpace}
         onGhostAccepted={consumeWhisper}
         onGhostDismissed={dismissWhisper}
+        knownSpaces={spaces}
       />
 
       <style jsx>{`

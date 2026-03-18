@@ -50,11 +50,13 @@ function generateSeedTitle(dream: string): string {
 
 // ── Create a space with one seed item — fire and forget ──
 // The UI has ALREADY navigated. This runs in parallel.
-// inviteUsername: if provided, looks up user by display_name and adds as member.
+// inviteUsername: if provided, looks up user by display_name and adds as member (fallback).
+// inviteUserId: explicit UUID of the user to invite (primary path).
 export async function createSpace(
   dream: string,
   ownerId: string,
-  inviteUsername?: string
+  inviteUsername?: string,
+  inviteUserId?: string
 ): Promise<CreateSpaceResult> {
   const title = dream.toLowerCase().trim();
   const seedItemTitle = generateSeedTitle(dream);
@@ -78,6 +80,7 @@ export async function createSpace(
         payload: {
           title,
           invite_username: inviteUsername ?? null,
+          invite_user_id: inviteUserId ?? null,
           atmosphere: isPersonalChat ? "sanctuary" : "cyan_horizon",
         },
         actorName: null,

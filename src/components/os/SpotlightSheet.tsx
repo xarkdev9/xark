@@ -34,6 +34,7 @@ interface SpotlightSheetProps {
   onGhostAccepted: () => void;
   onGhostDismissed: () => void;
   knownContacts?: string[];
+  knownSpaces?: SpaceListItem[];
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ export function SpotlightSheet({
   onGhostAccepted,
   onGhostDismissed,
   knownContacts = [],
+  knownSpaces,
 }: SpotlightSheetProps) {
   const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [spacesLoaded, setSpacesLoaded] = useState(false);
@@ -67,6 +69,13 @@ export function SpotlightSheet({
   useEffect(() => {
     if (!isOpen || isInsideSpace) return;
     if (spacesLoaded) return;
+
+    if (knownSpaces && knownSpaces.length > 0) {
+      setSpaces(knownSpaces.slice(0, MAX_CHIPS));
+      setSpacesLoaded(true);
+      if (!targetSpaceId) onSetTargetSpace(knownSpaces[0].id);
+      return;
+    }
 
     let cancelled = false;
     fetchSpaceList().then((list) => {

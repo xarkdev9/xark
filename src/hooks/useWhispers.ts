@@ -54,20 +54,11 @@ export function useWhispers(userId: string | null): UseWhispersReturn {
     }
   }, [userId]);
 
-  // ── Mount: initial fetch + poll ──
+  // ── Mount: initial fetch only ──
   useEffect(() => {
     if (!userId) return;
 
     fetchAndMerge();
-
-    intervalRef.current = setInterval(fetchAndMerge, POLL_INTERVAL_MS);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
   }, [userId, fetchAndMerge]);
 
   // ── consumeWhisper: remove top, advance to next ──

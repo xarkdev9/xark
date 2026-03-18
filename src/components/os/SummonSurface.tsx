@@ -100,9 +100,10 @@ export function SummonSurface({ userName }: SummonSurfaceProps) {
           opacity: 0.7,
           textAlign: "center",
           position: "relative",
+          textTransform: "capitalize",
         }}
       >
-        summon co-pilot
+        Invite someone
       </span>
 
       <span
@@ -111,9 +112,10 @@ export function SummonSurface({ userName }: SummonSurfaceProps) {
           color: ink.tertiary,
           textAlign: "center",
           position: "relative",
+          textTransform: "none",
         }}
       >
-        send a link. they join your orbit.
+        Send a link. They join your chat.
       </span>
 
       {/* "link copied" whisper — fades in and out */}
