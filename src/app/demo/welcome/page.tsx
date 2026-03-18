@@ -80,7 +80,7 @@ export default function DemoWelcomePage() {
           }}
           style={{
             fontSize: "clamp(7rem, 22vw, 16rem)",
-            fontWeight: 100,
+            fontWeight: 300,
             letterSpacing: "-0.06em",
             lineHeight: 0.85,
             color: "#fff",

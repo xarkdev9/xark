@@ -228,31 +228,26 @@ export function ControlCaret() {
             transition: { type: "spring", stiffness: 500, damping: 15 }
           }}
         >
-          {/* Ultra-Light Geometric Brand Text */}
-          <span
+          {/* Glowing Geometric Brand Text */}
+          <motion.span
+            animate={{ 
+              textShadow: [
+                `0 0 6px rgba(var(--xark-accent-rgb), 0.3)`,
+                `0 0 14px rgba(var(--xark-accent-rgb), 0.8)`,
+                `0 0 6px rgba(var(--xark-accent-rgb), 0.3)`
+              ] 
+            }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
             style={{
               fontSize: "24px",
-              fontWeight: 100,
+              fontWeight: 300,
               letterSpacing: "-0.04em",
+              lineHeight: 1,
               color: ink.primary,
             }}
           >
             xark
-          </span>
-
-          {/* Action Orange Heartbeat Dot */}
-          <motion.div
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            style={{
-              width: "6px",
-              height: "6px",
-              borderRadius: "50%",
-              backgroundColor: colors.accent,
-              boxShadow: `0 0 12px ${colors.accent}`,
-              marginBottom: "4px",
-            }}
-          />
+          </motion.span>
         </motion.div>
             </div>
 

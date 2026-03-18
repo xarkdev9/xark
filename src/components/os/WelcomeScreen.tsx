@@ -76,32 +76,37 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            {/* Ultra-Light OS Text */}
-            <span
+            {/* Glowing Text Anchor */}
+            <motion.span
+              animate={{ 
+                textShadow: [
+                  `0 0 10px rgba(var(--xark-accent-rgb), 0.3)`,
+                  `0 0 24px rgba(var(--xark-accent-rgb), 0.8)`,
+                  `0 0 10px rgba(var(--xark-accent-rgb), 0.3)`
+                ] 
+              }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
               style={{
                 fontSize: "clamp(6rem, 20vw, 16rem)",
-                fontWeight: 100,
+                fontWeight: 300,
                 letterSpacing: "-0.04em",
                 lineHeight: 0.8,
                 color: ink.primary,
               }}
             >
               xark
+            </motion.span>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={phase !== "spark" ? { opacity: 1 } : {}}
+            transition={{ duration: 1, delay: 1 }}
+            style={{ textAlign: "center", marginTop: "24px" }}
+          >
+            <span style={{ fontSize: "14px", fontWeight: 400, color: ink.tertiary, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              Tap to begin
             </span>
-
-            {/* Giant Action Orange Heartbeat */}
-            <motion.div
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              style={{
-                width: "clamp(16px, 4vw, 32px)",
-                height: "clamp(16px, 4vw, 32px)",
-                borderRadius: "50%",
-                backgroundColor: colors.accent,
-                boxShadow: `0 0 24px ${colors.accent}`,
-                marginBottom: "clamp(8px, 2vw, 16px)",
-              }}
-            />
           </motion.div>
         </div>
 
