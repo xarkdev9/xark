@@ -752,11 +752,28 @@ export async function decryptMessage(
       const ciphertext = packed.slice(nonceLen + sigLen + 4);
 
       // Get sender's Sender Key (received via pairwise distribution)
+      // Check standard received-key path first
       let senderKeyData = await keyStore.getSenderKey(`${spaceId}:${senderId}`);
+      
+      // Fallback: check self-authored key (stored as spaceId only by encryptForSpace)
+      // This handles: (a) solo spaces, (b) decrypting your own echoed messages
+      if (!senderKeyData) {
+        const myUserId = await getCurrentUserId();
+        if (senderId === myUserId) {
+          senderKeyData = await keyStore.getSenderKey(spaceId);
+        }
+      }
+
       if (!senderKeyData) {
         // BUG 6 fix: retry after 2s — SK distribution may still be processing
         await new Promise(r => setTimeout(r, 2000));
         senderKeyData = await keyStore.getSenderKey(`${spaceId}:${senderId}`);
+        if (!senderKeyData) {
+          const myUserId = await getCurrentUserId();
+          if (senderId === myUserId) {
+            senderKeyData = await keyStore.getSenderKey(spaceId);
+          }
+        }
       }
       if (!senderKeyData) {
         // P2P SK recovery: request the missing key from the sender and wait
