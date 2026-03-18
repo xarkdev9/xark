@@ -1,18 +1,18 @@
 {
   "version": "2.0.0-omega",
-  "foveal_focus": "PRODUCTION HARDENING — Security audit complete (all C/H/M fixed). Voting fixed (per-item debounce, JWT guard, rollback). Unread badges live (WhatsApp-style counts on Galaxy). E2EE disabled for dev users (name_ prefix). PWA ready (offline SW, maskable icons, splash screens). Search results grouped by query. Local intelligence parked. Next: test in browser, Upstash Redis for rate limiting, first real users.",
-  "phase": "PRODUCTION_HARDENING",
+  "foveal_focus": "E2EE ENABLED — 6 security audits passed, 44 commits, 54 tests. @xark disconnected from chat (Spotlight not built yet). Next: build XarkSpotlight.tsx, simplify /api/xark, WebAuthn PRF for encrypted store.",
+  "phase": "E2EE_HARDENED",
   "algo_source": "/Users/ramchitturi/algo",
   "algo_record": "/Users/ramchitturi/algo/mar10_algo.md",
   "algo_status": "198 tests, 0 type errors, hexagonal architecture",
   "architectural_locks": {
     "typography": "Weights 300/400 only. Bold banned.",
-    "color": "Theme-aware CSS variables (--xark-white, --xark-void, --xark-accent). Four themes: hearth (flat light, default), hearth_dark (flat dark), vibe (depth light), vibe_dark (depth dark). ThemeStyle flat|depth. textColor(alpha) from theme.ts is the approved opacity method. Ink system (ink.primary/secondary/tertiary/sender) for solid readable text.",
+    "color": "Theme-aware CSS variables (--xark-white, --xark-void, --xark-accent). Four themes: hearth (flat light, default), hearth_dark (flat dark), vibe (depth light), vibe_dark (depth dark, accent #FF6B35). ThemeStyle flat|depth. textColor(alpha) from theme.ts is the approved opacity method. Ink system (ink.primary/secondary/tertiary/sender) for solid readable text. Surface system (surface.chrome/canvas/recessed) for 3-tone depth without borders. Brand color: Action Orange #FF6B35.",
     "fonts": "Inter (body, 400), Syne (display/fallback, 400), Inter (wordmark, 300). Inter is primary in globals.css.",
     "layout": "Liquid Feed / Zero-Box. Focus outlines globally purged in globals.css.",
     "engine": "heart-sort.ts is SSOT. Source: /Users/ramchitturi/algo/src/engine/heart-sort.ts. Full port complete (DecisionItem, calculateWeightedScore, addReaction, removeReaction, calculateAgreementScore, getRankedSummary).",
-    "infrastructure": "Hybrid Stack: Firebase Auth (OTP), Supabase Postgres (decision engine + E2EE key distribution + encrypted message storage), Firebase Storage (E2EE multimedia + encrypted key backups + cold ciphertext archive), Firebase FCM (push), Gemini 2.5 Flash (intelligence). Signal Protocol E2EE (Double Ratchet 1:1 + Sender Keys groups). Supabase Auth is banned.",
-    "encryption": "Signal Protocol via libsodium-wrappers-sumo. XChaCha20-Poly1305 AEAD. Ed25519 signing. Curve25519 DH. HKDF-SHA-256. Argon2id backups. Three-layer architecture: L1 (key management), L2 (message encryption, zero-knowledge), L3 (structured intelligence). Server never sees plaintext or private keys. Full spec: SECURITY.md."
+    "infrastructure": "Hybrid Stack: Firebase Auth (OTP), Supabase Postgres (decision engine + E2EE key distribution + encrypted message storage), Firebase Storage (E2EE multimedia + encrypted key backups), Firebase FCM (push), Gemini 2.5 Flash (intelligence). Signal Protocol E2EE ENABLED (Double Ratchet 1:1 + Sender Keys groups). Encrypted IndexedDB store (src/lib/store/encrypted-store.ts). Two-phase ratchet commit (encrypt → persist → send). Decrypt mutex prevents concurrent ratchet corruption. Sender Key recovery on decrypt failure. Memory Worker DELETED (replaced by encrypted store). Supabase Auth is banned.",
+    "encryption": "Signal Protocol via libsodium-wrappers-sumo. XChaCha20-Poly1305 AEAD. Ed25519 signing. Curve25519 DH. HKDF-SHA-256. Argon2id backups. Three-layer architecture: L1 (key management), L2 (message encryption, zero-knowledge), L3 (structured intelligence). Server never sees plaintext or private keys. Encrypted IndexedDB store replaces plaintext keystore. Two-phase ratchet commit for crash safety. Decrypt mutex serializes decryption to prevent ratchet brick. Full spec: SECURITY.md."
   },
   "engine_config": {
     "signals": {
@@ -50,12 +50,13 @@
     "MessagingPort": "Slack / Discord / Telegram"
   },
   "xark_behavior": {
-    "default_mode": "silent — never responds unless message contains '@xark'",
+    "default_mode": "DISCONNECTED — @xark removed from chat pipeline. XarkSpotlight.tsx not built yet. /api/xark exists but is not wired into /api/message flow.",
     "persona": "cool friend — brief, lowercase, punchy, max 20 words. warm but never corny, never robotic.",
-    "anti_cringe": "BANNED: OMG, epic, vibes, dive in, delve, mission accomplished, bestie, legendary, ✨, 🎉, 🚀, 🤖. Max ONE contextual emoji (🌮 for tacos). Zero is usually better. No exclamation points.",
+    "anti_cringe": "BANNED: OMG, epic, vibes, dive in, delve, mission accomplished, bestie, legendary, sparkle, party, rocket, robot. Max ONE contextual emoji. Zero is usually better. No exclamation points.",
     "never": ["reacts to messages", "summarizes unprompted", "inserts into banter", "proactive suggestions"],
     "one_exception": "handshake whisper at >80% consensus (automated)",
     "passive_display": "decision state subtitles, grounding constraints when asked",
+    "next_step": "Build XarkSpotlight.tsx — a dedicated component that handles @xark invocation outside the E2EE chat pipeline. Simplify /api/xark to work with Spotlight, not inline chat.",
     "social_reasoning": {
       "names_for_advocacy": "nina and raj aren't feeling italian — want to explore other options?",
       "counts_for_opposition": "3 people aren't feeling this one (never name opponents)",
@@ -71,7 +72,7 @@
     "grounding_tables": {
       "decision_items": "id, title, category, description, ownership, space_id, is_locked, agreement_score, weighted_score, locked_at",
       "tasks": "id, title, assignee_id, space_id",
-      "messages": "id, space_id, role, content, user_id, sender_name, created_at"
+      "messages": "id, space_id, role, content, user_id, sender_name, created_at, message_type (e2ee, xark, system, legacy)"
     },
     "blueprint_view": "src/components/os/Blueprint.tsx — Vertical timeline of Green-Lock settled decisions + Settlement Ledger. Fetches locked items from Supabase Postgres ordered by locked_at. 1px timeline line at opacity 0.1. ConsensusMark ignited state. Finality wash via currentColor at opacity 0.05. Framer Motion staggered entrance. Settlement strip at bottom: per-user totals, debt deltas, venmo:// and upi:// deep links as floating cyan text.",
     "claims_engine": "src/lib/claims.ts — claimItem(itemId, userId, proofValue?) manual Green-Lock. Flow-aware terminal states. Optimistic concurrency. Proof: receipt text or verbal fallback.",
@@ -96,9 +97,9 @@
     "sanctuary_bridge": "XarkChat.tsx — SANCTUARY_MAP maps sender names to space IDs. Slide-up sheet: colors.void bg, 80vh max. Foveal opacity. #000 overlay at 0.8. No blur.",
     "chat_interface": "src/components/os/XarkChat.tsx — Display-only. Receives messages and isThinking as props from Space page. Atmospheric, no bubbles/boxes. All sizes from theme.ts text tokens (text.body for messages, text.label for roles, text.timestamp inline). fovealOpacity from theme.ts. WhatsApp-dense grouping. Greeting via getGreeting(). No input, no send, no fetch — all state owned by Space page.",
     "chat_input": "src/components/os/ChatInput.tsx — Two-zone layout. Textarea+mic at 56px from bottom: auto-expanding textarea (text.body, max 6 lines), mic SVG icon (14px), top ambient line, living ambient line below text (grows with content, breathes). Attach (paperclip SVG 16px) at left 25% at caretBottom. Camera (camera SVG 16px) at left 75% at caretBottom. Void fill 56px. Controlled by Space page props.",
-    "messages_layer": "src/lib/messages.ts — fetchMessages(spaceId, { limit?, before? }) paginated (default 50, DESC reversed client-side), saveMessage, subscribeToMessages, unsubscribeFromMessages. Realtime sync. Graceful fallback.",
+    "messages_layer": "src/lib/messages.ts — fetchMessages(spaceId, { limit?, before? }) paginated (default 50, DESC reversed client-side), saveMessage, subscribeToMessages, unsubscribeFromMessages. Realtime sync. MessageType: e2ee, xark, system, legacy. Graceful fallback.",
     "auth_hook": "src/hooks/useAuth.ts — Firebase onAuthStateChanged with URL name fallback. Firebase-only. No Supabase Auth.",
-    "chat_api_endpoint": "/api/xark — check for '@xark' prefix before calling Gemini. Silent mode if absent. Parallelized pre-Gemini fetches via Promise.all (space title + grounding context + last 15 messages). Search results include search_batch + search_label (user's query text, not tool category) + search_tier metadata (gemini-local, gemini-search, or apify). Each search gets its own Decide rail via search_label. Persists @xark response messages server-side via supabaseAdmin (returns messageId). Client deduplicates via Realtime. /api/message — unified E2EE endpoint with async @xark orchestration + server-side broadcast. Same search_label logic. /api/local-action — Tier 1 mutation endpoint for admin commands (dates, rename, revert) with space_ledger audit trail.",
+    "chat_api_endpoint": "/api/xark — @xark intelligence endpoint. Currently DISCONNECTED from chat pipeline (not wired into /api/message). Exists but not invoked. Next: XarkSpotlight.tsx will invoke directly. /api/message — unified E2EE message endpoint. Atomic: encrypt → persist ciphertext → broadcast. Two-phase ratchet commit. DM routing (sanctuary detection). Outbox pattern for retry. /api/local-action — Tier 1 mutation endpoint for admin commands (dates, rename, revert) with space_ledger audit trail.",
     "chat_opacity_hierarchy": {
       "xark_response": 0.9,
       "user_message": 0.6,
@@ -111,11 +112,6 @@
     "thinking_indicator": "colors.cyan dot breathing at 4.5s + 'thinking' text.hint",
     "banned_in_chat": ["chat bubbles", "message containers", "border on messages", "bg-color on messages", "robot icons", "emojis"],
     "intelligence_orchestrator": "src/lib/intelligence/orchestrator.ts — Gemini 2.5 Flash + three-tier routing: gemini-local (casual queries via direct Gemini knowledge, ~7-10s, no Google Search tool) + gemini-search (knowledge queries via Google Search grounding, ~40-50s) + apify (travel/booking via Apify actors, 15-50s). geminiLocalSearch() returns JSON array of real places — fast tier for coffee/brunch/sunset/bars. Intent prompt exposes 8 tools: FAST (local_restaurant, local_activity, general) + SLOW (hotel, flight, restaurant, activity). PII sanitized before all calls. Stateless. OrchestratorInput → OrchestratorResult. Native JSON mode (responseMimeType: application/json). _thought_process chain of thought for smarter routing. Anti-cringe voice rules in synthesis. Implicit context extraction from grounding (budget, dietary). Conflict resolution for split groups. buildStaticPrompt()/buildDynamicPrompt() split for context caching readiness. Flash model guard.",
-    "local_agent": "src/lib/local-agent.ts — Tier 1 fast-path router. Deterministic regex matching for @xark admin commands (<1ms, zero AI, zero network). Commands: date management (set/change dates), space rename, state queries (status, who hasn't voted). Returns LocalResult with optional ledgerEntry, uiAction, whisper. tryLocalAgent() is first gate in sendMessage(). Falls through to Tier 2/3 on no match.",
-    "local_recall": "src/lib/local-recall.ts — Tier 2 recall question detection. isRecallQuestion() with tuned regex patterns (avoids false-positive against Tier 3 search commands). getRecallWhisper() returns tier-aware coaching copy (lexical vs semantic).",
-    "memory_worker": "src/workers/memory-worker.ts — Tier 2 Web Worker with MiniSearch lexical search. In-memory index with 1000-message cap, FIFO eviction, 3s debounced persistence, timestamp-based delta sync watermark, 2000-char per-message truncation. Serializes to IndexedDB via main thread.",
-    "use_local_memory": "src/hooks/useLocalMemory.ts — React hook bridging memory Worker. Initializes Worker on space open, postMessage/onmessage bridge. Exposes search(), indexMessage(), deleteBlob(). IndexedDB blob persistence (xark-memory store). SSR-safe.",
-    "local_action_api": "/api/local-action — Tier 1 mutation endpoint. JWT-validated, supabaseAdmin writes (bypasses RLS). Membership check before any mutation. Atomic: mutation + space_ledger entry. Actions: update_dates (upserts spaces.metadata + space_dates), rename_space, revert.",
     "intelligence_sanitizer": "src/lib/intelligence/sanitize.ts — PII redaction with Luhn validation. redactPII(text) + sanitizeForIntelligence(messages). Redacts credit cards, SSN, CVV, bank accounts. Applied in /api/xark before orchestrator call.",
     "tool_registry": "src/lib/intelligence/tool-registry.ts — Two tiers in registry: apify (hotel, flight, activity, restaurant, general) + gemini-search (local_restaurant, local_activity, local_general). Three execution paths in orchestrator: gemini-local (local_* tools → geminiLocalSearch, no Google Search API), gemini-search (general tool → geminiSearchGrounded, uses Google Search grounding), apify (hotel/flight/restaurant/activity → runActor). ToolDefinition has tier field. registerTool/getTool/listTools.",
     "apify_client": "src/lib/intelligence/apify-client.ts — runActor(actorId, input) → ApifyResult[]. Safe: empty when unconfigured.",
@@ -126,7 +122,12 @@
     "state_flows": "src/lib/state-flows.ts — FLOW_TERMINAL_STATES + resolveTerminalState(state, flow?) + isTerminalState(state). Shared module.",
     "space_state": "src/lib/space-state.ts — computeSpaceState(items[], tripDates?, expiresAt?) → empty/exploring/converging/ready/active/settled. Pure function. expiresAt enables auto-settle for micro-space templates.",
     "voice_input": "src/hooks/useVoiceInput.ts — on-device SpeechRecognition. Tap = dictation. Long-press = @xark prefix.",
-    "supabase_admin": "src/lib/supabase-admin.ts — Service-role client for /api/xark and /api/notify. Bypasses RLS."
+    "supabase_admin": "src/lib/supabase-admin.ts — Service-role client for /api/xark and /api/notify. Bypasses RLS.",
+    "encrypted_store": "src/lib/store/encrypted-store.ts — Encrypted IndexedDB wrapper. All E2EE keys and session state encrypted at rest. Replaces plaintext keystore. AES-GCM encryption with device-derived key.",
+    "sender_key_recovery": "src/lib/crypto/encryption-service.ts — SKRecovery: on Sender Key decrypt failure, re-fetches sender's key from server and retries. Prevents permanent group message loss.",
+    "outbox": "src/lib/store/outbox.ts — Outbox pattern for E2EE messages. Persists encrypted message before send, removes on server ACK. Retry on failure. Prevents message loss on network interruption.",
+    "dm_routing": "src/lib/messages.ts — DM routing: detects sanctuary (1:1) spaces and routes to Double Ratchet encryption instead of Sender Keys. Transparent to caller.",
+    "decrypt_mutex": "src/lib/crypto/encryption-service.ts — Serializes all decrypt operations through a mutex to prevent concurrent ratchet state corruption. Critical for reliability."
   },
   "theme_system": {
     "themes": ["hearth (light, flat)", "hearth_dark (dark, flat)", "vibe (light, depth)", "vibe_dark (dark, depth)"],
@@ -247,14 +248,27 @@
     "KeyBundleAPI": "verified",
     "OTKUploadAPI": "verified",
     "KeyFetchAPI": "verified",
-    "LocalAgent": "verified",
-    "LocalRecall": "verified",
-    "MemoryWorker": "verified",
-    "UseLocalMemory": "verified",
-    "ContextCard": "verified",
+    "EncryptedStore": "verified",
+    "SKRecovery": "verified",
+    "Outbox": "verified",
+    "DMRouting": "verified",
+    "DecryptMutex": "verified",
     "LedgerPill": "verified",
-    "LocalActionAPI": "verified",
-    "SpaceLedgerMigration": "verified"
+    "LocalActionAPI": "modified",
+    "SpaceLedgerMigration": "verified",
+    "LocalAgent": "deleted — parked, not wired",
+    "LocalRecall": "deleted",
+    "MemoryWorker": "deleted",
+    "UseLocalMemory": "deleted",
+    "ContextCard": "deleted",
+    "EnclaveTunnel": "deleted",
+    "GuestLinker": "deleted — moved to dump",
+    "DeviceLinker": "deleted — moved to dump",
+    "LazyRotator": "deleted — moved to dump",
+    "CrdtStore": "deleted — moved to dump",
+    "CrdtTypes": "deleted — moved to dump",
+    "GuestVoteAPI": "deleted",
+    "DeviceLinkAPI": "deleted — moved to dump"
   },
   "port": 3000
 }
