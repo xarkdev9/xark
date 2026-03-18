@@ -51,8 +51,11 @@ export function ConsensusBanner({ spaceId }: ConsensusBannerProps) {
     fetchActiveDeadline();
 
     // Realtime subscription — react to decision_items changes in this space
+    // Unique channel name per effect invocation prevents collision when user
+    // rapidly switches spaces (removeChannel is async — old channel may still
+    // be "leaving" when user returns to the same space).
     const channel = supabase
-      .channel(`consensus-banner:${spaceId}`)
+      .channel(`consensus-banner:${spaceId}:${Date.now()}`)
       .on(
         "postgres_changes",
         {
