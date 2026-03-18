@@ -371,6 +371,67 @@ function SpacePageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spaceId, e2ee.available, resolvedUserId]);
 
+  // ── Broadcast reconciliation — catch missed messages ──
+  // Supabase Broadcast is fire-and-forget WebSocket. If a user's Wi-Fi drops
+  // for even 2 seconds, they miss broadcasts permanently. This loop polls
+  // every 30s and on tab-visible to detect and fill gaps.
+  useEffect(() => {
+    if (!spaceId || authLoading) return;
+
+    const lastSeenRef = { current: Date.now() };
+
+    const reconcile = async () => {
+      try {
+        const latest = await fetchMessages(spaceId, { limit: 1 });
+        if (latest.length === 0) return;
+
+        const latestTs = new Date(latest[0].created_at).getTime();
+
+        // If the latest server message is newer than our last seen, we missed something
+        if (latestTs > lastSeenRef.current) {
+          console.log('[xark-reconcile] Gap detected, fetching missing messages');
+          const missing = await fetchMessages(spaceId, { limit: 20 });
+          // Merge missing messages into state (deduplicate by id)
+          setMessages(prev => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const newMsgs = missing.filter(m => !existingIds.has(m.id))
+              .filter(m => m.message_type !== 'sender_key_dist')
+              .map(m => ({
+                id: m.id,
+                role: m.role as "user" | "xark" | "system",
+                content: m.content ?? '',
+                timestamp: new Date(m.created_at).getTime(),
+                senderName: m.sender_name ?? undefined,
+                messageType: m.message_type ?? 'legacy',
+              }));
+            if (newMsgs.length === 0) return prev;
+            console.log(`[xark-reconcile] Found ${newMsgs.length} missed messages`);
+            return [...prev, ...newMsgs].sort(
+              (a, b) => a.timestamp - b.timestamp
+            );
+          });
+        }
+
+        lastSeenRef.current = Date.now();
+      } catch {
+        // Silent — reconciliation is best-effort
+      }
+    };
+
+    const interval = setInterval(reconcile, 30000); // Every 30 seconds
+
+    // Also reconcile on visibility change (user returns to tab)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') reconcile();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [spaceId, authLoading]);
+
   // ── Persist ledger entry via /api/local-action ──
   const persistLedger = useCallback(async (entry: LedgerEntry) => {
     const token = getSupabaseToken();
