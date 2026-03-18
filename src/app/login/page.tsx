@@ -288,12 +288,11 @@ export default function LoginPage() {
                       </p>
                       {usePhoneAuth ? (
                       <motion.div
-                        className="flex items-center"
+                        className="flex items-center w-full"
                         style={{
-                          background: surface.recessed,
-                          borderRadius: "99px",
-                          padding: "16px 24px",
-                          border: `2px solid ${isPhoneFocused ? colors.accent : "transparent"}`,
+                          background: "transparent",
+                          padding: "16px 0",
+                          borderBottom: `2px solid ${isPhoneFocused ? colors.accent : ink.tertiary}`,
                           transition: `border ${timing.transition} ease`,
                         }}
                       >
@@ -312,11 +311,11 @@ export default function LoginPage() {
                           disabled={isBusy}
                           className="flex-1 bg-transparent outline-none w-full"
                           style={{
-                            fontSize: "18px",
-                            fontWeight: 500,
+                            fontSize: "32px",
+                            fontWeight: 400,
                             color: ink.primary,
                             caretColor: colors.accent,
-                            letterSpacing: "0.02em",
+                            letterSpacing: "0.04em",
                           }}
                         />
 
@@ -420,20 +419,21 @@ export default function LoginPage() {
                             onChange={(e) => handleOtpChange(i, e.target.value)}
                             onKeyDown={(e) => handleOtpKeyDown(i, e)}
                             disabled={isBusy}
-                            whileFocus={{ scale: 1.05, borderColor: colors.accent }}
+                            whileFocus={{ scale: 1.05 }}
                             style={{
                               width: "100%",
                               aspectRatio: "1/1.2",
-                              background: surface.recessed,
-                              borderRadius: "16px",
-                              border: `2px solid transparent`,
-                              fontSize: "24px",
-                              fontWeight: 600,
+                              background: "transparent",
+                              border: "none",
+                              borderBottom: `2px solid ${digit ? colors.accent : ink.tertiary}`,
+                              borderRadius: "0",
+                              fontSize: "36px",
+                              fontWeight: 400,
                               color: ink.primary,
                               textAlign: "center",
                               caretColor: colors.accent,
                               outline: "none",
-                              transition: `background ${timing.transition} ease`,
+                              transition: `all ${timing.transition} ease`,
                             }}
                           />
                         ))}
@@ -454,12 +454,11 @@ export default function LoginPage() {
                         What do your friends call you?
                       </p>
                       <motion.div
-                        className="flex items-center"
+                        className="flex items-center w-full"
                         style={{
-                          background: surface.recessed,
-                          borderRadius: "99px",
-                          padding: "16px 24px",
-                          border: `2px solid ${isNameFocused ? colors.accent : "transparent"}`,
+                          background: "transparent",
+                          padding: "16px 0",
+                          borderBottom: `2px solid ${isNameFocused ? colors.accent : ink.tertiary}`,
                           transition: `border ${timing.transition} ease`,
                         }}
                       >
@@ -475,8 +474,8 @@ export default function LoginPage() {
                           autoCapitalize="words"
                           className="flex-1 bg-transparent outline-none w-full"
                           style={{
-                            fontSize: "18px",
-                            fontWeight: 500,
+                            fontSize: "32px",
+                            fontWeight: 400,
                             color: ink.primary,
                             caretColor: colors.accent,
                           }}

@@ -7,7 +7,7 @@ type Phase = "spark" | "collision" | "reveal" | "idle";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 
-import { ink } from "@/lib/theme";
+import { ink, colors } from "@/lib/theme";
 
 interface WelcomeScreenProps {
   onBegin: () => void;
@@ -63,9 +63,9 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
             animate={phase !== "spark" ? { y: 0, opacity: 1, skewY: 0 } : {}}
             transition={{ duration: 1.2, ease: EASE_OUT_EXPO, delay: 0.2 }}
             style={{
-              fontSize: "clamp(8rem, 22vw, 18rem)",
-              fontWeight: 100,
-              letterSpacing: "-0.06em",
+              fontSize: "clamp(6rem, 20vw, 16rem)",
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
               lineHeight: 0.8,
               color: ink.primary,
               textAlign: "center",
@@ -135,13 +135,16 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
           onClick={onBegin}
           style={{
             fontSize: "1rem",
-            fontWeight: 300,
-            letterSpacing: "0.4em",
-            color: ink.primary,
+            fontWeight: 600,
+            letterSpacing: "0.1em",
+            color: "#FFFFFF",
+            backgroundColor: colors.accent,
+            borderRadius: "99px",
             cursor: "pointer",
-            padding: "16px 32px",
+            padding: "16px 48px",
             transition: "all 0.5s ease",
             WebkitTapHighlightColor: "transparent",
+            boxShadow: "0 8px 32px rgba(255, 69, 0, 0.3)",
           }}
         >
           Begin
