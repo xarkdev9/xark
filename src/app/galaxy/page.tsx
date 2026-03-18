@@ -18,9 +18,51 @@ import { Avatar } from "@/components/os/Avatar";
 import { isPlaygroundMode, getPlaygroundSpaces, isPlaygroundSpace } from "@/lib/playground";
 import { fetchPersonalChats } from "@/lib/awareness";
 import type { PersonalChat } from "@/lib/awareness";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseToken } from "@/lib/supabase";
+import { SummonSurface } from "@/components/os/SummonSurface";
 
 type GalaxyTab = "people" | "plans" | "memories";
+
+// ── Summon Another — inline nudge below PeopleDock ──
+function SummonAnother({ userName }: { userName: string }) {
+  const handleSummon = useCallback(async () => {
+    try {
+      const token = getSupabaseToken();
+      const res = await fetch("/api/summon", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) return;
+      const { url } = await res.json();
+      if (!url) return;
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title: "xark", text: `${userName} wants to plan with you`, url }).catch(() => {});
+      } else {
+        await navigator.clipboard.writeText(url).catch(() => {});
+      }
+    } catch {
+      // silent
+    }
+  }, [userName]);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleSummon}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSummon(); }}
+      className="outline-none cursor-pointer"
+      style={{ textAlign: "center", padding: "20px 24px 8px" }}
+    >
+      <span style={{ ...text.hint, color: ink.tertiary }}>
+        summon another
+      </span>
+    </div>
+  );
+}
 
 // ── Send icon ──
 function SendIcon({ color, size = 24 }: { color: string; size?: number }) {
@@ -339,32 +381,16 @@ function GalaxyContent() {
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             >
               {spacesCount === 0 && knownContacts.length === 0 ? (
-                <div style={{
-                  padding: "32px 24px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px"
-                }}>
-                  <span style={{
-                    ...text.subtitle,
-                    color: ink.primary,
-                    opacity: 0.7
-                  }}>
-                    this is your galaxy.
-                  </span>
-                  <span style={{
-                    ...text.hint,
-                    color: ink.tertiary
-                  }}>
-                    tap the xark logo below to search restaurants, plan trips, or start a group.
-                  </span>
-                </div>
+                <SummonSurface userName={userName} />
               ) : (
-                <PeopleDock
-                  userId={userId}
-                  userName={userName}
-                  onPersonTap={handlePersonTap}
-                />
+                <>
+                  <PeopleDock
+                    userId={userId}
+                    userName={userName}
+                    onPersonTap={handlePersonTap}
+                  />
+                  <SummonAnother userName={userName} />
+                </>
               )}
             </motion.div>
           )}
