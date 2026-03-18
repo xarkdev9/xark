@@ -64,7 +64,7 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
             transition={{ duration: 1.2, ease: EASE_OUT_EXPO, delay: 0.2 }}
             style={{
               fontSize: "clamp(6rem, 20vw, 16rem)",
-              fontWeight: 800,
+              fontWeight: 100,
               letterSpacing: "-0.04em",
               lineHeight: 0.8,
               color: ink.primary,

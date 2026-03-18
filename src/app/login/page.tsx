@@ -20,11 +20,15 @@ type Screen = "brand" | "field";
 type FieldStep = "phone" | "otp" | "name" | "photo";
 type PhoneAction = "idle" | "sending" | "verifying";
 
-const COUNTRY_CODES = [
+const COUNTRY_CODES: { code: string; name: string; short: string }[] = [
   { code: "+1", name: "united states", short: "us" },
   { code: "+91", name: "india", short: "in" },
   { code: "+44", name: "united kingdom", short: "uk" },
   { code: "+61", name: "australia", short: "au" },
+  { code: "+49", name: "germany", short: "de" },
+  { code: "+33", name: "france", short: "fr" },
+  { code: "+81", name: "japan", short: "jp" },
+  { code: "+86", name: "china", short: "cn" },
 ];
 
 function detectCountryCode(): string {
@@ -94,6 +98,20 @@ export default function LoginPage() {
   const handleBegin = useCallback(() => setScreen("field"), []);
 
   // ── Phone: Send OTP ──
+  const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    // Auto-extract country code if user autofills a complete international number
+    if (val.startsWith("+")) {
+      const match = COUNTRY_CODES.find(c => val.startsWith(c.code));
+      if (match) {
+        setCountryCode(match.code);
+        val = val.substring(match.code.length).trim();
+      }
+    }
+    setPhoneInput(val);
+    setAuthError("");
+  };
+
   const sendOtp = useCallback(async () => {
     if (!auth || !phoneInput.trim()) return;
     setAuthError("");
@@ -296,14 +314,30 @@ export default function LoginPage() {
                           transition: `border ${timing.transition} ease`,
                         }}
                       >
-                        <span style={{ fontSize: "18px", color: ink.primary, marginRight: "12px", fontWeight: 500 }}>
-                          {countryCode}
-                        </span>
+                        <select
+                          value={countryCode}
+                          onChange={(e) => setCountryCode(e.target.value)}
+                          className="bg-transparent outline-none appearance-none"
+                          style={{
+                            fontSize: "clamp(24px, 6vw, 32px)",
+                            color: ink.primary,
+                            marginRight: "12px",
+                            fontWeight: 400,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {COUNTRY_CODES.map((c) => (
+                            <option key={c.short} value={c.code}>
+                              {c.code}
+                            </option>
+                          ))}
+                        </select>
                         <input
                           ref={inputRef}
                           type="tel"
                           value={phoneInput}
-                          onChange={(e) => { setPhoneInput(e.target.value); setAuthError(""); }}
+                          autoComplete="tel-national"
+                          onChange={handlePhoneInputChange}
                           onFocus={() => setIsPhoneFocused(true)}
                           onBlur={() => setIsPhoneFocused(false)}
                           onKeyDown={(e) => { if (e.key === "Enter" && phoneReady && !isBusy) sendOtp(); }}
@@ -311,11 +345,12 @@ export default function LoginPage() {
                           disabled={isBusy}
                           className="flex-1 bg-transparent outline-none w-full"
                           style={{
-                            fontSize: "32px",
+                            fontSize: "clamp(24px, 6vw, 32px)",
                             fontWeight: 400,
                             color: ink.primary,
                             caretColor: colors.accent,
                             letterSpacing: "0.04em",
+                            minWidth: 0,
                           }}
                         />
 
@@ -427,12 +462,13 @@ export default function LoginPage() {
                               border: "none",
                               borderBottom: `2px solid ${digit ? colors.accent : ink.tertiary}`,
                               borderRadius: "0",
-                              fontSize: "36px",
+                              fontSize: "clamp(28px, 8vw, 36px)",
                               fontWeight: 400,
                               color: ink.primary,
                               textAlign: "center",
                               caretColor: colors.accent,
                               outline: "none",
+                              padding: "0",
                               transition: `all ${timing.transition} ease`,
                             }}
                           />
@@ -474,10 +510,11 @@ export default function LoginPage() {
                           autoCapitalize="words"
                           className="flex-1 bg-transparent outline-none w-full"
                           style={{
-                            fontSize: "32px",
+                            fontSize: "clamp(24px, 6vw, 32px)",
                             fontWeight: 400,
                             color: ink.primary,
                             caretColor: colors.accent,
+                            minWidth: 0,
                           }}
                         />
                         <AnimatePresence>
