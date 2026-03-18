@@ -211,7 +211,7 @@ export async function POST(req: Request) {
 
       // Invite another user explicitly by precise ID or fallback to display_name match
       const inviteUserId = payload?.invite_user_id;
-      if (inviteUserId) {
+      if (inviteUserId && String(inviteUserId).length > 0) {
         await supabaseAdmin.from("space_members").insert({
           space_id: newSpaceId,
           user_id: String(inviteUserId),

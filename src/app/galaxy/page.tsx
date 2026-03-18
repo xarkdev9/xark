@@ -162,7 +162,7 @@ function GalaxyContent() {
     setIsCreating(true);
     const title = `${userName} & ${contact.display_name}`;
     try {
-      const { spaceId } = await createSpace(title, userId, contact.display_name, contact.id);
+      const { spaceId } = await createSpace(title, userId, contact.display_name, contact.id || undefined);
       if (!spaceId) throw new Error("No spaceId returned");
       setShowUserPicker(false);
       setShowNewSheet(false);
@@ -467,7 +467,9 @@ function GalaxyContent() {
                               // If they're on Xark, they'll be matched by display_name
                               // If not, the space is created and they can join via invite
                               const firstName = contactName.split(" ")[0].toLowerCase();
-                              handleNewChat({ id: "", display_name: firstName });
+                              // Try to match against known Xark users by display_name
+                              const matched = allUsers.find(u => u.display_name?.toLowerCase() === firstName);
+                              handleNewChat({ id: matched?.id ?? "", display_name: firstName });
                             }
                           } catch {
                             // User cancelled or API not supported
