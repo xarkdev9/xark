@@ -39,7 +39,25 @@ export interface EncryptedEnvelope {
 const x3dhSessionMeta = new Map<string, {
   ephemeralPub: string;  // base64
   identityPub: string;   // base64
+  otkId?: string;        // The OTK ID consumed by the initiator
 }>();
+
+// ── Concurrency Mutex (Double-send mitigation) ──
+const encryptLocks = new Map<string, Promise<void>>();
+async function withEncryptLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  let unlock: () => void;
+  const waitPromise = new Promise<void>(resolve => { unlock = resolve; });
+  const previous = encryptLocks.get(key) ?? Promise.resolve();
+  
+  encryptLocks.set(key, previous.then(() => waitPromise).catch(() => waitPromise));
+  await previous.catch(() => {});
+  
+  try {
+    return await fn();
+  } finally {
+    unlock!(); // Non-null assertion is safe because promise exec runs synchronously
+  }
+}
 
 // ── Identity Key Compatibility Layer ──
 
@@ -109,7 +127,7 @@ async function getCurrentUserId(): Promise<string> {
  */
 function buildHeaderEnvelope(
   encryptedHeader: Uint8Array,
-  x3dh?: { identityKey: string; ephemeralKey?: string }
+  x3dh?: { identityKey: string; ephemeralKey?: string; otkId?: string }
 ): string {
   const envelope: Record<string, unknown> = {
     eh: toBase64(encryptedHeader),  // encrypted header bytes
@@ -127,7 +145,7 @@ function buildHeaderEnvelope(
  */
 function parseHeaderEnvelope(ratchetHeaderB64: string): {
   encryptedHeader: Uint8Array;
-  x3dh?: { identityKey?: string; ephemeralKey?: string };
+  x3dh?: { identityKey?: string; ephemeralKey?: string; otkId?: string };
 } {
   const raw = fromBase64(ratchetHeaderB64);
   const obj = JSON.parse(new TextDecoder().decode(raw));
@@ -179,6 +197,7 @@ async function getOrEstablishSession(
   x3dhSessionMeta.set(metaKey, {
     ephemeralPub: toBase64(ephemeralKey.publicKey),
     identityPub: toBase64(identity.publicKey),
+    otkId: peerBundle.oneTimePreKeyId,
   });
 
   return session;
@@ -253,12 +272,13 @@ export async function distributeSenderKey(
       // Build header envelope with X3DH metadata for first-contact sessions
       const metaKey = `${member.user_id}:${member.device_id}`;
       const meta = x3dhSessionMeta.get(metaKey);
-      let x3dh: { identityKey: string; ephemeralKey?: string } | undefined;
+      let x3dh: { identityKey: string; ephemeralKey?: string; otkId?: string } | undefined;
 
       if (meta) {
         x3dh = {
           identityKey: meta.identityPub,
           ephemeralKey: meta.ephemeralPub,
+          otkId: meta.otkId,
         };
         // Clean up — metadata only needed for first message
         x3dhSessionMeta.delete(metaKey);
@@ -406,6 +426,8 @@ export async function processSenderKeyDistribution(
 
     // Extract X3DH metadata from envelope
     let peerIdentityEd25519: Uint8Array | null = null;
+    let myOneTimePreKey: RawKeyPair | null = null;
+
     if (x3dhMeta?.identityKey) {
       peerIdentityEd25519 = fromBase64(x3dhMeta.identityKey);
     }
@@ -421,13 +443,24 @@ export async function processSenderKeyDistribution(
         throw new Error('[xark-e2ee] Missing X3DH ephemeral key in distribution message');
       }
 
+      const otkId = x3dhMeta?.otkId;
+      if (otkId) {
+        myOneTimePreKey = await keyStore.getOneTimePreKey(otkId);
+      }
+
       const sharedSecret = x3dhRespond(
         { publicKey: curve25519Public, privateKey: curve25519Private },
         signedPreKey,
-        null, // OTK lookup skipped for SK distribution — simplified for v1
+        myOneTimePreKey,
         peerIdentityCurve,
         peerEphemeralPublic
       );
+
+      // Responder OTK cleanup
+      if (otkId && myOneTimePreKey) {
+        await keyStore.deleteOneTimePreKey(otkId);
+        console.log(`[xark-e2ee] Receiver cleaned up consumed OTK ${otkId}`);
+      }
 
       const myRatchetKey = generateDHKeyPair();
       session = initSessionAsResponder(sharedSecret, myRatchetKey);
@@ -459,7 +492,8 @@ export async function encryptForSanctuary(
   peerId: string,
   peerDeviceId: number
 ): Promise<EncryptedEnvelope> {
-  await initCrypto();
+  return withEncryptLock(`sanc:${peerId}:${peerDeviceId}`, async () => {
+    await initCrypto();
 
   const payload: DecryptedMessage = {
     text,
@@ -493,7 +527,7 @@ export async function encryptForSanctuary(
   packed.set(ciphertext, nonce.length);
 
   // Build header envelope with X3DH metadata for first message
-  let x3dh: { identityKey: string; ephemeralKey?: string } | undefined;
+  let x3dh: { identityKey: string; ephemeralKey?: string; otkId?: string } | undefined;
   if (isNewSession) {
     const metaKey = `${peerId}:${peerDeviceId}`;
     const meta = x3dhSessionMeta.get(metaKey);
@@ -501,6 +535,7 @@ export async function encryptForSanctuary(
       x3dh = {
         identityKey: meta.identityPub,
         ephemeralKey: meta.ephemeralPub,
+        otkId: meta.otkId,
       };
       x3dhSessionMeta.delete(metaKey);
     } else {
@@ -516,6 +551,7 @@ export async function encryptForSanctuary(
     recipientId: peerId,
     recipientDeviceId: peerDeviceId,
   };
+  }); // End withEncryptLock
 }
 
 /** Encrypt a message for a group space (Sender Key) */
@@ -523,7 +559,8 @@ export async function encryptForSpace(
   text: string,
   spaceId: string
 ): Promise<EncryptedEnvelope> {
-  await initCrypto();
+  return withEncryptLock(`space:${spaceId}`, async () => {
+    await initCrypto();
 
   const payload: DecryptedMessage = {
     text,
@@ -547,7 +584,8 @@ export async function encryptForSpace(
       await distributeSenderKey(spaceId, senderKey);
     } catch (err) {
       console.warn('[e2ee] Sender Key distribution failed:', err);
-      // Continue anyway — we can still encrypt, recipients will request key later
+      // BUG FIX: Silent SK Dropping — abort the send entirely so we don't end up with undecryptable messages
+      throw new Error(`Sender Key distribution failed. Aborting send to maintain E2EE integrity. ${err}`);
     }
   } else {
     senderKey = deserializeSenderKey(senderKeyData);
@@ -597,6 +635,7 @@ export async function encryptForSpace(
     recipientId: '_group_',
     recipientDeviceId: 0,
   };
+  }); // End withEncryptLock
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -677,6 +716,8 @@ export async function decryptMessage(
 
       // Extract X3DH metadata from envelope
       let peerIdentityEd25519: Uint8Array | null = null;
+      let myOneTimePreKey: RawKeyPair | null = null;
+
       if (x3dhMeta?.identityKey) {
         peerIdentityEd25519 = fromBase64(x3dhMeta.identityKey);
       }
@@ -693,13 +734,24 @@ export async function decryptMessage(
           throw new Error('[xark-e2ee] Missing X3DH ephemeral key — cannot establish session');
         }
 
+        const otkId = x3dhMeta?.otkId;
+        if (otkId) {
+          myOneTimePreKey = await keyStore.getOneTimePreKey(otkId);
+        }
+
         const sharedSecret = x3dhRespond(
           { publicKey: curve25519Public, privateKey: curve25519Private },
           signedPreKey,
-          null, // OTK handling simplified for v1
+          myOneTimePreKey, // Now using the explicit OTK 
           peerIdentityCurve,
           peerEphemeralPublic
         );
+
+        // Responder OTK cleanup
+        if (otkId && myOneTimePreKey) {
+          await keyStore.deleteOneTimePreKey(otkId);
+          console.log(`[xark-e2ee] Receiver cleaned up consumed OTK ${otkId}`);
+        }
 
         const myRatchetKey = generateDHKeyPair();
         session = initSessionAsResponder(sharedSecret, myRatchetKey);

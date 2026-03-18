@@ -112,11 +112,11 @@ export async function fetchPeerKeyBundle(
     oneTimePreKeyId: row.otk_id ?? undefined,
   };
 
-  // BUG 3 fix: consume the OTK locally after use
-  if (row.otk_id) {
-    await keyStore.deleteOneTimePreKey(row.otk_id);
-    console.log(`[xark-e2ee] Consumed OTK ${row.otk_id}`);
-  }
+  // BUG 3 fix: Server consumes the OTK atomically via DELETE FOR UPDATE SKIP LOCKED.
+  // The local deletion here was a P1 BUG ("Phantom OTK deletion") because the initiator
+  // was trying to delete the RESPONDER'S otk_id from their own local store.
+  // We removed `keyStore.deleteOneTimePreKey(row.otk_id)` here. The responder is now
+  // responsible for deleting their own OTK locally upon receiving the first message.
 
   return bundle;
 }
@@ -287,9 +287,18 @@ export function subscribeToMemberChanges(
       const leftUserId = (payload.old as Record<string, string>)?.user_id;
       if (!leftUserId) return;
 
-      // Leader election: lowest alphabetical user_id among remaining members
-      const remaining = currentMembers.filter(m => m !== leftUserId).sort();
-      const isLeader = remaining.length > 0 && remaining[0] === myUserId;
+      // Fetch fresh member list to avoid stale closure trap
+      const { data: currentDbMembers } = await supabase
+        .from('space_members')
+        .select('user_id')
+        .eq('space_id', spaceId);
+      
+      const remainingIds = (currentDbMembers || [])
+        .map(m => m.user_id)
+        .filter(id => id !== leftUserId)
+        .sort();
+
+      const isLeader = remainingIds.length > 0 && remainingIds[0] === myUserId;
 
       if (isLeader) {
         console.log(`[xark-e2ee] I am SK rotation leader for ${spaceId}`);
