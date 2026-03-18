@@ -57,8 +57,8 @@ function SummonAnother({ userName }: { userName: string }) {
       className="outline-none cursor-pointer"
       style={{ textAlign: "center", padding: "20px 24px 8px" }}
     >
-      <span style={{ ...text.hint, color: ink.tertiary }}>
-        summon another
+      <span style={{ ...text.hint, color: ink.tertiary, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+        Summon another
       </span>
     </div>
   );
@@ -275,28 +275,8 @@ function GalaxyContent() {
   }, [activeTab]);
 
   return (
-    <div className="relative" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column", background: surface.chrome }}>
-      {/* ── Spectrum Wash — warmer, more present ── */}
-      <div
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background: [
-            `radial-gradient(ellipse 70% 50% at 25% 20%, rgba(var(--xark-accent-rgb), 0.06) 0%, transparent 60%)`,
-            `radial-gradient(ellipse 60% 50% at 75% 70%, rgba(var(--xark-amber-rgb), 0.04) 0%, transparent 50%)`,
-          ].join(", "),
-        }}
-      />
-
-      {/* ── Mesh Pulse — slow, living ── */}
-      <div
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background: `radial-gradient(ellipse 80% 60% at 50% 40%, rgba(var(--xark-white-rgb), 0.04) 0%, transparent 100%)`,
-          animation: `meshPulse ${timing.meshPulse} ease-in-out infinite`,
-        }}
-      />
-
-      {/* ── Tab header — chrome surface ── */}
+    <div className="relative" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column", background: "transparent" }}>
+      {/* ── Tab header — glass surface ── */}
       <div
         className="relative z-10 px-6"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)", flexShrink: 0, paddingBottom: "8px" }}
@@ -319,10 +299,13 @@ function GalaxyContent() {
                 style={{
                   ...text.label,
                   position: "relative",
-                  color: isActive ? colors.cyan : colors.white,
-                  opacity: isActive ? 0.85 : 0.25,
-                  transition: `opacity 0.4s ease, color 0.4s ease`,
+                  color: isActive ? ink.primary : ink.tertiary,
+                  opacity: isActive ? 1 : 0.6,
+                  fontWeight: isActive ? 600 : 400,
+                  fontSize: isActive ? "20px" : "18px",
+                  transition: `all 0.4s ease`,
                   paddingBottom: "10px",
+                  textTransform: "capitalize",
                 }}
               >
                 {tab}
@@ -331,33 +314,32 @@ function GalaxyContent() {
                   style={{
                     position: "absolute",
                     bottom: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "2px",
-                    background: `linear-gradient(90deg, transparent 5%, ${colors.cyan} 50%, transparent 95%)`,
-                    opacity: isActive ? 0.7 : 0,
-                    transition: "opacity 0.4s ease",
-                  }}
-                />
-                {/* Soft halo behind active tab */}
-                <span
-                  style={{
-                    position: "absolute",
-                    bottom: "-2px",
-                    left: "-20%",
-                    width: "140%",
-                    height: "8px",
-                    background: `radial-gradient(ellipse at center, rgba(var(--xark-accent-rgb), 0.25) 0%, transparent 70%)`,
+                    left: "10%",
+                    width: "80%",
+                    height: "3px",
+                    borderRadius: "3px",
+                    background: ink.primary,
                     opacity: isActive ? 1 : 0,
                     transition: "opacity 0.4s ease",
-                    pointerEvents: "none",
                   }}
                 />
               </span>
             );
           })}
           </div>
-          <div style={{ marginLeft: "auto", paddingBottom: "10px" }}>
+          <div style={{ marginLeft: "auto", paddingBottom: "10px", display: "flex", gap: "16px", alignItems: "center" }}>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => { setShowNewSheet(true); }}
+              onKeyDown={(e) => { if (e.key === "Enter") setShowNewSheet(true); }}
+              className="cursor-pointer outline-none"
+              style={{ color: colors.accent }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </div>
             <UserMenu userName={userName} userId={userId} />
           </div>
         </div>
@@ -428,12 +410,11 @@ function GalaxyContent() {
 
       {/* ── Tab-aware dream input ── */}
       <div
-        className="fixed inset-x-0 z-[20]"
+        className="fixed inset-x-0 z-[20] glass-sheet"
         style={{
-          bottom: "56px",
-          background: `linear-gradient(to top, ${surface.canvas}, ${surface.canvas} 80%, transparent)`,
-          paddingTop: "8px",
-          paddingBottom: "12px",
+          bottom: 0,
+          paddingTop: "24px",
+          paddingBottom: "env(safe-area-inset-bottom, 32px)",
         }}
       >
         <div className="mx-auto px-6" style={{ maxWidth: layout.maxWidth }}>
@@ -495,8 +476,8 @@ function GalaxyContent() {
                     }}
                   >
                     <Avatar name={name} size={32} />
-                    <span style={{ fontSize: "15px", fontWeight: 400, color: ink.primary }}>
-                      start chat with {name}
+                    <span style={{ fontSize: "16px", fontWeight: 500, color: ink.primary }}>
+                      Start chat with {name}
                     </span>
                     <span style={{ marginLeft: "auto", fontSize: "14px", color: ink.tertiary }}>
                       →
@@ -511,8 +492,8 @@ function GalaxyContent() {
           <div className="flex items-end gap-3">
             {/* Persistent ghost prefix on People tab */}
             {mounted && activeTab === "people" && inputFocused && knownContacts.length > 0 && (
-              <span style={{ fontSize: "18px", fontWeight: 300, color: ink.tertiary, flexShrink: 0, marginBottom: "2px" }}>
-                chat:
+              <span style={{ fontSize: "18px", fontWeight: 400, color: ink.secondary, flexShrink: 0, marginBottom: "2px" }}>
+                Chat:
               </span>
             )}
 
@@ -529,8 +510,8 @@ function GalaxyContent() {
                 }}
                 placeholder={
                   activeTab === "people"
-                    ? "type a name to start chatting..."
-                    : "a trip, a dinner, a plan..."
+                    ? "Type a name to start chatting..."
+                    : "A trip, a dinner, a plan..."
                 }
                 enterKeyHint="send"
                 disabled={isCreating}
@@ -543,15 +524,14 @@ function GalaxyContent() {
                 className="w-full bg-transparent outline-none resize-none"
                 style={{
                   fontSize: "18px",
-                  fontWeight: 300,
+                  fontWeight: 400,
                   letterSpacing: "0.02em",
-                  color: colors.white,
-                  caretColor: colors.cyan,
+                  color: ink.primary,
+                  caretColor: colors.accent,
                   opacity: isCreating ? 0.3 : 1,
                   lineHeight: 1.5,
                   maxHeight: "100px",
                   overflow: "hidden",
-                  textShadow: dream.length > 0 ? "0 2px 12px rgba(20,20,20,0.08)" : "none",
                 }}
               />
             </div>
@@ -571,7 +551,7 @@ function GalaxyContent() {
                 onMouseEnter={(e) => { if (!isCreating) e.currentTarget.style.opacity = "0.9"; }}
                 onMouseLeave={(e) => { if (!isCreating) e.currentTarget.style.opacity = "0.6"; }}
               >
-                <SendIcon color={colors.cyan} />
+                <SendIcon color={colors.accent} size={28} />
               </span>
             )}
           </div>
@@ -587,41 +567,11 @@ function GalaxyContent() {
                 animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
               }}
             >
-              tap here and type a name to start chatting
+              Tap here and type a name to start chatting
             </p>
           )}
         </div>
       </div>
-
-      {/* ── Floating "+" button ── */}
-      <motion.div
-        className="fixed z-[25]"
-        style={{ bottom: "130px", right: "20px" }}
-        whileTap={{ scale: 0.9 }}
-      >
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => { setShowNewSheet(true); }}
-          onKeyDown={(e) => { if (e.key === "Enter") setShowNewSheet(true); }}
-          className="outline-none cursor-pointer"
-          style={{
-            width: "48px",
-            height: "48px",
-            borderRadius: "50%",
-            background: "#FF6B35",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 4px 16px rgba(255,107,53,0.35)",
-          }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </div>
-      </motion.div>
 
       {/* ── New chat/group sheet ── */}
       <AnimatePresence>
@@ -660,7 +610,7 @@ function GalaxyContent() {
                         <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                         <circle cx="12" cy="7" r="4" />
                       </svg>
-                      <span style={{ ...text.body, color: ink.primary }}>new chat</span>
+                      <span style={{ ...text.body, color: ink.primary }}>New Chat</span>
                     </div>
                     <div
                       role="button"
@@ -675,7 +625,7 @@ function GalaxyContent() {
                         <circle cx="9" cy="7" r="4" />
                         <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
                       </svg>
-                      <span style={{ ...text.body, color: ink.primary }}>new group</span>
+                      <span style={{ ...text.body, color: ink.primary }}>New Group</span>
                     </div>
                   </div>
                 )}
@@ -717,13 +667,13 @@ function GalaxyContent() {
                           <circle cx="12" cy="10" r="3" />
                           <path d="M7 20v-1a5 5 0 0110 0v1" />
                         </svg>
-                        <span style={{ ...text.body, color: "#FF6B35" }}>pick from contacts</span>
+                        <span style={{ ...text.body, color: colors.accent, fontWeight: 500 }}>Pick from Contacts</span>
                       </div>
                     )}
 
-                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "8px", marginTop: "4px" }}>on xark</p>
+                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "8px", marginTop: "4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>On Xark</p>
                     {allUsers.length === 0 && (
-                      <p style={{ ...text.hint, color: ink.tertiary }}>no other users on xark yet</p>
+                      <p style={{ ...text.hint, color: ink.tertiary }}>No other users on Xark yet.</p>
                     )}
                     {allUsers.map((u) => (
                       <div
@@ -745,14 +695,14 @@ function GalaxyContent() {
                 {/* Group name input */}
                 {showGroupInput && (
                   <div>
-                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "12px" }}>group name</p>
+                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Group Name</p>
                     <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                       <input
                         type="text"
                         value={groupName}
                         onChange={(e) => setGroupName(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") handleNewGroup(); }}
-                        placeholder="new york trip"
+                        placeholder="New York Trip"
                         autoFocus
                         className="outline-none"
                         style={{
@@ -783,11 +733,6 @@ function GalaxyContent() {
         )}
       </AnimatePresence>
 
-      {/* ── Void fill below input ── */}
-      <div
-        className="fixed inset-x-0 z-[19]"
-        style={{ bottom: 0, height: "56px", background: surface.canvas, transition: "background 0.3s ease" }}
-      />
 
       <style jsx>{`
         @keyframes meshPulse {
