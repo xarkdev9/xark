@@ -128,7 +128,7 @@ export default function LoginPage() {
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
 
   // Dev mode
-  const isDevMode = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+  const isDevMode = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEV_MODE === "true";
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"phone" | "dev">(isDevMode ? "dev" : "phone");
   const usePhoneAuth = authMode === "phone" && !!auth;

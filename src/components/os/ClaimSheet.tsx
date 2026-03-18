@@ -129,8 +129,8 @@ export default function ClaimSheet({
               <p
                 role="button"
                 tabIndex={0}
-                onClick={() => window.open(`tel:${item.metadata!.phone}`)}
-                onKeyDown={(e) => { if (e.key === "Enter") window.open(`tel:${item.metadata!.phone}`); }}
+                onClick={() => { const safePhone = String(item.metadata!.phone).replace(/[^0-9+\-() ]/g, ""); if (safePhone) window.open(`tel:${safePhone}`); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { const safePhone = String(item.metadata!.phone).replace(/[^0-9+\-() ]/g, ""); if (safePhone) window.open(`tel:${safePhone}`); } }}
                 className="cursor-pointer outline-none"
                 style={{ ...text.label, color: colors.cyan, opacity: 0.7, marginTop: 4 }}
               >

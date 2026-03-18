@@ -543,11 +543,9 @@ function SpacePageInner() {
 
     // Guard: must have authenticated userId for RLS INSERT
     if (!resolvedUserId) {
-      addDebug("BLOCKED: no userId");
       return;
     }
     const token = getSupabaseToken();
-    addDebug(`sending: "${txt.slice(0, 20)}" as ${resolvedUserId.slice(0, 15)} | jwt:${token ? 'yes' : 'NO'} | e2ee:${e2ee.available}`);
 
     // isThinking gate: blocks double-send while network request in flight
     if (isThinking) return;
@@ -575,7 +573,6 @@ function SpacePageInner() {
     // E2EE PATH — encrypt + /api/message
     // ══════════════════════════════════════════════
     if (e2ee.available) {
-      addDebug("E2EE PATH active — encrypting...");
       try {
         const envelope = await e2ee.encrypt(txt, spaceId);
         if (envelope) {
@@ -816,36 +813,8 @@ function SpacePageInner() {
     );
   }
 
-  // Debug state for visible output
-  const [debugLog, setDebugLog] = useState<string[]>([]);
-  const addDebug = useCallback((msg: string) => {
-    setDebugLog(prev => [...prev.slice(-4), msg]);
-  }, []);
-
-  // Log auth state on mount — decode JWT sub to verify identity
-  useEffect(() => {
-    const token = getSupabaseToken();
-    let jwtSub = 'none';
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        jwtSub = payload.sub ?? 'missing';
-      } catch { jwtSub = 'decode-fail'; }
-    }
-    addDebug(`uid: ${resolvedUserId ?? 'null'} | jwt-sub: ${jwtSub} | e2ee: ${e2ee.available ? 'ON' : 'off'}`);
-    addDebug(`space: ${spaceId} | token: ${token ? token.slice(-8) : 'NULL'}`);
-  }, [resolvedUserId, e2ee.available, addDebug, spaceId]);
-
   return (
     <div className="relative min-h-svh" style={{ background: colors.void }}>
-      {/* ── DEBUG BANNER — remove after fixing ── */}
-      <div
-        className="fixed inset-x-0 z-[99] px-3 py-1"
-        style={{ top: 0, background: "rgba(0,0,0,0.85)", fontSize: "10px", fontFamily: "monospace", color: "#0f0", lineHeight: 1.4 }}
-      >
-        {debugLog.map((l, i) => <div key={i}>{l}</div>)}
-      </div>
-
       {/* ── Background gradient shift — warm on discuss, cool on decide ── */}
       <motion.div
         animate={{

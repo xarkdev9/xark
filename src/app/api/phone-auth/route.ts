@@ -32,7 +32,6 @@ function getFirebaseAdmin() {
       return getAuth(app);
     } catch (parseErr) {
       console.error("[phone-auth] Firebase service account parse error:", parseErr);
-      console.error("[phone-auth] JSON first 200 chars:", serviceAccountJson.slice(0, 200));
       return null;
     }
   }

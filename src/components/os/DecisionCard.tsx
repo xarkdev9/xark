@@ -135,7 +135,8 @@ export function DecisionCard({
       return;
     }
     if (isCommitted && bookingPhone) {
-      window.open(`tel:${bookingPhone}`);
+      const safePhone = String(bookingPhone).replace(/[^0-9+\-() ]/g, "");
+      if (safePhone) window.open(`tel:${safePhone}`);
       return;
     }
     onClick?.();

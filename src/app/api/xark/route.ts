@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
   // ── Smart Follow-Up Detection ──
   // Fixed: no slice bug (user's message isn't in DB yet), no eavesdropping
   // (only follows up if @xark asked a question AND it was within 3 minutes)
-  const hasXarkPrefix = message && message.toLowerCase().includes("@xark");
+  const hasXarkPrefix = !!(message && message.toLowerCase().includes("@xark"));
   let isFollowUp = false;
   let xarkQuestion = "";
 
@@ -182,6 +182,11 @@ export async function POST(req: NextRequest) {
         xarkQuestion = lastMsg.content;
       }
     }
+  }
+
+  // Rate limit follow-up triggers: max 1 per 5 minutes per space
+  if (isFollowUp && !checkRateLimit(`xark-followup:${spaceId}`, 1, 300_000)) {
+    return NextResponse.json({ response: null });
   }
 
   // SILENT MODE: no "@xark" prefix and not a valid follow-up = no response

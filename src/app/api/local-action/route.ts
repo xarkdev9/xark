@@ -102,6 +102,9 @@ export async function POST(req: Request) {
       if (!new_title || typeof new_title !== "string") {
         return NextResponse.json({ error: "missing new_title" }, { status: 400 });
       }
+      if (new_title.length > 100) {
+        return NextResponse.json({ error: "title too long" }, { status: 400 });
+      }
 
       const { data: space } = await supabaseAdmin
         .from("spaces")
@@ -173,6 +176,11 @@ export async function POST(req: Request) {
     if (action === "create_space") {
       const { title, invite_username, atmosphere } = payload ?? {};
       if (!title) return NextResponse.json({ error: "missing title" }, { status: 400 });
+      if (String(title).length > 100) {
+        return NextResponse.json({ error: "title too long" }, { status: 400 });
+      }
+      const VALID_ATMOSPHERES = ["cyan_horizon", "sanctuary", "amber_glow", "gold_warmth", ""];
+      const safeAtmosphere = VALID_ATMOSPHERES.includes(atmosphere ?? "") ? (atmosphere ?? "cyan_horizon") : "cyan_horizon";
 
       const slug = String(title).toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 40);
       // Non-deterministic ID — prevents cross-tenant hijacking via slug guessing
@@ -183,7 +191,7 @@ export async function POST(req: Request) {
         id: newSpaceId,
         title: String(title).toLowerCase().trim(),
         owner_id: auth.userId,
-        atmosphere: atmosphere ?? "cyan_horizon",
+        atmosphere: safeAtmosphere,
       });
 
       if (insertError) {
