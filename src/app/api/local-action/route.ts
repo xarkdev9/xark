@@ -175,21 +175,31 @@ export async function POST(req: Request) {
       if (!title) return NextResponse.json({ error: "missing title" }, { status: 400 });
 
       const slug = String(title).toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 40);
-      const newSpaceId = `space_${slug}`;
+      // Non-deterministic ID — prevents cross-tenant hijacking via slug guessing
+      const newSpaceId = `space_${slug}_${crypto.randomUUID().slice(0, 8)}`;
 
-      // Create space
-      await supabaseAdmin.from("spaces").upsert({
+      // INSERT only — never upsert. If space exists, fail with conflict.
+      const { error: insertError } = await supabaseAdmin.from("spaces").insert({
         id: newSpaceId,
         title: String(title).toLowerCase().trim(),
         owner_id: auth.userId,
         atmosphere: atmosphere ?? "cyan_horizon",
-      }, { onConflict: "id" });
+      });
 
-      // Add creator as member
-      await supabaseAdmin.from("space_members").upsert(
-        { space_id: newSpaceId, user_id: auth.userId, role: "owner" },
-        { onConflict: "space_id,user_id" }
-      );
+      if (insertError) {
+        // Unique constraint violation = space already exists
+        if (insertError.code === '23505') {
+          return NextResponse.json({ error: "space already exists" }, { status: 409 });
+        }
+        throw insertError;
+      }
+
+      // Add creator as member (insert, not upsert)
+      await supabaseAdmin.from("space_members").insert({
+        space_id: newSpaceId,
+        user_id: auth.userId,
+        role: "owner",
+      });
 
       // Invite another user by display_name
       if (invite_username) {
@@ -199,10 +209,11 @@ export async function POST(req: Request) {
           .ilike("display_name", String(invite_username))
           .single();
         if (invitedUser) {
-          await supabaseAdmin.from("space_members").upsert(
-            { space_id: newSpaceId, user_id: invitedUser.id, role: "member" },
-            { onConflict: "space_id,user_id" }
-          );
+          await supabaseAdmin.from("space_members").insert({
+            space_id: newSpaceId,
+            user_id: invitedUser.id,
+            role: "member",
+          });
         }
       }
 
