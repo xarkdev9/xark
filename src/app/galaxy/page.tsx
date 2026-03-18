@@ -431,7 +431,7 @@ function GalaxyContent() {
           {/* ── Input row ── */}
           <div className="flex items-end gap-3">
             {/* Persistent ghost prefix on People tab */}
-            {mounted && activeTab === "people" && inputFocused && (
+            {mounted && activeTab === "people" && inputFocused && knownContacts.length > 0 && (
               <span style={{ fontSize: "18px", fontWeight: 300, color: ink.tertiary, flexShrink: 0, marginBottom: "2px" }}>
                 chat:
               </span>
