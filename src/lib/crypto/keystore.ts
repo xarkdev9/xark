@@ -14,7 +14,7 @@ import {
 } from './encrypted-store';
 
 const DB_NAME = 'xark-keystore';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = {
   identity: 'identity',
@@ -23,6 +23,7 @@ const STORES = {
   senderKeys: 'sender-keys',
   sessions: 'sessions',
   meta: 'meta',
+  unackedRatchet: 'unacked-ratchet',
 } as const;
 
 function openDB(): Promise<IDBDatabase> {
@@ -363,6 +364,60 @@ export class IndexedDBKeyStore {
     const db = await this.getDB();
     const store = tx(db, STORES.sessions, 'readwrite');
     await idbDelete(store, `${userId}:${deviceId}`);
+  }
+
+  // ── Unacknowledged Ratchet States (two-phase commit) ──
+
+  async saveUnackedRatchet(messageId: string, data: {
+    sessionKey: string;  // "userId:deviceId" or "spaceId"
+    sessionType: 'ratchet' | 'senderKey';
+    serializedState: string;  // base64
+  }): Promise<void> {
+    const db = await this.getDB();
+    const store = tx(db, STORES.unackedRatchet, 'readwrite');
+    await idbPut(store, messageId, { ...data, createdAt: Date.now() });
+  }
+
+  async ackRatchet(messageId: string): Promise<void> {
+    const db = await this.getDB();
+    const store = tx(db, STORES.unackedRatchet, 'readwrite');
+    await idbDelete(store, messageId);
+  }
+
+  async getUnackedRatchets(): Promise<Array<{
+    messageId: string;
+    sessionKey: string;
+    sessionType: 'ratchet' | 'senderKey';
+    serializedState: string;
+    createdAt: number;
+  }>> {
+    const db = await this.getDB();
+    const store = tx(db, STORES.unackedRatchet, 'readonly');
+    return new Promise((resolve, reject) => {
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const results = (req.result ?? []) as Array<{
+          sessionKey: string;
+          sessionType: 'ratchet' | 'senderKey';
+          serializedState: string;
+          createdAt: number;
+        }>;
+        // Fetch keys separately to pair each value with its messageId
+        const keysReq = store.getAllKeys();
+        keysReq.onsuccess = () => {
+          const keys = keysReq.result;
+          resolve(results.map((r, i) => ({
+            messageId: String(keys[i]),
+            sessionKey: r.sessionKey,
+            sessionType: r.sessionType,
+            serializedState: r.serializedState,
+            createdAt: r.createdAt,
+          })));
+        };
+        keysReq.onerror = () => reject(keysReq.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
   }
 
   // ── Device ID ──

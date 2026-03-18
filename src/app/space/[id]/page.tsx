@@ -104,6 +104,20 @@ function SpacePageInner() {
       .then(({ count }) => { if (count !== null) setMemberCount(count); });
   }, [spaceId]);
 
+  // ── Outbox drain — retry queued messages on reconnect / tab visible / mount ──
+  useEffect(() => {
+    if (!resolvedUserId) return;
+    let cleanup: (() => void) | undefined;
+    (async () => {
+      const { startOutboxSync } = await import("@/lib/crypto/outbox");
+      cleanup = startOutboxSync(
+        (id) => console.log(`[xark-outbox] Sent queued message ${id}`),
+        (id, err) => console.warn(`[xark-outbox] Permanently failed: ${id} — ${err}`)
+      );
+    })();
+    return () => cleanup?.();
+  }, [resolvedUserId]);
+
   // ── Swipe to switch discuss ↔ decide ──
   const viewTabs: ViewMode[] = ["discuss", "decide"];
   const swipeStartX = useRef(0);
@@ -524,10 +538,26 @@ function SpacePageInner() {
 
           if (!res.ok) {
             console.error("[xark-e2ee] /api/message failed:", data.error);
-            // FAIL CLOSED — never fall through to plaintext
+            // Queue for automatic retry instead of just showing error
+            const { enqueueMessage } = await import("@/lib/crypto/outbox");
+            await enqueueMessage({
+              id: userMsg.id,
+              spaceId,
+              envelope: {
+                ciphertext: envelope.ciphertext,
+                ratchetHeader: envelope.ratchetHeader,
+                recipientId: envelope.recipientId,
+                recipientDeviceId: envelope.recipientDeviceId,
+              },
+              senderDeviceId: e2ee.deviceId!,
+              createdAt: Date.now(),
+              attempts: 1,
+            });
+            // Commit ratchet — message IS encrypted and queued, will be sent on retry
+            if (envelope.commit) await envelope.commit();
             setMessages((prev) =>
               prev.map((m) =>
-                m.id === userMsg.id ? { ...m, content: "[send failed — tap to retry]" } : m
+                m.id === userMsg.id ? { ...m, content: "[queued — will send when online]" } : m
               )
             );
             setIsThinking(false);

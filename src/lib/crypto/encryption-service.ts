@@ -660,10 +660,20 @@ export async function encryptForSpace(
 
   const { ciphertext, nonce, signature, iteration } = senderKeyEncrypt(senderKey, plaintext);
 
-  // TWO-PHASE COMMIT: serialize but don't persist until network ACK
+  // TWO-PHASE COMMIT with durable pre-commit state.
+  // Write advanced sender key state to IDB BEFORE network call so it survives tab close.
   const serializedSK = serializeSenderKeyForStorage(senderKey);
+  const pendingMsgId = `pending_${crypto.randomUUID()}`;
+  await keyStore.saveUnackedRatchet(pendingMsgId, {
+    sessionKey: spaceId,
+    sessionType: 'senderKey',
+    serializedState: toBase64(serializedSK),
+  });
+
   const commitSK = async () => {
+    // ACK received — persist the advanced sender key state and clean up
     await keyStore.saveSenderKey(spaceId, serializedSK);
+    await keyStore.ackRatchet(pendingMsgId);
   };
 
   // Pack: nonce + signature + iteration(4 bytes) + ciphertext
