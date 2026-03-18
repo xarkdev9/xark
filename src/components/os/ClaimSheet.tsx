@@ -8,7 +8,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { colors, text, textColor, opacity as op } from "@/lib/theme";
+import { extractDisplayName } from "@/lib/user-id";
 import { claimItem } from "@/lib/claims";
+
+/** Validate URL protocol before opening — prevents javascript: XSS */
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
 
 interface ItemMetadata {
   url?: string;
@@ -46,7 +57,7 @@ export default function ClaimSheet({
     setIsClaiming(false);
 
     if (result.success) {
-      setWhisper(`${userId.replace(/^name_/, "")} is on it`);
+      setWhisper(`${extractDisplayName(userId)} is on it`);
       onClaimed?.(itemId);
       setTimeout(onClose, 1500);
     }
@@ -106,8 +117,8 @@ export default function ClaimSheet({
               <p
                 role="button"
                 tabIndex={0}
-                onClick={() => window.open(item.metadata!.url, "_blank", "noopener,noreferrer")}
-                onKeyDown={(e) => { if (e.key === "Enter") window.open(item.metadata!.url, "_blank", "noopener,noreferrer"); }}
+                onClick={() => { if (item.metadata?.url && isSafeUrl(item.metadata.url)) window.open(item.metadata.url, "_blank", "noopener,noreferrer"); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && item.metadata?.url && isSafeUrl(item.metadata.url)) window.open(item.metadata.url, "_blank", "noopener,noreferrer"); }}
                 className="cursor-pointer outline-none"
                 style={{ ...text.label, color: colors.cyan, opacity: 0.7, marginTop: 8 }}
               >

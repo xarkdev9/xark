@@ -6,6 +6,16 @@ import { getConsensusState } from "@/lib/heart-sort";
 import type { ConsensusState } from "@/lib/heart-sort";
 import type { ReactionType } from "@/hooks/useReactions";
 
+/** Validate URL protocol before opening — prevents javascript: XSS */
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 // ── Card surfaces are always dark — fixed light text ──
 const CARD_TEXT = "#E8E8EC";
 const CARD_TEXT_DIM = "rgba(232, 232, 236, 0.5)";
@@ -120,8 +130,8 @@ export function DecisionCard({
   const bookingPhone = metadata?.phone;
 
   const handleCardTap = useCallback(() => {
-    if (isCommitted && bookingUrl) {
-      window.open(bookingUrl as string, "_blank", "noopener,noreferrer");
+    if (isCommitted && bookingUrl && typeof bookingUrl === 'string' && isSafeUrl(bookingUrl)) {
+      window.open(bookingUrl, "_blank", "noopener,noreferrer");
       return;
     }
     if (isCommitted && bookingPhone) {
@@ -135,9 +145,9 @@ export function DecisionCard({
     <motion.div
       className="relative flex-shrink-0 overflow-hidden"
       style={{
-        width: "82%",
-        maxWidth: "340px",
-        height: "clamp(320px, 50dvh, 440px)",
+        width: "72%",
+        maxWidth: "280px",
+        height: "clamp(240px, 38dvh, 320px)",
         borderRadius: "28px",
         scrollSnapAlign: "center",
         cursor: onClick || (isCommitted && (bookingUrl || bookingPhone)) ? "pointer" : "default",
@@ -147,18 +157,20 @@ export function DecisionCard({
           ? "0 4px 20px rgba(255, 207, 64, 0.15), 0 8px 32px rgba(0,0,0,0.15)"
           : "0 4px 20px rgba(0,0,0,0.12)",
       }}
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, scale: 0.92, filter: "blur(8px)" }}
+      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
       transition={{
-        opacity: { duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: entranceDelay },
-        scale: { duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: entranceDelay },
+        type: "spring",
+        stiffness: 100,
+        damping: 20,
+        delay: entranceDelay,
       }}
       onClick={handleCardTap}
       whileTap={{ scale: 0.97 }}
     >
       {/* ── Full-bleed photo ── */}
       {imageUrl && !imgError ? (
-        <img
+        <motion.img
           src={imageUrl}
           alt=""
           loading={lazyImage ? "lazy" : "eager"}
@@ -166,6 +178,9 @@ export function DecisionCard({
           onError={() => setImgError(true)}
           className="absolute inset-0"
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          initial={{ scale: 1.15, rotate: -2 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: entranceDelay }}
         />
       ) : (
         <div
@@ -185,15 +200,15 @@ export function DecisionCard({
       {/* ── Content — anchored to bottom ── */}
       <div
         className="absolute inset-x-0 bottom-0"
-        style={{ padding: "24px", paddingBottom: "56px" }}
+        style={{ padding: "16px", paddingBottom: "44px" }}
       >
         {/* Score + details row */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", marginBottom: "0px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "0px" }}>
           {/* Consensus score — large, prominent */}
           <div style={{ flexShrink: 0 }}>
             <span
               style={{
-                fontSize: "56px",
+                fontSize: "40px",
                 fontWeight: 300,
                 lineHeight: 1,
                 letterSpacing: "-0.04em",
@@ -205,13 +220,28 @@ export function DecisionCard({
             >
               {pct > 0 ? <AnimatedNumber value={pct} /> : "—"}
             </span>
+            {pct > 0 && (
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(pct, 100)}%` }}
+                transition={{ duration: 0.8, delay: entranceDelay + 0.3, ease: [0.22, 1, 0.36, 1] }}
+                style={{
+                  height: "2px",
+                  background: cColor,
+                  borderRadius: "1px",
+                  marginTop: "6px",
+                  opacity: 0.5,
+                  maxWidth: "56px",
+                }}
+              />
+            )}
           </div>
 
           {/* Title + price */}
-          <div style={{ paddingTop: "8px", flex: 1, minWidth: 0 }}>
+          <div style={{ paddingTop: "4px", flex: 1, minWidth: 0 }}>
             <p
               style={{
-                fontSize: "20px",
+                fontSize: "16px",
                 fontWeight: 300,
                 color: CARD_TEXT,
                 lineHeight: 1.3,
@@ -241,7 +271,7 @@ export function DecisionCard({
       {/* ── Reactions — love / okay / pass — rewarding, tactile buttons ── */}
       <div
         className="absolute inset-x-0 bottom-0 flex items-center justify-between"
-        style={{ height: "56px", padding: "0 16px" }}
+        style={{ height: "44px", padding: "0 12px" }}
       >
         {SIGNALS.map((signal) => {
           const isActive = activeReaction === signal.type;
