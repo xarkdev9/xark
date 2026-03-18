@@ -28,6 +28,7 @@ interface DecisionItem {
   agreement_score: number;
   is_locked: boolean;
   state: string;
+  lock_deadline?: string | null;
   metadata: {
     image_url?: string;
     price?: string;
@@ -49,6 +50,7 @@ interface DecisionCardItem {
   agreementScore: number;
   isLocked: boolean;
   createdAt: number;
+  lockDeadline?: string | null;
 }
 
 interface PossibilityHorizonProps {
@@ -56,6 +58,9 @@ interface PossibilityHorizonProps {
   userId?: string;
   authLoading?: boolean;
   isThinking?: boolean;
+  playgroundItems?: DecisionItem[];
+  playgroundReactions?: Record<string, import("@/hooks/useReactions").ReactionType>;
+  onPlaygroundReact?: (itemId: string, signal: import("@/hooks/useReactions").ReactionType) => void;
 }
 
 // Card surfaces — dark, theme-independent
@@ -82,7 +87,9 @@ const PLURAL_MAP: Record<string, string> = {
 };
 
 function pluralizeCategory(cat: string): string {
-  return PLURAL_MAP[cat.toLowerCase()] ?? cat.toLowerCase() + "s";
+  const lower = cat.toLowerCase();
+  // If it's a known category, pluralize. Otherwise it's a search_label — use as-is.
+  return PLURAL_MAP[lower] ?? lower;
 }
 
 function categoryVital(items: DecisionCardItem[]): { label: string; color: string } {
@@ -191,12 +198,14 @@ const CategoryRail = React.memo(function CategoryRail({
   items,
   activeReactions,
   onReact,
+  onFinalize,
   railIndex,
 }: {
   category: string;
   items: DecisionCardItem[];
   activeReactions: Record<string, ReactionType>;
   onReact: (itemId: string, signal: ReactionType) => void;
+  onFinalize?: (itemId: string) => void;
   railIndex: number;
 }) {
   const allLocked = items.length > 0 && items.every((i) => i.isLocked);
@@ -274,6 +283,8 @@ const CategoryRail = React.memo(function CategoryRail({
             onReact={onReact}
             entranceDelay={railDelay + 0.1 + idx * 0.12}
             lazyImage={idx >= 3}
+            lockDeadline={item.lockDeadline}
+            onFinalize={onFinalize}
           />
         ))}
 
@@ -289,6 +300,7 @@ const CategoryRail = React.memo(function CategoryRail({
   prev.category === next.category &&
   prev.items === next.items &&
   prev.activeReactions === next.activeReactions &&
+  prev.onFinalize === next.onFinalize &&
   prev.railIndex === next.railIndex
 );
 
@@ -296,9 +308,10 @@ const CategoryRail = React.memo(function CategoryRail({
 // POSSIBILITY HORIZON — ORCHESTRATOR
 // ══════════════════════════════════════════════
 
-export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking }: PossibilityHorizonProps) {
+export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking, playgroundItems, playgroundReactions, onPlaygroundReact }: PossibilityHorizonProps) {
+  const isPlayground = !!playgroundItems;
   const [items, setItems] = useState<DecisionItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isPlayground);
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
   const [spaceTitle, setSpaceTitle] = useState("");
   const [activeReactions, setActiveReactions] = useState<Record<string, ReactionType>>({});
@@ -349,13 +362,21 @@ export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking }:
     });
   }, [spaceId]);
 
-  // ── Fetch decision items ──
+  // ── Load playground items when provided ──
   useEffect(() => {
-    if (authLoading) return;
+    if (isPlayground && playgroundItems) {
+      setItems(playgroundItems as DecisionItem[]);
+      setLoading(false);
+    }
+  }, [isPlayground, playgroundItems]);
+
+  // ── Fetch decision items (skip in playground) ──
+  useEffect(() => {
+    if (authLoading || isPlayground) return;
     async function fetchItems() {
       const { data } = await supabase
         .from("decision_items")
-        .select("id, title, category, weighted_score, agreement_score, is_locked, state, metadata, created_at")
+        .select("id, title, category, weighted_score, agreement_score, is_locked, state, lock_deadline, metadata, created_at")
         .eq("space_id", spaceId)
         .order("weighted_score", { ascending: false })
         .limit(100);
@@ -458,6 +479,7 @@ export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking }:
         category: full?.category || "general",
         price: full?.metadata?.price ?? "",
         source: full?.metadata?.source ?? "",
+        lockDeadline: full?.lock_deadline ?? null,
       });
     }
 
@@ -509,6 +531,16 @@ export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking }:
     },
     [activeReactions, react, unreact]
   );
+
+  // ── Finalize: manual fallback when cron didn't fire ──
+  const handleFinalize = useCallback(async (itemId: string) => {
+    try {
+      const { claimItem } = await import("@/lib/claims");
+      await claimItem(itemId, userId ?? "", "consensus");
+    } catch (err) {
+      console.warn("[consensus] finalize failed:", err);
+    }
+  }, [userId]);
 
   const categoryNames = Object.keys(grouped);
   const hasItems = categoryNames.length > 0;
@@ -586,8 +618,9 @@ export function PossibilityHorizon({ spaceId, userId, authLoading, isThinking }:
               key={category}
               category={category}
               items={grouped[category]}
-              activeReactions={activeReactions}
-              onReact={handleReaction}
+              activeReactions={isPlayground ? (playgroundReactions ?? {}) : activeReactions}
+              onReact={isPlayground ? (onPlaygroundReact ?? handleReaction) : handleReaction}
+              onFinalize={isPlayground ? undefined : handleFinalize}
               railIndex={idx}
             />
           ))

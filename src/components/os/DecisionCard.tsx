@@ -5,6 +5,8 @@ import { motion, animate } from "framer-motion";
 import { getConsensusState } from "@/lib/heart-sort";
 import type { ConsensusState } from "@/lib/heart-sort";
 import type { ReactionType } from "@/hooks/useReactions";
+import { ConsensusTimer } from "@/components/os/ConsensusTimer";
+import { colors, text as textTokens } from "@/lib/theme";
 
 /** Validate URL protocol before opening — prevents javascript: XSS */
 function isSafeUrl(url: string): boolean {
@@ -88,6 +90,8 @@ interface DecisionCardProps {
   entranceDelay?: number;
   lazyImage?: boolean;
   createdAt?: number;
+  lockDeadline?: string | null;
+  onFinalize?: (itemId: string) => void;
 }
 
 export function DecisionCard({
@@ -107,6 +111,8 @@ export function DecisionCard({
   entranceDelay = 0,
   lazyImage = false,
   createdAt = 0,
+  lockDeadline,
+  onFinalize,
 }: DecisionCardProps) {
   const [imgError, setImgError] = useState(false);
   const consensusState = getConsensusState(agreementScore);
@@ -116,6 +122,9 @@ export function DecisionCard({
     CATEGORY_GRADIENTS[category.toLowerCase()] ?? CATEGORY_GRADIENTS.general;
 
   const isFreshDrop = createdAt > 0 && (Date.now() - createdAt < 15000);
+
+  const isCountdown = lockDeadline && new Date(lockDeadline) > new Date();
+  const isExpiredCountdown = lockDeadline && new Date(lockDeadline) <= new Date() && !isLocked;
 
   const handleReact = useCallback(
     (signal: ReactionType) => {
@@ -152,7 +161,9 @@ export function DecisionCard({
         borderRadius: "28px",
         scrollSnapAlign: "center",
         cursor: onClick || (isCommitted && (bookingUrl || bookingPhone)) ? "pointer" : "default",
-        boxShadow: isFreshDrop
+        boxShadow: isCountdown
+          ? "0 0 20px rgba(255,215,0,0.3), 0 0 40px rgba(255,215,0,0.15), inset 0 0 0 2px rgba(255,215,0,0.4)"
+          : isFreshDrop
           ? "0 0 24px rgba(64, 224, 255, 0.3), 0 8px 24px rgba(0,0,0,0.15)"
           : consensusState === "ignited"
           ? "0 4px 20px rgba(255, 207, 64, 0.15), 0 8px 32px rgba(0,0,0,0.15)"
@@ -327,6 +338,33 @@ export function DecisionCard({
           );
         })}
       </div>
+
+      {/* ── Consensus countdown / finalize ── */}
+      {(isCountdown || isExpiredCountdown) && (
+        <div style={{ padding: "0 16px 12px", position: "absolute", bottom: "44px", left: 0, right: 0 }}>
+          {isExpiredCountdown ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onFinalize?.(id);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                ...textTokens.label,
+                color: colors.green,
+                cursor: "pointer",
+                letterSpacing: "0.08em",
+                padding: 0,
+              }}
+            >
+              finalize
+            </button>
+          ) : (
+            <ConsensusTimer deadline={lockDeadline!} />
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
