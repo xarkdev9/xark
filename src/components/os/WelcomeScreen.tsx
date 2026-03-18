@@ -56,33 +56,30 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
           overflow: "hidden",
         }}
       >
-        {/* Wordmark — slides up from below with skew */}
         <div style={{ padding: "16px 0", perspective: "1000px" }}>
           <motion.div
             initial={{ y: "100%", opacity: 0, rotateX: 20 }}
             animate={phase !== "spark" ? { y: 0, opacity: 1, rotateX: 0 } : {}}
             transition={{ duration: 1.2, ease: EASE_OUT_EXPO, delay: 0.2 }}
             onClick={onBegin}
+            whileHover={{
+              textShadow: `0 0 40px ${colors.accent}`,
+            }}
             whileTap={{
-              scale: 0.92,
-              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
-              transition: { type: "spring", stiffness: 400, damping: 25 }
+              scale: 0.88,
+              filter: "brightness(1.5)",
+              transition: { type: "spring", stiffness: 500, damping: 15 }
             }}
             className="cursor-pointer select-none flex items-center justify-center gap-6"
             style={{
-              background: "rgba(255, 255, 255, 0.7)",
-              backdropFilter: "blur(40px) saturate(200%)",
-              WebkitBackdropFilter: "blur(40px) saturate(200%)",
-              boxShadow: "0 16px 64px rgba(0, 0, 0, 0.08)",
-              borderRadius: "999px",
-              padding: "24px 64px",
+              background: "transparent",
               WebkitTapHighlightColor: "transparent",
             }}
           >
             {/* Ultra-Light OS Text */}
             <span
               style={{
-                fontSize: "clamp(4rem, 12vw, 8rem)",
+                fontSize: "clamp(6rem, 20vw, 16rem)",
                 fontWeight: 100,
                 letterSpacing: "-0.04em",
                 lineHeight: 0.8,
@@ -92,16 +89,17 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
               xark
             </span>
 
-            {/* Giant Cyan Heartbeat */}
+            {/* Giant Action Orange Heartbeat */}
             <motion.div
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               style={{
-                width: "clamp(12px, 3vw, 24px)",
-                height: "clamp(12px, 3vw, 24px)",
+                width: "clamp(16px, 4vw, 32px)",
+                height: "clamp(16px, 4vw, 32px)",
                 borderRadius: "50%",
-                backgroundColor: colors.cyan,
-                boxShadow: `0 0 16px ${colors.cyan}`,
+                backgroundColor: colors.accent,
+                boxShadow: `0 0 24px ${colors.accent}`,
+                marginBottom: "clamp(8px, 2vw, 16px)",
               }}
             />
           </motion.div>

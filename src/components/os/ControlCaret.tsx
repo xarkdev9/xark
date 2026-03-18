@@ -147,7 +147,6 @@ export function ControlCaret() {
           pointerEvents: "auto",
         }}
       >
-        {/* ── The Physical Morphing Pill ── */}
         <motion.div
           layoutId="spotlight-morph"
           role="button"
@@ -187,44 +186,43 @@ export function ControlCaret() {
           }}
           className="cursor-pointer outline-none select-none flex items-center justify-center gap-2"
           style={{
-            background: "rgba(255, 255, 255, 0.7)",
-            backdropFilter: "blur(40px) saturate(200%)",
-            WebkitBackdropFilter: "blur(40px) saturate(200%)",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
-            borderRadius: "99px",
-            padding: "12px 32px",
+            background: "transparent",
             WebkitTapHighlightColor: "transparent",
             opacity: isOpen || spotlight.isOpen ? 0 : 1,
             pointerEvents: isOpen || spotlight.isOpen ? "none" : "auto",
           }}
+          whileHover={{
+            textShadow: `0 0 16px ${colors.accent}`,
+          }}
           whileTap={{
-            scale: 0.92,
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-            transition: { type: "spring", stiffness: 400, damping: 25 }
+            scale: 0.88,
+            filter: "brightness(1.5)",
+            transition: { type: "spring", stiffness: 500, damping: 15 }
           }}
         >
-          {/* Heavy Geometric Brand Text */}
+          {/* Ultra-Light Geometric Brand Text */}
           <span
             style={{
-              fontSize: "20px",
-              fontWeight: 800,
-              letterSpacing: "-0.02em",
+              fontSize: "24px",
+              fontWeight: 100,
+              letterSpacing: "-0.04em",
               color: ink.primary,
             }}
           >
             xark
           </span>
 
-          {/* Cyan Heartbeat Dot */}
+          {/* Action Orange Heartbeat Dot */}
           <motion.div
-            animate={{ opacity: [0.4, 1, 0.4] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
             style={{
               width: "6px",
               height: "6px",
               borderRadius: "50%",
-              backgroundColor: colors.cyan,
-              boxShadow: `0 0 8px ${colors.cyan}`,
+              backgroundColor: colors.accent,
+              boxShadow: `0 0 12px ${colors.accent}`,
+              marginBottom: "4px",
             }}
           />
         </motion.div>
