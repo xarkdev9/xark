@@ -70,7 +70,8 @@ BEGIN
 
   INSERT INTO space_members (space_id, user_id, role)
   VALUES (v_space_id, v_link.creator_id, 'owner'),
-         (v_space_id, p_claimant_id, 'member');
+         (v_space_id, p_claimant_id, 'member')
+  ON CONFLICT (space_id, user_id) DO NOTHING;
 
   INSERT INTO messages (id, space_id, role, content, user_id, message_type)
   VALUES (

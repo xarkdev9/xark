@@ -24,7 +24,8 @@ BEGIN
 
   -- Add as member
   INSERT INTO space_members (space_id, user_id, role)
-  VALUES (p_space_id, auth.uid()::text, 'member');
+  VALUES (p_space_id, auth.uid()::text, 'member')
+  ON CONFLICT (space_id, user_id) DO NOTHING;
 
   -- Insert system message
   INSERT INTO messages (id, space_id, role, content, user_id, created_at)

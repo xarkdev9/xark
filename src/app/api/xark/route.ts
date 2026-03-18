@@ -18,6 +18,7 @@ import { intersectTasteProfiles, type TasteContext } from "@/lib/taste";
 const MAX_MESSAGE_LENGTH = 1000;
 
 export async function POST(req: NextRequest) {
+  let xarkMsgId: string | null = null;
   try {
   if (!supabaseAdmin) {
     return NextResponse.json({ response: "server not configured." }, { status: 500 });
@@ -233,7 +234,7 @@ export async function POST(req: NextRequest) {
   }));
 
   // ── UPGRADE 4: Optimistic UI — insert "thinking..." immediately ──
-  const xarkMsgId = `msg_${crypto.randomUUID()}`;
+  xarkMsgId = `msg_${crypto.randomUUID()}`;
   await supabaseAdmin.from("messages").insert({
     id: xarkMsgId,
     space_id: spaceId,
@@ -320,6 +321,12 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error("[/api/xark] error:", errMsg);
+
+    if (xarkMsgId && supabaseAdmin) {
+      await supabaseAdmin.from("messages").update({
+        content: errMsg.includes("timeout") ? "took too long. try again." : "something went wrong. try again.",
+      }).eq("id", xarkMsgId);
+    }
 
     return NextResponse.json(
       {

@@ -61,7 +61,6 @@ export function SpotlightSheet({
 }: SpotlightSheetProps) {
   const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
   const [spacesLoaded, setSpacesLoaded] = useState(false);
-  const [summonName, setSummonName] = useState<string | null>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
 
   // Fetch space list when sheet opens on Galaxy (not inside a space)
@@ -86,11 +85,10 @@ export function SpotlightSheet({
     };
   }, [isOpen, isInsideSpace, spacesLoaded, targetSpaceId, onSetTargetSpace]);
 
-  // Reset spaces cache and summon state when sheet closes
+  // Reset spaces cache when sheet closes
   useEffect(() => {
     if (!isOpen) {
       setSpacesLoaded(false);
-      setSummonName(null);
     }
   }, [isOpen]);
 
@@ -122,23 +120,6 @@ export function SpotlightSheet({
         onGhostAccepted();
         onClose();
         return;
-      }
-
-      // Summon intercept: short name not starting with "@", not a known contact
-      if (
-        !wasGhost &&
-        text.trim().length > 0 &&
-        !text.startsWith("@") &&
-        text.trim().split(/\s+/).length <= 3
-      ) {
-        const trimmed = text.trim();
-        const isKnown = knownContacts.some(
-          (c) => c.toLowerCase() === trimmed.toLowerCase()
-        );
-        if (!isKnown) {
-          setSummonName(trimmed);
-          return;
-        }
       }
 
       // Normal send: must have a target space
@@ -199,7 +180,6 @@ export function SpotlightSheet({
               borderRadius: "20px 20px 0 0",
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
               maxHeight: "70dvh",
-              overflow: "hidden",
             }}
           >
             {/* ── Handle bar ── */}
@@ -349,55 +329,14 @@ export function SpotlightSheet({
               </motion.div>
             )}
 
-            {/* ── Ghost Input or Summon Prompt (when not morphing) ── */}
+            {/* ── Ghost Input ── */}
             {!isMorphing && (
-              summonName ? (
-                <div
-                  onClick={async () => {
-                    const token = getToken();
-                    try {
-                      const res = await fetch("/api/summon", {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                        },
-                      });
-                      const { url } = await res.json();
-                      if (navigator.share) {
-                        await navigator.share({
-                          title: "xark",
-                          text: `hey ${summonName}, join me on xark`,
-                          url,
-                        });
-                      } else {
-                        await navigator.clipboard.writeText(url);
-                      }
-                    } catch { /* ignore share cancel */ }
-                    setSummonName(null);
-                    onClose();
-                  }}
-                  style={{ padding: "16px", cursor: "pointer" }}
-                >
-                  <span
-                    style={{
-                      ...textTokens.subtitle,
-                      color: colors.cyan,
-                      opacity: 0.8,
-                      fontWeight: 300,
-                    }}
-                  >
-                    {summonName} isn&apos;t in your orbit. tap to summon.
-                  </span>
-                </div>
-              ) : (
-                <GhostInput
-                  ghostText={ghostText}
-                  onSend={handleSend}
-                  onGhostDismissed={onGhostDismissed}
-                  autoFocus
-                />
-              )
+              <GhostInput
+                ghostText={ghostText}
+                onSend={handleSend}
+                onGhostDismissed={onGhostDismissed}
+                autoFocus
+              />
             )}
           </motion.div>
         </>
