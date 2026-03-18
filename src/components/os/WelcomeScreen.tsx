@@ -26,8 +26,8 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  const line1 = "people, plans and memories.";
-  const line2 = "decide together, effortlessly.";
+  const line1 = "People, plans, and memories.";
+  const line2 = "Decide together, effortlessly.";
 
   return (
     <div
@@ -69,11 +69,10 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
               lineHeight: 0.8,
               color: ink.primary,
               textAlign: "center",
-              textTransform: "lowercase",
               margin: 0,
             }}
           >
-            xark
+            Xark
           </motion.h1>
         </div>
 
@@ -106,7 +105,6 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
                   color: ink.primary,
                   opacity: 0.7,
                   textAlign: "center",
-                  textTransform: "lowercase",
                   margin: 0,
                 }}
               >
@@ -142,12 +140,11 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
             color: ink.primary,
             cursor: "pointer",
             padding: "16px 32px",
-            textTransform: "lowercase",
             transition: "all 0.5s ease",
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          begin
+          Begin
         </motion.div>
       </motion.div>
 
@@ -168,10 +165,9 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
             fontWeight: 300,
             letterSpacing: "0.3em",
             color: ink.tertiary,
-            textTransform: "uppercase",
           }}
         >
-          encrypted, always.
+          Encrypted, always.
         </span>
       </motion.div>
     </div>

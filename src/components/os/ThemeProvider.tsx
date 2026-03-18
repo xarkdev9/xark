@@ -31,6 +31,8 @@ function applyTheme(name: ThemeName) {
   // Core identity
   root.style.setProperty("--xark-accent", t.accent);
   root.style.setProperty("--xark-accent-rgb", hexToRgb(t.accent));
+  root.style.setProperty("--xark-cyan", t.cyan);
+  root.style.setProperty("--xark-cyan-rgb", hexToRgb(t.cyan));
   root.style.setProperty("--xark-white", t.text);
   root.style.setProperty("--xark-white-rgb", hexToRgb(t.text));
   root.style.setProperty("--xark-void", t.bg);
@@ -53,6 +55,11 @@ function applyTheme(name: ThemeName) {
   root.style.setProperty("--xark-ink-secondary", t.inkSecondary);
   root.style.setProperty("--xark-ink-tertiary", t.inkTertiary);
   root.style.setProperty("--xark-ink-sender", t.inkSender);
+
+  // 3-tone surface system — depth without borders
+  root.style.setProperty("--xark-surface-chrome", t.surfaceChrome);
+  root.style.setProperty("--xark-surface-canvas", t.surfaceCanvas);
+  root.style.setProperty("--xark-surface-recessed", t.surfaceRecessed);
 
   // Style class on root — components use [data-style="depth"] for vibe rendering
   root.dataset.style = t.style;
@@ -91,10 +98,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Read from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("xark-theme");
-    const initial = resolveTheme(saved);
-    setThemeState(initial);
-    applyTheme(initial);
+    localStorage.setItem("xark-theme", DEFAULT_THEME);
+    setThemeState(DEFAULT_THEME);
+    applyTheme(DEFAULT_THEME);
   }, []);
 
   const setTheme = useCallback((name: ThemeName) => {
