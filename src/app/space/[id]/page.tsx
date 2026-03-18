@@ -35,6 +35,7 @@ import type { LedgerEvent } from "@/components/os/LedgerPill";
 import { markSpaceRead } from "@/lib/unread";
 import { PlaygroundSpace } from "@/components/os/PlaygroundSpace";
 import { isPlaygroundSpace } from "@/lib/playground";
+import { ConsensusBanner } from "@/components/os/ConsensusBanner";
 
 // Demo space title map — used when Supabase is unreachable
 const DEMO_TITLES: Record<string, string> = {
@@ -739,7 +740,7 @@ function SpacePageInner() {
     if (!isInvite || authLoading) return;
 
     if (!isAuthenticated) {
-      const returnUrl = `/space/${spaceId}?invite=true${userName ? `&name=${userName}` : ""}`;
+      const returnUrl = `/space/${spaceId}?invite=true${userName ? `&name=${encodeURIComponent(userName)}` : ""}`;
       router.replace(`/login?returnTo=${encodeURIComponent(returnUrl)}`);
       return;
     }
@@ -1005,6 +1006,7 @@ function SpacePageInner() {
 
       {/* ── View content — swipe left/right to switch discuss ↔ decide ── */}
       <div onTouchStart={handleSwipeStart} onTouchEnd={handleSwipeEnd}>
+      {view === "discuss" && <ConsensusBanner spaceId={spaceId} />}
       {view === "discuss" && (
         <XarkChat
           spaceId={spaceId}
