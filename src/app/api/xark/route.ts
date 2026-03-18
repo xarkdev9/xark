@@ -13,6 +13,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { applyLogisticsExtractions, flagStaleLogistics } from "@/lib/member-logistics";
 import { verifyAuth } from "@/lib/auth-verify";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { intersectTasteProfiles, type TasteContext } from "@/lib/taste";
 
 const MAX_MESSAGE_LENGTH = 1000;
 
@@ -145,8 +146,13 @@ export async function POST(req: NextRequest) {
 
   const spaceId = reqSpaceId;
 
-  // Parallel fetch: space title + grounding context + recent messages
-  const [spaceRow, groundingContext, recentMsgs] = await Promise.all([
+  // Parallel fetch: space title + grounding context + recent messages + taste profiles
+  const tasteTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 800));
+  const tasteFetch = supabaseAdmin
+    ? supabaseAdmin.rpc("get_space_taste_profiles", { p_space_id: spaceId }).then((r) => r.data)
+    : Promise.resolve(null);
+
+  const [spaceRow, groundingContext, recentMsgs, tasteRaw] = await Promise.all([
     supabaseAdmin
       .from("spaces")
       .select("title")
@@ -155,7 +161,18 @@ export async function POST(req: NextRequest) {
       .then((r) => r.data),
     buildGroundingContext(spaceId),
     fetchMessages(spaceId, { limit: 15 }),
+    Promise.race([tasteFetch, tasteTimeout]),
   ]);
+
+  // Build taste context from raw profiles (graceful degradation on failure)
+  let tasteContext: TasteContext | null = null;
+  if (Array.isArray(tasteRaw) && tasteRaw.length > 0) {
+    try {
+      tasteContext = intersectTasteProfiles(tasteRaw);
+    } catch {
+      // Silent degradation — search proceeds without personalization
+    }
+  }
 
   // ── Smart Follow-Up Detection ──
   // Fixed: no slice bug (user's message isn't in DB yet), no eavesdropping
@@ -234,6 +251,7 @@ export async function POST(req: NextRequest) {
     recentMessages,
     spaceId,
     spaceTitle,
+    tasteContext,
   });
 
   // If pending confirmation, delete the thinking message and return to client

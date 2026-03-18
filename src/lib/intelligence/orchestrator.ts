@@ -7,6 +7,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, type GenerativeModel } from "@google/generative-ai";
 import { getTool, listTools } from "./tool-registry";
 import { runActor, type ApifyResult } from "./apify-client";
+import { buildTastePromptInjection } from "@/lib/taste";
 
 const genAI = process.env.GEMINI_API_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
@@ -58,6 +59,7 @@ export interface OrchestratorInput {
   recentMessages: Array<{ role: string; content: string; sender_name?: string }>;
   spaceId: string;
   spaceTitle?: string;
+  tasteContext?: { hardConstraints: string[]; softPreferences: string; onboardedCount: number; memberCount: number } | null;
 }
 
 export interface OrchestratorResult {
@@ -495,7 +497,7 @@ ${input.recentMessages.map((m) => `${m.sender_name || m.role}: ${m.content}`).jo
 
 CURRENT DATE & TIME: ${new Date().toISOString()}
 DATE MATH RULES: if a user says "next weekend", "tonight", "tomorrow", or any relative date, use the CURRENT DATE to calculate exact YYYY-MM-DD. never output relative dates to tools. for "next weekend" use the coming Saturday. for "tonight" use today's date.
-
+${input.tasteContext ? buildTastePromptInjection(input.tasteContext) : ""}
 USER REQUEST: ${input.userMessage}`;
 }
 
