@@ -18,7 +18,7 @@ import { Avatar } from "@/components/os/Avatar";
 import { isPlaygroundMode, getPlaygroundSpaces, isPlaygroundSpace } from "@/lib/playground";
 import { fetchPersonalChats } from "@/lib/awareness";
 import type { PersonalChat } from "@/lib/awareness";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseToken } from "@/lib/supabase";
 import { InviteSurface, generateAndShareInvite } from "@/components/os/InviteSurface";
 
 type GalaxyTab = "people" | "plans" | "memories";
@@ -142,20 +142,33 @@ function GalaxyContent() {
   };
 
   const handleNewChat = useCallback(async (contact: { id: string; display_name: string }) => {
+    if (!contact.id) return; // No user ID — can't start chat
     setIsCreating(true);
-    const title = `${userName} & ${contact.display_name}`;
     try {
-      const { spaceId } = await createSpace(title, userId, contact.display_name, contact.id || undefined);
+      const token = getSupabaseToken();
+      const res = await fetch("/api/chat/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ otherUserId: contact.id }),
+      });
+
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+
+      const { spaceId } = await res.json();
       if (!spaceId) throw new Error("No spaceId returned");
+
       setShowUserPicker(false);
       setShowNewSheet(false);
       handlePersonTap(spaceId);
-    } catch {
-      // Handle error visually if necessary
+    } catch (err) {
+      console.error("[chat] start failed:", err);
     } finally {
       setIsCreating(false);
     }
-  }, [userId, userName, handlePersonTap]);
+  }, [userId, handlePersonTap]);
 
   const handleNewGroup = useCallback(async () => {
     const name = groupName.trim();
@@ -175,19 +188,49 @@ function GalaxyContent() {
     }
   }, [groupName, userId, handleSpaceTap]);
 
-  // Start a chat with a contact (People tab)
+  // Start a chat with a contact (People tab) — tries /api/chat/start first if user match found
   const startChat = useCallback(async (contactName: string) => {
     setIsCreating(true);
-    const title = `chat with ${contactName}`;
     try {
-      const { spaceId } = await createSpace(title, userId, contactName);
-      if (!spaceId) throw new Error("No spaceId returned");
-      handlePersonTap(spaceId);
+      // Try to match against known Xark users by display_name
+      const { data: matchedUsers } = await supabase
+        .from("users")
+        .select("id, display_name")
+        .ilike("display_name", contactName.trim())
+        .neq("id", userId)
+        .limit(1);
+
+      const matched = matchedUsers?.[0];
+
+      if (matched?.id) {
+        // WhatsApp-style: find or create 1:1 chat via API
+        const token = getSupabaseToken();
+        const res = await fetch("/api/chat/start", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ otherUserId: matched.id }),
+        });
+
+        if (!res.ok) throw new Error(`API error ${res.status}`);
+        const { spaceId } = await res.json();
+        if (!spaceId) throw new Error("No spaceId returned");
+        handlePersonTap(spaceId);
+      } else {
+        // No match — fall through to group space creation
+        const title = `chat with ${contactName}`;
+        const { spaceId } = await createSpace(title, userId, contactName);
+        if (!spaceId) throw new Error("No spaceId returned");
+        handlePersonTap(spaceId);
+      }
+
       setDream("");
       if (typeof window !== "undefined") localStorage.setItem("xark_first_chat", "1");
       setFirstChatDone(true);
-    } catch {
-      // Handle error visually if necessary
+    } catch (err) {
+      console.error("[chat] startChat failed:", err);
     } finally {
       setIsCreating(false);
     }

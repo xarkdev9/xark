@@ -221,6 +221,7 @@ export const DEMO_AWARENESS = getDemoAwareness();
 export interface PersonalChat {
   spaceId: string;
   contactName: string;
+  contactPhotoUrl: string | null;
   lastMessage: string;
   lastActivityAt: number;
 }
@@ -272,20 +273,37 @@ export async function fetchPersonalChats(userId: string): Promise<PersonalChat[]
       .select("space_id, user_id")
       .in("space_id", sanctuaryIds);
 
-    const contactBySpace = new Map<string, string>();
+    // Find the other member's user_id per sanctuary
+    const otherMemberBySpace = new Map<string, string>();
     for (const member of allMembers ?? []) {
       if (member.user_id !== userId) {
-        contactBySpace.set(member.space_id, extractDisplayName(member.user_id));
+        otherMemberBySpace.set(member.space_id, member.user_id);
+      }
+    }
+
+    // Fetch real display names from users table
+    const otherUserIds = [...new Set(otherMemberBySpace.values())].filter(Boolean);
+    const profileMap = new Map<string, { display_name: string; photo_url: string | null }>();
+    if (otherUserIds.length > 0) {
+      const { data: userProfiles } = await supabase
+        .from("users")
+        .select("id, display_name, photo_url")
+        .in("id", otherUserIds);
+      for (const u of userProfiles ?? []) {
+        profileMap.set(u.id, { display_name: u.display_name, photo_url: u.photo_url ?? null });
       }
     }
 
     return sanctuaries.map((space) => {
       const lastMsg = lastMessageBySpace.get(space.id);
-      const contactName = contactBySpace.get(space.id) ?? space.title;
+      const otherUserId = otherMemberBySpace.get(space.id);
+      const profile = otherUserId ? profileMap.get(otherUserId) : null;
+      const contactName = profile?.display_name ?? (otherUserId ? extractDisplayName(otherUserId) : space.title);
 
       return {
         spaceId: space.id,
         contactName,
+        contactPhotoUrl: profile?.photo_url ?? null,
         lastMessage: lastMsg?.content ?? "",
         lastActivityAt: lastMsg
           ? new Date(lastMsg.createdAt).getTime()
@@ -303,6 +321,7 @@ export function getDemoPersonalChats(): PersonalChat[] {
     {
       spaceId: "space_ananya",
       contactName: "ananya",
+      contactPhotoUrl: null,
       lastMessage: "sent you the photos from saturday",
       lastActivityAt: now - 3_600_000,
     },
