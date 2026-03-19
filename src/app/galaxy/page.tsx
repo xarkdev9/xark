@@ -14,7 +14,6 @@ import { createSpace } from "@/lib/spaces";
 import { colors, opacity, timing, layout, text, surface, ink } from "@/lib/theme";
 import { makeUserId } from "@/lib/user-id";
 import { UserMenu } from "@/components/os/UserMenu";
-import { Avatar } from "@/components/os/Avatar";
 import { isPlaygroundMode, getPlaygroundSpaces, isPlaygroundSpace } from "@/lib/playground";
 import { fetchPersonalChats } from "@/lib/awareness";
 import type { PersonalChat } from "@/lib/awareness";
@@ -79,7 +78,6 @@ function GalaxyContent() {
   const [firstChatDone, setFirstChatDone] = useState(false);
   // New chat/group flow
   const [showNewSheet, setShowNewSheet] = useState(false);
-  const [showUserPicker, setShowUserPicker] = useState(false);
 
   // ── Listen for Thumb Arc 'Compose' trigger ──
   useEffect(() => {
@@ -89,7 +87,9 @@ function GalaxyContent() {
       return () => window.removeEventListener("xark-compose", handleCompose);
     }
   }, []);
-  const [allUsers, setAllUsers] = useState<Array<{ id: string; display_name: string }>>([]);
+  const [showPhoneInput, setShowPhoneInput] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [contactCheckStatus, setContactCheckStatus] = useState<"idle" | "checking" | "found" | "not_found">("idle");
   const [showGroupInput, setShowGroupInput] = useState(false);
   const [groupName, setGroupName] = useState("");
   // Spaces count (for onboarding)
@@ -113,11 +113,8 @@ function GalaxyContent() {
     }
   }, [userId]);
 
-  // Fetch all users for contact picker
-  const fetchAllUsers = useCallback(async () => {
-    const { data } = await supabase.from("users").select("id, display_name").neq("id", userId).order("display_name");
-    if (data) setAllUsers(data.filter(u => u.display_name));
-  }, [userId]);
+  // Detect Contact Picker API support (Android Chrome)
+  const hasContactPicker = typeof navigator !== "undefined" && "contacts" in navigator && "ContactsManager" in window;
 
   // Auto-resize textarea (max ~4 lines)
   const autoResize = useCallback(() => {
@@ -141,6 +138,72 @@ function GalaxyContent() {
     router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}`);
   };
 
+  // Check a phone number against /api/contacts/check and start chat or invite
+  const checkPhoneAndChat = useCallback(async (phone: string, contactName?: string) => {
+    const token = getSupabaseToken();
+    setContactCheckStatus("checking");
+    try {
+      const res = await fetch("/api/contacts/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ phones: [phone] }),
+      });
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+      const { registered } = await res.json();
+
+      if (registered?.length > 0) {
+        // Registered — start chat via /api/chat/start
+        setContactCheckStatus("found");
+        const otherUserId = registered[0].userId;
+        const chatRes = await fetch("/api/chat/start", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ otherUserId }),
+        });
+        if (!chatRes.ok) throw new Error(`chat/start error ${chatRes.status}`);
+        const { spaceId } = await chatRes.json();
+        if (!spaceId) throw new Error("No spaceId returned");
+        setShowNewSheet(false);
+        setShowPhoneInput(false);
+        setPhoneNumber("");
+        setContactCheckStatus("idle");
+        handlePersonTap(spaceId);
+      } else {
+        // Not registered — offer invite
+        setContactCheckStatus("not_found");
+      }
+    } catch (err) {
+      console.error("[contacts] check failed:", err);
+      setContactCheckStatus("idle");
+    }
+  }, [handlePersonTap]);
+
+  // Handle Contact Picker API result (Android)
+  const handleContactPick = useCallback(async () => {
+    try {
+      const contacts = await (navigator as any).contacts.select(
+        ["name", "tel"],
+        { multiple: false }
+      );
+      if (!contacts?.[0]) return;
+
+      const contact = contacts[0];
+      const contactName = (contact.name?.[0] ?? "").trim();
+      const phone = contact.tel?.[0] ?? "";
+      if (!phone) return;
+
+      await checkPhoneAndChat(phone, contactName);
+    } catch {
+      // User cancelled or API not supported
+    }
+  }, [checkPhoneAndChat]);
+
   const handleNewChat = useCallback(async (contact: { id: string; display_name: string }) => {
     if (!contact.id) return; // No user ID — can't start chat
     setIsCreating(true);
@@ -160,7 +223,7 @@ function GalaxyContent() {
       const { spaceId } = await res.json();
       if (!spaceId) throw new Error("No spaceId returned");
 
-      setShowUserPicker(false);
+      setShowPhoneInput(false);
       setShowNewSheet(false);
       handlePersonTap(spaceId);
     } catch (err) {
@@ -296,13 +359,16 @@ function GalaxyContent() {
       {/* ── Tab header — glass surface ── */}
       <div
         className="relative z-10 px-6"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)", flexShrink: 0, paddingBottom: "8px" }}
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)", flexShrink: 0, paddingBottom: "8px" }}
       >
-        <div
-          className="mx-auto flex items-center"
-          style={{ maxWidth: layout.maxWidth }}
-        >
-          <div className="flex gap-6">
+        <div className="mx-auto relative" style={{ maxWidth: layout.maxWidth }}>
+          
+          {/* ── User Profile: Anchored top-right above tabs ── */}
+          <div style={{ position: "absolute", top: 0, right: 0, zIndex: 20 }}>
+            <UserMenu userName={userName} userId={userId} />
+          </div>
+
+          <div className="flex gap-6" style={{ marginTop: "40px", alignItems: "center" }}>
           {(["people", "plans", "memories"] as GalaxyTab[]).map((tab) => {
             const isActive = activeTab === tab;
             return (
@@ -343,9 +409,6 @@ function GalaxyContent() {
               </span>
             );
           })}
-          </div>
-          <div style={{ marginLeft: "auto", paddingBottom: "10px", display: "flex", gap: "16px", alignItems: "center" }}>
-            <UserMenu userName={userName} userId={userId} />
           </div>
         </div>
       </div>
@@ -423,7 +486,7 @@ function GalaxyContent() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              onClick={() => { setShowNewSheet(false); setShowUserPicker(false); setShowGroupInput(false); }}
+              onClick={() => { setShowNewSheet(false); setShowPhoneInput(false); setShowGroupInput(false); setPhoneNumber(""); setContactCheckStatus("idle"); }}
             />
             <motion.div
               className="fixed inset-x-0 bottom-0 z-[31] px-6 pb-8"
@@ -436,22 +499,58 @@ function GalaxyContent() {
               <div className="mx-auto pt-4 pb-2" style={{ maxWidth: layout.maxWidth }}>
                 <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: ink.tertiary, opacity: 0.3, margin: "0 auto 16px" }} />
 
-                {!showUserPicker && !showGroupInput && (
+                {!showPhoneInput && !showGroupInput && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    {/* Path A: Android — Contact Picker API */}
+                    {hasContactPicker && (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={handleContactPick}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleContactPick(); }}
+                        className="outline-none cursor-pointer"
+                        style={{ padding: "14px 0", display: "flex", alignItems: "center", gap: "14px" }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth="1.5" strokeLinecap="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2" />
+                          <circle cx="12" cy="10" r="3" />
+                          <path d="M7 20v-1a5 5 0 0110 0v1" />
+                        </svg>
+                        <span style={{ ...text.body, color: colors.accent }}>Pick from Contacts</span>
+                      </div>
+                    )}
+                    {/* Path B: Phone number input (iOS fallback + universal) */}
                     <div
                       role="button"
                       tabIndex={0}
-                      onClick={() => { setShowUserPicker(true); fetchAllUsers(); }}
-                      onKeyDown={(e) => { if (e.key === "Enter") { setShowUserPicker(true); fetchAllUsers(); } }}
+                      onClick={() => { setShowPhoneInput(true); setContactCheckStatus("idle"); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { setShowPhoneInput(true); setContactCheckStatus("idle"); } }}
                       className="outline-none cursor-pointer"
                       style={{ padding: "14px 0", display: "flex", alignItems: "center", gap: "14px" }}
                     >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ink.primary} strokeWidth="1.5" strokeLinecap="round">
-                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
+                        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
                       </svg>
                       <span style={{ ...text.body, color: ink.primary }}>New Chat</span>
                     </div>
+                    {/* Invite link — always available */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={async () => {
+                        try { await generateAndShareInvite(userName); } catch { /* cancelled */ }
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") generateAndShareInvite(userName).catch(() => {}); }}
+                      className="outline-none cursor-pointer"
+                      style={{ padding: "14px 0", display: "flex", alignItems: "center", gap: "14px" }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ink.primary} strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                      </svg>
+                      <span style={{ ...text.body, color: ink.primary }}>Send Invite Link</span>
+                    </div>
+                    {/* New Group */}
                     <div
                       role="button"
                       tabIndex={0}
@@ -470,67 +569,66 @@ function GalaxyContent() {
                   </div>
                 )}
 
-                {/* User picker — contacts API + Xark users */}
-                {showUserPicker && (
+                {/* Phone number input — check if registered */}
+                {showPhoneInput && (
                   <div>
-                    {/* Contact Picker API button (Android Chrome) */}
-                    {"contacts" in navigator && (
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={async () => {
-                          try {
-                            const contacts = await (navigator as any).contacts.select(
-                              ["name", "tel"],
-                              { multiple: false }
-                            );
-                            if (contacts?.[0]) {
-                              const contact = contacts[0];
-                              const contactName = (contact.name?.[0] ?? "").trim();
-                              if (!contactName) return;
-
-                              // Just create a chat with this person's name
-                              // If they're on Xark, they'll be matched by display_name
-                              // If not, the space is created and they can join via invite
-                              const firstName = contactName.split(" ")[0].toLowerCase();
-                              // Try to match against known Xark users by display_name
-                              const matched = allUsers.find(u => u.display_name?.toLowerCase() === firstName);
-                              handleNewChat({ id: matched?.id ?? "", display_name: firstName });
-                            }
-                          } catch {
-                            // User cancelled or API not supported
-                          }
+                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Phone Number</p>
+                    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => { setPhoneNumber(e.target.value); setContactCheckStatus("idle"); }}
+                        onKeyDown={(e) => { if (e.key === "Enter" && phoneNumber.replace(/\D/g, "").length >= 7) checkPhoneAndChat(phoneNumber); }}
+                        placeholder="+91 97417 83444"
+                        autoFocus
+                        className="outline-none"
+                        style={{
+                          ...text.body,
+                          flex: 1,
+                          color: ink.primary,
+                          background: "transparent",
+                          padding: "10px 0",
+                          caretColor: "#FF6B35",
                         }}
-                        className="outline-none cursor-pointer"
-                        style={{ padding: "14px 0", display: "flex", alignItems: "center", gap: "14px", marginBottom: "8px" }}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round">
-                          <rect x="3" y="4" width="18" height="18" rx="2" />
-                          <circle cx="12" cy="10" r="3" />
-                          <path d="M7 20v-1a5 5 0 0110 0v1" />
-                        </svg>
-                        <span style={{ ...text.body, color: colors.accent, fontWeight: 500 }}>Pick from Contacts</span>
+                      />
+                      {phoneNumber.replace(/\D/g, "").length >= 7 && contactCheckStatus !== "checking" && (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => checkPhoneAndChat(phoneNumber)}
+                          className="outline-none cursor-pointer"
+                        >
+                          <SendIcon color="#FF6B35" size={28} />
+                        </div>
+                      )}
+                    </div>
+                    {contactCheckStatus === "checking" && (
+                      <p style={{ ...text.hint, color: ink.tertiary, marginTop: "8px" }}>checking...</p>
+                    )}
+                    {contactCheckStatus === "not_found" && (
+                      <div style={{ marginTop: "12px" }}>
+                        <p style={{ ...text.hint, color: ink.secondary, marginBottom: "12px" }}>Not on Xark yet</p>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={async () => {
+                            try { await generateAndShareInvite(userName); setShowNewSheet(false); setShowPhoneInput(false); setPhoneNumber(""); setContactCheckStatus("idle"); } catch { /* cancelled */ }
+                          }}
+                          onKeyDown={(e) => { if (e.key === "Enter") generateAndShareInvite(userName).catch(() => {}); }}
+                          className="outline-none cursor-pointer"
+                          style={{ padding: "10px 0", display: "flex", alignItems: "center", gap: "12px" }}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors.accent} strokeWidth="1.5" strokeLinecap="round">
+                            <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                          </svg>
+                          <span style={{ ...text.body, color: colors.accent }}>Send invite link instead</span>
+                        </div>
                       </div>
                     )}
-
-                    <p style={{ ...text.label, color: ink.tertiary, marginBottom: "8px", marginTop: "4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>On Xark</p>
-                    {allUsers.length === 0 && (
-                      <p style={{ ...text.hint, color: ink.tertiary }}>No other users on Xark yet.</p>
+                    {contactCheckStatus === "found" && (
+                      <p style={{ ...text.hint, color: colors.accent, marginTop: "8px" }}>found — opening chat...</p>
                     )}
-                    {allUsers.map((u) => (
-                      <div
-                        key={u.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleNewChat(u)}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleNewChat(u); }}
-                        className="outline-none cursor-pointer"
-                        style={{ padding: "10px 0", display: "flex", alignItems: "center", gap: "12px" }}
-                      >
-                        <Avatar name={u.display_name} size={36} />
-                        <span style={{ ...text.body, color: ink.primary }}>{u.display_name}</span>
-                      </div>
-                    ))}
                   </div>
                 )}
 

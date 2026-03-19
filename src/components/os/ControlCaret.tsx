@@ -148,29 +148,32 @@ export function ControlCaret() {
             className="fixed inset-x-0 z-50 flex items-end justify-between pointer-events-none"
             style={{
               bottom: 0,
-              paddingBottom: "env(safe-area-inset-bottom, 24px)",
+              paddingBottom: "max(env(safe-area-inset-bottom), 24px)",
               paddingLeft: "24px",
               paddingRight: "24px",
               paddingTop: "16px",
             }}
           >
-            {/* ── LEFT THUMB: Contextual Escape Hatch (`< Chats`) ── */}
+            {/* ── LEFT THUMB: Contextual Escape Hatch (`<`) ── */}
             <div className="flex-1 pointer-events-auto flex flex-col justify-end" style={{ paddingBottom: "10px" }}>
-              {isInsideSpace && (
-                <button
-                  onClick={() => router.push(`/galaxy?name=${encodeURIComponent(userName)}`)}
-                  className="outline-none tracking-wide text-left"
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: 400,
-                    color: ink.secondary,
-                    textShadow: "0 2px 12px rgba(20,20,20,0.08)",
-                    WebkitTapHighlightColor: "transparent",
-                  }}
-                >
-                  ᐸ Chats
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  if (isInsideSpace) {
+                    router.push(`/galaxy?name=${encodeURIComponent(userName)}`);
+                  }
+                }}
+                className="outline-none tracking-wide text-left flex items-center"
+                style={{
+                  fontSize: "32px",
+                  fontWeight: 300,
+                  color: ink.secondary,
+                  textShadow: "0 2px 12px rgba(20,20,20,0.08)",
+                  WebkitTapHighlightColor: "transparent",
+                  marginTop: "-12px", // Offset baseline to balance visual center with "xark"
+                }}
+              >
+                ‹
+              </button>
             </div>
 
             {/* ── CENTER: The Anchor (`xark`) ── */}
@@ -251,37 +254,29 @@ export function ControlCaret() {
         </motion.div>
             </div>
 
-            {/* ── RIGHT THUMB: Primary Action ── */}
+            {/* ── RIGHT THUMB: Primary Action (`+`) ── */}
             <div className="flex-1 pointer-events-auto flex flex-col justify-end items-end" style={{ paddingBottom: "10px" }}>
-              {!isInsideSpace ? (
-                <button
-                  onClick={() => window.dispatchEvent(new CustomEvent("xark-compose"))}
-                  className="outline-none tracking-wide text-right"
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: 400,
-                    color: ink.primary,
-                    textShadow: "0 2px 12px rgba(20,20,20,0.08)",
-                    WebkitTapHighlightColor: "transparent",
-                  }}
-                >
-                  + Compose
-                </button>
-              ) : (
-                <button
-                  onClick={() => window.dispatchEvent(new CustomEvent("xark-info"))}
-                  className="outline-none tracking-wide text-right"
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: 400,
-                    color: ink.tertiary,
-                    textShadow: "0 2px 12px rgba(20,20,20,0.08)",
-                    WebkitTapHighlightColor: "transparent",
-                  }}
-                >
-                  i Info
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  if (isInsideSpace) {
+                    window.dispatchEvent(new CustomEvent("xark-info"));
+                  } else {
+                    window.dispatchEvent(new CustomEvent("xark-compose"));
+                  }
+                }}
+                className="outline-none tracking-wide text-right flex items-center justify-end"
+                style={{
+                  fontSize: "36px",
+                  fontWeight: 100,
+                  color: isInsideSpace ? ink.tertiary : ink.primary,
+                  textShadow: "0 2px 12px rgba(20,20,20,0.08)",
+                  WebkitTapHighlightColor: "transparent",
+                  lineHeight: 0.8,
+                  marginTop: "-12px",
+                }}
+              >
+                +
+              </button>
             </div>
           </motion.div>
         )}
