@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Crypto Module Barrel Export
+// hello OS v2.0 — Crypto Module Barrel Export
 // E2EE: Signal Protocol (Double Ratchet + Sender Keys)
 
 export * from './types';
@@ -12,3 +12,5 @@ export * from './key-manager';
 export * from './encryption-service';
 export * from './sk-recovery';
 export * from './dm-routing';
+export * from './pqxdh';
+export * from './kyber';
