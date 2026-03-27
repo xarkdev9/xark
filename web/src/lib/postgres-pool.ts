@@ -14,4 +14,5 @@ export const sql = globalForPostgres.sql || postgres(process.env.DATABASE_URL!, 
   connect_timeout: 5,
 });
 
-if (process.env.NODE_ENV !== 'production') globalForPostgres.sql = sql;
+// Persist to globalThis unconditionally — ensures warm Vercel containers reuse the pool
+if (!globalForPostgres.sql) globalForPostgres.sql = sql;

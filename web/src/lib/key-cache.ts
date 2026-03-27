@@ -1,9 +1,12 @@
 import { Redis } from '@upstash/redis';
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// Gracefully optional — cache miss falls through to Postgres
+const redis = process.env.UPSTASH_REDIS_REST_URL
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+  : null;
 
 const TTL_SECONDS = 300;
 const KEY_PREFIX = 'kb';
@@ -24,6 +27,7 @@ export async function getCachedBundle(
   userId: string,
   deviceId: number,
 ): Promise<CachedKeyBundle | null> {
+  if (!redis) return null;
   try {
     const data = await redis.get<CachedKeyBundle>(cacheKey(userId, deviceId));
     return data;
@@ -37,6 +41,7 @@ export async function cacheBundle(
   deviceId: number,
   bundle: CachedKeyBundle,
 ): Promise<void> {
+  if (!redis) return;
   try {
     await redis.set(cacheKey(userId, deviceId), bundle, { nx: true, ex: TTL_SECONDS });
   } catch {
@@ -49,8 +54,9 @@ export async function forceUpdateBundle(
   deviceId: number,
   bundle: CachedKeyBundle,
 ): Promise<void> {
+  if (!redis) return;
   try {
-    await redis.del(cacheKey(userId, deviceId));
+    // Atomic overwrite (no TOCTOU race vs separate DEL + SET)
     await redis.set(cacheKey(userId, deviceId), bundle, { ex: TTL_SECONDS });
   } catch {
     // non-fatal
@@ -61,6 +67,7 @@ export async function invalidateBundle(
   userId: string,
   deviceId: number,
 ): Promise<void> {
+  if (!redis) return;
   try {
     await redis.del(cacheKey(userId, deviceId));
   } catch {
