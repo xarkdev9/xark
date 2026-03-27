@@ -36,15 +36,15 @@ After each task's commit, validate against this checklist. Every cell must be ch
 
 | Task | Agent | Commit SHA | Tests Pass | Spec Section | Status |
 |------|-------|-----------|------------|--------------|--------|
-| 1. Supavisor Pooling | A | | | §2 BACKEND-02 | ☐ |
-| 2. Atomic RPC + UUIDv7 | A | | | §1 BACKEND-01 | ☐ |
-| 3. Partition Ciphertexts | A | | | §5 BACKEND-05 | ☐ |
-| 4. Edge Rate Limiting | B | | | §3 BACKEND-03 | ☐ |
-| 5. Key Bundle Cache | B | | | §4 BACKEND-04 | ☐ |
-| 6. SK Distribution ACK | C | | | §7 CRYPTO-04 | ☐ |
-| 7. Web Mutex (Web Locks) | C | | | §6 CRYPTO-05 (web) | ☐ |
-| 8. Crypto Isolate (Engine) | C | | | §6 CRYPTO-05 (engine) | ☐ |
-| 9. Strangler Fig Ports | C | | | §8 BACKEND-06/07/08 | ☐ |
+| 1. Supavisor Pooling | A | `f146e18` | Yes | §2 BACKEND-02 | DONE |
+| 2. Atomic RPC + UUIDv7 | A | `40d3b41` | Yes | §1 BACKEND-01 | DONE |
+| 3. Partition Ciphertexts | A | `fc5e10c` | Yes | §5 BACKEND-05 | DONE |
+| 4. Edge Rate Limiting | B | `cd823f2` | Yes (119/119) | §3 BACKEND-03 | DONE |
+| 5. Key Bundle Cache | B | `ae33caf` | Yes | §4 BACKEND-04 | DONE |
+| 6. SK Distribution ACK | C | `ea95bd0` | Yes | §7 CRYPTO-04 | DONE |
+| 7. Web Mutex (Web Locks) | C | `713a889` | Yes | §6 CRYPTO-05 (web) | DONE |
+| 8. Crypto Isolate (Engine) | C | `89efd72` | Yes | §6 CRYPTO-05 (engine) | DONE |
+| 9. Strangler Fig Ports | C | `61a00a9` | Yes | §8 BACKEND-06/07/08 | DONE |
 
 **Commit Validation Rule:** After each commit, run:
 ```bash
