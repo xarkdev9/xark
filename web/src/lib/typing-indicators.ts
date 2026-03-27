@@ -50,16 +50,20 @@ export function handleRemoteTyping(groupId: string, userId: string): void {
   }, AUTO_CLEAR_MS));
 }
 
-export async function sendTyping(groupId: string): Promise<void> {
+// Per-group debounce (module-global was bleeding across groups)
+const lastSentPerGroup = new Map<string, number>();
+
+export async function sendTyping(groupId: string, currentUserId: string): Promise<void> {
   const now = Date.now();
-  if (now - lastSentAt < DEBOUNCE_MS) return; // Debounce
-  lastSentAt = now;
+  const lastSent = lastSentPerGroup.get(groupId) ?? 0;
+  if (now - lastSent < DEBOUNCE_MS) return;
+  lastSentPerGroup.set(groupId, now);
 
   const channel = supabase.channel(`typing:${groupId}`);
   await channel.send({
     type: 'broadcast',
     event: 'typing',
-    payload: { timestamp: now },
+    payload: { userId: currentUserId, timestamp: now },
   });
 }
 

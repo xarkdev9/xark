@@ -189,14 +189,14 @@ async function getOrEstablishSession(
   // Direct RPC read — RLS enforced, no rate limit needed for reads (BUG 10 documented)
   const peerBundle = await fetchPeerKeyBundle(peerId, peerDeviceId);
 
-  console.log(`[e2ee-x3dh] Initiator X3DH: myIK=${toBase64(curve25519Public).slice(0,12)}..., peerSPK=${toBase64(peerBundle.signedPreKey).slice(0,12)}..., hasOTK=${!!peerBundle.oneTimePreKey}, otkId=${peerBundle.oneTimePreKeyId ?? 'none'}`);
+  // X3DH key material NEVER logged — see CLAUDE.md security requirements
 
   const { sharedSecret, ephemeralKey } = x3dhInitiate(
     { publicKey: curve25519Public, privateKey: curve25519Private },
     peerBundle
   );
 
-  console.log(`[e2ee-x3dh] Initiator sharedSecret=${toBase64(sharedSecret).slice(0,16)}..., ephemeralPub=${toBase64(ephemeralKey.publicKey).slice(0,12)}...`);
+  // Shared secret derived — never log key material
 
   const session = initSessionAsInitiator(sharedSecret, peerBundle.signedPreKey);
 
@@ -514,7 +514,7 @@ export async function processSenderKeyDistribution(
         console.log(`[e2ee-x3dh] No OTK in envelope — 3-DH key agreement (initiator also had no OTK).`);
       }
 
-      console.log(`[e2ee-x3dh] Responder X3DH inputs: peerIdentity=${toBase64(peerIdentityCurve).slice(0,12)}..., peerEphemeral=${toBase64(peerEphemeralPublic).slice(0,12)}..., myIK=${toBase64(curve25519Public).slice(0,12)}..., mySPK=${toBase64(signedPreKey.publicKey).slice(0,12)}..., hasOTK=${!!myOneTimePreKey}`);
+      // Responder X3DH — key material never logged
 
       const sharedSecret = x3dhRespond(
         { publicKey: curve25519Public, privateKey: curve25519Private },
@@ -524,7 +524,7 @@ export async function processSenderKeyDistribution(
         peerEphemeralPublic
       );
 
-      console.log(`[e2ee-x3dh] Responder sharedSecret=${toBase64(sharedSecret).slice(0,16)}...`);
+      // Responder shared secret derived — never log
 
       // Responder OTK cleanup
       if (otkId && myOneTimePreKey) {
