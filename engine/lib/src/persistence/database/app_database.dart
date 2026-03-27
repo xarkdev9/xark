@@ -19,6 +19,8 @@ part 'app_database.g.dart';
     UnackedRatchets,
     DecryptedMessages,
     ProcessedDistributions,
+    SyncWatermarks,
+    UploadTasks,
   ],
 )
 class AppDatabase extends _$AppDatabase {

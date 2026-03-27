@@ -320,3 +320,66 @@ class SkAckCache extends Table {
   @override
   Set<Column> get primaryKey => {groupId, senderId};
 }
+
+/// Sync watermarks per conversation for gap detection and incremental sync.
+///
+/// Tracks the highest `serverSeq` received locally so the sync layer can
+/// request only newer messages on reconnect.
+@DataClassName('SyncWatermarkRow')
+class SyncWatermarks extends Table {
+  /// Conversation (group) ID.
+  TextColumn get groupId => text()();
+
+  /// Highest server sequence number received for this group.
+  IntColumn get lastReceivedSeq =>
+      integer().withDefault(const Constant(0))();
+
+  /// When we last successfully synced this group.
+  DateTimeColumn get lastSyncAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {groupId};
+}
+
+/// Pending media upload tasks for offline-first media sending (MOBILE-05).
+///
+/// Files are encrypted and queued locally; the upload worker drains this
+/// table when connectivity is available.
+@DataClassName('UploadTaskRow')
+class UploadTasks extends Table {
+  /// Media ID (UUID).
+  TextColumn get mediaId => text()();
+
+  /// Conversation the media belongs to.
+  TextColumn get groupId => text()();
+
+  /// Local file path of the encrypted blob.
+  TextColumn get localPath => text()();
+
+  /// MIME type (e.g., image/jpeg).
+  TextColumn get mimeType => text()();
+
+  /// Total file size in bytes.
+  IntColumn get totalBytes => integer()();
+
+  /// Bytes uploaded so far (for progress tracking).
+  IntColumn get uploadedBytes =>
+      integer().withDefault(const Constant(0))();
+
+  /// Remote download URL, populated after successful upload.
+  TextColumn get downloadUrl => text().nullable()();
+
+  /// Upload status: pending, uploading, completed, failed.
+  TextColumn get status =>
+      text().withDefault(const Constant('pending'))();
+
+  /// JSON-encoded AES key + IV used to encrypt the file.
+  TextColumn get encryptionKeyJson => text().nullable()();
+
+  /// When this task was created.
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {mediaId};
+}
