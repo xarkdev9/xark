@@ -129,7 +129,7 @@ void main() {
           ourIdentity: aliceIdentity,
           theirBundle: badBundle,
         ),
-        throwsA(isA<StateError>()),
+        throwsA(isA<SignatureVerificationFailed>()),
       );
     });
 
@@ -243,6 +243,131 @@ void main() {
       );
 
       expect(result.usedOneTimePreKeyId, 'my-otk-id');
+    });
+
+    test('falls back to 3-DH when no OTK available', () async {
+      final aliceIdentity = await generateTestIdentityKeyPair();
+      final bobIdentity = await generateTestIdentityKeyPair();
+      final bobSpk = await generateTestSignedPreKey(bobIdentity);
+
+      // Bundle without OTK.
+      final bundleNoOtk = PreKeyBundle(
+        identityKey: bobIdentity.ed25519PublicKey,
+        signedPreKey: bobSpk.publicKey,
+        signedPreKeyId: bobSpk.id,
+        preKeySignature: bobSpk.signature,
+      );
+
+      final aliceResult = await X3DH.initiatorKeyAgreement(
+        ourIdentity: aliceIdentity,
+        theirBundle: bundleNoOtk,
+      );
+
+      // Shared secret is still computed (3-DH fallback).
+      expect(aliceResult.sharedSecret.length, 32);
+      expect(aliceResult.usedOneTimePreKeyId, isNull);
+
+      // Responder matches with null OTK.
+      final bobResult = await X3DH.responderKeyAgreement(
+        ourIdentity: bobIdentity,
+        ourSignedPreKey: bobSpk,
+        ourOneTimePreKey: null,
+        theirIdentityKey: aliceIdentity.ed25519PublicKey,
+        theirEphemeralKey: aliceResult.ephemeralPublicKey,
+      );
+
+      expect(aliceResult.sharedSecret, bobResult.sharedSecret);
+    });
+
+    test('throws SignatureVerificationFailed on bad signature', () async {
+      final aliceIdentity = await generateTestIdentityKeyPair();
+      final bobIdentity = await generateTestIdentityKeyPair();
+      final bobSpk = await generateTestSignedPreKey(bobIdentity);
+
+      // Corrupt the pre-key signature.
+      final badSig = Uint8List.fromList(bobSpk.signature);
+      for (var i = 0; i < badSig.length; i++) {
+        badSig[i] ^= 0xFF;
+      }
+
+      final badBundle = PreKeyBundle(
+        identityKey: bobIdentity.ed25519PublicKey,
+        signedPreKey: bobSpk.publicKey,
+        signedPreKeyId: bobSpk.id,
+        preKeySignature: badSig,
+      );
+
+      expect(
+        () => X3DH.initiatorKeyAgreement(
+          ourIdentity: aliceIdentity,
+          theirBundle: badBundle,
+        ),
+        throwsA(isA<SignatureVerificationFailed>()),
+      );
+    });
+
+    test('throws SignatureVerificationFailed on wrong identity key',
+        () async {
+      final aliceIdentity = await generateTestIdentityKeyPair();
+      final bobIdentity = await generateTestIdentityKeyPair();
+      final imposter = await generateTestIdentityKeyPair();
+      final bobSpk = await generateTestSignedPreKey(bobIdentity);
+
+      // Bundle where identity key doesn't match the key that signed the SPK.
+      final mismatchBundle = PreKeyBundle(
+        identityKey: imposter.ed25519PublicKey, // wrong identity key
+        signedPreKey: bobSpk.publicKey,
+        signedPreKeyId: bobSpk.id,
+        preKeySignature: bobSpk.signature, // signed by bobIdentity, not imposter
+      );
+
+      expect(
+        () => X3DH.initiatorKeyAgreement(
+          ourIdentity: aliceIdentity,
+          theirBundle: mismatchBundle,
+        ),
+        throwsA(isA<SignatureVerificationFailed>()),
+      );
+    });
+
+    test('3-DH and 4-DH produce different shared secrets', () async {
+      final aliceIdentity = await generateTestIdentityKeyPair();
+      final bobIdentity = await generateTestIdentityKeyPair();
+      final bobSpk = await generateTestSignedPreKey(bobIdentity);
+      final bobOtk = await generateTestOneTimePreKey('otk-diff');
+
+      // With OTK (4-DH).
+      final bundleWith = PreKeyBundle(
+        identityKey: bobIdentity.ed25519PublicKey,
+        signedPreKey: bobSpk.publicKey,
+        signedPreKeyId: bobSpk.id,
+        preKeySignature: bobSpk.signature,
+        oneTimePreKey: bobOtk.publicKey,
+        oneTimePreKeyId: bobOtk.id,
+      );
+
+      // Without OTK (3-DH).
+      final bundleWithout = PreKeyBundle(
+        identityKey: bobIdentity.ed25519PublicKey,
+        signedPreKey: bobSpk.publicKey,
+        signedPreKeyId: bobSpk.id,
+        preKeySignature: bobSpk.signature,
+      );
+
+      final resultWith = await X3DH.initiatorKeyAgreement(
+        ourIdentity: aliceIdentity,
+        theirBundle: bundleWith,
+      );
+      final resultWithout = await X3DH.initiatorKeyAgreement(
+        ourIdentity: aliceIdentity,
+        theirBundle: bundleWithout,
+      );
+
+      // OTK adds entropy — secrets must differ.
+      expect(
+        resultWith.sharedSecret,
+        isNot(equals(resultWithout.sharedSecret)),
+      );
     });
 
     test(

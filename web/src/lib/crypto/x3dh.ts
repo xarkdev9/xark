@@ -1,4 +1,4 @@
-// XARK OS v2.0 — X3DH Key Agreement
+// hello OS v2.0 — X3DH Key Agreement
 // Extended Triple Diffie-Hellman for establishing 1:1 sessions.
 // Used to initialize Double Ratchet sessions.
 
@@ -6,6 +6,24 @@ import { dh, hkdf, verify, ed25519PkToCurve25519, generateDHKeyPair } from './pr
 import type { PublicKeyBundle, RawKeyPair } from './types';
 
 const X3DH_INFO = 'XarkE2EE-x3dh';
+
+// ── X3DH Error Types ──
+
+export class X3dhError extends Error {
+  constructor(message: string) { super(message); this.name = 'X3dhError'; }
+}
+
+export class OtkExhaustedError extends X3dhError {
+  constructor() { super('No OTK available — falling back to 3-DH'); this.name = 'OtkExhaustedError'; }
+}
+
+export class SignatureVerificationError extends X3dhError {
+  constructor() { super('Signed pre-key signature verification failed'); this.name = 'SignatureVerificationError'; }
+}
+
+export class KeyMismatchError extends X3dhError {
+  constructor() { super('Key bundle mismatch — cached bundle may be stale'); this.name = 'KeyMismatchError'; }
+}
 
 /**
  * Initiator side of X3DH — creates shared secret for session setup.
@@ -30,7 +48,7 @@ export function x3dhInitiate(
     peerBundle.signedPreKey,
     peerBundle.identityKey // Ed25519 public key
   );
-  if (!isValid) throw new Error('X3DH: Invalid signed pre-key signature');
+  if (!isValid) throw new SignatureVerificationError();
 
   // Convert peer's Ed25519 identity key to Curve25519
   const peerIdentityCurve = ed25519PkToCurve25519(peerBundle.identityKey);

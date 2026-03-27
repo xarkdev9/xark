@@ -4,6 +4,59 @@ import 'package:hello_engine/src/crypto/keys/ed25519_to_curve25519.dart';
 import 'package:hello_engine/src/crypto/keys/key_types.dart';
 import 'package:cryptography/cryptography.dart';
 
+/// Base exception for X3DH protocol errors.
+class X3dhException implements Exception {
+  /// Creates an [X3dhException] with the given [message].
+  X3dhException(this.message);
+
+  /// Human-readable description of the error.
+  final String message;
+
+  @override
+  String toString() => 'X3dhException: $message';
+}
+
+/// Thrown when no one-time pre-keys are available.
+///
+/// This is informational — the protocol falls back to 3-DH
+/// (which is valid Signal behavior).
+class OtkExhaustedException extends X3dhException {
+  /// Creates an [OtkExhaustedException].
+  OtkExhaustedException()
+      : super('No one-time pre-keys available — falling back to 3-DH');
+}
+
+/// Thrown when the signed pre-key signature fails verification.
+///
+/// This may indicate a man-in-the-middle attack.
+class SignatureVerificationFailed extends X3dhException {
+  /// Creates a [SignatureVerificationFailed].
+  SignatureVerificationFailed()
+      : super(
+          'Signed pre-key signature verification failed — potential MITM',
+        );
+}
+
+/// Thrown when identity key in the bundle does not match expectations.
+///
+/// Typically means the cached bundle is stale or has been tampered with.
+class KeyMismatchError extends X3dhException {
+  /// Creates a [KeyMismatchError].
+  KeyMismatchError()
+      : super('Key bundle mismatch — cached bundle may be stale');
+}
+
+/// Warning exception for stale signed pre-keys (older than 7 days).
+///
+/// The protocol proceeds, but callers should log this condition.
+class StalePreKeyWarning extends X3dhException {
+  /// Creates a [StalePreKeyWarning].
+  StalePreKeyWarning()
+      : super(
+          'Signed pre-key is older than 7 days — proceeding with warning',
+        );
+}
+
 /// Extended Triple Diffie-Hellman (X3DH) key agreement.
 ///
 /// Implements the X3DH protocol for establishing shared secrets
@@ -39,9 +92,7 @@ class X3DH {
       ),
     );
     if (!sigValid) {
-      throw StateError(
-        'Signed pre-key signature verification failed',
-      );
+      throw SignatureVerificationFailed();
     }
 
     // 2. Convert their Ed25519 identity key to X25519.
