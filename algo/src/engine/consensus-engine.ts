@@ -6,7 +6,7 @@
  *     → Members react (❤️/👍🏻) → Weighted Heart-Sort re-orders in real-time
  *       → Any member commits (books, purchases, decides) + provides proof
  *         → Lock activates → Committer stamped as owner
- *           → @xark grounds all future suggestions to locked state
+ *           → @hello grounds all future suggestions to locked state
  *             → Another member can claim via "I'll take care of this"
  *
  * Supports multiple DecisionSpaces — each with its own state machine,
@@ -24,7 +24,7 @@ import type {
   GroupId,
   ItemId,
   SpaceConfig,
-  SpaceId,
+  GroupId,
   Task,
   TaskId,
   UserId,
@@ -66,8 +66,8 @@ export interface EngineOptions {
 
 export class ConsensusEngine {
   private groups: Map<GroupId, Group> = new Map();
-  private spaces: Map<SpaceId, DecisionSpace> = new Map();
-  private spaceMachines: Map<SpaceId, StateMachine> = new Map();
+  private spaces: Map<GroupId, DecisionSpace> = new Map();
+  private spaceMachines: Map<GroupId, StateMachine> = new Map();
   private items: Map<ItemId, BookableItem> = new Map();
   private tasks: Map<TaskId, Task> = new Map();
   private groupItems: Map<GroupId, Set<ItemId>> = new Map();
@@ -124,26 +124,26 @@ export class ConsensusEngine {
   /**
    * Gets a DecisionSpace by ID.
    */
-  getSpace(spaceId: SpaceId): DecisionSpace | undefined {
-    return this.spaces.get(spaceId);
+  getSpace(groupId: GroupId): DecisionSpace | undefined {
+    return this.spaces.get(groupId);
   }
 
   /**
    * Gets the config for a space, falling back to default.
    */
-  getSpaceConfig(spaceId: SpaceId): SpaceConfig {
-    const space = this.spaces.get(spaceId);
+  getSpaceConfig(groupId: GroupId): SpaceConfig {
+    const space = this.spaces.get(groupId);
     return space?.config ?? this.defaultConfig;
   }
 
   /**
    * Gets the state machine for a space, creating a default if needed.
    */
-  getStateMachine(spaceId: SpaceId): StateMachine {
-    let machine = this.spaceMachines.get(spaceId);
+  getStateMachine(groupId: GroupId): StateMachine {
+    let machine = this.spaceMachines.get(groupId);
     if (!machine) {
       machine = new StateMachine(BOOKING_FLOW);
-      this.spaceMachines.set(spaceId, machine);
+      this.spaceMachines.set(groupId, machine);
     }
     return machine;
   }
@@ -151,8 +151,8 @@ export class ConsensusEngine {
   /**
    * Sets a custom state machine for a space.
    */
-  setStateMachine(spaceId: SpaceId, machine: StateMachine): void {
-    this.spaceMachines.set(spaceId, machine);
+  setStateMachine(groupId: GroupId, machine: StateMachine): void {
+    this.spaceMachines.set(groupId, machine);
   }
 
   // --- Group Management (backwards compat) ---
@@ -181,21 +181,21 @@ export class ConsensusEngine {
    * Uses crypto.randomUUID() for globally unique IDs.
    */
   addItem(
-    spaceId: SpaceId,
+    groupId: GroupId,
     title: string,
     description: string,
     category: string,
     proposedBy: UserId,
     timestamp: number
   ): BookableItem {
-    const config = this.getSpaceConfig(spaceId);
-    const machine = this.getStateMachine(spaceId);
+    const config = this.getSpaceConfig(groupId);
+    const machine = this.getStateMachine(groupId);
     const id = `item_${randomUUID()}` as ItemId;
 
     const item: BookableItem = {
       id,
-      spaceId,
-      groupId: spaceId as GroupId,
+      groupId,
+      groupId: groupId as GroupId,
       title,
       description,
       category,
@@ -214,12 +214,12 @@ export class ConsensusEngine {
     };
 
     this.items.set(item.id, item);
-    this.getOrCreateGroupItems(spaceId as GroupId).add(item.id);
+    this.getOrCreateGroupItems(groupId as GroupId).add(item.id);
 
     this.emit({
       type: EventType.ItemProposed,
       timestamp,
-      groupId: spaceId as GroupId,
+      groupId: groupId as GroupId,
       actorId: proposedBy,
       payload: { itemId: item.id, title, category },
     });
@@ -239,7 +239,7 @@ export class ConsensusEngine {
     proposedBy: UserId,
     timestamp: number
   ): BookableItem {
-    return this.addItem(groupId as SpaceId, title, description, category, proposedBy, timestamp);
+    return this.addItem(groupId as GroupId, title, description, category, proposedBy, timestamp);
   }
 
   /**
@@ -252,8 +252,8 @@ export class ConsensusEngine {
     timestamp: number
   ): BookableItem {
     const item = this.getItemOrThrow(itemId);
-    const machine = this.getStateMachine(item.groupId as SpaceId);
-    const config = this.getSpaceConfig(item.groupId as SpaceId);
+    const machine = this.getStateMachine(item.groupId as GroupId);
+    const config = this.getSpaceConfig(item.groupId as GroupId);
 
     if (isLocked(item, machine)) {
       throw new Error(`Cannot react to locked item "${item.title}".`);
@@ -291,8 +291,8 @@ export class ConsensusEngine {
    */
   unreact(itemId: ItemId, userId: UserId, timestamp: number): BookableItem {
     const item = this.getItemOrThrow(itemId);
-    const machine = this.getStateMachine(item.groupId as SpaceId);
-    const config = this.getSpaceConfig(item.groupId as SpaceId);
+    const machine = this.getStateMachine(item.groupId as GroupId);
+    const config = this.getSpaceConfig(item.groupId as GroupId);
 
     if (isLocked(item, machine)) {
       throw new Error(`Cannot modify reactions on locked item "${item.title}".`);
@@ -318,8 +318,8 @@ export class ConsensusEngine {
    */
   lock(itemId: ItemId, proof: CommitmentProof): BookableItem {
     const item = this.getItemOrThrow(itemId);
-    const machine = this.getStateMachine(item.groupId as SpaceId);
-    const config = this.getSpaceConfig(item.groupId as SpaceId);
+    const machine = this.getStateMachine(item.groupId as GroupId);
+    const config = this.getSpaceConfig(item.groupId as GroupId);
 
     const locked = commitItem(item, proof, machine, config.requireProofForLock);
     this.items.set(itemId, locked);
@@ -349,7 +349,7 @@ export class ConsensusEngine {
     timestamp: number
   ): BookableItem {
     const item = this.getItemOrThrow(itemId);
-    const machine = this.getStateMachine(item.groupId as SpaceId);
+    const machine = this.getStateMachine(item.groupId as GroupId);
     const previousOwnerId = item.ownership?.ownerId;
     const updated = transferOwnership(item, newOwnerId, timestamp, machine);
     this.items.set(itemId, updated);
@@ -467,7 +467,7 @@ export class ConsensusEngine {
    * Returns only locked items for a group/space.
    */
   getLockedItems(groupId: GroupId): BookableItem[] {
-    const machine = this.getStateMachine(groupId as SpaceId);
+    const machine = this.getStateMachine(groupId as GroupId);
     return this.getGroupItems(groupId).filter((item) => isLocked(item, machine));
   }
 
@@ -475,7 +475,7 @@ export class ConsensusEngine {
    * Returns only unlocked (active) items for a group/space, sorted by score.
    */
   getActiveItems(groupId: GroupId): BookableItem[] {
-    const machine = this.getStateMachine(groupId as SpaceId);
+    const machine = this.getStateMachine(groupId as GroupId);
     return this.getGroupItems(groupId).filter((item) => !isLocked(item, machine));
   }
 
@@ -500,7 +500,7 @@ export class ConsensusEngine {
   getRankedItems(groupId: GroupId): ReturnType<typeof getRankedSummary> {
     const group = this.groups.get(groupId);
     const totalMembers = group?.members.length ?? 0;
-    const config = this.getSpaceConfig(groupId as SpaceId);
+    const config = this.getSpaceConfig(groupId as GroupId);
     const items = this.getActiveItems(groupId);
     return getRankedSummary(items, totalMembers, config.groupFavoriteThreshold);
   }
@@ -514,7 +514,7 @@ export class ConsensusEngine {
     const item = this.getItemOrThrow(itemId);
     const group = this.groups.get(item.groupId);
     const totalMembers = group?.members.length ?? 0;
-    const config = this.getSpaceConfig(item.groupId as SpaceId);
+    const config = this.getSpaceConfig(item.groupId as GroupId);
     return calculateAgreementScore(item, totalMembers, config.groupFavoriteThreshold);
   }
 
@@ -542,18 +542,18 @@ export class ConsensusEngine {
   // --- AI Grounding ---
 
   /**
-   * Builds the grounding context for @xark.
+   * Builds the grounding context for @hello.
    * Returns all locked decisions as hard constraints and active items as context.
    */
   getGroundingContext(groupId: GroupId): GroundingContext {
-    const machine = this.getStateMachine(groupId as SpaceId);
+    const machine = this.getStateMachine(groupId as GroupId);
     const items = this.getGroupItems(groupId);
     const tasks = this.getGroupTasks(groupId);
     return buildGroundingContext(groupId, items, tasks, machine);
   }
 
   /**
-   * Generates the system prompt fragment for @xark.
+   * Generates the system prompt fragment for @hello.
    */
   getGroundingPrompt(groupId: GroupId): string {
     const context = this.getGroundingContext(groupId);

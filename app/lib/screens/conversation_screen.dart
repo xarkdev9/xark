@@ -32,7 +32,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return Scaffold(
       backgroundColor: HelloColors.voidBg,
       appBar: AppBar(
-        title: const LiquidFireText(
+        title: const HelloAnimation(
           text: 'hello',
           style: HelloTypography.hero,
         ),

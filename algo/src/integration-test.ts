@@ -289,7 +289,7 @@ function main() {
 
   // ─── Phase 6: AI Grounding ───────────────────────────────
 
-  header("Phase 6: @xark AI Grounding");
+  header("Phase 6: @hello AI Grounding");
 
   const context = engine.getGroundingContext("sd_trip");
 
@@ -305,7 +305,7 @@ function main() {
   console.assert(prompt.includes("Do NOT suggest alternatives"), "Prompt has restriction");
 
   console.log();
-  highlight("@xark System Prompt Fragment:");
+  highlight("@hello System Prompt Fragment:");
   console.log(`${DIM}${prompt}${RESET}`);
 
   // ─── Phase 7: Event Log ──────────────────────────────────

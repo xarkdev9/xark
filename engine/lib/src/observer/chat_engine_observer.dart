@@ -1,5 +1,5 @@
-import 'package:chat_engine/src/domain/models/chat_engine_error.dart';
-import 'package:chat_engine/src/domain/models/connection_state.dart';
+import 'package:hello_engine/src/domain/models/chat_engine_error.dart';
+import 'package:hello_engine/src/domain/models/connection_state.dart';
 
 /// Observer interface for engine-wide diagnostic events.
 ///

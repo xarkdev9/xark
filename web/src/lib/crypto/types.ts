@@ -129,8 +129,8 @@ export interface KeyBackupBlob {
     private: string;         // base64
   };
   senderKeys: {
-    active: Record<string, string>;       // spaceId -> base64 serialized state
-    historical: Record<string, string[]>; // spaceId -> base64 serialized states
+    active: Record<string, string>;       // groupId -> base64 serialized state
+    historical: Record<string, string[]>; // groupId -> base64 serialized states
   };
 }
 

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SphereImageGrid, { SphereNode } from '@/components/os/SphereImageGrid';
-import PossibilityHorizon from '@/components/os/PossibilityHorizon';
+import DecisionBoard from '@/components/os/DecisionBoard';
 
 const UNIVERSE_NODES: SphereNode[] = [
   { id: 'cat-1', type: 'category', label: 'hotels' },
@@ -51,7 +51,7 @@ export default function PrototypePage() {
             
             {/* The Horizon mounts and exclusively filters to the selected category */}
             <div className="h-full overflow-y-auto">
-               <PossibilityHorizon spaceId="pg_tokyo-neon-nights" filterCategory={activeHub} />
+               <DecisionBoard groupId="pg_tokyo-neon-nights" filterCategory={activeHub} />
             </div>
           </motion.div>
         ) : (

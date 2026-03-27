@@ -6,7 +6,7 @@ import { getSupabaseToken } from '../supabase';
 
 export interface OutboxEntry {
   id: string;
-  spaceId: string;
+  groupId: string;
   envelope: {
     ciphertext: string;
     ratchetHeader?: string;
@@ -108,7 +108,7 @@ export async function drainOutbox(
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          space_id: entry.spaceId,
+          group_id: entry.groupId,
           sender_device_id: entry.senderDeviceId,
           ciphertext: entry.envelope.ciphertext,
           ratchet_header: entry.envelope.ratchetHeader ?? null,

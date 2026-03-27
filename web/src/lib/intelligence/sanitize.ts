@@ -2,7 +2,7 @@
 
 interface Message {
   id: string;
-  space_id: string;
+  group_id: string;
   role: string;
   content: string;
   user_id: string | null;

@@ -1,7 +1,7 @@
 "use client";
 
 // XARK OS v2.0 — AWARENESS STREAM
-// Extracted from Galaxy page. Renders space awareness items with opacity, summary, recency.
+// Extracted from Home page. Renders space awareness items with opacity, summary, recency.
 // Includes space creation flow (dream input + send icon).
 // Independent data fetching + real-time subscription.
 
@@ -11,8 +11,8 @@ import {
   fetchAwareness,
   getDemoAwareness,
   summaryText,
-} from "@/lib/awareness";
-import type { SpaceAwareness } from "@/lib/awareness";
+} from "@/lib/home-feed";
+import type { SpaceAwareness } from "@/lib/home-feed";
 import { recencyLabel } from "@/lib/space-data";
 import { supabase } from "@/lib/supabase";
 import { colors, ink, timing, layout, text } from "@/lib/theme";
@@ -24,7 +24,7 @@ import { fetchUnreadCounts } from "@/lib/unread";
 interface AwarenessStreamProps {
   userId: string;
   userName: string;
-  onSpaceTap: (spaceId: string, viewMode?: "decide") => void;
+  onSpaceTap: (groupId: string, viewMode?: "decide") => void;
   playgroundSpaces?: SpaceAwareness[];
 }
 
@@ -78,9 +78,9 @@ export function AwarenessStream({ userId, userName, onSpaceTap, playgroundSpaces
   const isPlayground = spaces.length === 0 && (playgroundSpaces ?? []).length > 0;
   const allPeaceful = displaySpaces.length > 0 && displaySpaces.every((s) => !s.actionNeeded);
 
-  const handleSpaceTap = useCallback((spaceId: string) => {
+  const handleSpaceTap = useCallback((groupId: string) => {
     dismissOnboardingWhisper("galaxy_tap");
-    onSpaceTap(spaceId);
+    onSpaceTap(groupId);
   }, [onSpaceTap]);
 
   return (
@@ -98,11 +98,11 @@ export function AwarenessStream({ userId, userName, onSpaceTap, playgroundSpaces
 
               return (
                 <motion.div
-                  key={space.spaceId}
+                  key={space.groupId}
                   role="button"
                   tabIndex={0}
-                  onClick={() => handleSpaceTap(space.spaceId)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleSpaceTap(space.spaceId); }}
+                  onClick={() => handleSpaceTap(space.groupId)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSpaceTap(space.groupId); }}
                   className="cursor-pointer outline-none"
                   style={{ paddingBottom: "20px" }}
                   initial={{ opacity: 0, y: 8 }}
@@ -141,7 +141,7 @@ export function AwarenessStream({ userId, userName, onSpaceTap, playgroundSpaces
                           <p style={{ ...text.timestamp, color: ink.tertiary }}>
                             {recencyLabel(new Date(space.lastActivityAt))}
                           </p>
-                          {(unreadCounts[space.spaceId] ?? 0) > 0 && (
+                          {(unreadCounts[space.groupId] ?? 0) > 0 && (
                             <span style={{
                               display: "inline-flex",
                               alignItems: "center",
@@ -155,7 +155,7 @@ export function AwarenessStream({ userId, userName, onSpaceTap, playgroundSpaces
                               color: "#fff",
                               backgroundColor: "#FF6B35",
                             }}>
-                              {unreadCounts[space.spaceId] > 99 ? "99+" : unreadCounts[space.spaceId]}
+                              {unreadCounts[space.groupId] > 99 ? "99+" : unreadCounts[space.groupId]}
                             </span>
                           )}
                         </div>

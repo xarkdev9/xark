@@ -2,7 +2,7 @@
 
 // XARK OS v2.0 — Spotlight Hook
 // State management for SpotlightSheet: open/close, morph animation, routing.
-// send() fires @xark query, runs 800ms morph, then auto-navigates if from Galaxy.
+// send() fires @hello query, runs 800ms morph, then auto-navigates if from Home.
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -10,17 +10,17 @@ import { useRouter, usePathname } from "next/navigation";
 interface SpotlightState {
   isOpen: boolean;
   morphText: string | null;
-  targetSpaceId: string | null;
+  targetGroupId: string | null;
 }
 
-export function useSpotlight(getToken: () => string | null) {
+export function useHelloAI(getToken: () => string | null) {
   const router = useRouter();
   const pathname = usePathname();
 
   const [state, setState] = useState<SpotlightState>({
     isOpen: false,
     morphText: null,
-    targetSpaceId: null,
+    targetGroupId: null,
   });
 
   const morphTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -29,12 +29,12 @@ export function useSpotlight(getToken: () => string | null) {
   const isInsideSpace = /^\/space\//.test(pathname);
 
   const open = useCallback(() => {
-    // If inside a space, extract spaceId from pathname
+    // If inside a space, extract groupId from pathname
     const spaceMatch = pathname.match(/^\/space\/([^/]+)/);
     setState({
       isOpen: true,
       morphText: null,
-      targetSpaceId: spaceMatch ? spaceMatch[1] : null,
+      targetGroupId: spaceMatch ? spaceMatch[1] : null,
     });
   }, [pathname]);
 
@@ -46,16 +46,16 @@ export function useSpotlight(getToken: () => string | null) {
     setState({
       isOpen: false,
       morphText: null,
-      targetSpaceId: null,
+      targetGroupId: null,
     });
   }, []);
 
-  const setTargetSpace = useCallback((spaceId: string) => {
-    setState((prev) => ({ ...prev, targetSpaceId: spaceId }));
+  const setTargetSpace = useCallback((groupId: string) => {
+    setState((prev) => ({ ...prev, targetGroupId: groupId }));
   }, []);
 
   const send = useCallback(
-    (text: string, spaceId: string, spaceTitle?: string) => {
+    (text: string, groupId: string, spaceTitle?: string) => {
       const token = getToken();
 
       // Set morph text immediately
@@ -64,12 +64,12 @@ export function useSpotlight(getToken: () => string | null) {
         morphText: spaceTitle ? `scouting ${spaceTitle}...` : "scouting...",
       }));
 
-      // Signal to Space page that @xark is processing — instant feedback
-      window.dispatchEvent(new CustomEvent("xark-thinking", { detail: { spaceId } }));
+      // Signal to Space page that @hello is processing — instant feedback
+      window.dispatchEvent(new CustomEvent("xark-thinking", { detail: { groupId } }));
 
-      // Fire-and-forget fetch to /api/xark
+      // Fire-and-forget fetch to /api/hello
       if (token) {
-        fetch("/api/xark", {
+        fetch("/api/hello", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -77,23 +77,23 @@ export function useSpotlight(getToken: () => string | null) {
           },
           body: JSON.stringify({
             message: "@hello " + text,
-            spaceId,
+            groupId,
             userId: "",
           }),
         }).catch(console.warn);
       }
 
-      // After 800ms, close sheet + auto-navigate if from Galaxy
+      // After 800ms, close sheet + auto-navigate if from Home
       morphTimerRef.current = setTimeout(() => {
         setState({
           isOpen: false,
           morphText: null,
-          targetSpaceId: null,
+          targetGroupId: null,
         });
 
         // Auto-navigate to space if NOT already inside one
         if (!isInsideSpace) {
-          router.push(`/space/${spaceId}?xark=thinking`);
+          router.push(`/space/${groupId}?xark=thinking`);
         }
 
         morphTimerRef.current = null;
@@ -105,7 +105,7 @@ export function useSpotlight(getToken: () => string | null) {
   return {
     isOpen: state.isOpen,
     morphText: state.morphText,
-    targetSpaceId: state.targetSpaceId,
+    targetGroupId: state.targetGroupId,
     isInsideSpace,
     open,
     close,

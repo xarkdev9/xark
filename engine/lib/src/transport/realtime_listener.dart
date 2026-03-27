@@ -1,15 +1,15 @@
 import 'dart:async';
 
-import 'package:chat_engine/src/domain/models/connection_state.dart';
-import 'package:chat_engine/src/transport/dto/realtime_event.dart';
+import 'package:hello_engine/src/domain/models/connection_state.dart';
+import 'package:hello_engine/src/transport/dto/realtime_event.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Manages Supabase Realtime subscriptions for incoming message
 /// notifications and Sender Key recovery broadcasts.
 ///
 /// Each space gets two channels:
-/// - `chat:{spaceId}` -- Postgres changes on the `messages` table.
-/// - `sk-recovery:{spaceId}` -- Broadcast channel for SK recovery
+/// - `chat:{groupId}` -- Postgres changes on the `messages` table.
+/// - `sk-recovery:{groupId}` -- Broadcast channel for SK recovery
 ///   requests.
 class RealtimeListener {
   /// Creates a [RealtimeListener].
@@ -44,20 +44,20 @@ class RealtimeListener {
   Stream<EngineConnectionState> get connectionState =>
       _connectionController.stream;
 
-  /// Subscribes to new-message Postgres change events for [spaceId].
+  /// Subscribes to new-message Postgres change events for [groupId].
   ///
   /// Returns a broadcast stream of [RealtimeMessageEvent]s. Calling
   /// this multiple times for the same space returns the same stream.
-  Stream<RealtimeMessageEvent> subscribeToSpace(String spaceId) {
-    if (_messageControllers.containsKey(spaceId)) {
-      return _messageControllers[spaceId]!.stream;
+  Stream<RealtimeMessageEvent> subscribeToSpace(String groupId) {
+    if (_messageControllers.containsKey(groupId)) {
+      return _messageControllers[groupId]!.stream;
     }
 
     final controller = StreamController<RealtimeMessageEvent>.broadcast();
-    _messageControllers[spaceId] = controller;
+    _messageControllers[groupId] = controller;
 
     final channel = _client.channel(
-      'chat:$spaceId',
+      'chat:$groupId',
       opts: const RealtimeChannelConfig(private: true),
     );
 
@@ -68,8 +68,8 @@ class RealtimeListener {
           table: 'messages',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
-            column: 'space_id',
-            value: spaceId,
+            column: 'group_id',
+            value: groupId,
           ),
           callback: (PostgresChangePayload payload) {
             final event = RealtimeMessageEvent.fromPostgresPayload(
@@ -101,27 +101,27 @@ class RealtimeListener {
       }
     });
 
-    _messageChannels[spaceId] = channel;
+    _messageChannels[groupId] = channel;
     return controller.stream;
   }
 
-  /// Subscribes to Sender Key recovery requests for [spaceId].
+  /// Subscribes to Sender Key recovery requests for [groupId].
   ///
   /// Only events not originating from [myUserId] are emitted to avoid
   /// processing our own broadcasts.
   Stream<SKRecoveryRequest> subscribeToSKRecovery(
-    String spaceId,
+    String groupId,
     String myUserId,
   ) {
-    if (_skControllers.containsKey(spaceId)) {
-      return _skControllers[spaceId]!.stream;
+    if (_skControllers.containsKey(groupId)) {
+      return _skControllers[groupId]!.stream;
     }
 
     final controller = StreamController<SKRecoveryRequest>.broadcast();
-    _skControllers[spaceId] = controller;
+    _skControllers[groupId] = controller;
 
     final channel = _client.channel(
-      'sk-recovery:$spaceId',
+      'sk-recovery:$groupId',
       opts: const RealtimeChannelConfig(private: true),
     );
 
@@ -138,21 +138,21 @@ class RealtimeListener {
         )
         .subscribe();
 
-    _skChannels[spaceId] = channel;
+    _skChannels[groupId] = channel;
     return controller.stream;
   }
 
-  /// Broadcasts a Sender Key recovery request to all peers in [spaceId].
+  /// Broadcasts a Sender Key recovery request to all peers in [groupId].
   Future<void> broadcastSKRequest({
-    required String spaceId,
+    required String groupId,
     required String requesterId,
     required int requesterDeviceId,
     required String targetSenderId,
   }) async {
-    final channelName = 'sk-recovery:$spaceId';
+    final channelName = 'sk-recovery:$groupId';
 
     // Reuse existing channel or create a temporary one.
-    var channel = _skChannels[spaceId];
+    var channel = _skChannels[groupId];
     final isTemp = channel == null;
 
     if (isTemp) {
@@ -180,7 +180,7 @@ class RealtimeListener {
         requesterId: requesterId,
         requesterDeviceId: requesterDeviceId,
         targetSenderId: targetSenderId,
-        spaceId: spaceId,
+        groupId: groupId,
       ).toBroadcastPayload(),
     );
 
@@ -189,29 +189,29 @@ class RealtimeListener {
     }
   }
 
-  /// Unsubscribes from both message and SK-recovery channels for [spaceId].
-  Future<void> unsubscribeFromSpace(String spaceId) async {
-    final msgChannel = _messageChannels.remove(spaceId);
+  /// Unsubscribes from both message and SK-recovery channels for [groupId].
+  Future<void> unsubscribeFromSpace(String groupId) async {
+    final msgChannel = _messageChannels.remove(groupId);
     if (msgChannel != null) {
       await msgChannel.unsubscribe();
     }
-    await _messageControllers.remove(spaceId)?.close();
+    await _messageControllers.remove(groupId)?.close();
 
-    final skChannel = _skChannels.remove(spaceId);
+    final skChannel = _skChannels.remove(groupId);
     if (skChannel != null) {
       await skChannel.unsubscribe();
     }
-    await _skControllers.remove(spaceId)?.close();
+    await _skControllers.remove(groupId)?.close();
   }
 
   /// Unsubscribes from all active channels.
   Future<void> unsubscribeAll() async {
-    final spaceIds = <String>{
+    final groupIds = <String>{
       ..._messageChannels.keys,
       ..._skChannels.keys,
     };
-    for (final spaceId in spaceIds) {
-      await unsubscribeFromSpace(spaceId);
+    for (final groupId in groupIds) {
+      await unsubscribeFromSpace(groupId);
     }
   }
 

@@ -13,10 +13,10 @@ interface InviteSurfaceProps {
   userName: string;
 }
 
-/** Generate an invite link via /api/summon and trigger native share or clipboard copy. */
+/** Generate an invite link via /api/invite and trigger native share or clipboard copy. */
 export async function generateAndShareInvite(userName: string): Promise<void> {
   const token = getSupabaseToken();
-  const res = await fetch("/api/summon", {
+  const res = await fetch("/api/invite", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

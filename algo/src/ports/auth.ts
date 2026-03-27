@@ -8,7 +8,7 @@
  * Two-step: authenticate (who are you?) then authorize (can you do this?).
  */
 
-import type { UserId, SpaceId } from "../models/types.js";
+import type { UserId, GroupId } from "../models/types.js";
 
 /**
  * Actions that can be authorized.
@@ -50,6 +50,6 @@ export interface AuthPort {
   authorize(
     identity: Identity,
     action: Action,
-    spaceId: SpaceId
+    groupId: GroupId
   ): Promise<boolean>;
 }

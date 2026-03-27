@@ -6,7 +6,7 @@ import { supabaseAdmin } from "./supabase-admin";
 // ── Types ──
 
 export interface LogisticsRow {
-  space_id: string;
+  group_id: string;
   user_id: string;
   category: string;
   origin: string | null;
@@ -41,13 +41,13 @@ export function resolveOrigin(
 // ── Skeleton Row Builder (pure function) ──
 
 export function buildLogisticsSkeletonRows(
-  spaceId: string,
+  groupId: string,
   userId: string,
   homeCity: string | null,
   destination: string | null
 ): LogisticsRow[] {
   return ["flight_outbound", "flight_return"].map((cat) => ({
-    space_id: spaceId,
+    group_id: groupId,
     user_id: userId,
     category: cat,
     origin: cat === "flight_outbound" ? homeCity : destination,
@@ -61,7 +61,7 @@ export function buildLogisticsSkeletonRows(
 // ── Auto-Population on Member Join ──
 
 export async function onMemberJoin(
-  spaceId: string,
+  groupId: string,
   userId: string
 ): Promise<void> {
   const { data: user } = await supabaseAdmin
@@ -73,11 +73,11 @@ export async function onMemberJoin(
   const { data: dates } = await supabaseAdmin
     .from("space_dates")
     .select("destination")
-    .eq("space_id", spaceId)
+    .eq("group_id", groupId)
     .single();
 
   const rows = buildLogisticsSkeletonRows(
-    spaceId,
+    groupId,
     userId,
     user?.home_city ?? null,
     dates?.destination ?? null
@@ -86,27 +86,27 @@ export async function onMemberJoin(
   await supabaseAdmin
     .from("member_logistics")
     .upsert(rows, {
-      onConflict: "space_id,user_id,category",
+      onConflict: "group_id,user_id,category",
       ignoreDuplicates: true,
     });
 }
 
 // ── Fetch logistics for a space ──
 
-export async function fetchSpaceLogistics(
-  spaceId: string
+export async function fetchGroupLogistics(
+  groupId: string
 ): Promise<LogisticsRow[]> {
   const { data } = await supabaseAdmin
     .from("member_logistics")
     .select("*")
-    .eq("space_id", spaceId);
+    .eq("group_id", groupId);
   return (data as LogisticsRow[]) ?? [];
 }
 
 // ── Apply extractions from Gemini ──
 
 export async function applyLogisticsExtractions(
-  spaceId: string,
+  groupId: string,
   extractions: LogisticsExtraction[]
 ): Promise<{ applied: string[]; skipped: string[] }> {
   const applied: string[] = [];
@@ -116,7 +116,7 @@ export async function applyLogisticsExtractions(
   const { data: members } = await supabaseAdmin
     .from("space_members")
     .select("user_id, users!inner(display_name)")
-    .eq("space_id", spaceId);
+    .eq("group_id", groupId);
 
   const nameMap = new Map<string, string[]>();
   for (const m of members ?? []) {
@@ -156,7 +156,7 @@ export async function applyLogisticsExtractions(
         confidence: ext.confidence,
         updated_at: new Date().toISOString(),
       })
-      .match({ space_id: spaceId, user_id: userId, category });
+      .match({ group_id: groupId, user_id: userId, category });
 
     applied.push(ext.user_name);
   }
@@ -166,13 +166,13 @@ export async function applyLogisticsExtractions(
 
 // ── Staleness cascade on date change ──
 
-export async function flagStaleLogistics(spaceId: string): Promise<number> {
+export async function flagStaleLogistics(groupId: string): Promise<number> {
   const { data } = await supabaseAdmin
     .from("member_logistics")
     .update({ state: "needs_review", updated_at: new Date().toISOString() })
-    .eq("space_id", spaceId)
+    .eq("group_id", groupId)
     .in("state", ["proposed", "locked"])
-    .select("space_id");
+    .select("group_id");
 
   return data?.length ?? 0;
 }

@@ -1,11 +1,11 @@
 // XARK OS v2.0 — SPACE DATA LAYER
-// Unified data for Galaxy + ControlCaret. Demo fallback when Supabase is unreachable.
+// Unified data for Home + ControlCaret. Demo fallback when Supabase is unreachable.
 
 import { supabase } from "./supabase";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-export interface SpaceMember {
+export interface GroupMember {
   id: string;
   displayName: string;
   photoUrl?: string;
@@ -18,11 +18,11 @@ export interface DecisionSummary {
   total: number;
 }
 
-export interface SpaceListItem {
+export interface GroupListItem {
   id: string;
   title: string;
   atmosphere: string;
-  members: SpaceMember[];
+  members: GroupMember[];
   decisionSummary: DecisionSummary;
   lastMessage?: { content: string; senderName?: string };
   lastActivityAt: Date;
@@ -65,7 +65,7 @@ export function decisionStateLabel(summary: DecisionSummary): string {
 
 // ── Demo Data ───────────────────────────────────────────────────────────────
 
-const DEMO_SPACES: SpaceListItem[] = [
+const DEMO_SPACES: GroupListItem[] = [
   {
     id: "space_san-diego-trip",
     title: "san diego trip",
@@ -82,7 +82,7 @@ const DEMO_SPACES: SpaceListItem[] = [
   {
     id: "space_ananya",
     title: "ananya",
-    atmosphere: "sanctuary",
+    atmosphere: "dm",
     members: [{ id: "u_ananya", displayName: "ananya" }],
     decisionSummary: { locked: 0, needsVote: 0, exploring: 0, total: 0 },
     lastMessage: { content: "did you see the surf lesson proposal?", senderName: "ananya" },
@@ -117,28 +117,28 @@ const DEMO_SPACES: SpaceListItem[] = [
 
 // ── Fetch ───────────────────────────────────────────────────────────────────
 
-export async function fetchSpaceList(userId?: string): Promise<SpaceListItem[]> {
+export async function fetchGroupList(userId?: string): Promise<GroupListItem[]> {
   try {
     // If userId provided, filter to user's spaces via space_members
-    let spaceIds: string[] | null = null;
+    let groupIds: string[] | null = null;
     if (userId) {
       const { data: memberRows } = await supabase
         .from("space_members")
-        .select("space_id")
+        .select("group_id")
         .eq("user_id", userId);
       if (memberRows && memberRows.length > 0) {
-        spaceIds = memberRows.map((r) => r.space_id);
+        groupIds = memberRows.map((r) => r.group_id);
       }
     }
 
     // Fetch spaces — filter to user's spaces if memberships found
     const spacesQuery = supabase
       .from("spaces")
-      .select("id, title, atmosphere, last_activity_at, created_at")
+      .select("id, title,groupType, last_activity_at, created_at")
       .order("last_activity_at", { ascending: false, nullsFirst: false });
 
-    if (spaceIds) {
-      spacesQuery.in("id", spaceIds);
+    if (groupIds) {
+      spacesQuery.in("id", groupIds);
     }
 
     const { data: spaces, error } = await spacesQuery;
@@ -146,20 +146,20 @@ export async function fetchSpaceList(userId?: string): Promise<SpaceListItem[]> 
     if (error || !spaces || spaces.length === 0) return DEMO_SPACES;
 
     // Batched queries — 4 queries instead of 60+ (N+1 fix)
-    const allSpaceIds = spaces.map((s) => s.id);
+    const allGroupIds = spaces.map((s) => s.id);
 
     const [membersResult, itemsResult, messagesResult] = await Promise.all([
       supabase
         .from("space_members")
-        .select("space_id, user_id")
-        .in("space_id", allSpaceIds),
+        .select("group_id, user_id")
+        .in("group_id", allGroupIds),
       supabase
         .from("decision_items")
-        .select("space_id, state, is_locked")
-        .in("space_id", allSpaceIds),
+        .select("group_id, state, is_locked")
+        .in("group_id", allGroupIds),
       Promise.resolve(
         supabase.rpc("get_latest_messages_per_space", {
-          p_space_ids: allSpaceIds,
+          p_group_ids: allGroupIds,
         })
       ).catch(() => ({ data: null as null })),
     ]);
@@ -168,9 +168,9 @@ export async function fetchSpaceList(userId?: string): Promise<SpaceListItem[]> 
     const membersBySpace = new Map<string, string[]>();
     const uniqueUserIds = new Set<string>();
     for (const row of membersResult.data ?? []) {
-      const list = membersBySpace.get(row.space_id) ?? [];
+      const list = membersBySpace.get(row.group_id) ?? [];
       list.push(row.user_id);
-      membersBySpace.set(row.space_id, list);
+      membersBySpace.set(row.group_id, list);
       uniqueUserIds.add(row.user_id);
     }
 
@@ -193,24 +193,24 @@ export async function fetchSpaceList(userId?: string): Promise<SpaceListItem[]> 
     // Build items-by-space map
     const itemsBySpace = new Map<string, Array<{ state: string; is_locked: boolean }>>();
     for (const item of itemsResult.data ?? []) {
-      const list = itemsBySpace.get(item.space_id) ?? [];
+      const list = itemsBySpace.get(item.group_id) ?? [];
       list.push(item);
-      itemsBySpace.set(item.space_id, list);
+      itemsBySpace.set(item.group_id, list);
     }
 
     // Build last-message-by-space map
     const lastMsgBySpace = new Map<string, { content: string; senderName?: string }>();
     for (const msg of messagesResult.data ?? []) {
-      lastMsgBySpace.set(msg.space_id, {
+      lastMsgBySpace.set(msg.group_id, {
         content: msg.content,
         senderName: msg.sender_name ?? undefined,
       });
     }
 
     // Assemble from in-memory maps
-    const enriched: SpaceListItem[] = spaces.map((space) => {
+    const enriched: GroupListItem[] = spaces.map((space) => {
       const memberIds = membersBySpace.get(space.id) ?? [];
-      const members: SpaceMember[] = memberIds
+      const members: GroupMember[] = memberIds
         .map((uid) => userMap.get(uid))
         .filter((u): u is NonNullable<typeof u> => !!u)
         .filter((u) => u.id !== userId);
@@ -226,7 +226,7 @@ export async function fetchSpaceList(userId?: string): Promise<SpaceListItem[]> 
       return {
         id: space.id,
         title: space.title,
-        atmosphere: space.atmosphere ?? "",
+        atmosphere: space.type ?? "",
         members,
         decisionSummary: summary,
         lastMessage: lastMsgBySpace.get(space.id),

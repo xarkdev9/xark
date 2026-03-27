@@ -29,7 +29,7 @@ Map<String, dynamic> _$$DistributionCiphertextImplToJson(
 _$MessageEnvelopeImpl _$$MessageEnvelopeImplFromJson(
         Map<String, dynamic> json) =>
     _$MessageEnvelopeImpl(
-      spaceId: json['space_id'] as String,
+      groupId: json['group_id'] as String,
       senderDeviceId: (json['sender_device_id'] as num).toInt(),
       ciphertext: json['ciphertext'] as String,
       recipientId: json['recipient_id'] as String,
@@ -48,7 +48,7 @@ _$MessageEnvelopeImpl _$$MessageEnvelopeImplFromJson(
 Map<String, dynamic> _$$MessageEnvelopeImplToJson(
         _$MessageEnvelopeImpl instance) =>
     <String, dynamic>{
-      'space_id': instance.spaceId,
+      'group_id': instance.groupId,
       'sender_device_id': instance.senderDeviceId,
       'ciphertext': instance.ciphertext,
       'recipient_id': instance.recipientId,

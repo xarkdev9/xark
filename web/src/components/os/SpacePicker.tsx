@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { text, ink } from "@/lib/theme";
-import { fetchSpaceList } from "@/lib/space-data";
-import type { SpaceListItem } from "@/lib/space-data";
+import { fetchGroupList } from "@/lib/space-data";
+import type { GroupListItem } from "@/lib/space-data";
 import { Avatar } from "@/components/os/Avatar";
 
 interface SpacePickerProps {
   userId?: string;
-  onSelect: (spaceId: string, spaceTitle: string) => void;
+  onSelect: (groupId: string, spaceTitle: string) => void;
 }
 
 export function SpacePicker({ userId, onSelect }: SpacePickerProps) {
-  const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
+  const [spaces, setSpaces] = useState<GroupListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchSpaceList(userId)
+    fetchGroupList(userId)
       .then((result) => {
         setSpaces(result);
         setLoading(false);

@@ -16,6 +16,6 @@ export async function POST(req: NextRequest) {
       new URL(`/share?${params.toString()}`, req.url)
     );
   } catch {
-    return NextResponse.redirect(new URL("/galaxy", req.url));
+    return NextResponse.redirect(new URL("/home", req.url));
   }
 }

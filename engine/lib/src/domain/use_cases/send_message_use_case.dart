@@ -1,23 +1,23 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/keys/key_store.dart';
-import 'package:chat_engine/src/crypto/keys/key_types.dart';
-import 'package:chat_engine/src/crypto/ratchet/double_ratchet.dart';
-import 'package:chat_engine/src/crypto/sender_keys/group_cipher.dart';
-import 'package:chat_engine/src/crypto/sender_keys/sender_key_store.dart';
-import 'package:chat_engine/src/crypto/x3dh/x3dh.dart';
-import 'package:chat_engine/src/domain/models/conversation.dart';
-import 'package:chat_engine/src/domain/models/decrypted_message.dart';
-import 'package:chat_engine/src/domain/models/media_payload.dart';
-import 'package:chat_engine/src/domain/models/message.dart';
-import 'package:chat_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:chat_engine/src/domain/repositories/message_repository.dart';
-import 'package:chat_engine/src/observer/chat_engine_observer.dart';
-import 'package:chat_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:chat_engine/src/persistence/repositories/outbox_repository.dart';
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
-import 'package:chat_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/crypto/keys/key_store.dart';
+import 'package:hello_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/crypto/ratchet/double_ratchet.dart';
+import 'package:hello_engine/src/crypto/sender_keys/group_cipher.dart';
+import 'package:hello_engine/src/crypto/sender_keys/sender_key_store.dart';
+import 'package:hello_engine/src/crypto/x3dh/x3dh.dart';
+import 'package:hello_engine/src/domain/models/conversation.dart';
+import 'package:hello_engine/src/domain/models/decrypted_message.dart';
+import 'package:hello_engine/src/domain/models/media_payload.dart';
+import 'package:hello_engine/src/domain/models/message.dart';
+import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
+import 'package:hello_engine/src/domain/repositories/message_repository.dart';
+import 'package:hello_engine/src/observer/chat_engine_observer.dart';
+import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:hello_engine/src/persistence/repositories/outbox_repository.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/transport/supabase_client.dart';
 import 'package:uuid/uuid.dart';
 
 /// Complete send pipeline for 1:1 and group text messages.
@@ -82,7 +82,7 @@ class SendMessageUseCase {
   /// 9. On success: commits session, caches plaintext, updates status.
   /// 10. On failure: marks message as failed, preserves unacked state.
   Future<Message> sendText(
-    String conversationId,
+    String groupId,
     String plaintext,
   ) async {
     // 0. Guard: reject if outbox is overloaded.
@@ -100,7 +100,7 @@ class SendMessageUseCase {
     final now = DateTime.now();
     var message = Message(
       id: messageId,
-      conversationId: conversationId,
+      groupId: groupId,
       senderId: _myUserId,
       senderDeviceId: _myDeviceId.toString(),
       type: MessageType.e2ee,
@@ -122,10 +122,10 @@ class SendMessageUseCase {
 
       // 4. Determine recipient from conversation.
       final conversation =
-          await _conversationRepo.getConversation(conversationId);
+          await _conversationRepo.getConversation(groupId);
       if (conversation == null) {
         throw StateError(
-          'Conversation $conversationId not found',
+          'Conversation $groupId not found',
         );
       }
 
@@ -162,7 +162,7 @@ class SendMessageUseCase {
       // 9. Build envelope.
       final envelope = MessageEnvelope(
         id: messageId,
-        spaceId: conversationId,
+        groupId: groupId,
         senderDeviceId: _myDeviceId,
         ciphertext: ciphertextB64,
         recipientId: recipientId,
@@ -216,7 +216,7 @@ class SendMessageUseCase {
   /// 6. Builds [MessageEnvelope] with distribution ciphertexts.
   /// 7. Sends via API.
   Future<Message> sendGroupText(
-    String conversationId,
+    String groupId,
     String plaintext,
   ) async {
     final messageId = _uuid.v7();
@@ -224,7 +224,7 @@ class SendMessageUseCase {
 
     var message = Message(
       id: messageId,
-      conversationId: conversationId,
+      groupId: groupId,
       senderId: _myUserId,
       senderDeviceId: _myDeviceId.toString(),
       type: MessageType.e2ee,
@@ -246,26 +246,26 @@ class SendMessageUseCase {
 
       // Get or create Sender Key.
       var senderKeyRecord =
-          await _senderKeyStore.loadSenderKey(conversationId, _myUserId);
+          await _senderKeyStore.loadSenderKey(groupId, _myUserId);
 
       var needsDistribution = false;
       if (senderKeyRecord == null) {
-        await _groupCipher.createSenderKey(conversationId, _myUserId);
+        await _groupCipher.createSenderKey(groupId, _myUserId);
         senderKeyRecord =
-            await _senderKeyStore.loadSenderKey(conversationId, _myUserId);
+            await _senderKeyStore.loadSenderKey(groupId, _myUserId);
         needsDistribution = true;
       }
 
       // Check tombstone for rotation.
       if (senderKeyRecord?.createdAt != null) {
         final hasTombstone = await _apiClient.checkTombstone(
-          conversationId,
+          groupId,
           senderKeyRecord!.createdAt!,
         );
         if (hasTombstone) {
-          await _groupCipher.createSenderKey(conversationId, _myUserId);
+          await _groupCipher.createSenderKey(groupId, _myUserId);
           senderKeyRecord =
-              await _senderKeyStore.loadSenderKey(conversationId, _myUserId);
+              await _senderKeyStore.loadSenderKey(groupId, _myUserId);
           needsDistribution = true;
         }
       }
@@ -273,7 +273,7 @@ class SendMessageUseCase {
       // Prepare distribution ciphertexts for all members if needed.
       final distributionCiphertexts = <DistributionCiphertext>[];
       if (needsDistribution && senderKeyRecord != null) {
-        final members = await _apiClient.getSpaceMembers(conversationId);
+        final members = await _apiClient.getSpaceMembers(groupId);
 
         final distribution = SenderKeyDistribution(
           chainKey: senderKeyRecord.chainKey,
@@ -312,7 +312,7 @@ class SendMessageUseCase {
 
       // Encrypt with GroupCipher.
       final groupCiphertext = await _groupCipher.encrypt(
-        conversationId,
+        groupId,
         _myUserId,
         payloadBytes,
       );
@@ -320,7 +320,7 @@ class SendMessageUseCase {
       // Build envelope.
       final envelope = MessageEnvelope(
         id: messageId,
-        spaceId: conversationId,
+        groupId: groupId,
         senderDeviceId: _myDeviceId,
         ciphertext: base64Encode(groupCiphertext),
         recipientId: groupRecipientSentinel,
@@ -338,7 +338,7 @@ class SendMessageUseCase {
       await _messageRepo.updateMessageStatus(messageId, MessageStatus.sent);
 
       final conversation =
-          await _conversationRepo.getConversation(conversationId);
+          await _conversationRepo.getConversation(groupId);
       if (conversation != null) {
         await _updateConversationLastMessage(
           conversation,
@@ -425,7 +425,7 @@ class SendMessageUseCase {
   /// encrypted blob, then sends the download URL and AES key
   /// through the Double Ratchet as a standard E2EE message.
   Future<Message> sendMedia(
-    String conversationId,
+    String groupId,
     MediaPayload payload,
   ) async {
     // Create a placeholder message with media type.
@@ -433,7 +433,7 @@ class SendMessageUseCase {
     final now = DateTime.now();
     final message = Message(
       id: messageId,
-      conversationId: conversationId,
+      groupId: groupId,
       senderId: _myUserId,
       senderDeviceId: _myDeviceId.toString(),
       type: MessageType.media,
@@ -448,7 +448,7 @@ class SendMessageUseCase {
     // encrypt, blob upload, ratchet-encrypt the key+URL payload)
     // is handled by the media layer. For now, delegate to sendText
     // with a media-type marker so the ratchet path is exercised.
-    return sendText(conversationId, '[media:${payload.fileName}]');
+    return sendText(groupId, '[media:${payload.fileName}]');
   }
 
   /// Reacts to a message with an emoji.
@@ -456,11 +456,11 @@ class SendMessageUseCase {
   /// Sends a reaction as an E2EE message referencing the target
   /// message ID.
   Future<void> react(
-    String conversationId,
+    String groupId,
     String messageId,
     String emoji,
   ) async {
-    await sendText(conversationId, '[$emoji:$messageId]');
+    await sendText(groupId, '[$emoji:$messageId]');
   }
 
   Future<void> _updateConversationLastMessage(

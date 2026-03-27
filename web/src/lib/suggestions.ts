@@ -17,7 +17,7 @@ export interface Whisper {
   id: string;
   priority: number;
   ghostText: string;
-  spaceId: string;
+  groupId: string;
   spaceTitle: string;
   type: WhisperType;
   itemId?: string;
@@ -42,7 +42,7 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
           id: `onboarding_${userId}`,
           priority: 2,
           ghostText: "tell me how you travel and what you eat.",
-          spaceId: "",
+          groupId: "",
           spaceTitle: "",
           type: "onboarding",
         });
@@ -54,12 +54,12 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
     // ── Fetch user's spaces (needed for checks 2, 3, 4) ──
     const { data: memberRows } = await supabase
       .from("space_members")
-      .select("space_id")
+      .select("group_id")
       .eq("user_id", userId);
 
-    const memberSpaceIds = (memberRows ?? []).map((r) => r.space_id);
+    const memberGroupIds = (memberRows ?? []).map((r) => r.group_id);
 
-    if (memberSpaceIds.length === 0) {
+    if (memberGroupIds.length === 0) {
       return sortByPriority(whispers);
     }
 
@@ -67,7 +67,7 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
     const { data: spacesData } = await supabase
       .from("spaces")
       .select("id, title")
-      .in("id", memberSpaceIds);
+      .in("id", memberGroupIds);
 
     const spaceTitleById = new Map<string, string>(
       (spacesData ?? []).map((s) => [s.id, s.title])
@@ -77,13 +77,13 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
     try {
       const { data: countdownItems } = await supabase
         .from("decision_items")
-        .select("id, title, space_id, lock_deadline")
-        .in("space_id", memberSpaceIds)
+        .select("id, title, group_id, lock_deadline")
+        .in("group_id", memberGroupIds)
         .not("lock_deadline", "is", null)
         .eq("is_locked", false);
 
       for (const item of countdownItems ?? []) {
-        const spaceTitle = spaceTitleById.get(item.space_id) ?? "";
+        const spaceTitle = spaceTitleById.get(item.group_id) ?? "";
         const deadline = new Date(item.lock_deadline);
         const hoursLeft = Math.round(
           (deadline.getTime() - Date.now()) / 3_600_000
@@ -99,7 +99,7 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
           id: `consensus_ready_${item.id}`,
           priority: 0,
           ghostText: `${item.title} — ${timePhrase}. lock it in?`,
-          spaceId: item.space_id,
+          groupId: item.group_id,
           spaceTitle,
           type: "consensus_ready",
           itemId: item.id,
@@ -115,21 +115,21 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
       const { data: spaceDates } = await supabase
         .from("spaces")
         .select("id, title")
-        .in("id", memberSpaceIds)
+        .in("id", memberGroupIds)
         .not("metadata->trip_start", "is", null);
 
       if (spaceDates && spaceDates.length > 0) {
-        const datedSpaceIds = spaceDates.map((s) => s.id);
+        const datedGroupIds = spaceDates.map((s) => s.id);
 
         // ONE query for all hotel items — no N+1
         const { data: hotelItems } = await supabase
           .from("decision_items")
-          .select("space_id")
-          .in("space_id", datedSpaceIds)
+          .select("group_id")
+          .in("group_id", datedGroupIds)
           .eq("category", "hotel");
 
         const spacesWithHotels = new Set(
-          (hotelItems ?? []).map((i) => i.space_id)
+          (hotelItems ?? []).map((i) => i.group_id)
         );
 
         for (const space of spaceDates) {
@@ -138,7 +138,7 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
               id: `missing_category_hotel_${space.id}`,
               priority: 1,
               ghostText: `${space.title} has dates but no hotel. want me to find options?`,
-              spaceId: space.id,
+              groupId: space.id,
               spaceTitle: space.title,
               type: "missing_category",
             });
@@ -154,8 +154,8 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
       // All active (unlocked) items in user's spaces
       const { data: allItems } = await supabase
         .from("decision_items")
-        .select("id, title, space_id")
-        .in("space_id", memberSpaceIds)
+        .select("id, title, group_id")
+        .in("group_id", memberGroupIds)
         .eq("is_locked", false);
 
       if (allItems && allItems.length > 0) {
@@ -184,36 +184,36 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
           >();
 
           for (const item of unvotedItems) {
-            const existing = unvotedBySpace.get(item.space_id);
+            const existing = unvotedBySpace.get(item.group_id);
             if (existing) {
               existing.count++;
             } else {
-              unvotedBySpace.set(item.space_id, {
+              unvotedBySpace.set(item.group_id, {
                 count: 1,
-                spaceTitle: spaceTitleById.get(item.space_id) ?? "",
+                spaceTitle: spaceTitleById.get(item.group_id) ?? "",
               });
             }
           }
 
           // Pick the space with the most unvoted items
-          let topSpaceId = "";
+          let topGroupId = "";
           let topCount = 0;
           let topTitle = "";
 
-          for (const [spaceId, { count, spaceTitle }] of unvotedBySpace) {
+          for (const [groupId, { count, spaceTitle }] of unvotedBySpace) {
             if (count > topCount) {
               topCount = count;
-              topSpaceId = spaceId;
+              topGroupId = groupId;
               topTitle = spaceTitle;
             }
           }
 
-          if (topSpaceId) {
+          if (topGroupId) {
             whispers.push({
-              id: `nudge_vote_${topSpaceId}_${userId}`,
+              id: `nudge_vote_${topGroupId}_${userId}`,
               priority: 2,
               ghostText: `${topCount} card${topCount === 1 ? "" : "s"} waiting for your vote in ${topTitle}.`,
-              spaceId: topSpaceId,
+              groupId: topGroupId,
               spaceTitle: topTitle,
               type: "nudge_vote",
             });

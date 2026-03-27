@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -176,11 +176,11 @@ class SupabaseClientWrapper {
   /// Optionally filters messages created after [after]. Returns at most
   /// [limit] rows.
   Future<List<Map<String, dynamic>>> fetchMessageHistory(
-    String spaceId, {
+    String groupId, {
     DateTime? after,
     int limit = 50,
   }) async {
-    var query = _client.from('messages').select().eq('space_id', spaceId);
+    var query = _client.from('messages').select().eq('group_id', groupId);
 
     if (after != null) {
       query = query.gt('created_at', after.toIso8601String());
@@ -201,7 +201,7 @@ class SupabaseClientWrapper {
     final result = await _post('/api/chat/start', <String, dynamic>{
       'peer_id': peerId,
     });
-    return result['space_id'] as String;
+    return result['group_id'] as String;
   }
 
   // ---------------------------------------------------------------------------
@@ -209,11 +209,11 @@ class SupabaseClientWrapper {
   // ---------------------------------------------------------------------------
 
   /// Returns the list of member records for a space.
-  Future<List<Map<String, dynamic>>> getSpaceMembers(String spaceId) async {
+  Future<List<Map<String, dynamic>>> getSpaceMembers(String groupId) async {
     final response = await _client
-        .from('space_members')
+        .from('group_members')
         .select()
-        .eq('space_id', spaceId);
+        .eq('group_id', groupId);
 
     return List<Map<String, dynamic>>.from(response as List<dynamic>);
   }
@@ -221,13 +221,13 @@ class SupabaseClientWrapper {
   /// Checks whether a tombstone exists for the given space that is newer
   /// than [senderKeyCreatedAt], indicating the Sender Key must be rotated.
   Future<bool> checkTombstone(
-    String spaceId,
+    String groupId,
     DateTime senderKeyCreatedAt,
   ) async {
     final response = await _client
-        .from('space_tombstones')
+        .from('group_tombstones')
         .select()
-        .eq('space_id', spaceId)
+        .eq('group_id', groupId)
         .gt('created_at', senderKeyCreatedAt.toIso8601String())
         .limit(1);
 

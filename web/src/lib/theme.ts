@@ -47,7 +47,7 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     mode: "light",
     style: "flat",
     accent: "#FF6B35",           // Deep Rose (brand action — tabs, labels, CTAs)
-    cyan: "#FF6B35",             // Liquid Fire Rose (AI accent, @xark label)
+    cyan: "#FF6B35",             // Liquid Fire Rose (AI accent, @hello label)
     text: "#1A1A1A",             // Near-black
     bg: "#FAFAFA",               // Clean white canvas
     amber: "#9E6A06",

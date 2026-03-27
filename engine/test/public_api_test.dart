@@ -1,6 +1,6 @@
 // ignore_for_file: prefer_const_constructors
 
-import 'package:chat_engine/chat_engine.dart';
+import 'package:hello_engine/chat_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Concrete no-op observer for testing.
@@ -204,7 +204,7 @@ void main() {
 
       final message = Message(
         id: 'msg-1',
-        conversationId: 'conv-1',
+        groupId: 'conv-1',
         senderId: 'alice',
         senderDeviceId: '1',
         type: MessageType.e2ee,
@@ -221,7 +221,7 @@ void main() {
       expect(receipt.messageId, 'msg-1');
 
       final typing = TypingIndicator(
-        conversationId: 'conv-1',
+        groupId: 'conv-1',
         userId: 'bob',
         startedAt: DateTime.now(),
       );

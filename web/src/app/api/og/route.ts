@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { url, insertAsItem, spaceId, title, text } = body;
+    const { url, insertAsItem, groupId, title, text } = body;
 
     let metadata = {};
     if (url && typeof url === "string") {
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Insert as decision_item — requires space membership
-    if (insertAsItem && spaceId) {
+    if (insertAsItem && groupId) {
 
       const { supabaseAdmin } = await import("@/lib/supabase-admin");
       if (!supabaseAdmin) {
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       const { data: membership } = await supabaseAdmin
         .from("space_members")
         .select("user_id")
-        .eq("space_id", spaceId)
+        .eq("group_id", groupId)
         .eq("user_id", auth.userId)
         .single();
 
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
       const ogMeta = metadata as Record<string, string>;
       await supabaseAdmin.from("decision_items").insert({
-        space_id: spaceId,
+        group_id: groupId,
         title: ogMeta.title || title || "shared item",
         category: "shared",
         description: ogMeta.description || text || url || "",

@@ -14,7 +14,7 @@ import type {
   BookableItem,
   DecisionSpace,
   ItemId,
-  SpaceId,
+  GroupId,
   Task,
   TaskId,
 } from "../models/types.js";
@@ -23,20 +23,20 @@ export interface PersistencePort {
   // --- Items ---
   saveItem(item: BookableItem): Promise<void>;
   getItem(itemId: ItemId): Promise<BookableItem | undefined>;
-  getItemsBySpace(spaceId: SpaceId): Promise<BookableItem[]>;
+  getItemsBySpace(groupId: GroupId): Promise<BookableItem[]>;
   deleteItem(itemId: ItemId): Promise<void>;
 
   // --- Tasks ---
   saveTask(task: Task): Promise<void>;
   getTask(taskId: TaskId): Promise<Task | undefined>;
-  getTasksBySpace(spaceId: SpaceId): Promise<Task[]>;
+  getTasksBySpace(groupId: GroupId): Promise<Task[]>;
   deleteTask(taskId: TaskId): Promise<void>;
 
   // --- Spaces ---
   saveSpace(space: DecisionSpace): Promise<void>;
-  getSpace(spaceId: SpaceId): Promise<DecisionSpace | undefined>;
+  getSpace(groupId: GroupId): Promise<DecisionSpace | undefined>;
   getAllSpaces(): Promise<DecisionSpace[]>;
-  deleteSpace(spaceId: SpaceId): Promise<void>;
+  deleteSpace(groupId: GroupId): Promise<void>;
 }
 
 /**

@@ -1,6 +1,6 @@
-import 'package:chat_engine/src/domain/models/receipt.dart';
-import 'package:chat_engine/src/domain/repositories/receipt_repository.dart';
-import 'package:chat_engine/src/persistence/database/app_database.dart';
+import 'package:hello_engine/src/domain/models/receipt.dart';
+import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
 import 'package:drift/drift.dart';
 
 /// Drift-backed implementation of [ReceiptRepository].
@@ -54,7 +54,7 @@ class ReceiptRepositoryImpl implements ReceiptRepository {
   }
 
   @override
-  Stream<List<Receipt>> watchReceipts(String conversationId) {
+  Stream<List<Receipt>> watchReceipts(String groupId) {
     // Join receipts with messages to filter by conversation.
     final query = _db.select(_db.receipts).join([
       innerJoin(
@@ -62,7 +62,7 @@ class ReceiptRepositoryImpl implements ReceiptRepository {
         _db.messages.id.equalsExp(_db.receipts.messageId),
       ),
     ])
-      ..where(_db.messages.spaceId.equals(conversationId));
+      ..where(_db.messages.groupId.equals(groupId));
 
     return query.watch().map(
           (rows) => rows

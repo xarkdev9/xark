@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { XarkChat } from "@/components/os/XarkChat";
 import { Avatar } from "@/components/os/Avatar";
-import PossibilityHorizon from "@/components/os/PossibilityHorizon";
+import DecisionBoard from "@/components/os/DecisionBoard";
 import { ItineraryView } from "@/components/os/ItineraryView";
 import { MemoriesView } from "@/components/os/MemoriesView";
 import { ChatInput } from "@/components/os/ChatInput";
@@ -26,13 +26,13 @@ import {
   fetchCiphertexts,
 } from "@/lib/messages";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { computeSpaceState } from "@/lib/space-state";
+import { computeGroupState } from "@/lib/space-state";
 import { useE2EE } from "@/hooks/useE2EE";
 import { detectConstraints } from "@/lib/constraints";
 import type { DetectedConstraint } from "@/lib/crypto/types";
-import type { SpaceStateItem } from "@/lib/space-state";
+import type { GroupStateItem } from "@/lib/space-state";
 import { colors, ink, text, textColor, timing, surface } from "@/lib/theme";
-import type { LedgerEntry } from "@/lib/local-agent";
+import type { LedgerEntry } from "@/lib/group-actions";
 import type { LedgerEvent } from "@/components/os/LedgerPill";
 import { markSpaceRead } from "@/lib/unread";
 import { PlaygroundSpace } from "@/components/os/PlaygroundSpace";
@@ -97,11 +97,11 @@ function SpacePageInner() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const spaceId = params.id as string;
+  const groupId = params.id as string;
   const userName = searchParams.get("name") ?? undefined;
   const isInvite = searchParams.get("invite") === "true";
 
-  const isPlayground = searchParams.get("playground") === "true" && isPlaygroundSpace(spaceId);
+  const isPlayground = searchParams.get("playground") === "true" && isPlaygroundSpace(groupId);
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth(userName);
   // CRITICAL: userId must come from authenticated user only (e.g., "name_ram"),
@@ -122,8 +122,8 @@ function SpacePageInner() {
     viewParam === "decide" ? "decide" : "discuss"
   );
   const [spaceTitle, setSpaceTitle] = useState<string>("");
-  const [atmosphere, setAtmosphere] = useState<string>("cyan_horizon");
-  const [spaceItems, setSpaceItems] = useState<SpaceStateItem[]>([]);
+  const [atmosphere, setGroupType] = useState<string>("cyan_horizon");
+  const [spaceItems, setSpaceItems] = useState<GroupStateItem[]>([]);
   const [joining, setJoining] = useState(false);
   const [shareWhisper, setShareWhisper] = useState(false);
   const [constraintWhisper, setConstraintWhisper] = useState<DetectedConstraint | null>(null);
@@ -131,9 +131,9 @@ function SpacePageInner() {
 
   // Fetch member count
   useEffect(() => {
-    supabase.from("space_members").select("user_id", { count: "exact", head: true }).eq("space_id", spaceId)
+    supabase.from("space_members").select("user_id", { count: "exact", head: true }).eq("group_id", groupId)
       .then(({ count }) => { if (count !== null) setMemberCount(count); });
-  }, [spaceId]);
+  }, [groupId]);
 
   // ── Outbox drain — retry queued messages on reconnect / tab visible / mount ──
   useEffect(() => {
@@ -186,14 +186,14 @@ function SpacePageInner() {
   const messagesLoaded = useRef(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
-  // ── Listen for SpotlightSheet @xark-thinking event (when user sends from ControlCaret inside this space) ──
+  // ── Listen for SpotlightSheet @hello-thinking event (when user sends from ControlCaret inside this space) ──
   const thinkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.spaceId === spaceId) {
+      if (detail?.groupId === groupId) {
         setIsThinking(true);
-        // Safety: clear after 30s if no @xark response arrives
+        // Safety: clear after 30s if no @hello response arrives
         if (thinkingTimerRef.current) clearTimeout(thinkingTimerRef.current);
         thinkingTimerRef.current = setTimeout(() => setIsThinking(false), 30_000);
       }
@@ -203,9 +203,9 @@ function SpacePageInner() {
       window.removeEventListener("xark-thinking", handler);
       if (thinkingTimerRef.current) clearTimeout(thinkingTimerRef.current);
     };
-  }, [spaceId]);
+  }, [groupId]);
 
-  // Safety timeout for URL-param triggered thinking (Galaxy → Space navigation)
+  // Safety timeout for URL-param triggered thinking (Home → Space navigation)
   useEffect(() => {
     if (searchParams.get("xark") === "thinking") {
       const t = setTimeout(() => setIsThinking(false), 30_000);
@@ -219,7 +219,7 @@ function SpacePageInner() {
     if (cacheLoaded.current) return;
     cacheLoaded.current = true;
     import("@/lib/crypto/message-cache").then(({ getCachedMessages }) => {
-      getCachedMessages(spaceId, 50).then((cached) => {
+      getCachedMessages(groupId, 50).then((cached) => {
         if (cached.length > 0) {
           setMessages(cached.map((m) => ({
             id: m.id,
@@ -234,7 +234,7 @@ function SpacePageInner() {
         }
       }).catch(() => {});
     });
-  }, [spaceId]);
+  }, [groupId]);
 
   // ── PHASE B: Fetch persisted messages AFTER auth resolves, then batch-decrypt E2EE ──
   useEffect(() => {
@@ -247,15 +247,15 @@ function SpacePageInner() {
       try {
         const { data } = await supabase
           .from("messages")
-          .select("id, space_id, role, content, user_id, sender_name, created_at, message_type, sender_device_id")
-          .eq("space_id", spaceId)
+          .select("id, group_id, role, content, user_id, sender_name, created_at, message_type, sender_device_id")
+          .eq("group_id", groupId)
           .eq("message_type", "sender_key_dist")
           .order("created_at", { ascending: true });
         return data ?? [];
       } catch { return []; }
     };
 
-    Promise.all([fetchAllSkDist(), fetchMessages(spaceId, { limit: 50 })])
+    Promise.all([fetchAllSkDist(), fetchMessages(groupId, { limit: 50 })])
       .then(async ([skDistMsgs, persisted]) => {
         // Process SK dist messages first (before regular decrypt)
         if (e2ee.available && skDistMsgs.length > 0) {
@@ -268,7 +268,7 @@ function SpacePageInner() {
               if (myCt && dm.user_id) {
                 const { processSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
                 await processSenderKeyDistribution(
-                  dm.id, dm.user_id, dm.sender_device_id ?? 0, spaceId, myCt.ciphertext, myCt.ratchet_header ?? ''
+                  dm.id, dm.user_id, dm.sender_device_id ?? 0, groupId, myCt.ciphertext, myCt.ratchet_header ?? ''
                 );
               }
             } catch { /* continue */ }
@@ -311,7 +311,7 @@ function SpacePageInner() {
                   dm.id,
                   dm.user_id,
                   dm.sender_device_id ?? 0,
-                  spaceId,
+                  groupId,
                   myCt.ciphertext,
                   myCt.ratchet_header ?? ''
                 );
@@ -342,7 +342,7 @@ function SpacePageInner() {
                   const { processSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
                   await processSenderKeyDistribution(
                     msg.id,
-                    msg.user_id, msg.sender_device_id ?? 0, spaceId, dct.ciphertext, dct.ratchet_header ?? ''
+                    msg.user_id, msg.sender_device_id ?? 0, groupId, dct.ciphertext, dct.ratchet_header ?? ''
                   );
                 }
               } catch (err) {
@@ -383,7 +383,7 @@ function SpacePageInner() {
                   ct.ciphertext,
                   ct.ratchet_header,
                   ct.recipient_id,
-                  spaceId
+                  groupId
                 );
                 if (decrypted) {
                   decryptedMap.set(ct.message_id, {
@@ -404,7 +404,7 @@ function SpacePageInner() {
                 const failedMsg = e2eeMsgs.find((m) => m.id === ct.message_id);
                 if (failedMsg?.user_id && failedMsg.user_id !== resolvedUserId) {
                   import("@/lib/crypto/sk-recovery").then(({ requestMissingSenderKey }) => {
-                    requestMissingSenderKey(spaceId, failedMsg.user_id!, resolvedUserId ?? '', e2ee.deviceId ?? 0);
+                    requestMissingSenderKey(groupId, failedMsg.user_id!, resolvedUserId ?? '', e2ee.deviceId ?? 0);
                   }).catch(() => {});
                 }
               }
@@ -438,7 +438,7 @@ function SpacePageInner() {
         // Cache all successfully decrypted messages for local-first rendering
         import("@/lib/crypto/message-cache").then(({ cacheBatchMessages, evictOldMessages }) => {
           const toCache = mapped.filter(m => m.content && m.content !== '[decryption pending]' && m.content !== '[Error: Decryption Failed]');
-          cacheBatchMessages(spaceId, toCache).then(() => evictOldMessages(spaceId)).catch(() => {});
+          cacheBatchMessages(groupId, toCache).then(() => evictOldMessages(groupId)).catch(() => {});
         });
 
         messagesLoaded.current = true;
@@ -447,7 +447,7 @@ function SpacePageInner() {
         messagesLoaded.current = true;
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spaceId, authLoading, e2ee.available]);
+  }, [groupId, authLoading, e2ee.available]);
 
   // ── PRIORITY 0 FIX: Catch-up decryption pass ──
   // After PHASE B completes and E2EE is available, scan React state for messages
@@ -489,7 +489,7 @@ function SpacePageInner() {
           if (distCt && m.userId) {
             const { processSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
             await processSenderKeyDistribution(
-              m.id, m.userId, m.senderDeviceId ?? 0, spaceId, distCt.ciphertext, distCt.ratchet_header ?? ''
+              m.id, m.userId, m.senderDeviceId ?? 0, groupId, distCt.ciphertext, distCt.ratchet_header ?? ''
             );
           }
 
@@ -499,7 +499,7 @@ function SpacePageInner() {
           if (groupCt) {
             const result = await e2ee.decrypt(
               m.id, m.userId ?? '', m.senderDeviceId ?? null,
-              groupCt.ciphertext, groupCt.ratchet_header ?? null, '_group_', spaceId
+              groupCt.ciphertext, groupCt.ratchet_header ?? null, '_group_', groupId
             );
             if (result) fixes.set(m.id, result.text);
           }
@@ -521,7 +521,7 @@ function SpacePageInner() {
           const recovered = undecrypted
             .filter((m) => fixes.has(m.id))
             .map((m) => ({ ...m, content: fixes.get(m.id)! }));
-          cacheBatchMessages(spaceId, recovered).catch(() => {});
+          cacheBatchMessages(groupId, recovered).catch(() => {});
         });
       }
     })();
@@ -537,8 +537,8 @@ function SpacePageInner() {
     if (!e2ee.available) return;
 
     const handler = async (e: Event) => {
-      const { spaceId: arrivedSpaceId, senderId } = (e as CustomEvent).detail;
-      if (arrivedSpaceId !== spaceId) return;
+      const { groupId: arrivedGroupId, senderId } = (e as CustomEvent).detail;
+      if (arrivedGroupId !== groupId) return;
 
       // Find failed messages from this sender in current state
       const failed = messages.filter(
@@ -563,7 +563,7 @@ function SpacePageInner() {
           if (groupCt) {
             const result = await e2ee.decrypt(
               m.id, m.userId ?? '', m.senderDeviceId ?? null,
-              groupCt.ciphertext, groupCt.ratchet_header ?? null, '_group_', spaceId
+              groupCt.ciphertext, groupCt.ratchet_header ?? null, '_group_', groupId
             );
             if (result) fixes.set(m.id, result.text);
           }
@@ -585,7 +585,7 @@ function SpacePageInner() {
           const recovered = failed
             .filter((m) => fixes.has(m.id))
             .map((m) => ({ ...m, content: fixes.get(m.id)! }));
-          cacheBatchMessages(spaceId, recovered).catch(() => {});
+          cacheBatchMessages(groupId, recovered).catch(() => {});
         });
       }
     };
@@ -593,20 +593,20 @@ function SpacePageInner() {
     window.addEventListener('sk-arrived', handler);
     return () => window.removeEventListener('sk-arrived', handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spaceId, e2ee.available, messages]);
+  }, [groupId, e2ee.available, messages]);
 
   // ── Mark space as read when user opens it ──
   useEffect(() => {
     if (authLoading || !resolvedUserId) return;
-    markSpaceRead(spaceId);
-  }, [spaceId, authLoading, resolvedUserId]);
+    markSpaceRead(groupId);
+  }, [groupId, authLoading, resolvedUserId]);
 
   // ── Broadcast channel — instant message delivery across devices ──
   // PRIORITY 4 FIX: e2ee.available removed from dependency array. The handler reads
   // from e2eeRef.current (always fresh) instead of the closure-captured e2ee value.
   // This prevents teardown/re-subscribe during E2EE init transition — no message gap.
   useEffect(() => {
-    const channel = subscribeToMessages(spaceId, async (incoming) => {
+    const channel = subscribeToMessages(groupId, async (incoming) => {
       // Read latest E2EE state from ref (not stale closure)
       const e2eeSnap = e2eeRef.current;
 
@@ -625,7 +625,7 @@ function SpacePageInner() {
                 incoming.id,
                 incoming.user_id,
                 incoming.sender_device_id ?? 0,
-                spaceId,
+                groupId,
                 myCt.ciphertext,
                 myCt.ratchet_header ?? ''
               );
@@ -662,7 +662,7 @@ function SpacePageInner() {
               if (myDistCt && incoming.user_id) {
                 const { processSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
                 await processSenderKeyDistribution(
-                  incoming.id, incoming.user_id, incoming.sender_device_id ?? 0, spaceId,
+                  incoming.id, incoming.user_id, incoming.sender_device_id ?? 0, groupId,
                   myDistCt.ciphertext, myDistCt.ratchet_header ?? ''
                 );
               }
@@ -684,7 +684,7 @@ function SpacePageInner() {
               incoming.ciphertext_b64,
               incoming.ratchet_header_b64 ?? null,
               '_group_',
-              spaceId
+              groupId
             );
             if (decrypted) {
               content = decrypted.text;
@@ -712,7 +712,7 @@ function SpacePageInner() {
                 incoming.ciphertext_b64,
                 incoming.ratchet_header_b64 ?? null,
                 '_group_',
-                spaceId
+                groupId
               );
               if (retryDecrypt) {
                 content = retryDecrypt.text;
@@ -731,7 +731,7 @@ function SpacePageInner() {
               // Priority 1 (sk-arrived event) will auto-recover this if SK arrives later
               if (incoming.user_id && incoming.user_id !== resolvedUserId) {
                 import("@/lib/crypto/sk-recovery").then(({ requestMissingSenderKey }) => {
-                  requestMissingSenderKey(spaceId, incoming.user_id!, resolvedUserId ?? '', e2eeRef.current.deviceId ?? 0);
+                  requestMissingSenderKey(groupId, incoming.user_id!, resolvedUserId ?? '', e2eeRef.current.deviceId ?? 0);
                 }).catch(() => {});
               }
             }
@@ -753,7 +753,7 @@ function SpacePageInner() {
         ...mediaFields,
       };
 
-      // Clear thinking indicator when @xark responds (phantom receipt or final response)
+      // Clear thinking indicator when @hello responds (phantom receipt or final response)
       if (incoming.role === "xark") {
         setIsThinking(false);
         if (thinkingTimerRef.current) { clearTimeout(thinkingTimerRef.current); thinkingTimerRef.current = null; }
@@ -767,7 +767,7 @@ function SpacePageInner() {
       // Cache the new message for local-first rendering on next open
       if (content && content !== '[Error: Decryption Failed]' && content !== '[decryption pending]') {
         import("@/lib/crypto/message-cache").then(({ cacheBatchMessages }) => {
-          cacheBatchMessages(spaceId, [newMsg]).catch(() => {});
+          cacheBatchMessages(groupId, [newMsg]).catch(() => {});
         });
       }
     }, (updatedMsg) => {
@@ -780,21 +780,21 @@ function SpacePageInner() {
       channelRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spaceId, resolvedUserId]);
+  }, [groupId, resolvedUserId]);
 
   // ── Broadcast reconciliation — catch missed messages ──
   // Supabase Broadcast is fire-and-forget WebSocket. If a user's Wi-Fi drops
   // for even 2 seconds, they miss broadcasts permanently. This loop polls
   // every 30s and on tab-visible to detect and fill gaps.
   useEffect(() => {
-    if (!spaceId || authLoading) return;
+    if (!groupId || authLoading) return;
 
     const lastSeenRef = { current: Date.now() };
     const failedMsgIds = new Set<string>(); // Track messages that failed decrypt — don't retry them endlessly
 
     const reconcile = async () => {
       try {
-        const latest = await fetchMessages(spaceId, { limit: 1 });
+        const latest = await fetchMessages(groupId, { limit: 1 });
         if (latest.length === 0) return;
 
         const latestTs = new Date(latest[0].created_at).getTime();
@@ -802,7 +802,7 @@ function SpacePageInner() {
         // If the latest server message is newer than our last seen, we missed something
         if (latestTs > lastSeenRef.current) {
           console.log('[xark-reconcile] Gap detected, fetching missing messages');
-          const missing = await fetchMessages(spaceId, { limit: 20 });
+          const missing = await fetchMessages(groupId, { limit: 20 });
           // Merge missing messages — decrypt E2EE before adding
           const existingIds = new Set(messages.map(m => m.id));
           const newRaw = missing
@@ -833,11 +833,11 @@ function SpacePageInner() {
                   const distCt = cts.find(ct => ct.recipient_device_id === e2ee.deviceId && ct.recipient_id !== '_group_');
                   if (distCt && m.user_id) {
                     const { processSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
-                    await processSenderKeyDistribution(m.id, m.user_id, m.sender_device_id ?? 0, spaceId, distCt.ciphertext, distCt.ratchet_header ?? '');
+                    await processSenderKeyDistribution(m.id, m.user_id, m.sender_device_id ?? 0, groupId, distCt.ciphertext, distCt.ratchet_header ?? '');
                   }
                   const groupCt = cts.find(ct => ct.recipient_id === '_group_');
                   if (groupCt) {
-                    const result = await e2ee.decrypt(m.id, m.user_id ?? '', m.sender_device_id ?? null, groupCt.ciphertext, groupCt.ratchet_header ?? null, '_group_', spaceId);
+                    const result = await e2ee.decrypt(m.id, m.user_id ?? '', m.sender_device_id ?? null, groupCt.ciphertext, groupCt.ratchet_header ?? null, '_group_', groupId);
                     if (result) content = result.text;
                   }
                 } catch (err) {
@@ -886,7 +886,7 @@ function SpacePageInner() {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [spaceId, authLoading]);
+  }, [groupId, authLoading]);
 
   // ── Listen for incoming SK requests — respond with re-distribution ──
   useEffect(() => {
@@ -896,7 +896,7 @@ function SpacePageInner() {
     (async () => {
       const { subscribeToSKRequests } = await import("@/lib/crypto/sk-recovery");
       cleanup = subscribeToSKRequests(
-        spaceId,
+        groupId,
         resolvedUserId,
         async (requesterId, requesterDeviceId) => {
           // Re-distribute our Sender Key to the requester
@@ -905,11 +905,11 @@ function SpacePageInner() {
             const { prepareSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
             const { deserializeSenderKey } = await import("@/lib/crypto/sender-keys");
 
-            const skData = await keyStore.getSenderKey(spaceId);
+            const skData = await keyStore.getSenderKey(groupId);
             if (!skData) return; // We haven't sent any messages in this space yet
 
             const senderKey = deserializeSenderKey(skData);
-            const distRows = await prepareSenderKeyDistribution(spaceId, senderKey);
+            const distRows = await prepareSenderKeyDistribution(groupId, senderKey);
 
             // Find the row for the requester and POST it as a sender_key_dist message
             const requesterRow = distRows.find(
@@ -924,7 +924,7 @@ function SpacePageInner() {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               body: JSON.stringify({
-                space_id: spaceId,
+                group_id: groupId,
                 sender_device_id: e2ee.deviceId,
                 message_type: "sender_key_dist",
                 ciphertext: requesterRow.ciphertext,
@@ -942,7 +942,7 @@ function SpacePageInner() {
     })();
 
     return () => { cleanup?.(); };
-  }, [spaceId, resolvedUserId, e2ee.available, e2ee.deviceId]);
+  }, [groupId, resolvedUserId, e2ee.available, e2ee.deviceId]);
 
   // ── Persist ledger entry via /api/local-action ──
   const persistLedger = useCallback(async (entry: LedgerEntry) => {
@@ -956,7 +956,7 @@ function SpacePageInner() {
         },
         body: JSON.stringify({
           action: entry.action,
-          spaceId: entry.space_id,
+          groupId: entry.group_id,
           payload: entry.payload,
           previous: entry.previous,
           actorName: entry.actor_name,
@@ -982,7 +982,7 @@ function SpacePageInner() {
         },
         body: JSON.stringify({
           action: "revert",
-          spaceId,
+          groupId,
           payload: { revert_target_id: ledgerId, revert_action: action, revert_previous: previous },
           actorName: user?.displayName ?? userName,
         }),
@@ -990,17 +990,17 @@ function SpacePageInner() {
     } catch (err) {
       console.error("[local-action] undo failed:", err);
     }
-  }, [spaceId, user, userName]);
+  }, [groupId, user, userName]);
 
   // ── Ledger Realtime subscription ──
   useEffect(() => {
     if (authLoading) return;
 
     const channel = supabase
-      .channel(`ledger:${spaceId}`)
+      .channel(`ledger:${groupId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "space_ledger", filter: `space_id=eq.${spaceId}` },
+        { event: "INSERT", schema: "public", table: "space_ledger", filter: `group_id=eq.${groupId}` },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           setLedgerEvents((prev) => {
@@ -1026,7 +1026,7 @@ function SpacePageInner() {
     supabase
       .from("space_ledger")
       .select("*")
-      .eq("space_id", spaceId)
+      .eq("group_id", groupId)
       .order("created_at", { ascending: true })
       .then(({ data }) => {
         if (data) {
@@ -1046,7 +1046,7 @@ function SpacePageInner() {
 
     return () => { supabase.removeChannel(channel); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spaceId, authLoading]);
+  }, [groupId, authLoading]);
 
   // ── Send queue — prevents rapid-fire concurrent sends that desync SK chain ──
   const sendQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -1084,8 +1084,8 @@ function SpacePageInner() {
     const token = getSupabaseToken();
 
     // ── @XARK INTERCEPT — Phantom Receipt Architecture ──
-    // @xark commands are NOT encrypted. They route directly to /api/xark.
-    // The server drops a phantom receipt into the timeline. AI results go to PossibilityHorizon.
+    // @hello commands are NOT encrypted. They route directly to /api/hello.
+    // The server drops a phantom receipt into the timeline. AI results go to DecisionBoard.
     // This preserves E2EE purity: human messages never touch the AI endpoint.
     if (txt.toLowerCase().startsWith("@hello")) {
       // Show user's query in the chat timeline (optimistic — same as normal messages)
@@ -1102,12 +1102,12 @@ function SpacePageInner() {
       setInput("");
       setIsThinking(true);
 
-      // Safety: clear thinking after 30s if no @xark response
+      // Safety: clear thinking after 30s if no @hello response
       if (thinkingTimerRef.current) clearTimeout(thinkingTimerRef.current);
       thinkingTimerRef.current = setTimeout(() => setIsThinking(false), 30_000);
 
       if (token) {
-        fetch("/api/xark", {
+        fetch("/api/hello", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1115,7 +1115,7 @@ function SpacePageInner() {
           },
           body: JSON.stringify({
             message: txt,
-            spaceId,
+            groupId,
             userId: resolvedUserId,
           }),
         })
@@ -1124,7 +1124,7 @@ function SpacePageInner() {
             setIsThinking(false);
             if (thinkingTimerRef.current) { clearTimeout(thinkingTimerRef.current); thinkingTimerRef.current = null; }
           });
-        // Don't clear thinking here — Realtime handler clears it when @xark message arrives
+        // Don't clear thinking here — Realtime handler clears it when @hello message arrives
       } else {
         setIsThinking(false);
         if (thinkingTimerRef.current) { clearTimeout(thinkingTimerRef.current); thinkingTimerRef.current = null; }
@@ -1208,7 +1208,7 @@ function SpacePageInner() {
                 // Upload encrypted og:image to Firebase
                 const { storageAdapter } = await import("@/lib/storage");
                 const ogMediaId = `og_${crypto.randomUUID()}`;
-                const ogPath = `spaces/${spaceId}/media/${ogMediaId}.enc`;
+                const ogPath = `spaces/${groupId}/media/${ogMediaId}.enc`;
                 const ogDownloadUrl = await storageAdapter.upload(ogPath, encryptedBlob, 'application/octet-stream');
 
                 linkPreviewPayload.mediaUrl = ogDownloadUrl;
@@ -1231,7 +1231,7 @@ function SpacePageInner() {
             setPendingLinkPreview(null);
           }
 
-          const envelope = await e2ee.encrypt(txt, spaceId, undefined, linkPreviewPayload);
+          const envelope = await e2ee.encrypt(txt, groupId, undefined, linkPreviewPayload);
           if (envelope) {
             // FIX: Sender-Side Amnesia Route. Cache plaintext instantly to survive reload.
             const { keyStore } = await import("@/lib/crypto/keystore");
@@ -1245,7 +1245,7 @@ function SpacePageInner() {
               },
               body: JSON.stringify({
                 id: userMsg.id,
-                space_id: spaceId,
+                group_id: groupId,
                 sender_device_id: e2ee.deviceId,
                 ciphertext: envelope.ciphertext,
                 ratchet_header: envelope.ratchetHeader ?? null,
@@ -1265,7 +1265,7 @@ function SpacePageInner() {
               const { enqueueMessage } = await import("@/lib/crypto/outbox");
               await enqueueMessage({
                 id: userMsg.id,
-                spaceId,
+                groupId,
                 envelope: {
                   ciphertext: envelope.ciphertext,
                   ratchetHeader: envelope.ratchetHeader,
@@ -1300,7 +1300,7 @@ function SpacePageInner() {
               if (channelRef.current) {
                 broadcastMessage(channelRef.current, {
                   id: userMsg.id,
-                  space_id: spaceId,
+                  group_id: groupId,
                   role: "user",
                   content: null as unknown as string,
                   user_id: resolvedUserId ?? null,
@@ -1355,7 +1355,7 @@ function SpacePageInner() {
       clearTimeout(sendTimeout);
       isSendingRef.current = false;
     }
-  }, [input, spaceId, resolvedUserId, user, userName, e2ee]);
+  }, [input, groupId, resolvedUserId, user, userName, e2ee]);
 
   // ═══════════════════════════════════════════
   // SPACE METADATA
@@ -1368,19 +1368,19 @@ function SpacePageInner() {
       try {
         const { data } = await supabase
           .from("spaces")
-          .select("title, atmosphere")
-          .eq("id", spaceId)
+          .select("title,groupType")
+          .eq("id", groupId)
           .maybeSingle();
         
-        if (data?.atmosphere) {
-          setAtmosphere(data.atmosphere);
+        if (data?.type) {
+          setGroupType(data.type);
         }
 
-        if (data?.atmosphere === "sanctuary" && resolvedUserId) {
+        if (data?.type === "dm" && resolvedUserId) {
           const { data: otherMember } = await supabase
             .from("space_members")
             .select("user_id")
-            .eq("space_id", spaceId)
+            .eq("group_id", groupId)
             .neq("user_id", resolvedUserId)
             .limit(1)
             .maybeSingle();
@@ -1416,12 +1416,12 @@ function SpacePageInner() {
         // fallthrough
       }
       setSpaceTitle(
-        DEMO_TITLES[spaceId] ??
-          spaceId.replace(/^space_/, "").replace(/-/g, " ")
+        DEMO_TITLES[groupId] ??
+          groupId.replace(/^space_/, "").replace(/-/g, " ")
       );
     }
     loadTitle();
-  }, [spaceId, authLoading, resolvedUserId]);
+  }, [groupId, authLoading, resolvedUserId]);
 
   // ── Fetch decision items for space state computation (after auth resolves) ──
   useEffect(() => {
@@ -1431,17 +1431,17 @@ function SpacePageInner() {
         const { data } = await supabase
           .from("decision_items")
           .select("state, is_locked, category, metadata")
-          .eq("space_id", spaceId)
+          .eq("group_id", groupId)
           .limit(200);
-        if (data) setSpaceItems(data as SpaceStateItem[]);
+        if (data) setSpaceItems(data as GroupStateItem[]);
       } catch {
         // Silent — demo fallback stays empty
       }
     }
     loadItems();
-  }, [spaceId, authLoading]);
+  }, [groupId, authLoading]);
 
-  const spaceState = computeSpaceState(spaceItems);
+  const spaceState = computeGroupState(spaceItems);
   const showItinerary =
     spaceState === "ready" ||
     spaceState === "active" ||
@@ -1457,7 +1457,7 @@ function SpacePageInner() {
     if (!isInvite || authLoading) return;
 
     if (!isAuthenticated) {
-      const returnUrl = `/space/${spaceId}?invite=true${userName ? `&name=${encodeURIComponent(userName)}` : ""}`;
+      const returnUrl = `/space/${groupId}?invite=true${userName ? `&name=${encodeURIComponent(userName)}` : ""}`;
       router.replace(`/login?returnTo=${encodeURIComponent(returnUrl)}`);
       return;
     }
@@ -1465,7 +1465,7 @@ function SpacePageInner() {
     async function joinSpace() {
       setJoining(true);
       try {
-        await supabase.rpc("join_via_invite", { p_space_id: spaceId });
+        await supabase.rpc("join_via_invite", { p_group_id: groupId });
       } catch {
         // Silently handle — user may already be a member
       } finally {
@@ -1474,7 +1474,7 @@ function SpacePageInner() {
         newParams.delete("invite");
         const remaining = newParams.toString();
         router.replace(
-          `/space/${spaceId}${remaining ? `?${remaining}` : ""}`
+          `/space/${groupId}${remaining ? `?${remaining}` : ""}`
         );
       }
     }
@@ -1483,7 +1483,7 @@ function SpacePageInner() {
     isInvite,
     isAuthenticated,
     authLoading,
-    spaceId,
+    groupId,
     userName,
     router,
     searchParams,
@@ -1493,23 +1493,23 @@ function SpacePageInner() {
   const [showShareOptions, setShowShareOptions] = useState(false);
 
   const handleShare = useCallback(async () => {
-    // Generate a proper invite link via /api/summon (creates a cryptographic deep link)
+    // Generate a proper invite link via /api/invite (creates a cryptographic deep link)
     try {
       const { generateAndShareInvite } = await import("@/components/os/InviteSurface");
       await generateAndShareInvite(user?.displayName ?? userName ?? "someone");
     } catch {
       // User cancelled share or generation failed — try clipboard fallback with space URL
-      const fallbackUrl = `${window.location.origin}/space/${spaceId}`;
+      const fallbackUrl = `${window.location.origin}/space/${groupId}`;
       try {
         await navigator.clipboard.writeText(fallbackUrl);
         setShareWhisper(true);
         setTimeout(() => setShareWhisper(false), 2000);
       } catch { /* silent */ }
     }
-  }, [spaceId, user, userName]);
+  }, [groupId, user, userName]);
 
   // Fallback share text for WhatsApp/SMS options (when native share was cancelled)
-  const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/space/${spaceId}`;
+  const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/space/${groupId}`;
   const shareText = `join ${spaceTitle || "this space"} on xark: ${shareUrl}`;
 
   // ── Joining whisper ──
@@ -1528,7 +1528,7 @@ function SpacePageInner() {
 
   // ── PLAYGROUND MODE — after all hooks, safe early return ──
   if (isPlayground) {
-    return <PlaygroundSpace spaceId={spaceId} userName={userName ?? "you"} />;
+    return <PlaygroundSpace groupId={groupId} userName={userName ?? "you"} />;
   }
 
   return (
@@ -1710,7 +1710,7 @@ function SpacePageInner() {
                 </>
             </div>
 
-            {atmosphere !== "sanctuary" && (
+            {type !== "dm" && (
               <span
                 role="button"
                 tabIndex={0}
@@ -1744,10 +1744,10 @@ function SpacePageInner() {
 
       {/* ── View content — swipe left/right to switch discuss ↔ decide ── */}
       <div onTouchStart={handleSwipeStart} onTouchEnd={handleSwipeEnd}>
-      {view === "discuss" && <ConsensusBanner spaceId={spaceId} />}
+      {view === "discuss" && <ConsensusBanner groupId={groupId} />}
       {view === "discuss" && (
         <XarkChat
-          spaceId={spaceId}
+          groupId={groupId}
           spaceTitle={spaceTitle}
           messages={messages}
           isThinking={isThinking}
@@ -1772,10 +1772,10 @@ function SpacePageInner() {
           zIndex: 10,
         }}
       >
-        <PossibilityHorizon spaceId={spaceId} userId={resolvedUserId} authLoading={authLoading} isThinking={isThinking} />
+        <DecisionBoard groupId={groupId} userId={resolvedUserId} authLoading={authLoading} isThinking={isThinking} />
       </div>
-      {view === "itinerary" && <ItineraryView spaceId={spaceId} />}
-      {view === "memories" && <MemoriesView spaceId={spaceId} />}
+      {view === "itinerary" && <ItineraryView groupId={groupId} />}
+      {view === "memories" && <MemoriesView groupId={groupId} />}
       </div>
 
       {/* ── Share options — WhatsApp, SMS, copy link ── */}
@@ -1912,7 +1912,7 @@ function SpacePageInner() {
                   // Save constraint (fire-and-forget)
                   if (resolvedUserId) {
                     import("@/lib/constraints").then(({ saveConstraint }) =>
-                      saveConstraint(constraintWhisper, resolvedUserId, spaceId).catch(() => {})
+                      saveConstraint(constraintWhisper, resolvedUserId, groupId).catch(() => {})
                     );
                   }
                   setConstraintWhisper(null);
@@ -1983,7 +1983,7 @@ function SpacePageInner() {
             // Upload encrypted blob to Firebase (server never sees plaintext)
             const { storageAdapter } = await import("@/lib/storage");
             const mediaId = `media_${crypto.randomUUID()}`;
-            const storagePath = `spaces/${spaceId}/media/${mediaId}.enc`;
+            const storagePath = `spaces/${groupId}/media/${mediaId}.enc`;
             const downloadUrl = await storageAdapter.upload(storagePath, encryptedBlob, 'application/octet-stream');
 
             // Build optimistic message — appears immediately in sender's chat
@@ -2009,7 +2009,7 @@ function SpacePageInner() {
             // so concurrent uploads queue here correctly for SK chain integrity
             const envelope = await e2ee.encrypt(
               mediaMsg.content,
-              spaceId,
+              groupId,
               { mediaUrl: downloadUrl, aesKeyBase64, ivBase64, mimeType, ...(inlineThumbnail && { inlineThumbnail }) }
             );
 
@@ -2041,7 +2041,7 @@ function SpacePageInner() {
               },
               body: JSON.stringify({
                 id: mediaMsg.id,
-                space_id: spaceId,
+                group_id: groupId,
                 sender_device_id: e2ee.deviceId,
                 ciphertext: envelope.ciphertext,
                 ratchet_header: envelope.ratchetHeader ?? null,
@@ -2059,7 +2059,7 @@ function SpacePageInner() {
               if (channelRef.current) {
                 broadcastMessage(channelRef.current, {
                   id: mediaMsg.id,
-                  space_id: spaceId,
+                  group_id: groupId,
                   role: "user",
                   content: null as unknown as string,
                   user_id: resolvedUserId ?? null,
@@ -2104,7 +2104,7 @@ function SpacePageInner() {
 
           try {
             const token = getSupabaseToken();
-            const res = await fetch("/api/xark", {
+            const res = await fetch("/api/hello", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -2112,7 +2112,7 @@ function SpacePageInner() {
               },
               body: JSON.stringify({
                 message: payload.rawMessage,
-                spaceId,
+                groupId,
                 userId: resolvedUserId,
                 slotPayload: {
                   source: payload.source,

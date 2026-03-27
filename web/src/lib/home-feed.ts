@@ -10,7 +10,7 @@ import { supabase } from "./supabase";
 // ── Types ──
 
 export interface SpaceAwareness {
-  spaceId: string;
+  groupId: string;
   spaceTitle: string;
   locked: number;
   needsVote: number;
@@ -74,38 +74,38 @@ export async function fetchAwareness(userId: string): Promise<SpaceAwareness[]> 
     // Get spaces the user belongs to
     const { data: memberRows } = await supabase
       .from("space_members")
-      .select("space_id")
+      .select("group_id")
       .eq("user_id", userId);
 
-    const memberSpaceIds = memberRows?.map((r) => r.space_id) ?? [];
+    const memberGroupIds = memberRows?.map((r) => r.group_id) ?? [];
 
-    // Fetch spaces — exclude sanctuaries
+    // Fetch spaces — exclude dms
     const spacesQuery = supabase
       .from("spaces")
-      .select("id, title, atmosphere, last_activity_at, created_at")
-      .neq("atmosphere", "sanctuary")
+      .select("id, title,groupType, last_activity_at, created_at")
+      .neq("atmosphere", "dm")
       .order("last_activity_at", { ascending: false, nullsFirst: false });
 
-    if (memberSpaceIds.length === 0) return [];
-    spacesQuery.in("id", memberSpaceIds);
+    if (memberGroupIds.length === 0) return [];
+    spacesQuery.in("id", memberGroupIds);
 
     const { data: spaces } = await spacesQuery;
 
     if (!spaces || spaces.length === 0) return [];
 
-    const spaceIds = spaces.map((s) => s.id);
+    const groupIds = spaces.map((s) => s.id);
 
     // Fetch decision items + logistics in parallel
     const [itemsResult, logisticsResult] = await Promise.all([
       supabase
         .from("decision_items")
-        .select("id, space_id, state, is_locked, proposed_by")
-        .in("space_id", spaceIds),
+        .select("id, group_id, state, is_locked, proposed_by")
+        .in("group_id", groupIds),
       Promise.resolve(
         supabase
           .from("member_logistics")
-          .select("space_id")
-          .in("space_id", spaceIds)
+          .select("group_id")
+          .in("group_id", groupIds)
           .eq("user_id", userId)
           .eq("state", "missing")
           .not("origin", "is", null)
@@ -114,16 +114,16 @@ export async function fetchAwareness(userId: string): Promise<SpaceAwareness[]> 
 
     const items = itemsResult.data;
 
-    let flightSpaceIds: Set<string> = new Set();
+    let flightGroupIds: Set<string> = new Set();
     if (logisticsResult.data) {
       for (const row of logisticsResult.data) {
-        flightSpaceIds.add(row.space_id);
+        flightGroupIds.add(row.group_id);
       }
     }
 
     // Aggregate per space
     const summaries: SpaceAwareness[] = spaces.map((space) => {
-      const spaceItems = items?.filter((i) => i.space_id === space.id) ?? [];
+      const spaceItems = items?.filter((i) => i.group_id === space.id) ?? [];
 
       let locked = 0;
       let needsVote = 0;
@@ -139,12 +139,12 @@ export async function fetchAwareness(userId: string): Promise<SpaceAwareness[]> 
         }
       }
 
-      const needsFlight = flightSpaceIds.has(space.id);
+      const needsFlight = flightGroupIds.has(space.id);
       const actionNeeded = needsVote > 0 || needsFlight;
       const lastActivityAt = new Date(space.last_activity_at ?? space.created_at).getTime();
 
       return {
-        spaceId: space.id,
+        groupId: space.id,
         spaceTitle: space.title,
         locked,
         needsVote,
@@ -172,7 +172,7 @@ export function getDemoAwareness(): SpaceAwareness[] {
   const now = Date.now();
   const raw: SpaceAwareness[] = [
     {
-      spaceId: "space_san-diego-trip",
+      groupId: "space_san-diego-trip",
       spaceTitle: "san diego trip",
       locked: 2,
       needsVote: 1,
@@ -184,7 +184,7 @@ export function getDemoAwareness(): SpaceAwareness[] {
       priority: 0,
     },
     {
-      spaceId: "space_tokyo-neon-nights",
+      groupId: "space_tokyo-neon-nights",
       spaceTitle: "tokyo neon nights",
       locked: 0,
       needsVote: 2,
@@ -196,7 +196,7 @@ export function getDemoAwareness(): SpaceAwareness[] {
       priority: 0,
     },
     {
-      spaceId: "space_summer-2026",
+      groupId: "space_summer-2026",
       spaceTitle: "summer 2026",
       locked: 0,
       needsVote: 0,
@@ -219,7 +219,7 @@ export const DEMO_AWARENESS = getDemoAwareness();
 // ── Personal Chats (Sanctuary spaces / 1:1) ──
 
 export interface PersonalChat {
-  spaceId: string;
+  groupId: string;
   contactName: string;
   contactPhotoUrl: string | null;
   lastMessage: string;
@@ -231,32 +231,32 @@ export async function fetchPersonalChats(userId: string): Promise<PersonalChat[]
     // Get spaces the user belongs to
     const { data: memberRows } = await supabase
       .from("space_members")
-      .select("space_id")
+      .select("group_id")
       .eq("user_id", userId);
 
-    const memberSpaceIds = memberRows?.map((r) => r.space_id) ?? [];
-    if (memberSpaceIds.length === 0) return [];
+    const memberGroupIds = memberRows?.map((r) => r.group_id) ?? [];
+    if (memberGroupIds.length === 0) return [];
 
-    // Fetch sanctuary spaces
-    const { data: sanctuaries } = await supabase
+    // Fetch dm spaces
+    const { data: dms } = await supabase
       .from("spaces")
       .select("id, title, last_activity_at, created_at")
-      .eq("atmosphere", "sanctuary")
-      .in("id", memberSpaceIds);
+      .eq("atmosphere", "dm")
+      .in("id", memberGroupIds);
 
-    if (!sanctuaries || sanctuaries.length === 0) return [];
+    if (!dms || dms.length === 0) return [];
 
-    const sanctuaryIds = sanctuaries.map((s) => s.id);
+    const dmIds = dms.map((s) => s.id);
 
-    // Fetch last message per sanctuary via RPC (single query with DISTINCT ON)
+    // Fetch last message per dm via RPC (single query with DISTINCT ON)
     const lastMessageBySpace = new Map<string, { content: string; senderName: string; createdAt: string }>();
     try {
       const { data: latestMsgs } = await supabase.rpc("get_latest_messages_per_space", {
-        p_space_ids: sanctuaryIds,
+        p_group_ids: dmIds,
       });
       if (latestMsgs) {
         for (const msg of latestMsgs) {
-          lastMessageBySpace.set(msg.space_id, {
+          lastMessageBySpace.set(msg.group_id, {
             content: msg.content,
             senderName: msg.sender_name ?? "",
             createdAt: msg.created_at,
@@ -267,17 +267,17 @@ export async function fetchPersonalChats(userId: string): Promise<PersonalChat[]
       // Fallback: RPC may not exist yet
     }
 
-    // Resolve contact name: other member in the sanctuary
+    // Resolve contact name: other member in the dm
     const { data: allMembers } = await supabase
       .from("space_members")
-      .select("space_id, user_id")
-      .in("space_id", sanctuaryIds);
+      .select("group_id, user_id")
+      .in("group_id", dmIds);
 
-    // Find the other member's user_id per sanctuary
+    // Find the other member's user_id per dm
     const otherMemberBySpace = new Map<string, string>();
     for (const member of allMembers ?? []) {
       if (member.user_id !== userId) {
-        otherMemberBySpace.set(member.space_id, member.user_id);
+        otherMemberBySpace.set(member.group_id, member.user_id);
       }
     }
 
@@ -294,14 +294,14 @@ export async function fetchPersonalChats(userId: string): Promise<PersonalChat[]
       }
     }
 
-    return sanctuaries.map((space) => {
+    return dms.map((space) => {
       const lastMsg = lastMessageBySpace.get(space.id);
       const otherUserId = otherMemberBySpace.get(space.id);
       const profile = otherUserId ? profileMap.get(otherUserId) : null;
       const contactName = profile?.display_name ?? (otherUserId ? extractDisplayName(otherUserId) : space.title);
 
       return {
-        spaceId: space.id,
+        groupId: space.id,
         contactName,
         contactPhotoUrl: profile?.photo_url ?? null,
         lastMessage: lastMsg?.content ?? "",
@@ -319,7 +319,7 @@ export function getDemoPersonalChats(): PersonalChat[] {
   const now = Date.now();
   return [
     {
-      spaceId: "space_ananya",
+      groupId: "space_ananya",
       contactName: "ananya",
       contactPhotoUrl: null,
       lastMessage: "sent you the photos from saturday",

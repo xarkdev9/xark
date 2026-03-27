@@ -1,6 +1,6 @@
 // src/lib/taste.ts
 // Taste Graph helpers — intersect group constraints, build Gemini injection.
-// Called by /api/xark at search time. Pure functions, no side effects.
+// Called by /api/hello at search time. Pure functions, no side effects.
 
 export interface TasteProfile {
   user_id: string;
@@ -21,7 +21,7 @@ export interface TasteContext {
 
 /**
  * Intersect taste profiles for a group. Returns unified constraints + preferences.
- * Called server-side by /api/xark with profiles from get_space_taste_profiles RPC.
+ * Called server-side by /api/hello with profiles from get_space_taste_profiles RPC.
  */
 export function intersectTasteProfiles(profiles: TasteProfile[]): TasteContext {
   // Hard constraints: UNION of all members (one vegan vetoes steakhouses for everyone)

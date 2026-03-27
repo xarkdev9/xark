@@ -5,7 +5,7 @@ import { MemoryPersistenceAdapter } from "../adapters/memory-persistence.js";
 import { MemoryEventBusAdapter } from "../adapters/memory-event-bus.js";
 import { NoopAuthAdapter } from "../adapters/noop-auth.js";
 import type { ServiceRequest } from "../service/request-handler.js";
-import type { SpaceId, UserId } from "../models/types.js";
+import type { GroupId, UserId } from "../models/types.js";
 
 describe("RequestHandler", () => {
   let handler: RequestHandler;
@@ -49,9 +49,9 @@ describe("RequestHandler", () => {
         name: "Trip",
         members: [],
       });
-      const spaceId = (create.body as any).id;
+      const groupId = (create.body as any).id;
 
-      const res = await request("GET", `/spaces/${spaceId}`);
+      const res = await request("GET", `/spaces/${groupId}`);
       expect(res.status).toBe(200);
       expect((res.body as any).name).toBe("Trip");
     });
@@ -61,18 +61,18 @@ describe("RequestHandler", () => {
         name: "Trip",
         members: [],
       });
-      const spaceId = (create.body as any).id;
+      const groupId = (create.body as any).id;
 
-      const del = await request("DELETE", `/spaces/${spaceId}`);
+      const del = await request("DELETE", `/spaces/${groupId}`);
       expect(del.status).toBe(204);
 
-      const get = await request("GET", `/spaces/${spaceId}`);
+      const get = await request("GET", `/spaces/${groupId}`);
       expect(get.status).toBe(404);
     });
   });
 
   describe("Items", () => {
-    let spaceId: string;
+    let groupId: string;
 
     beforeEach(async () => {
       const res = await request("POST", "/spaces", {
@@ -82,11 +82,11 @@ describe("RequestHandler", () => {
           { userId: "bob", name: "Bob", avatarUrl: "", joinedAt: 100 },
         ],
       });
-      spaceId = (res.body as any).id;
+      groupId = (res.body as any).id;
     });
 
     it("POST /spaces/:id/items adds an item", async () => {
-      const res = await request("POST", `/spaces/${spaceId}/items`, {
+      const res = await request("POST", `/spaces/${groupId}/items`, {
         title: "Hilton",
         description: "Downtown",
         category: "hotel",
@@ -96,7 +96,7 @@ describe("RequestHandler", () => {
     });
 
     it("POST /items/:id/react adds a reaction", async () => {
-      const item = await request("POST", `/spaces/${spaceId}/items`, {
+      const item = await request("POST", `/spaces/${groupId}/items`, {
         title: "Hilton",
       });
       const itemId = (item.body as any).id;
@@ -109,7 +109,7 @@ describe("RequestHandler", () => {
     });
 
     it("DELETE /items/:id/react removes a reaction", async () => {
-      const item = await request("POST", `/spaces/${spaceId}/items`, {
+      const item = await request("POST", `/spaces/${groupId}/items`, {
         title: "Hilton",
       });
       const itemId = (item.body as any).id;
@@ -124,10 +124,10 @@ describe("RequestHandler", () => {
     });
 
     it("GET /spaces/:id/items/ranked returns sorted items", async () => {
-      const a = await request("POST", `/spaces/${spaceId}/items`, {
+      const a = await request("POST", `/spaces/${groupId}/items`, {
         title: "A",
       });
-      const b = await request("POST", `/spaces/${spaceId}/items`, {
+      const b = await request("POST", `/spaces/${groupId}/items`, {
         title: "B",
       });
 
@@ -135,13 +135,13 @@ describe("RequestHandler", () => {
         reactionType: "love_it",
       });
 
-      const res = await request("GET", `/spaces/${spaceId}/items/ranked`);
+      const res = await request("GET", `/spaces/${groupId}/items/ranked`);
       expect(res.status).toBe(200);
       expect((res.body as any)[0].title).toBe("B");
     });
 
     it("POST /items/:id/lock locks an item", async () => {
-      const item = await request("POST", `/spaces/${spaceId}/items`, {
+      const item = await request("POST", `/spaces/${groupId}/items`, {
         title: "Hilton",
       });
       const itemId = (item.body as any).id;
@@ -155,7 +155,7 @@ describe("RequestHandler", () => {
     });
 
     it("POST /items/:id/transfer transfers ownership", async () => {
-      const item = await request("POST", `/spaces/${spaceId}/items`, {
+      const item = await request("POST", `/spaces/${groupId}/items`, {
         title: "Hilton",
       });
       const itemId = (item.body as any).id;
@@ -172,7 +172,7 @@ describe("RequestHandler", () => {
     });
 
     it("GET /items/:id/signals returns signal breakdown", async () => {
-      const item = await request("POST", `/spaces/${spaceId}/items`, {
+      const item = await request("POST", `/spaces/${groupId}/items`, {
         title: "Hilton",
       });
       const itemId = (item.body as any).id;
@@ -187,40 +187,40 @@ describe("RequestHandler", () => {
     });
 
     it("GET /spaces/:id/items/locked returns locked items", async () => {
-      const item = await request("POST", `/spaces/${spaceId}/items`, {
+      const item = await request("POST", `/spaces/${groupId}/items`, {
         title: "Hilton",
       });
       const itemId = (item.body as any).id;
       await request("POST", `/items/${itemId}/lock`, { proofValue: "X" });
 
-      const res = await request("GET", `/spaces/${spaceId}/items/locked`);
+      const res = await request("GET", `/spaces/${groupId}/items/locked`);
       expect(res.status).toBe(200);
       expect((res.body as any)).toHaveLength(1);
     });
 
     it("GET /spaces/:id/items/active returns active items", async () => {
-      await request("POST", `/spaces/${spaceId}/items`, { title: "A" });
-      await request("POST", `/spaces/${spaceId}/items`, { title: "B" });
+      await request("POST", `/spaces/${groupId}/items`, { title: "A" });
+      await request("POST", `/spaces/${groupId}/items`, { title: "B" });
 
-      const res = await request("GET", `/spaces/${spaceId}/items/active`);
+      const res = await request("GET", `/spaces/${groupId}/items/active`);
       expect(res.status).toBe(200);
       expect((res.body as any)).toHaveLength(2);
     });
   });
 
   describe("Tasks", () => {
-    let spaceId: string;
+    let groupId: string;
 
     beforeEach(async () => {
       const res = await request("POST", "/spaces", {
         name: "Trip",
         members: [],
       });
-      spaceId = (res.body as any).id;
+      groupId = (res.body as any).id;
     });
 
     it("POST /spaces/:id/tasks creates a task", async () => {
-      const res = await request("POST", `/spaces/${spaceId}/tasks`, {
+      const res = await request("POST", `/spaces/${groupId}/tasks`, {
         title: "Bring snacks",
         description: "Chips",
       });
@@ -229,7 +229,7 @@ describe("RequestHandler", () => {
     });
 
     it("POST /tasks/:id/claim claims a task", async () => {
-      const task = await request("POST", `/spaces/${spaceId}/tasks`, {
+      const task = await request("POST", `/spaces/${groupId}/tasks`, {
         title: "Bring snacks",
       });
       const taskId = (task.body as any).id;
@@ -240,7 +240,7 @@ describe("RequestHandler", () => {
     });
 
     it("POST /tasks/:id/release releases a task", async () => {
-      const task = await request("POST", `/spaces/${spaceId}/tasks`, {
+      const task = await request("POST", `/spaces/${groupId}/tasks`, {
         title: "Bring snacks",
       });
       const taskId = (task.body as any).id;
@@ -253,24 +253,24 @@ describe("RequestHandler", () => {
   });
 
   describe("AI Grounding", () => {
-    let spaceId: string;
+    let groupId: string;
 
     beforeEach(async () => {
       const res = await request("POST", "/spaces", {
         name: "Trip",
         members: [],
       });
-      spaceId = (res.body as any).id;
+      groupId = (res.body as any).id;
     });
 
     it("GET /spaces/:id/grounding returns context", async () => {
-      const res = await request("GET", `/spaces/${spaceId}/grounding`);
+      const res = await request("GET", `/spaces/${groupId}/grounding`);
       expect(res.status).toBe(200);
       expect((res.body as any).lockedDecisions).toEqual([]);
     });
 
     it("GET /spaces/:id/grounding/prompt returns prompt", async () => {
-      const res = await request("GET", `/spaces/${spaceId}/grounding/prompt`);
+      const res = await request("GET", `/spaces/${groupId}/grounding/prompt`);
       expect(res.status).toBe(200);
       expect((res.body as any).prompt).toContain("No locked decisions");
     });
@@ -278,7 +278,7 @@ describe("RequestHandler", () => {
     it("GET /spaces/:id/conflicts checks for conflicts", async () => {
       const res = await request(
         "GET",
-        `/spaces/${spaceId}/conflicts`,
+        `/spaces/${groupId}/conflicts`,
         undefined,
         "alice"
       );
@@ -311,9 +311,9 @@ describe("RequestHandler", () => {
         name: "Trip",
         members: [],
       });
-      const spaceId = (space.body as any).id;
+      const groupId = (space.body as any).id;
 
-      const item = await request("POST", `/spaces/${spaceId}/items`, {
+      const item = await request("POST", `/spaces/${groupId}/items`, {
         title: "Hotel",
       });
       const itemId = (item.body as any).id;

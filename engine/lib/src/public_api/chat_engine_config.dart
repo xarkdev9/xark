@@ -1,4 +1,4 @@
-import 'package:chat_engine/src/observer/chat_engine_observer.dart';
+import 'package:hello_engine/src/observer/chat_engine_observer.dart';
 
 /// Configuration for initializing the chat engine.
 ///

@@ -4,30 +4,30 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/chat_session_impl.dart';
-import 'package:chat_engine/src/crypto/keys/key_store.dart';
-import 'package:chat_engine/src/crypto/keys/key_types.dart';
-import 'package:chat_engine/src/crypto/ratchet/double_ratchet.dart';
-import 'package:chat_engine/src/crypto/sender_keys/group_cipher.dart';
-import 'package:chat_engine/src/crypto/sender_keys/sender_key_store.dart';
-import 'package:chat_engine/src/domain/models/conversation.dart';
-import 'package:chat_engine/src/domain/models/message.dart';
-import 'package:chat_engine/src/domain/models/receipt.dart';
-import 'package:chat_engine/src/domain/models/typing_indicator.dart';
-import 'package:chat_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:chat_engine/src/domain/repositories/message_repository.dart';
-import 'package:chat_engine/src/domain/repositories/receipt_repository.dart';
-import 'package:chat_engine/src/domain/use_cases/delete_message_use_case.dart';
-import 'package:chat_engine/src/domain/use_cases/mark_read_use_case.dart';
-import 'package:chat_engine/src/domain/use_cases/receive_message_use_case.dart';
-import 'package:chat_engine/src/domain/use_cases/send_message_use_case.dart';
-import 'package:chat_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:chat_engine/src/persistence/repositories/outbox_repository.dart';
-import 'package:chat_engine/src/persistence/repositories/processed_distribution_repository.dart';
-import 'package:chat_engine/src/public_api/chat_engine_config.dart';
-import 'package:chat_engine/src/sync/sync_coordinator.dart';
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
-import 'package:chat_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/chat_session_impl.dart';
+import 'package:hello_engine/src/crypto/keys/key_store.dart';
+import 'package:hello_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/crypto/ratchet/double_ratchet.dart';
+import 'package:hello_engine/src/crypto/sender_keys/group_cipher.dart';
+import 'package:hello_engine/src/crypto/sender_keys/sender_key_store.dart';
+import 'package:hello_engine/src/domain/models/conversation.dart';
+import 'package:hello_engine/src/domain/models/message.dart';
+import 'package:hello_engine/src/domain/models/receipt.dart';
+import 'package:hello_engine/src/domain/models/typing_indicator.dart';
+import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
+import 'package:hello_engine/src/domain/repositories/message_repository.dart';
+import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
+import 'package:hello_engine/src/domain/use_cases/delete_message_use_case.dart';
+import 'package:hello_engine/src/domain/use_cases/mark_read_use_case.dart';
+import 'package:hello_engine/src/domain/use_cases/receive_message_use_case.dart';
+import 'package:hello_engine/src/domain/use_cases/send_message_use_case.dart';
+import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:hello_engine/src/persistence/repositories/outbox_repository.dart';
+import 'package:hello_engine/src/persistence/repositories/processed_distribution_repository.dart';
+import 'package:hello_engine/src/public_api/chat_engine_config.dart';
+import 'package:hello_engine/src/sync/sync_coordinator.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/transport/supabase_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -85,10 +85,10 @@ class FakeSenderKeyDistribution extends Fake
 const _myUserId = 'user_alice';
 const _myDeviceId = 1;
 const _peerId = 'user_bob';
-const _conversationId = 'conv-001';
+const _groupId = 'conv-001';
 
 Conversation _makeConversation({
-  String id = _conversationId,
+  String id = _groupId,
   ConversationType type = ConversationType.oneToOne,
   List<String> participants = const [_myUserId, _peerId],
 }) {
@@ -104,14 +104,14 @@ Conversation _makeConversation({
 
 Message _makeMessage({
   String id = 'msg-001',
-  String conversationId = _conversationId,
+  String groupId = _groupId,
   String senderId = _peerId,
   MessageStatus status = MessageStatus.delivered,
   DateTime? timestamp,
 }) {
   return Message(
     id: id,
-    conversationId: conversationId,
+    groupId: groupId,
     senderId: senderId,
     senderDeviceId: '1',
     type: MessageType.e2ee,
@@ -229,7 +229,7 @@ void main() {
 
       // Act.
       final result = await sendUseCase.sendText(
-        _conversationId,
+        _groupId,
         'Hello Bob!',
       );
 
@@ -242,7 +242,7 @@ void main() {
       expect(savedMsg.status, MessageStatus.sending);
       expect(savedMsg.senderId, _myUserId);
       expect(savedMsg.text, 'Hello Bob!');
-      expect(savedMsg.conversationId, _conversationId);
+      expect(savedMsg.groupId, _groupId);
 
       // Assert: final result has status=sent.
       expect(result.status, MessageStatus.sent);
@@ -282,7 +282,7 @@ void main() {
           .thenAnswer((_) async {});
 
       final result = await sendUseCase.sendText(
-        _conversationId,
+        _groupId,
         'Test',
       );
 
@@ -325,7 +325,7 @@ void main() {
 
       // Act & Assert.
       await expectLater(
-        sendUseCase.sendText(_conversationId, 'Will fail'),
+        sendUseCase.sendText(_groupId, 'Will fail'),
         throwsA(isA<StateError>()),
       );
 
@@ -345,7 +345,7 @@ void main() {
           .thenAnswer((_) async => 501);
 
       await expectLater(
-        sendUseCase.sendText(_conversationId, 'Will fail'),
+        sendUseCase.sendText(_groupId, 'Will fail'),
         throwsA(isA<StateError>()),
       );
 
@@ -388,7 +388,7 @@ void main() {
       when(() => conversationRepo.saveConversation(any()))
           .thenAnswer((_) async {});
 
-      await sendUseCase.sendText(_conversationId, 'Cached text');
+      await sendUseCase.sendText(_groupId, 'Cached text');
 
       verify(
         () => decryptedCache.cachePlaintext(any(), 'Cached text'),
@@ -469,7 +469,7 @@ void main() {
       final result =
           await receiveUseCase.processReceivedMessage(
         messageId: 'msg-in-001',
-        spaceId: _conversationId,
+        groupId: _groupId,
         senderId: _peerId,
         senderDeviceId: 1,
         messageType: 'e2ee',
@@ -487,7 +487,7 @@ void main() {
       expect(result.text, 'Hello Alice!');
       expect(result.senderId, _peerId);
       expect(result.status, MessageStatus.delivered);
-      expect(result.conversationId, _conversationId);
+      expect(result.groupId, _groupId);
     });
 
     test(
@@ -495,7 +495,7 @@ void main() {
         'own messages', () async {
       final result = await receiveUseCase.processReceivedMessage(
         messageId: 'msg-own',
-        spaceId: _conversationId,
+        groupId: _groupId,
         senderId: _myUserId,
         senderDeviceId: _myDeviceId,
         messageType: 'e2ee',
@@ -517,7 +517,7 @@ void main() {
 
       final result = await receiveUseCase.processReceivedMessage(
         messageId: 'msg-cached',
-        spaceId: _conversationId,
+        groupId: _groupId,
         senderId: _peerId,
         senderDeviceId: 2,
         messageType: 'e2ee',
@@ -571,7 +571,7 @@ void main() {
 
       await receiveUseCase.processReceivedMessage(
         messageId: 'msg-unread',
-        spaceId: _conversationId,
+        groupId: _groupId,
         senderId: _peerId,
         senderDeviceId: 1,
         messageType: 'e2ee',
@@ -617,7 +617,7 @@ void main() {
         () => conversationRepo.updateUnreadCount(any(), any()),
       ).thenAnswer((_) async {});
 
-      await markReadUseCase.markRead('msg-001', _conversationId);
+      await markReadUseCase.markRead('msg-001', _groupId);
 
       verify(
         () => messageRepo.updateMessageStatus(
@@ -637,11 +637,11 @@ void main() {
         () => conversationRepo.updateUnreadCount(any(), any()),
       ).thenAnswer((_) async {});
 
-      await markReadUseCase.markRead('msg-001', _conversationId);
+      await markReadUseCase.markRead('msg-001', _groupId);
 
       verify(
         () => conversationRepo.updateUnreadCount(
-          _conversationId,
+          _groupId,
           0,
         ),
       ).called(1);
@@ -795,7 +795,7 @@ void main() {
       );
 
       session = ChatSessionImpl(
-        conversationId: _conversationId,
+        groupId: _groupId,
         sendUseCase: sendUseCase,
         markReadUseCase: markReadUseCase,
         deleteUseCase: deleteUseCase,
@@ -805,8 +805,8 @@ void main() {
       );
     });
 
-    test('conversationId returns correct value', () {
-      expect(session.conversationId, _conversationId);
+    test('groupId returns correct value', () {
+      expect(session.groupId, _groupId);
     });
 
     test(
@@ -814,7 +814,7 @@ void main() {
       final controller =
           StreamController<List<Message>>.broadcast();
       when(
-        () => sessionMsgRepo.watchMessages(_conversationId),
+        () => sessionMsgRepo.watchMessages(_groupId),
       ).thenAnswer((_) => controller.stream);
 
       final stream = session.messages;
@@ -829,7 +829,7 @@ void main() {
           StreamController<List<Receipt>>.broadcast();
       when(
         () => sessionReceiptRepo.watchReceipts(
-          _conversationId,
+          _groupId,
         ),
       ).thenAnswer((_) => controller.stream);
 
@@ -840,7 +840,7 @@ void main() {
     });
 
     test(
-        'typing filters events by conversationId',
+        'typing filters events by groupId',
         () async {
       final controller =
           StreamController<TypingIndicator>.broadcast();
@@ -854,14 +854,14 @@ void main() {
       controller
         ..add(
           TypingIndicator(
-            conversationId: _conversationId,
+            groupId: _groupId,
             userId: _peerId,
             startedAt: DateTime.now(),
           ),
         )
         ..add(
           TypingIndicator(
-            conversationId: 'other-conv',
+            groupId: 'other-conv',
             userId: 'other-user',
             startedAt: DateTime.now(),
           ),
@@ -905,7 +905,7 @@ void main() {
       ).called(1);
       verify(
         () => sessionConvRepo.updateUnreadCount(
-          _conversationId,
+          _groupId,
           0,
         ),
       ).called(1);
@@ -945,7 +945,7 @@ void main() {
 
       verify(
         () => sessionMsgRepo.getMessages(
-          _conversationId,
+          _groupId,
           limit: 25,
         ),
       ).called(1);
@@ -1028,7 +1028,7 @@ void main() {
       when(() => conversationRepo.saveConversation(any()))
           .thenAnswer((_) async {});
 
-      await sendUseCase.sendText(_conversationId, 'Two-phase test');
+      await sendUseCase.sendText(_groupId, 'Two-phase test');
 
       // Verify ordering: storeUnackedState called before sendMessage
       verifyInOrder([
@@ -1061,7 +1061,7 @@ void main() {
           .thenThrow(Exception('network error'));
 
       await expectLater(
-        sendUseCase.sendText(_conversationId, 'Will fail at API'),
+        sendUseCase.sendText(_groupId, 'Will fail at API'),
         throwsA(isA<Exception>()),
       );
 
@@ -1124,7 +1124,7 @@ void main() {
           .thenAnswer((_) async {});
 
       final result = await sendUseCase.sendText(
-        _conversationId, 'First message to Bob');
+        _groupId, 'First message to Bob');
 
       expect(result.status, MessageStatus.sent);
 
@@ -1176,7 +1176,7 @@ void main() {
       when(() => conversationRepo.getConversation(any()))
           .thenAnswer((_) async => null);
 
-      await sendUseCase.sendGroupText(_conversationId, 'Group hello');
+      await sendUseCase.sendGroupText(_groupId, 'Group hello');
 
       expect(capturedEnvelope, isNotNull);
       expect(capturedEnvelope!.recipientId, '_group_');
@@ -1236,7 +1236,7 @@ void main() {
       when(() => conversationRepo.getConversation(any()))
           .thenAnswer((_) async => null);
 
-      await sendUseCase.sendGroupText(_conversationId, 'After tombstone');
+      await sendUseCase.sendGroupText(_groupId, 'After tombstone');
 
       // createSenderKey was called (rotation)
       verify(() => groupCipher.createSenderKey(any(), any())).called(1);
@@ -1311,7 +1311,7 @@ void main() {
       when(() => conversationRepo.getConversation(any()))
           .thenAnswer((_) async => null);
 
-      await sendUseCase.sendGroupText(_conversationId, 'New key');
+      await sendUseCase.sendGroupText(_groupId, 'New key');
 
       // Distribution ciphertexts should be present (for Bob, not for self)
       expect(capturedEnvelope!.distributionCiphertexts, hasLength(1));
@@ -1369,7 +1369,7 @@ void main() {
 
       final result = await receiveUseCase.processReceivedMessage(
         messageId: 'group-msg-1',
-        spaceId: _conversationId,
+        groupId: _groupId,
         senderId: _peerId,
         senderDeviceId: 1,
         messageType: 'e2ee',
@@ -1384,7 +1384,7 @@ void main() {
       expect(result!.text, 'Group hello!');
 
       verify(() => groupCipher.decrypt(
-            _conversationId, _peerId, any())).called(1);
+            _groupId, _peerId, any())).called(1);
     });
 
     test('sender_key_dist: processes SK distribution message', () async {
@@ -1420,7 +1420,7 @@ void main() {
 
       final result = await receiveUseCase.processReceivedMessage(
         messageId: 'sk-dist-1',
-        spaceId: _conversationId,
+        groupId: _groupId,
         senderId: _peerId,
         senderDeviceId: 1,
         messageType: 'sender_key_dist',
@@ -1437,7 +1437,7 @@ void main() {
 
       // Verify SK was processed and marked
       verify(() => groupCipher.processSenderKeyDistribution(
-            _conversationId, _peerId, any())).called(1);
+            _groupId, _peerId, any())).called(1);
       verify(() => processedDistRepo.markProcessed('sk-dist-1')).called(1);
     });
 
@@ -1451,7 +1451,7 @@ void main() {
 
       final result = await receiveUseCase.processReceivedMessage(
         messageId: 'sk-dup',
-        spaceId: _conversationId,
+        groupId: _groupId,
         senderId: _peerId,
         senderDeviceId: 1,
         messageType: 'sender_key_dist',
@@ -1476,7 +1476,7 @@ void main() {
       await expectLater(
         receiveUseCase.processReceivedMessage(
           messageId: 'msg-no-session',
-          spaceId: _conversationId,
+          groupId: _groupId,
           senderId: _peerId,
           senderDeviceId: 1,
           messageType: 'e2ee',

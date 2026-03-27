@@ -1,4 +1,4 @@
-import 'package:chat_engine/src/domain/repositories/message_repository.dart';
+import 'package:hello_engine/src/domain/repositories/message_repository.dart';
 
 /// Deletes a message locally or for everyone.
 ///

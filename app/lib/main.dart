@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:chat_engine/chat_engine.dart';
+import 'package:hello_engine/chat_engine.dart';
 import 'screens/conversation_screen.dart';
 import 'providers/consensus_listener.dart';
 import 'providers/engine_error_listener.dart';

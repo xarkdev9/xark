@@ -8,7 +8,7 @@ class Messages extends Table {
   TextColumn get id => text()();
 
   /// Conversation (space) this message belongs to.
-  TextColumn get spaceId => text()();
+  TextColumn get groupId => text()();
 
   /// User ID of the sender.
   TextColumn get senderId => text()();
@@ -173,7 +173,7 @@ class OutboxItems extends Table {
   TextColumn get id => text()();
 
   /// Which conversation this belongs to.
-  TextColumn get conversationId => text()();
+  TextColumn get groupId => text()();
 
   /// The encrypted envelope blob ready to send.
   BlobColumn get encryptedEnvelope => blob()();
@@ -218,7 +218,7 @@ class MediaItems extends Table {
   TextColumn get mediaId => text()();
 
   /// Conversation the media belongs to.
-  TextColumn get conversationId => text()();
+  TextColumn get groupId => text()();
 
   /// Message the media is attached to.
   TextColumn get messageId => text()();

@@ -301,20 +301,20 @@ export class IndexedDBKeyStore {
 
   // ── Sender Keys (group encryption) ──
 
-  async saveSenderKey(spaceId: string, state: Uint8Array): Promise<void> {
+  async saveSenderKey(groupId: string, state: Uint8Array): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.senderKeys, 'readwrite');
     if (isStoreUnlocked()) {
-      await idbPut(store, `active_${spaceId}`, encryptForStorage(state));
+      await idbPut(store, `active_${groupId}`, encryptForStorage(state));
     } else {
-      await idbPut(store, `active_${spaceId}`, toBase64(state));
+      await idbPut(store, `active_${groupId}`, toBase64(state));
     }
   }
 
-  async getSenderKey(spaceId: string): Promise<Uint8Array | null> {
+  async getSenderKey(groupId: string): Promise<Uint8Array | null> {
     const db = await this.getDB();
     const store = tx(db, STORES.senderKeys, 'readonly');
-    const data = await idbGet<string>(store, `active_${spaceId}`);
+    const data = await idbGet<string>(store, `active_${groupId}`);
     if (!data) return null;
 
     // Encrypted or plaintext-prefixed: decryptFromStorage handles all formats
@@ -326,22 +326,22 @@ export class IndexedDBKeyStore {
     return fromBase64(data);
   }
 
-  async deleteSenderKey(spaceId: string): Promise<void> {
+  async deleteSenderKey(groupId: string): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.senderKeys, 'readwrite');
-    await idbDelete(store, `active_${spaceId}`);
+    await idbDelete(store, `active_${groupId}`);
   }
 
-  async saveHistoricalSenderKey(spaceId: string, state: Uint8Array): Promise<void> {
+  async saveHistoricalSenderKey(groupId: string, state: Uint8Array): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.senderKeys, 'readwrite');
-    const existing = await idbGet<string[]>(store, `hist_${spaceId}`) ?? [];
+    const existing = await idbGet<string[]>(store, `hist_${groupId}`) ?? [];
     if (isStoreUnlocked()) {
       existing.push(encryptForStorage(state));
     } else {
       existing.push(toBase64(state));
     }
-    await idbPut(store, `hist_${spaceId}`, existing);
+    await idbPut(store, `hist_${groupId}`, existing);
   }
 
   // ── Sessions (Double Ratchet state per peer device) ──
@@ -380,7 +380,7 @@ export class IndexedDBKeyStore {
   // ── Unacknowledged Ratchet States (two-phase commit) ──
 
   async saveUnackedRatchet(messageId: string, data: {
-    sessionKey: string;  // "userId:deviceId" or "spaceId"
+    sessionKey: string;  // "userId:deviceId" or "groupId"
     sessionType: 'ratchet' | 'senderKey';
     serializedState: string;  // base64
   }): Promise<void> {

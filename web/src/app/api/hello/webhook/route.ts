@@ -23,28 +23,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "rate limited" }, { status: 429 });
     }
 
-    // ── Extract spaceId and msgId from query params ──
+    // ── Extract groupId and msgId from query params ──
     const { searchParams } = new URL(req.url);
-    const spaceId = searchParams.get("spaceId");
+    const groupId = searchParams.get("groupId");
     const msgId = searchParams.get("msgId");
     const toolName = searchParams.get("tool") || "general";
     const searchLabel = searchParams.get("label") || "";
 
-    if (!spaceId || !msgId) {
-      return NextResponse.json({ error: "missing spaceId or msgId" }, { status: 400 });
+    if (!groupId || !msgId) {
+      return NextResponse.json({ error: "missing groupId or msgId" }, { status: 400 });
     }
 
-    // ── Validate spaceId and msgId exist in DB ──
+    // ── Validate groupId and msgId exist in DB ──
     const [spaceCheck, msgCheck] = await Promise.all([
-      supabaseAdmin.from("spaces").select("id").eq("id", spaceId).maybeSingle(),
-      supabaseAdmin.from("messages").select("id, space_id").eq("id", msgId).maybeSingle(),
+      supabaseAdmin.from("spaces").select("id").eq("id", groupId).maybeSingle(),
+      supabaseAdmin.from("messages").select("id, group_id").eq("id", msgId).maybeSingle(),
     ]);
 
     if (!spaceCheck.data) {
-      return NextResponse.json({ error: "invalid spaceId" }, { status: 404 });
+      return NextResponse.json({ error: "invalid groupId" }, { status: 404 });
     }
 
-    if (!msgCheck.data || msgCheck.data.space_id !== spaceId) {
+    if (!msgCheck.data || msgCheck.data.group_id !== groupId) {
       return NextResponse.json({ error: "invalid msgId or space mismatch" }, { status: 404 });
     }
 
@@ -99,11 +99,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, status: "no_results" });
     }
 
-    // ── Insert as decision_items (same logic as /api/xark route.ts) ──
+    // ── Insert as decision_items (same logic as /api/hello route.ts) ──
     const searchBatch = `batch_${crypto.randomUUID().slice(0, 8)}`;
     const items = results.map((r) => ({
       id: `item_${crypto.randomUUID()}`,
-      space_id: spaceId,
+      group_id: groupId,
       title: r.title.toLowerCase(),
       category: toolName,
       description: r.description ?? "",
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, inserted: results.length });
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.error("[/api/xark/webhook] error:", errMsg);
+    console.error("[/api/hello/webhook] error:", errMsg);
     return NextResponse.json({ error: "internal error" }, { status: 500 });
   }
 }

@@ -12,7 +12,7 @@ import { colors, text as textTokens, ink, surface } from "@/lib/theme";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface ConsensusBannerProps {
-  spaceId: string;
+  groupId: string;
 }
 
 interface ActiveItem {
@@ -21,7 +21,7 @@ interface ActiveItem {
   lock_deadline: string;
 }
 
-export function ConsensusBanner({ spaceId }: ConsensusBannerProps) {
+export function ConsensusBanner({ groupId }: ConsensusBannerProps) {
   const [activeItem, setActiveItem] = useState<ActiveItem | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
@@ -33,7 +33,7 @@ export function ConsensusBanner({ spaceId }: ConsensusBannerProps) {
       const { data, error } = await supabase
         .from("decision_items")
         .select("id, title, lock_deadline")
-        .eq("space_id", spaceId)
+        .eq("group_id", groupId)
         .eq("is_locked", false)
         .not("lock_deadline", "is", null)
         .order("lock_deadline", { ascending: true })
@@ -55,14 +55,14 @@ export function ConsensusBanner({ spaceId }: ConsensusBannerProps) {
     // rapidly switches spaces (removeChannel is async — old channel may still
     // be "leaving" when user returns to the same space).
     const channel = supabase
-      .channel(`consensus-banner:${spaceId}:${Date.now()}`)
+      .channel(`consensus-banner:${groupId}:${Date.now()}`)
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
           table: "decision_items",
-          filter: `space_id=eq.${spaceId}`,
+          filter: `group_id=eq.${groupId}`,
         },
         (payload) => {
           if (cancelled) return;
@@ -95,7 +95,7 @@ export function ConsensusBanner({ spaceId }: ConsensusBannerProps) {
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [spaceId]);
+  }, [groupId]);
 
   return (
     <AnimatePresence>

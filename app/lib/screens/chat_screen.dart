@@ -15,7 +15,7 @@ class ChatScreen extends StatelessWidget {
         backgroundColor: HelloColors.voidBg,
         elevation: 0,
         scrolledUnderElevation: 0, // Prevents Material 3 scroll color shifts
-        title: const LiquidFireText(
+        title: const HelloAnimation(
           text: 'hello',
           style: HelloTypography.hero,
         ),

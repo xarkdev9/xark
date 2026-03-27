@@ -1,18 +1,18 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/keys/key_store.dart';
-import 'package:chat_engine/src/crypto/keys/key_types.dart';
-import 'package:chat_engine/src/crypto/ratchet/double_ratchet.dart';
-import 'package:chat_engine/src/crypto/sender_keys/group_cipher.dart';
-import 'package:chat_engine/src/domain/models/decrypted_message.dart';
-import 'package:chat_engine/src/domain/models/message.dart';
-import 'package:chat_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:chat_engine/src/domain/repositories/message_repository.dart';
-import 'package:chat_engine/src/observer/chat_engine_observer.dart';
-import 'package:chat_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:chat_engine/src/persistence/repositories/processed_distribution_repository.dart';
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/crypto/keys/key_store.dart';
+import 'package:hello_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/crypto/ratchet/double_ratchet.dart';
+import 'package:hello_engine/src/crypto/sender_keys/group_cipher.dart';
+import 'package:hello_engine/src/domain/models/decrypted_message.dart';
+import 'package:hello_engine/src/domain/models/message.dart';
+import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
+import 'package:hello_engine/src/domain/repositories/message_repository.dart';
+import 'package:hello_engine/src/observer/chat_engine_observer.dart';
+import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:hello_engine/src/persistence/repositories/processed_distribution_repository.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
 
 /// Decrypts and processes incoming messages.
 ///
@@ -59,7 +59,7 @@ class ReceiveMessageUseCase {
   ///
   /// Parameters:
   /// - [messageId]: Server-assigned message row ID.
-  /// - [spaceId]: Conversation (space) this message belongs to.
+  /// - [groupId]: Conversation (space) this message belongs to.
   /// - [senderId]: User ID of the sender.
   /// - [senderDeviceId]: Device ID of the sender.
   /// - [messageType]: Wire-level type (`e2ee`, `sender_key_dist`).
@@ -68,7 +68,7 @@ class ReceiveMessageUseCase {
   ///   and `recipient_id`.
   Future<Message?> processReceivedMessage({
     required String messageId,
-    required String spaceId,
+    required String groupId,
     required String senderId,
     required int? senderDeviceId,
     required String messageType,
@@ -96,7 +96,7 @@ class ReceiveMessageUseCase {
     if (messageType == 'sender_key_dist') {
       return _processSenderKeyDistribution(
         messageId: messageId,
-        spaceId: spaceId,
+        groupId: groupId,
         senderId: senderId,
         senderDeviceId: senderDeviceId ?? 1,
         ciphertextB64: ciphertextB64,
@@ -111,7 +111,7 @@ class ReceiveMessageUseCase {
       // Group: decrypt with GroupCipher.
       final ciphertextBytes = base64Decode(ciphertextB64);
       plainBytes = await _groupCipher.decrypt(
-        spaceId,
+        groupId,
         senderId,
         Uint8List.fromList(ciphertextBytes),
       );
@@ -160,7 +160,7 @@ class ReceiveMessageUseCase {
     // 6. Create Message domain object.
     final message = Message(
       id: messageId,
-      conversationId: spaceId,
+      groupId: groupId,
       senderId: senderId,
       senderDeviceId: (senderDeviceId ?? 1).toString(),
       type: domainType,
@@ -177,7 +177,7 @@ class ReceiveMessageUseCase {
     await _decryptedCache.cachePlaintext(messageId, decrypted.text);
 
     // 9. Update conversation unread count.
-    final conversation = await _conversationRepo.getConversation(spaceId);
+    final conversation = await _conversationRepo.getConversation(groupId);
     if (conversation != null) {
       final updated = conversation.copyWith(
         lastMessageId: messageId,
@@ -199,7 +199,7 @@ class ReceiveMessageUseCase {
   /// distribution messages have no user-visible content.
   Future<Message?> _processSenderKeyDistribution({
     required String messageId,
-    required String spaceId,
+    required String groupId,
     required String senderId,
     required int senderDeviceId,
     required String ciphertextB64,
@@ -240,7 +240,7 @@ class ReceiveMessageUseCase {
 
     // Store the sender key.
     await _groupCipher.processSenderKeyDistribution(
-      spaceId,
+      groupId,
       senderId,
       distribution,
     );

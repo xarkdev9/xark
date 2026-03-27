@@ -137,7 +137,7 @@ export default function SummonPage() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/summon/validate?code=${encodeURIComponent(code)}`);
+        const res = await fetch(`/api/invite/validate?code=${encodeURIComponent(code)}`);
         const data = await res.json();
 
         if (data.valid) {
@@ -232,7 +232,7 @@ export default function SummonPage() {
       setScreen("claiming");
 
       try {
-        const res = await fetch("/api/summon/claim", {
+        const res = await fetch("/api/invite/claim", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code, firebaseToken }),
@@ -246,10 +246,10 @@ export default function SummonPage() {
         }
 
         const data = await res.json();
-        const { token, user, spaceId } = data as {
+        const { token, user, groupId } = data as {
           token: string;
           user: { id: string; displayName: string };
-          spaceId: string | null;
+          groupId: string | null;
         };
 
         // Store session (matches login page pattern)
@@ -269,8 +269,8 @@ export default function SummonPage() {
         await new Promise((r) => setTimeout(r, 800));
 
         const resolvedName = displayName || user.displayName;
-        if (spaceId) {
-          router.push(`/space/${spaceId}?name=${encodeURIComponent(resolvedName)}`);
+        if (groupId) {
+          router.push(`/space/${groupId}?name=${encodeURIComponent(resolvedName)}`);
         } else {
           router.push(`/galaxy?name=${encodeURIComponent(resolvedName)}`);
         }

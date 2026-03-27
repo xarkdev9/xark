@@ -78,7 +78,7 @@ async function withEncryptLock<T>(key: string, fn: () => Promise<T>): Promise<T>
 // Without this, N simultaneous Realtime decrypts for the same sender all read
 // the same chain state from IndexedDB, advance independently in memory, and
 // last-write-wins — permanently losing N-1 intermediate chain states.
-// Keyed by spaceId:senderId (group) or senderId:deviceId (1:1).
+// Keyed by groupId:senderId (group) or senderId:deviceId (1:1).
 const decryptLocks = new Map<string, Promise<void>>();
 async function withDecryptLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   let unlock: () => void;
@@ -255,7 +255,7 @@ async function getOrEstablishSession(
  * JWT GATEKEEPER: fails loudly if no JWT — prevents silent distribution skip.
  */
 export async function prepareSenderKeyDistribution(
-  spaceId: string,
+  groupId: string,
   senderKey: ReturnType<typeof generateSenderKey>
 ): Promise<DistributionCiphertext[]> {
   // ── JWT GATEKEEPER — fail the send, don't silently skip ──
@@ -267,7 +267,7 @@ export async function prepareSenderKeyDistribution(
 
   // Fetch all space member devices (excluding self)
   const { data: members, error } = await supabase.rpc('get_space_member_devices', {
-    p_space_id: spaceId,
+    p_group_id: groupId,
     p_exclude_user: myUserId,
   });
 
@@ -279,7 +279,7 @@ export async function prepareSenderKeyDistribution(
     return [];
   }
 
-  console.log(`[xark-sk-dist] Preparing SK distribution for ${members.length} device(s) in space ${spaceId}`);
+  console.log(`[xark-sk-dist] Preparing SK distribution for ${members.length} device(s) in space ${groupId}`);
 
   // Serialize the sender key for distribution (BUG 15 fix: no private signing key)
   const serializedKey = serializeSenderKeyForDistribution(senderKey);
@@ -360,13 +360,13 @@ export async function prepareSenderKeyDistribution(
  * where distribution must happen as a standalone POST + broadcast.
  */
 export async function distributeSenderKey(
-  spaceId: string,
+  groupId: string,
   senderKey: ReturnType<typeof generateSenderKey>
 ): Promise<void> {
   const myUserId = await getCurrentUserId();
   const myDeviceId = await keyStore.getDeviceId();
 
-  const ciphertextRows = await prepareSenderKeyDistribution(spaceId, senderKey);
+  const ciphertextRows = await prepareSenderKeyDistribution(groupId, senderKey);
   if (ciphertextRows.length === 0) return;
 
   const msgId = `msg_skd_${crypto.randomUUID()}`;
@@ -385,7 +385,7 @@ export async function distributeSenderKey(
       method: 'POST',
       headers,
       body: JSON.stringify({
-        space_id: spaceId,
+        group_id: groupId,
         sender_device_id: myDeviceId,
         ciphertext: '__sender_key_dist__', // placeholder — real ciphertexts are per-recipient
         recipient_id: '_group_',
@@ -416,7 +416,7 @@ export async function distributeSenderKey(
   // BUG 20 fix: broadcast with retry so live recipients process immediately
   const distributionPayload = {
     id: data.messageId,
-    space_id: spaceId,
+    group_id: groupId,
     role: 'user',
     content: null,
     user_id: myUserId,
@@ -428,7 +428,7 @@ export async function distributeSenderKey(
 
   try {
     const { supabase: supa } = await import('@/lib/supabase');
-    const channel = supa.channel(`chat:${spaceId}`);
+    const channel = supa.channel(`chat:${groupId}`);
     await channel.subscribe();
 
     // Retry broadcast up to 3 times with linear backoff
@@ -470,7 +470,7 @@ export async function processSenderKeyDistribution(
   messageId: string,
   senderId: string,
   senderDeviceId: number,
-  spaceId: string,
+  groupId: string,
   ciphertextB64: string,
   ratchetHeaderB64: string
 ): Promise<void> {
@@ -566,20 +566,20 @@ export async function processSenderKeyDistribution(
   const plaintext = ratchetDecrypt(session, ciphertext, nonce, encryptedHeader);
   await keyStore.saveSession(senderId, senderDeviceId, serializeSession(session));
 
-  // plaintext is a serialized SenderKeyState — store it keyed by spaceId:senderId
+  // plaintext is a serialized SenderKeyState — store it keyed by groupId:senderId
   const senderKey = deserializeSenderKey(plaintext);
-  await keyStore.saveSenderKey(`${spaceId}:${senderId}`, serializeSenderKeyForStorage(senderKey));
+  await keyStore.saveSenderKey(`${groupId}:${senderId}`, serializeSenderKeyForStorage(senderKey));
 
   await keyStore.markSKDistributionProcessed(messageId);
 
   // Notify any pending SK recovery waiters that this key is now available
-  notifySenderKeyArrived(spaceId, senderId);
+  notifySenderKeyArrived(groupId, senderId);
 
   // Priority 1 fix: emit DOM event so space page can re-decrypt failed messages
   // from this sender now that their Sender Key is available.
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('sk-arrived', {
-      detail: { spaceId, senderId },
+      detail: { groupId, senderId },
     }));
   }
 }
@@ -600,7 +600,7 @@ export interface MediaPayload {
   linkPreview?: LinkPreviewPayload;
 }
 
-/** Encrypt a message for a 1:1 sanctuary */
+/** Encrypt a message for a 1:1 dm */
 export async function encryptForSanctuary(
   text: string,
   peerId: string,
@@ -697,11 +697,11 @@ export async function encryptForSanctuary(
 /** Encrypt a message for a group space (Sender Key) */
 export async function encryptForSpace(
   text: string,
-  spaceId: string,
+  groupId: string,
   media?: MediaPayload,
   linkPreview?: LinkPreviewPayload
 ): Promise<EncryptedEnvelope> {
-  return withEncryptLock(`space:${spaceId}`, async () => {
+  return withEncryptLock(`space:${groupId}`, async () => {
     await initCrypto();
 
   const payload: DecryptedMessage = {
@@ -721,14 +721,14 @@ export async function encryptForSpace(
   const plaintext = toBytes(JSON.stringify(payload));
 
   // Get or generate Sender Key for this space
-  let senderKeyData = await keyStore.getSenderKey(spaceId);
+  let senderKeyData = await keyStore.getSenderKey(groupId);
   let senderKey;
   let isNewKey = false;
 
   if (!senderKeyData) {
     // Generate new Sender Key
     senderKey = generateSenderKey();
-    await keyStore.saveSenderKey(spaceId, serializeSenderKeyForStorage(senderKey));
+    await keyStore.saveSenderKey(groupId, serializeSenderKeyForStorage(senderKey));
     isNewKey = true;
   } else {
     senderKey = deserializeSenderKey(senderKeyData);
@@ -739,14 +739,14 @@ export async function encryptForSpace(
       const { data: tombstones, error: tsError } = await supabase
         .from('space_tombstones')
         .select('id')
-        .eq('space_id', spaceId)
+        .eq('group_id', groupId)
         .gt('created_at', new Date(senderKey.createdAt).toISOString())
         .limit(1);
 
       if (!tsError && tombstones && tombstones.length > 0) {
         console.warn(`[e2ee] Tombstone detected after key generation! Forcing Lazy Rotation.`);
         senderKey = generateSenderKey();
-        await keyStore.saveSenderKey(spaceId, serializeSenderKeyForStorage(senderKey));
+        await keyStore.saveSenderKey(groupId, serializeSenderKeyForStorage(senderKey));
         isNewKey = true;
       }
     }
@@ -758,7 +758,7 @@ export async function encryptForSpace(
   // For members who already have the SK, re-distribution is harmless (same key re-installed).
   let distCiphertexts: DistributionCiphertext[] = [];
   try {
-    distCiphertexts = await prepareSenderKeyDistribution(spaceId, senderKey);
+    distCiphertexts = await prepareSenderKeyDistribution(groupId, senderKey);
   } catch (err) {
     if (isNewKey) {
       // New key with zero distribution = nobody can decrypt. Fail-closed.
@@ -776,12 +776,12 @@ export async function encryptForSpace(
   // Trade-off: if network fails, this chain index is "consumed" (wasted).
   // Signal Protocol handles gaps via the skipped key dictionary (BUG 16 fix).
   const serializedSK = serializeSenderKeyForStorage(senderKey);
-  await keyStore.saveSenderKey(spaceId, serializedSK);
+  await keyStore.saveSenderKey(groupId, serializedSK);
 
   // Also save as unacked ratchet for crash recovery
   const pendingMsgId = `pending_${crypto.randomUUID()}`;
   await keyStore.saveUnackedRatchet(pendingMsgId, {
-    sessionKey: spaceId,
+    sessionKey: groupId,
     sessionType: 'senderKey',
     serializedState: toBase64(serializedSK),
   });
@@ -823,11 +823,11 @@ export async function decryptMessage(
   ciphertextB64: string,
   ratchetHeaderB64: string | null,
   recipientId: string,
-  spaceId: string
+  groupId: string
 ): Promise<DecryptedMessage> {
-  // Lock key: group messages by spaceId:senderId, 1:1 by senderId:deviceId
+  // Lock key: group messages by groupId:senderId, 1:1 by senderId:deviceId
   const lockKey = recipientId === '_group_'
-    ? `dec:${spaceId}:${senderId}`
+    ? `dec:${groupId}:${senderId}`
     : `dec:${senderId}:${senderDeviceId}`;
 
   return withDecryptLock(lockKey, async () => {
@@ -871,25 +871,25 @@ export async function decryptMessage(
 
       // Get sender's Sender Key (received via pairwise distribution)
       // Check standard received-key path first
-      let senderKeyData = await keyStore.getSenderKey(`${spaceId}:${senderId}`);
+      let senderKeyData = await keyStore.getSenderKey(`${groupId}:${senderId}`);
       
-      // Fallback: check self-authored key (stored as spaceId only by encryptForSpace)
+      // Fallback: check self-authored key (stored as groupId only by encryptForSpace)
       // This handles: (a) solo spaces, (b) decrypting your own echoed messages
       if (!senderKeyData) {
         const myUserId = await getCurrentUserId();
         if (senderId === myUserId) {
-          senderKeyData = await keyStore.getSenderKey(spaceId);
+          senderKeyData = await keyStore.getSenderKey(groupId);
         }
       }
 
       if (!senderKeyData) {
         // BUG 6 fix: retry after 2s — SK distribution may still be processing
         await new Promise(r => setTimeout(r, 2000));
-        senderKeyData = await keyStore.getSenderKey(`${spaceId}:${senderId}`);
+        senderKeyData = await keyStore.getSenderKey(`${groupId}:${senderId}`);
         if (!senderKeyData) {
           const myUserId = await getCurrentUserId();
           if (senderId === myUserId) {
-            senderKeyData = await keyStore.getSenderKey(spaceId);
+            senderKeyData = await keyStore.getSenderKey(groupId);
           }
         }
       }
@@ -897,11 +897,11 @@ export async function decryptMessage(
         // P2P SK recovery: request the missing key from the sender and wait
         const myUserId = await getCurrentUserId();
         const myDeviceId = await keyStore.getDeviceId();
-        requestMissingSenderKey(spaceId, senderId, myUserId, myDeviceId);
+        requestMissingSenderKey(groupId, senderId, myUserId, myDeviceId);
 
-        const arrived = await waitForSenderKey(spaceId, senderId, 10000);
+        const arrived = await waitForSenderKey(groupId, senderId, 10000);
         if (arrived) {
-          senderKeyData = await keyStore.getSenderKey(`${spaceId}:${senderId}`);
+          senderKeyData = await keyStore.getSenderKey(`${groupId}:${senderId}`);
         }
       }
       if (!senderKeyData) {
@@ -912,7 +912,7 @@ export async function decryptMessage(
       plaintext = senderKeyDecrypt(senderKey, ciphertext, nonce, signature, iteration);
 
       // Persist advanced state
-      await keyStore.saveSenderKey(`${spaceId}:${senderId}`, serializeSenderKeyForStorage(senderKey));
+      await keyStore.saveSenderKey(`${groupId}:${senderId}`, serializeSenderKeyForStorage(senderKey));
     } else {
       // 1:1 message — Double Ratchet
       if (!ratchetHeaderB64) throw new Error('Missing ratchet header for 1:1 message');

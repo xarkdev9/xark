@@ -16,7 +16,7 @@
  */
 
 import type { AuthPort, Identity, Action } from "../ports/auth.js";
-import type { UserId, SpaceId } from "../models/types.js";
+import type { UserId, GroupId } from "../models/types.js";
 
 export class NoopAuthAdapter implements AuthPort {
   async authenticate(token: string): Promise<Identity | null> {
@@ -31,7 +31,7 @@ export class NoopAuthAdapter implements AuthPort {
   async authorize(
     _identity: Identity,
     _action: Action,
-    _spaceId: SpaceId
+    _groupId: GroupId
   ): Promise<boolean> {
     return true;
   }

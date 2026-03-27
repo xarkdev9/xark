@@ -1,7 +1,7 @@
 // XARK OS v2.0 — Emergent Space State
 // Pure function. No DB calls. Computed from items array.
 
-export type SpaceState =
+export type GroupState =
   | "empty"
   | "exploring"
   | "converging"
@@ -9,7 +9,7 @@ export type SpaceState =
   | "active"
   | "settled";
 
-export interface SpaceStateItem {
+export interface GroupStateItem {
   state: string;
   is_locked: boolean;
   category?: string;
@@ -21,11 +21,11 @@ export interface SpaceStateItem {
   };
 }
 
-export function computeSpaceState(
-  items: SpaceStateItem[],
+export function computeGroupState(
+  items: GroupStateItem[],
   tripDates?: { start_date: string; end_date: string },
   expiresAt?: string // ISO timestamp from space template lifetime
-): SpaceState {
+): GroupState {
   // Template lifetime expiration — empty expired spaces are settled
   if (items.length === 0 && expiresAt && new Date(expiresAt) < new Date()) {
     return "settled";

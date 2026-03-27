@@ -35,7 +35,7 @@ function ago(minutes: number): number {
 }
 
 export function usePlaygroundChoreography(
-  spaceId: string,
+  groupId: string,
   isPlayground: boolean
 ): ChoreographyState & ChoreographyActions {
   const [whispers, setWhispers] = useState<Record<string, WhisperState>>({});
@@ -64,33 +64,33 @@ export function usePlaygroundChoreography(
     if (!isPlayground) return;
 
     // Space 1: tokyo — "waiting on your vote..."
-    if (spaceId === PLAYGROUND_SPACE_IDS.tokyo) {
+    if (groupId === PLAYGROUND_SPACE_IDS.tokyo) {
       schedule(() => {
         setWhispers((w) => ({ ...w, vote: { text: "waiting on your vote...", visible: true } }));
       }, 1500);
     }
 
-    // Space 2: dinner — "try @xark for ideas..."
-    if (spaceId === PLAYGROUND_SPACE_IDS.dinner) {
+    // Space 2: dinner — "try @hello for ideas..."
+    if (groupId === PLAYGROUND_SPACE_IDS.dinner) {
       schedule(() => {
         setWhispers((w) => ({ ...w, xark_hint: { text: "try @hello for ideas...", visible: true } }));
       }, 2000);
     }
 
     // Space 3: maya — "tap to claim this task"
-    if (spaceId === PLAYGROUND_SPACE_IDS.maya) {
+    if (groupId === PLAYGROUND_SPACE_IDS.maya) {
       schedule(() => {
         setWhispers((w) => ({ ...w, claim: { text: "tap to claim this task", visible: true } }));
       }, 1500);
     }
 
     // Space 4: hike — "your adventures, always here"
-    if (spaceId === PLAYGROUND_SPACE_IDS.hike) {
+    if (groupId === PLAYGROUND_SPACE_IDS.hike) {
       schedule(() => {
         setWhispers((w) => ({ ...w, memories: { text: "your adventures, always here", visible: true } }));
       }, 1500);
     }
-  }, [spaceId, isPlayground, schedule]);
+  }, [groupId, isPlayground, schedule]);
 
   const dismissWhisper = useCallback((key: string) => {
     setWhispers((w) => {
@@ -101,12 +101,12 @@ export function usePlaygroundChoreography(
 
   // ── Space 1: Post-vote choreography ──
   const triggerPostVote = useCallback(() => {
-    if (spaceId !== PLAYGROUND_SPACE_IDS.tokyo) return;
+    if (groupId !== PLAYGROUND_SPACE_IDS.tokyo) return;
 
     // Dismiss the vote whisper
     dismissWhisper("vote");
 
-    // +3s: @xark system message
+    // +3s: @hello system message
     schedule(() => {
       setQueuedMessages((prev) => [
         ...prev,
@@ -149,9 +149,9 @@ export function usePlaygroundChoreography(
     schedule(() => {
       setPlaceholderOverride("suggest a place, or ask @hello...");
     }, 7000);
-  }, [spaceId, dismissWhisper, schedule]);
+  }, [groupId, dismissWhisper, schedule]);
 
-  // ── Space 1 & 2: Post-@xark choreography ──
+  // ── Space 1 & 2: Post-@hello choreography ──
   const triggerPostXark = useCallback(() => {
     dismissWhisper("xark_hint");
 

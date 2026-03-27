@@ -39,7 +39,7 @@ class MessageEnvelope with _$MessageEnvelope {
   /// Creates a [MessageEnvelope].
   const factory MessageEnvelope({
     /// Conversation / space ID.
-    @JsonKey(name: 'space_id') required String spaceId,
+    @JsonKey(name: 'group_id') required String groupId,
 
     /// Sender's device ID.
     @JsonKey(name: 'sender_device_id') required int senderDeviceId,

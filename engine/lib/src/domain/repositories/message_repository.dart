@@ -1,4 +1,4 @@
-import 'package:chat_engine/src/domain/models/message.dart';
+import 'package:hello_engine/src/domain/models/message.dart';
 
 /// Abstract repository for message persistence.
 ///
@@ -18,7 +18,7 @@ abstract class MessageRepository {
   /// Returns up to [limit] messages, optionally before the message with
   /// ID [beforeId] (for backward pagination).
   Future<List<Message>> getMessages(
-    String conversationId, {
+    String groupId, {
     int limit = 50,
     String? beforeId,
   });
@@ -39,8 +39,8 @@ abstract class MessageRepository {
   Future<void> setStar(String messageId, {required bool starred});
 
   /// Searches messages by text content, optionally scoped to a conversation.
-  Future<List<Message>> search(String query, {String? conversationId});
+  Future<List<Message>> search(String query, {String? groupId});
 
   /// Returns a reactive stream of messages for a conversation.
-  Stream<List<Message>> watchMessages(String conversationId);
+  Stream<List<Message>> watchMessages(String groupId);
 }

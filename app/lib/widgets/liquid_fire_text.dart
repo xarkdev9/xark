@@ -13,21 +13,21 @@ class _SlidingGradientTransform extends GradientTransform {
   }
 }
 
-class LiquidFireText extends StatefulWidget {
+class HelloAnimation extends StatefulWidget {
   final String text;
   final TextStyle style;
 
-  const LiquidFireText({
+  const HelloAnimation({
     super.key,
     required this.text,
     required this.style,
   });
 
   @override
-  State<LiquidFireText> createState() => _LiquidFireTextState();
+  State<HelloAnimation> createState() => _HelloAnimationState();
 }
 
-class _LiquidFireTextState extends State<LiquidFireText> with SingleTickerProviderStateMixin {
+class _HelloAnimationState extends State<HelloAnimation> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override

@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:chat_engine/src/domain/models/conversation.dart';
-import 'package:chat_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:chat_engine/src/persistence/database/app_database.dart';
+import 'package:hello_engine/src/domain/models/conversation.dart';
+import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
 import 'package:drift/drift.dart';
 
 /// Drift-backed implementation of [ConversationRepository].
@@ -103,42 +103,42 @@ class ConversationRepositoryImpl implements ConversationRepository {
 
   @override
   Future<void> updateUnreadCount(
-    String conversationId,
+    String groupId,
     int count,
   ) async {
     await (_db.update(_db.conversations)
-          ..where((t) => t.id.equals(conversationId)))
+          ..where((t) => t.id.equals(groupId)))
         .write(ConversationsCompanion(unreadCount: Value(count)));
   }
 
   @override
   Future<void> setPin(
-    String conversationId, {
+    String groupId, {
     required bool pinned,
   }) async {
     await (_db.update(_db.conversations)
-          ..where((t) => t.id.equals(conversationId)))
+          ..where((t) => t.id.equals(groupId)))
         .write(ConversationsCompanion(isPinned: Value(pinned)));
   }
 
   @override
   Future<void> setArchive(
-    String conversationId, {
+    String groupId, {
     required bool archived,
   }) async {
     await (_db.update(_db.conversations)
-          ..where((t) => t.id.equals(conversationId)))
+          ..where((t) => t.id.equals(groupId)))
         .write(ConversationsCompanion(isArchived: Value(archived)));
   }
 
   @override
   Future<void> setMute(
-    String conversationId, {
+    String groupId, {
     required bool muted,
     DateTime? until,
   }) async {
     await (_db.update(_db.conversations)
-          ..where((t) => t.id.equals(conversationId)))
+          ..where((t) => t.id.equals(groupId)))
         .write(
       ConversationsCompanion(
         isMuted: Value(muted),

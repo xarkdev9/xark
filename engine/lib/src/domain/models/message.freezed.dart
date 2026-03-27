@@ -21,7 +21,7 @@ Message _$MessageFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$Message {
   String get id => throw _privateConstructorUsedError;
-  String get conversationId => throw _privateConstructorUsedError;
+  String get groupId => throw _privateConstructorUsedError;
   String get senderId => throw _privateConstructorUsedError;
   String get senderDeviceId => throw _privateConstructorUsedError;
   MessageType get type => throw _privateConstructorUsedError;
@@ -54,7 +54,7 @@ abstract class $MessageCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
-      String conversationId,
+      String groupId,
       String senderId,
       String senderDeviceId,
       MessageType type,
@@ -90,7 +90,7 @@ class _$MessageCopyWithImpl<$Res, $Val extends Message>
   @override
   $Res call({
     Object? id = null,
-    Object? conversationId = null,
+    Object? groupId = null,
     Object? senderId = null,
     Object? senderDeviceId = null,
     Object? type = null,
@@ -112,9 +112,9 @@ class _$MessageCopyWithImpl<$Res, $Val extends Message>
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      conversationId: null == conversationId
-          ? _value.conversationId
-          : conversationId // ignore: cast_nullable_to_non_nullable
+      groupId: null == groupId
+          ? _value.groupId
+          : groupId // ignore: cast_nullable_to_non_nullable
               as String,
       senderId: null == senderId
           ? _value.senderId
@@ -203,7 +203,7 @@ abstract class _$$MessageImplCopyWith<$Res> implements $MessageCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
-      String conversationId,
+      String groupId,
       String senderId,
       String senderDeviceId,
       MessageType type,
@@ -238,7 +238,7 @@ class __$$MessageImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
-    Object? conversationId = null,
+    Object? groupId = null,
     Object? senderId = null,
     Object? senderDeviceId = null,
     Object? type = null,
@@ -260,9 +260,9 @@ class __$$MessageImplCopyWithImpl<$Res>
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      conversationId: null == conversationId
-          ? _value.conversationId
-          : conversationId // ignore: cast_nullable_to_non_nullable
+      groupId: null == groupId
+          ? _value.groupId
+          : groupId // ignore: cast_nullable_to_non_nullable
               as String,
       senderId: null == senderId
           ? _value.senderId
@@ -333,7 +333,7 @@ class __$$MessageImplCopyWithImpl<$Res>
 class _$MessageImpl implements _Message {
   const _$MessageImpl(
       {required this.id,
-      required this.conversationId,
+      required this.groupId,
       required this.senderId,
       required this.senderDeviceId,
       required this.type,
@@ -357,7 +357,7 @@ class _$MessageImpl implements _Message {
   @override
   final String id;
   @override
-  final String conversationId;
+  final String groupId;
   @override
   final String senderId;
   @override
@@ -402,7 +402,7 @@ class _$MessageImpl implements _Message {
 
   @override
   String toString() {
-    return 'Message(id: $id, conversationId: $conversationId, senderId: $senderId, senderDeviceId: $senderDeviceId, type: $type, status: $status, timestamp: $timestamp, role: $role, serverSeq: $serverSeq, text: $text, media: $media, replyToMessageId: $replyToMessageId, reactions: $reactions, isStarred: $isStarred, isViewOnce: $isViewOnce, disappearsAt: $disappearsAt, isDeleted: $isDeleted)';
+    return 'Message(id: $id, groupId: $groupId, senderId: $senderId, senderDeviceId: $senderDeviceId, type: $type, status: $status, timestamp: $timestamp, role: $role, serverSeq: $serverSeq, text: $text, media: $media, replyToMessageId: $replyToMessageId, reactions: $reactions, isStarred: $isStarred, isViewOnce: $isViewOnce, disappearsAt: $disappearsAt, isDeleted: $isDeleted)';
   }
 
   @override
@@ -411,8 +411,8 @@ class _$MessageImpl implements _Message {
         (other.runtimeType == runtimeType &&
             other is _$MessageImpl &&
             (identical(other.id, id) || other.id == id) &&
-            (identical(other.conversationId, conversationId) ||
-                other.conversationId == conversationId) &&
+            (identical(other.groupId, groupId) ||
+                other.groupId == groupId) &&
             (identical(other.senderId, senderId) ||
                 other.senderId == senderId) &&
             (identical(other.senderDeviceId, senderDeviceId) ||
@@ -445,7 +445,7 @@ class _$MessageImpl implements _Message {
   int get hashCode => Object.hash(
       runtimeType,
       id,
-      conversationId,
+      groupId,
       senderId,
       senderDeviceId,
       type,
@@ -481,7 +481,7 @@ class _$MessageImpl implements _Message {
 abstract class _Message implements Message {
   const factory _Message(
       {required final String id,
-      required final String conversationId,
+      required final String groupId,
       required final String senderId,
       required final String senderDeviceId,
       required final MessageType type,
@@ -503,7 +503,7 @@ abstract class _Message implements Message {
   @override
   String get id;
   @override
-  String get conversationId;
+  String get groupId;
   @override
   String get senderId;
   @override

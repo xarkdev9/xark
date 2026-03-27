@@ -57,7 +57,7 @@ export interface OrchestratorInput {
   userMessage: string;
   groundingPrompt: string;
   recentMessages: Array<{ role: string; content: string; sender_name?: string }>;
-  spaceId: string;
+  groupId: string;
   spaceTitle?: string;
   tasteContext?: { hardConstraints: string[]; softPreferences: string; onboardedCount: number; memberCount: number } | null;
   /** Priority 9: Realtime progress callback — updates phantom receipt as @hello works */

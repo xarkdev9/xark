@@ -2,14 +2,14 @@
 
 // XARK OS v2.0 — Playground Space View
 // Client-side only. Renders playground data using production components.
-// Mock reactions, mock @xark, choreographed whispers + messages.
+// Mock reactions, mock @hello, choreographed whispers + messages.
 // No Supabase, no Realtime, no E2EE. Pure React state.
 
 import { useState, useCallback, useRef, type TouchEvent } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { XarkChat } from "@/components/os/XarkChat";
-import PossibilityHorizon from "@/components/os/PossibilityHorizon";
+import DecisionBoard from "@/components/os/DecisionBoard";
 import { ChatInput } from "@/components/os/ChatInput";
 import { PlaygroundWhisper } from "@/components/os/PlaygroundWhisper";
 import { usePlaygroundChoreography } from "@/hooks/usePlaygroundChoreography";
@@ -29,14 +29,14 @@ import type { ChatMessage } from "@/app/space/[id]/page";
 type ViewMode = "discuss" | "decide";
 
 interface PlaygroundSpaceProps {
-  spaceId: string;
+  groupId: string;
   userName: string;
 }
 
-export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
+export function PlaygroundSpace({ groupId, userName }: PlaygroundSpaceProps) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>(
-    spaceId === PLAYGROUND_SPACE_IDS.dinner ? "discuss" : "decide"
+    groupId === PLAYGROUND_SPACE_IDS.dinner ? "discuss" : "decide"
   );
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -46,13 +46,13 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
   const [goldBurst, setGoldBurst] = useState(false);
 
   // Choreography engine
-  const choreography = usePlaygroundChoreography(spaceId, true);
+  const choreography = usePlaygroundChoreography(groupId, true);
 
   // Base data
-  const baseItems = getPlaygroundItems(spaceId);
-  const baseMessages = getPlaygroundMessages(spaceId);
-  const members = getPlaygroundMembers(spaceId);
-  const photos = getPlaygroundPhotos(spaceId);
+  const baseItems = getPlaygroundItems(groupId);
+  const baseMessages = getPlaygroundMessages(groupId);
+  const members = getPlaygroundMembers(groupId);
+  const photos = getPlaygroundPhotos(groupId);
 
   // Merge choreography messages
   const allMessages: ChatMessage[] = [
@@ -73,7 +73,7 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
     ...inlineCards,
   ].sort((a, b) => a.timestamp - b.timestamp);
 
-  // All items (base + @xark results)
+  // All items (base + @hello results)
   const allItems = [...baseItems, ...extraItems];
 
   // Space title
@@ -83,7 +83,7 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
     [PLAYGROUND_SPACE_IDS.maya]: "maya's birthday",
     [PLAYGROUND_SPACE_IDS.hike]: "weekend hike",
   };
-  const spaceTitle = titleMap[spaceId] ?? spaceId;
+  const spaceTitle = titleMap[groupId] ?? groupId;
 
   // Mock reaction handler
   const handleReaction = useCallback((itemId: string, signal: ReactionType) => {
@@ -97,13 +97,13 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
     });
 
     // Trigger post-vote choreography (Space 1)
-    if (spaceId === PLAYGROUND_SPACE_IDS.tokyo && itemId === "pg_item_hyatt") {
+    if (groupId === PLAYGROUND_SPACE_IDS.tokyo && itemId === "pg_item_hyatt") {
       choreography.triggerPostVote();
     }
 
     // Dinner space: consensus cascade after voting love on a restaurant
     if (
-      spaceId === PLAYGROUND_SPACE_IDS.dinner &&
+      groupId === PLAYGROUND_SPACE_IDS.dinner &&
       signal === "love_it" &&
       PLAYGROUND_XARK_RESTAURANTS.some((r) => r.id === itemId)
     ) {
@@ -135,9 +135,9 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
       // 4800ms: clear gold burst
       setTimeout(() => setGoldBurst(false), 4800);
     }
-  }, [spaceId, choreography]);
+  }, [groupId, choreography]);
 
-  // Mock @xark handler
+  // Mock @hello handler
   const sendMessage = useCallback(() => {
     const txt = input.trim();
     if (!txt) return;
@@ -153,7 +153,7 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
     setInlineCards((prev) => [...prev, userMsg]);
     setInput("");
 
-    // Check for @xark
+    // Check for @hello
     if (txt.toLowerCase().includes("@hello")) {
       setIsThinking(true);
 
@@ -161,7 +161,7 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
       setTimeout(() => {
         setIsThinking(false);
 
-        // @xark response in chat
+        // @hello response in chat
         const xarkMsg: ChatMessage = {
           id: `pg_xark_${Date.now()}`,
           role: "xark",
@@ -305,7 +305,7 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: "120px" }} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
         {view === "discuss" && (
           <XarkChat
-            spaceId={spaceId}
+            groupId={groupId}
             spaceTitle={spaceTitle}
             messages={allMessages}
             isThinking={isThinking}
@@ -325,8 +325,8 @@ export function PlaygroundSpace({ spaceId, userName }: PlaygroundSpaceProps) {
           />
         )}
         {view === "decide" && (
-          <PossibilityHorizon
-            spaceId={spaceId}
+          <DecisionBoard
+            groupId={groupId}
             userId="pg_user"
             isThinking={isThinking}
             playgroundItems={allItems}

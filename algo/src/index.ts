@@ -20,7 +20,7 @@ export {
 export type {
   UserId,
   GroupId,
-  SpaceId,
+  GroupId,
   ItemId,
   TaskId,
   Reaction,

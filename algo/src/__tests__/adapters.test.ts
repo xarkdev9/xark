@@ -11,7 +11,7 @@ import type {
   DecisionSpace,
   EngineEvent,
   ItemId,
-  SpaceId,
+  GroupId,
   UserId,
   GroupId,
   Task,
@@ -21,7 +21,7 @@ import type {
 function makeItem(overrides: Partial<BookableItem> = {}): BookableItem {
   return {
     id: "item_1" as ItemId,
-    spaceId: "space_1" as SpaceId,
+    groupId: "space_1" as GroupId,
     groupId: "space_1" as GroupId,
     title: "Test Item",
     description: "",
@@ -65,10 +65,10 @@ describe("MemoryPersistenceAdapter", () => {
   it("returns items by space", async () => {
     await adapter.saveItem(makeItem({ id: "a" as ItemId }));
     await adapter.saveItem(
-      makeItem({ id: "b" as ItemId, spaceId: "space_2" as SpaceId })
+      makeItem({ id: "b" as ItemId, groupId: "space_2" as GroupId })
     );
 
-    const items = await adapter.getItemsBySpace("space_1" as SpaceId);
+    const items = await adapter.getItemsBySpace("space_1" as GroupId);
     expect(items).toHaveLength(1);
     expect(items[0]!.id).toBe("a");
   });
@@ -107,7 +107,7 @@ describe("MemoryPersistenceAdapter", () => {
 
   it("manages spaces", async () => {
     const space: DecisionSpace = {
-      id: "s1" as SpaceId,
+      id: "s1" as GroupId,
       name: "Trip",
       members: [],
       config: {} as any,
@@ -115,14 +115,14 @@ describe("MemoryPersistenceAdapter", () => {
     };
 
     await adapter.saveSpace(space);
-    const retrieved = await adapter.getSpace("s1" as SpaceId);
+    const retrieved = await adapter.getSpace("s1" as GroupId);
     expect(retrieved!.name).toBe("Trip");
 
     const all = await adapter.getAllSpaces();
     expect(all).toHaveLength(1);
 
-    await adapter.deleteSpace("s1" as SpaceId);
-    const deleted = await adapter.getSpace("s1" as SpaceId);
+    await adapter.deleteSpace("s1" as GroupId);
+    const deleted = await adapter.getSpace("s1" as GroupId);
     expect(deleted).toBeUndefined();
   });
 
@@ -143,7 +143,7 @@ describe("MemoryPersistenceAdapter", () => {
     const retrieved = await adapter.getTask("task_1" as TaskId);
     expect(retrieved!.title).toBe("Bring snacks");
 
-    const bySpace = await adapter.getTasksBySpace("space_1" as SpaceId);
+    const bySpace = await adapter.getTasksBySpace("space_1" as GroupId);
     expect(bySpace).toHaveLength(1);
 
     await adapter.deleteTask("task_1" as TaskId);
@@ -154,13 +154,13 @@ describe("MemoryPersistenceAdapter", () => {
   it("clear() removes everything", async () => {
     await adapter.saveItem(makeItem());
     adapter.clear();
-    const items = await adapter.getItemsBySpace("space_1" as SpaceId);
+    const items = await adapter.getItemsBySpace("space_1" as GroupId);
     expect(items).toHaveLength(0);
   });
 
   it("deleteSpace cascades to items and tasks", async () => {
     const space: DecisionSpace = {
-      id: "space_1" as SpaceId,
+      id: "space_1" as GroupId,
       name: "Trip",
       members: [],
       config: {} as any,
@@ -169,9 +169,9 @@ describe("MemoryPersistenceAdapter", () => {
     await adapter.saveSpace(space);
     await adapter.saveItem(makeItem());
 
-    await adapter.deleteSpace("space_1" as SpaceId);
+    await adapter.deleteSpace("space_1" as GroupId);
 
-    const items = await adapter.getItemsBySpace("space_1" as SpaceId);
+    const items = await adapter.getItemsBySpace("space_1" as GroupId);
     expect(items).toHaveLength(0);
   });
 });
@@ -323,7 +323,7 @@ describe("NoopAuthAdapter", () => {
   it("authorizes everything", async () => {
     const auth = new NoopAuthAdapter();
     const identity = { userId: "alice" as UserId };
-    const allowed = await auth.authorize(identity, "item:lock", "s1" as SpaceId);
+    const allowed = await auth.authorize(identity, "item:lock", "s1" as GroupId);
     expect(allowed).toBe(true);
   });
 });
@@ -437,7 +437,7 @@ describe("PlaintextMessagingAdapter", () => {
       userId: "alice",
       text: "/love [trip_sd] Hilton",
     });
-    expect(cmd!.spaceId).toBe("trip_sd");
+    expect(cmd!.groupId).toBe("trip_sd");
     expect(cmd!.payload.title).toBe("Hilton");
   });
 

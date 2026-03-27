@@ -1,37 +1,37 @@
 import 'dart:async';
 
-import 'package:chat_engine/src/chat_session_impl.dart';
-import 'package:chat_engine/src/crypto/keys/key_store.dart';
-import 'package:chat_engine/src/crypto/sender_keys/group_cipher.dart';
-import 'package:chat_engine/src/crypto/sender_keys/sender_key_store.dart';
-import 'package:chat_engine/src/domain/models/chat_engine_error.dart';
-import 'package:chat_engine/src/domain/models/connection_state.dart';
-import 'package:chat_engine/src/domain/models/contact_match.dart';
-import 'package:chat_engine/src/domain/models/conversation.dart';
-import 'package:chat_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:chat_engine/src/domain/repositories/message_repository.dart';
-import 'package:chat_engine/src/domain/repositories/receipt_repository.dart';
-import 'package:chat_engine/src/domain/use_cases/delete_message_use_case.dart';
-import 'package:chat_engine/src/domain/use_cases/mark_read_use_case.dart';
-import 'package:chat_engine/src/domain/use_cases/send_message_use_case.dart';
-import 'package:chat_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:chat_engine/src/persistence/repositories/outbox_repository.dart';
-import 'package:chat_engine/src/public_api/chat_engine.dart';
-import 'package:chat_engine/src/public_api/chat_engine_config.dart';
-import 'package:chat_engine/src/public_api/chat_session.dart';
-import 'package:chat_engine/src/sync/sync_coordinator.dart';
-import 'package:chat_engine/src/transport/realtime_listener.dart';
-import 'package:chat_engine/src/transport/supabase_client.dart';
-import 'package:chat_engine/src/persistence/database/database_factory.dart';
-import 'package:chat_engine/src/persistence/repositories/message_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/conversation_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/receipt_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/outbox_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/decrypted_message_repository_impl.dart';
-import 'package:chat_engine/src/crypto/keys/key_store_impl.dart';
-import 'package:chat_engine/src/crypto/keys/key_types.dart';
-import 'package:chat_engine/src/sync/outbox_processor.dart';
-import 'package:chat_engine/src/sync/gap_detector.dart';
+import 'package:hello_engine/src/chat_session_impl.dart';
+import 'package:hello_engine/src/crypto/keys/key_store.dart';
+import 'package:hello_engine/src/crypto/sender_keys/group_cipher.dart';
+import 'package:hello_engine/src/crypto/sender_keys/sender_key_store.dart';
+import 'package:hello_engine/src/domain/models/chat_engine_error.dart';
+import 'package:hello_engine/src/domain/models/connection_state.dart';
+import 'package:hello_engine/src/domain/models/contact_match.dart';
+import 'package:hello_engine/src/domain/models/conversation.dart';
+import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
+import 'package:hello_engine/src/domain/repositories/message_repository.dart';
+import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
+import 'package:hello_engine/src/domain/use_cases/delete_message_use_case.dart';
+import 'package:hello_engine/src/domain/use_cases/mark_read_use_case.dart';
+import 'package:hello_engine/src/domain/use_cases/send_message_use_case.dart';
+import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:hello_engine/src/persistence/repositories/outbox_repository.dart';
+import 'package:hello_engine/src/public_api/chat_engine.dart';
+import 'package:hello_engine/src/public_api/chat_engine_config.dart';
+import 'package:hello_engine/src/public_api/chat_session.dart';
+import 'package:hello_engine/src/sync/sync_coordinator.dart';
+import 'package:hello_engine/src/transport/realtime_listener.dart';
+import 'package:hello_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/persistence/database/database_factory.dart';
+import 'package:hello_engine/src/persistence/repositories/message_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/conversation_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/receipt_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/outbox_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository_impl.dart';
+import 'package:hello_engine/src/crypto/keys/key_store_impl.dart';
+import 'package:hello_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/sync/outbox_processor.dart';
+import 'package:hello_engine/src/sync/gap_detector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Top-level engine implementation.
@@ -181,11 +181,11 @@ class ChatEngineImpl implements ChatEngine {
       _deleteUseCase ??= DeleteMessageUseCase(messageRepo: _messageRepo);
 
   @override
-  ChatSession getSession(String conversationId) {
+  ChatSession getSession(String groupId) {
     return _sessions.putIfAbsent(
-      conversationId,
+      groupId,
       () => ChatSessionImpl(
-        conversationId: conversationId,
+        groupId: groupId,
         sendUseCase: _send,
         markReadUseCase: _markRead,
         deleteUseCase: _delete,
@@ -250,8 +250,8 @@ class ChatEngineImpl implements ChatEngine {
     }
 
     final conversations = await _conversationRepo.getAllConversations();
-    final spaceIds = conversations.map((c) => c.id).toList();
-    await _syncCoordinator.onConnected(spaceIds);
+    final groupIds = conversations.map((c) => c.id).toList();
+    await _syncCoordinator.onConnected(groupIds);
 
     if (!_connectionController.isClosed) {
       _connectionController.add(EngineConnectionState.connected);

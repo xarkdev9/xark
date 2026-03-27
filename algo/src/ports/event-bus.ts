@@ -6,7 +6,7 @@
  * RabbitMQ, AWS SNS/SQS, Google Pub/Sub, WebSocket broadcast,
  * Server-Sent Events, or in-process.
  *
- * Channels are typically space-scoped: "space:{spaceId}"
+ * Channels are typically space-scoped: "space:{groupId}"
  * Subscribers receive events in real-time for multi-user sync.
  */
 

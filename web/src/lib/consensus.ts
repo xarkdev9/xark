@@ -12,7 +12,7 @@ export interface HandshakeProposal {
   title: string;
   category: string;
   agreementScore: number;
-  spaceId: string;
+  groupId: string;
   timestamp: number;
 }
 
@@ -36,20 +36,20 @@ export function generateHandshakeWhisper(proposal: HandshakeProposal): string {
 }
 
 export function subscribeToConsensus(
-  spaceId: string,
+  groupId: string,
   onHandshake: (proposal: HandshakeProposal) => void
 ): RealtimeChannel {
   const triggered = new Set<string>();
 
   const channel = supabase
-    .channel(`handshake:${spaceId}`)
+    .channel(`handshake:${groupId}`)
     .on(
       "postgres_changes",
       {
         event: "UPDATE",
         schema: "public",
         table: "decision_items",
-        filter: `space_id=eq.${spaceId}`,
+        filter: `group_id=eq.${groupId}`,
       },
       (payload) => {
         const item = payload.new as {
@@ -57,7 +57,7 @@ export function subscribeToConsensus(
           title: string;
           category: string;
           agreement_score: number;
-          space_id: string;
+          group_id: string;
           is_locked: boolean;
           state: string;
         };
@@ -72,7 +72,7 @@ export function subscribeToConsensus(
             title: item.title,
             category: item.category,
             agreementScore: item.agreement_score,
-            spaceId: item.space_id,
+            groupId: item.group_id,
             timestamp: Date.now(),
           });
         }

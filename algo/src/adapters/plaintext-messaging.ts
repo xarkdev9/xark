@@ -19,7 +19,7 @@ import type {
   EngineCommand,
   RankedItemSummary,
 } from "../ports/messaging.js";
-import type { BookableItem, SpaceId, UserId } from "../models/types.js";
+import type { BookableItem, GroupId, UserId } from "../models/types.js";
 
 export class PlaintextMessagingAdapter implements MessagingPort {
   formatItem(item: BookableItem): OutgoingMessage {
@@ -103,7 +103,7 @@ export class PlaintextMessagingAdapter implements MessagingPort {
     if (!text.startsWith("/")) return null;
 
     const spaceMatch = text.match(/\[(\S+)\]/);
-    const spaceId = (spaceMatch?.[1] ?? "default") as SpaceId;
+    const groupId = (spaceMatch?.[1] ?? "default") as GroupId;
     const cleanText = text.replace(/\[\S+\]/, "").trim();
 
     const parts = cleanText.split(/\s+/);
@@ -114,56 +114,56 @@ export class PlaintextMessagingAdapter implements MessagingPort {
       case "/love":
         return {
           type: "react",
-          spaceId,
+          groupId,
           userId: message.userId as UserId,
           payload: { title: arg, reactionType: "love_it" },
         };
       case "/works":
         return {
           type: "react",
-          spaceId,
+          groupId,
           userId: message.userId as UserId,
           payload: { title: arg, reactionType: "works_for_me" },
         };
       case "/nope":
         return {
           type: "react",
-          spaceId,
+          groupId,
           userId: message.userId as UserId,
           payload: { title: arg, reactionType: "not_for_me" },
         };
       case "/lock":
         return {
           type: "lock",
-          spaceId,
+          groupId,
           userId: message.userId as UserId,
           payload: { title: arg },
         };
       case "/rank":
         return {
           type: "rank",
-          spaceId,
+          groupId,
           userId: message.userId as UserId,
           payload: {},
         };
       case "/add":
         return {
           type: "add_item",
-          spaceId,
+          groupId,
           userId: message.userId as UserId,
           payload: { title: arg },
         };
       case "/task":
         return {
           type: "add_task",
-          spaceId,
+          groupId,
           userId: message.userId as UserId,
           payload: { title: arg },
         };
       case "/claim":
         return {
           type: "claim_task",
-          spaceId,
+          groupId,
           userId: message.userId as UserId,
           payload: { title: arg },
         };

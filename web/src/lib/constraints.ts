@@ -56,7 +56,7 @@ export function detectConstraints(text: string): DetectedConstraint | null {
 export async function saveConstraint(
   constraint: DetectedConstraint,
   userId: string,
-  spaceId?: string
+  groupId?: string
 ): Promise<void> {
   if (constraint.scope === 'global') {
     await supabase.from('user_constraints').upsert(
@@ -68,16 +68,16 @@ export async function saveConstraint(
       },
       { onConflict: 'user_id,type,value' }
     );
-  } else if (spaceId) {
+  } else if (groupId) {
     await supabase.from('space_constraints').upsert(
       {
         id: `sc_${crypto.randomUUID()}`,
-        space_id: spaceId,
+        group_id: groupId,
         user_id: userId,
         type: constraint.type,
         value: constraint.value,
       },
-      { onConflict: 'space_id,user_id,type' }
+      { onConflict: 'group_id,user_id,type' }
     );
   }
 }
@@ -134,13 +134,13 @@ export async function fetchUserConstraints(
 }
 
 /** Fetch space constraints for grounding context */
-export async function fetchSpaceConstraints(
-  spaceId: string
+export async function fetchGroupConstraints(
+  groupId: string
 ): Promise<Array<{ userId: string; type: string; value: string }>> {
   const { data } = await supabase
     .from('space_constraints')
     .select('user_id, type, value')
-    .eq('space_id', spaceId);
+    .eq('group_id', groupId);
 
   return (data ?? []).map(d => ({
     userId: d.user_id,

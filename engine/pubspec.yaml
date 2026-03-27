@@ -1,4 +1,4 @@
-name: chat_engine
+name: hello_engine
 description: Production-grade E2EE Flutter chat engine. Headless — no UI code.
 version: 0.1.0
 publish_to: none

@@ -1,16 +1,16 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/domain/models/conversation.dart';
-import 'package:chat_engine/src/domain/models/message.dart';
-import 'package:chat_engine/src/domain/models/receipt.dart';
-import 'package:chat_engine/src/persistence/database/app_database.dart';
-import 'package:chat_engine/src/persistence/repositories/conversation_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/decrypted_message_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/message_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/outbox_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/processed_distribution_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/receipt_repository_impl.dart';
+import 'package:hello_engine/src/domain/models/conversation.dart';
+import 'package:hello_engine/src/domain/models/message.dart';
+import 'package:hello_engine/src/domain/models/receipt.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:hello_engine/src/persistence/repositories/conversation_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/message_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/outbox_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/processed_distribution_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/receipt_repository_impl.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,7 +40,7 @@ void main() {
 
     Message makeMessage({
       String id = 'msg-1',
-      String conversationId = 'conv-1',
+      String groupId = 'conv-1',
       String senderId = 'alice',
       MessageType type = MessageType.e2ee,
       MessageStatus status = MessageStatus.sending,
@@ -48,7 +48,7 @@ void main() {
     }) {
       return Message(
         id: id,
-        conversationId: conversationId,
+        groupId: groupId,
         senderId: senderId,
         senderDeviceId: 'device-1',
         type: type,
@@ -64,7 +64,7 @@ void main() {
       final result = await repo.getMessageById('msg-1');
       expect(result, isNotNull);
       expect(result!.id, 'msg-1');
-      expect(result.conversationId, 'conv-1');
+      expect(result.groupId, 'conv-1');
       expect(result.senderId, 'alice');
       expect(result.senderDeviceId, 'device-1');
       expect(result.type, MessageType.e2ee);
@@ -151,7 +151,7 @@ void main() {
     test('getMessages excludes other conversations', () async {
       await repo.saveMessage(makeMessage(id: 'msg-a'));
       await repo.saveMessage(
-        makeMessage(id: 'msg-b', conversationId: 'conv-2'),
+        makeMessage(id: 'msg-b', groupId: 'conv-2'),
       );
 
       final results = await repo.getMessages('conv-1');
@@ -259,7 +259,7 @@ void main() {
       await repo.saveMessage(
         Message(
           id: 'msg-1',
-          conversationId: 'conv-1',
+          groupId: 'conv-1',
           senderId: 'alice',
           senderDeviceId: 'device-1',
           type: MessageType.e2ee,
@@ -448,7 +448,7 @@ void main() {
       await msgRepo.saveMessage(
         Message(
           id: 'msg-1',
-          conversationId: 'conv-1',
+          groupId: 'conv-1',
           senderId: 'alice',
           senderDeviceId: 'device-1',
           type: MessageType.e2ee,
@@ -476,7 +476,7 @@ void main() {
       await msgRepo.saveMessage(
         Message(
           id: 'msg-1',
-          conversationId: 'conv-1',
+          groupId: 'conv-1',
           senderId: 'alice',
           senderDeviceId: 'device-1',
           type: MessageType.e2ee,
@@ -524,13 +524,13 @@ void main() {
 
     OutboxItemRow makeOutboxItem({
       String id = 'outbox-1',
-      String conversationId = 'conv-1',
+      String groupId = 'conv-1',
       DateTime? createdAt,
       DateTime? nextRetryAt,
     }) {
       return OutboxItemRow(
         id: id,
-        conversationId: conversationId,
+        groupId: groupId,
         encryptedEnvelope: Uint8List.fromList([1, 2, 3]),
         recipientDeviceIds: jsonEncode(['alice:1', 'bob:2']),
         retryCount: 0,

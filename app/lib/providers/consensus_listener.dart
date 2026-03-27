@@ -10,8 +10,8 @@ class GlobalLockNotifier extends Notifier<bool> {
 }
 final globalLockProvider = NotifierProvider<GlobalLockNotifier, bool>(() => GlobalLockNotifier());
 
-final consensusListenerProvider = Provider.family<bool, String>((ref, spaceId) {
-  final asyncCards = ref.watch(actionCardProvider(spaceId));
+final consensusListenerProvider = Provider.family<bool, String>((ref, groupId) {
+  final asyncCards = ref.watch(actionCardProvider(groupId));
   
   return asyncCards.maybeWhen(
     data: (cards) {

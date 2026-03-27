@@ -1,4 +1,4 @@
-import 'package:chat_engine/src/persistence/database/tables.dart';
+import 'package:hello_engine/src/persistence/database/tables.dart';
 import 'package:drift/drift.dart';
 
 part 'app_database.g.dart';

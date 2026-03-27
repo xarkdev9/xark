@@ -46,7 +46,7 @@ import {
   rotateSenderKey,
   deserializeSenderKey,
 } from "./sender-keys";
-import { getDMSpaceId, isDMSpace, parseDMSpaceId } from "./dm-routing";
+import { getDMGroupId, isDMSpace, parseDMGroupId } from "./dm-routing";
 import { detectConstraints } from "../constraints";
 
 beforeAll(async () => {
@@ -474,10 +474,10 @@ describe("Sender Keys", () => {
     // Clone for recipient (uses storage serialization which preserves private key)
     const recipientState = deserializeSenderKey(serializeSenderKeyForStorage(senderState));
 
-    const plaintext = toBytes("@xark find hotels in coronado");
+    const plaintext = toBytes("@hello find hotels in coronado");
     const { ciphertext, nonce, signature, iteration } = senderKeyEncrypt(senderState, plaintext);
     const decrypted = senderKeyDecrypt(recipientState, ciphertext, nonce, signature, iteration);
-    expect(fromBytes(decrypted)).toBe("@xark find hotels in coronado");
+    expect(fromBytes(decrypted)).toBe("@hello find hotels in coronado");
   });
 
   it("handles sequential group messages", () => {
@@ -620,11 +620,11 @@ describe("Sender Keys", () => {
 
 describe("DM Routing", () => {
   it("generates symmetric space IDs", () => {
-    expect(getDMSpaceId("name_ram", "name_kai")).toBe(getDMSpaceId("name_kai", "name_ram"));
+    expect(getDMGroupId("name_ram", "name_kai")).toBe(getDMGroupId("name_kai", "name_ram"));
   });
 
   it("rejects self-DM", () => {
-    expect(() => getDMSpaceId("name_ram", "name_ram")).toThrow();
+    expect(() => getDMGroupId("name_ram", "name_ram")).toThrow();
   });
 
   it("isDMSpace detects DM prefix", () => {
@@ -633,19 +633,19 @@ describe("DM Routing", () => {
   });
 
   it("rejects empty user IDs", () => {
-    expect(() => getDMSpaceId("", "name_kai")).toThrow();
-    expect(() => getDMSpaceId("name_ram", "")).toThrow();
+    expect(() => getDMGroupId("", "name_kai")).toThrow();
+    expect(() => getDMGroupId("name_ram", "")).toThrow();
   });
 
-  it("parseDMSpaceId extracts participants", () => {
-    const spaceId = getDMSpaceId("name_ram", "name_kai");
-    const parsed = parseDMSpaceId(spaceId);
+  it("parseDMGroupId extracts participants", () => {
+    const groupId = getDMGroupId("name_ram", "name_kai");
+    const parsed = parseDMGroupId(groupId);
     expect(parsed).not.toBeNull();
     expect([parsed!.userA, parsed!.userB].sort()).toEqual(["name_kai", "name_ram"]);
   });
 
-  it("parseDMSpaceId returns null for non-DM spaces", () => {
-    expect(parseDMSpaceId("space_abc123")).toBeNull();
+  it("parseDMGroupId returns null for non-DM spaces", () => {
+    expect(parseDMGroupId("space_abc123")).toBeNull();
   });
 });
 
@@ -693,7 +693,7 @@ describe("Constraint Detection", () => {
   it("returns null for normal messages", () => {
     expect(detectConstraints("what time should we meet?")).toBeNull();
     expect(detectConstraints("the hotel looks great")).toBeNull();
-    expect(detectConstraints("@xark find restaurants nearby")).toBeNull();
+    expect(detectConstraints("@hello find restaurants nearby")).toBeNull();
   });
 
   it("is case-insensitive", () => {

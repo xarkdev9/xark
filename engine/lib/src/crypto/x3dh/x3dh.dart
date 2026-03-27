@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/keys/ed25519_to_curve25519.dart';
-import 'package:chat_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/crypto/keys/ed25519_to_curve25519.dart';
+import 'package:hello_engine/src/crypto/keys/key_types.dart';
 import 'package:cryptography/cryptography.dart';
 
 /// Extended Triple Diffie-Hellman (X3DH) key agreement.

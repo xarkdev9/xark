@@ -20,7 +20,7 @@ TypingIndicator _$TypingIndicatorFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$TypingIndicator {
-  String get conversationId => throw _privateConstructorUsedError;
+  String get groupId => throw _privateConstructorUsedError;
   String get userId => throw _privateConstructorUsedError;
   DateTime get startedAt => throw _privateConstructorUsedError;
 
@@ -40,7 +40,7 @@ abstract class $TypingIndicatorCopyWith<$Res> {
           TypingIndicator value, $Res Function(TypingIndicator) then) =
       _$TypingIndicatorCopyWithImpl<$Res, TypingIndicator>;
   @useResult
-  $Res call({String conversationId, String userId, DateTime startedAt});
+  $Res call({String groupId, String userId, DateTime startedAt});
 }
 
 /// @nodoc
@@ -58,14 +58,14 @@ class _$TypingIndicatorCopyWithImpl<$Res, $Val extends TypingIndicator>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? conversationId = null,
+    Object? groupId = null,
     Object? userId = null,
     Object? startedAt = null,
   }) {
     return _then(_value.copyWith(
-      conversationId: null == conversationId
-          ? _value.conversationId
-          : conversationId // ignore: cast_nullable_to_non_nullable
+      groupId: null == groupId
+          ? _value.groupId
+          : groupId // ignore: cast_nullable_to_non_nullable
               as String,
       userId: null == userId
           ? _value.userId
@@ -87,7 +87,7 @@ abstract class _$$TypingIndicatorImplCopyWith<$Res>
       __$$TypingIndicatorImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String conversationId, String userId, DateTime startedAt});
+  $Res call({String groupId, String userId, DateTime startedAt});
 }
 
 /// @nodoc
@@ -103,14 +103,14 @@ class __$$TypingIndicatorImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? conversationId = null,
+    Object? groupId = null,
     Object? userId = null,
     Object? startedAt = null,
   }) {
     return _then(_$TypingIndicatorImpl(
-      conversationId: null == conversationId
-          ? _value.conversationId
-          : conversationId // ignore: cast_nullable_to_non_nullable
+      groupId: null == groupId
+          ? _value.groupId
+          : groupId // ignore: cast_nullable_to_non_nullable
               as String,
       userId: null == userId
           ? _value.userId
@@ -128,7 +128,7 @@ class __$$TypingIndicatorImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$TypingIndicatorImpl implements _TypingIndicator {
   const _$TypingIndicatorImpl(
-      {required this.conversationId,
+      {required this.groupId,
       required this.userId,
       required this.startedAt});
 
@@ -136,7 +136,7 @@ class _$TypingIndicatorImpl implements _TypingIndicator {
       _$$TypingIndicatorImplFromJson(json);
 
   @override
-  final String conversationId;
+  final String groupId;
   @override
   final String userId;
   @override
@@ -144,7 +144,7 @@ class _$TypingIndicatorImpl implements _TypingIndicator {
 
   @override
   String toString() {
-    return 'TypingIndicator(conversationId: $conversationId, userId: $userId, startedAt: $startedAt)';
+    return 'TypingIndicator(groupId: $groupId, userId: $userId, startedAt: $startedAt)';
   }
 
   @override
@@ -152,8 +152,8 @@ class _$TypingIndicatorImpl implements _TypingIndicator {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$TypingIndicatorImpl &&
-            (identical(other.conversationId, conversationId) ||
-                other.conversationId == conversationId) &&
+            (identical(other.groupId, groupId) ||
+                other.groupId == groupId) &&
             (identical(other.userId, userId) || other.userId == userId) &&
             (identical(other.startedAt, startedAt) ||
                 other.startedAt == startedAt));
@@ -162,7 +162,7 @@ class _$TypingIndicatorImpl implements _TypingIndicator {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, conversationId, userId, startedAt);
+      Object.hash(runtimeType, groupId, userId, startedAt);
 
   /// Create a copy of TypingIndicator
   /// with the given fields replaced by the non-null parameter values.
@@ -183,7 +183,7 @@ class _$TypingIndicatorImpl implements _TypingIndicator {
 
 abstract class _TypingIndicator implements TypingIndicator {
   const factory _TypingIndicator(
-      {required final String conversationId,
+      {required final String groupId,
       required final String userId,
       required final DateTime startedAt}) = _$TypingIndicatorImpl;
 
@@ -191,7 +191,7 @@ abstract class _TypingIndicator implements TypingIndicator {
       _$TypingIndicatorImpl.fromJson;
 
   @override
-  String get conversationId;
+  String get groupId;
   @override
   String get userId;
   @override

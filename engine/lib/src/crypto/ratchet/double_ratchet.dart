@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/crypto/keys/key_types.dart';
 import 'package:cryptography/cryptography.dart';
 
 /// Double Ratchet algorithm with header encryption.

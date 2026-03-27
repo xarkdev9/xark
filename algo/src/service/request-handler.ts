@@ -35,7 +35,7 @@ import type { DecisionService } from "./decision-service.js";
 import { AuthError, NotFoundError } from "./decision-service.js";
 import type { AuthPort } from "../ports/auth.js";
 import type { Identity } from "../ports/auth.js";
-import type { ItemId, SpaceId, TaskId, UserId } from "../models/types.js";
+import type { ItemId, GroupId, TaskId, UserId } from "../models/types.js";
 import type { ReactionType, CommitmentProof } from "../models/types.js";
 
 // --- Request / Response types ---
@@ -75,11 +75,11 @@ export class RequestHandler {
 
   private async authenticate(token?: string): Promise<Identity> {
     if (!token) {
-      throw new AuthError("space:read" as any, "" as SpaceId);
+      throw new AuthError("space:read" as any, "" as GroupId);
     }
     const identity = await this.auth.authenticate(token);
     if (!identity) {
-      throw new AuthError("space:read" as any, "" as SpaceId);
+      throw new AuthError("space:read" as any, "" as GroupId);
     }
     return identity;
   }
@@ -104,19 +104,19 @@ export class RequestHandler {
       return { status: 201, body: space };
     }
 
-    // GET /spaces/:spaceId
+    // GET /spaces/:groupId
     if (method === "GET" && segments[0] === "spaces" && segments.length === 2) {
-      const space = await this.service.getSpace(identity, segments[1] as SpaceId);
+      const space = await this.service.getSpace(identity, segments[1] as GroupId);
       return { status: 200, body: space };
     }
 
-    // DELETE /spaces/:spaceId
+    // DELETE /spaces/:groupId
     if (method === "DELETE" && segments[0] === "spaces" && segments.length === 2) {
-      await this.service.deleteSpace(identity, segments[1] as SpaceId);
+      await this.service.deleteSpace(identity, segments[1] as GroupId);
       return { status: 204, body: null };
     }
 
-    // POST /spaces/:spaceId/items
+    // POST /spaces/:groupId/items
     if (
       method === "POST" &&
       segments[0] === "spaces" &&
@@ -125,7 +125,7 @@ export class RequestHandler {
     ) {
       const item = await this.service.addItem(
         identity,
-        segments[1] as SpaceId,
+        segments[1] as GroupId,
         body.title as string,
         (body.description ?? "") as string,
         (body.category ?? "general") as string
@@ -133,7 +133,7 @@ export class RequestHandler {
       return { status: 201, body: item };
     }
 
-    // GET /spaces/:spaceId/items/ranked
+    // GET /spaces/:groupId/items/ranked
     if (
       method === "GET" &&
       segments[0] === "spaces" &&
@@ -142,12 +142,12 @@ export class RequestHandler {
     ) {
       const ranked = await this.service.getRankedItems(
         identity,
-        segments[1] as SpaceId
+        segments[1] as GroupId
       );
       return { status: 200, body: ranked };
     }
 
-    // GET /spaces/:spaceId/items/locked
+    // GET /spaces/:groupId/items/locked
     if (
       method === "GET" &&
       segments[0] === "spaces" &&
@@ -156,12 +156,12 @@ export class RequestHandler {
     ) {
       const locked = await this.service.getLockedItems(
         identity,
-        segments[1] as SpaceId
+        segments[1] as GroupId
       );
       return { status: 200, body: locked };
     }
 
-    // GET /spaces/:spaceId/items/active
+    // GET /spaces/:groupId/items/active
     if (
       method === "GET" &&
       segments[0] === "spaces" &&
@@ -170,7 +170,7 @@ export class RequestHandler {
     ) {
       const active = await this.service.getActiveItems(
         identity,
-        segments[1] as SpaceId
+        segments[1] as GroupId
       );
       return { status: 200, body: active };
     }
@@ -261,7 +261,7 @@ export class RequestHandler {
       return { status: 200, body: breakdown };
     }
 
-    // POST /spaces/:spaceId/tasks
+    // POST /spaces/:groupId/tasks
     if (
       method === "POST" &&
       segments[0] === "spaces" &&
@@ -270,7 +270,7 @@ export class RequestHandler {
     ) {
       const task = await this.service.addTask(
         identity,
-        segments[1] as SpaceId,
+        segments[1] as GroupId,
         body.title as string,
         (body.description ?? "") as string
       );
@@ -303,7 +303,7 @@ export class RequestHandler {
       return { status: 200, body: task };
     }
 
-    // GET /spaces/:spaceId/grounding/prompt (must be before /grounding)
+    // GET /spaces/:groupId/grounding/prompt (must be before /grounding)
     if (
       method === "GET" &&
       segments[0] === "spaces" &&
@@ -313,12 +313,12 @@ export class RequestHandler {
     ) {
       const prompt = await this.service.getGroundingPrompt(
         identity,
-        segments[1] as SpaceId
+        segments[1] as GroupId
       );
       return { status: 200, body: { prompt } };
     }
 
-    // GET /spaces/:spaceId/grounding
+    // GET /spaces/:groupId/grounding
     if (
       method === "GET" &&
       segments[0] === "spaces" &&
@@ -327,12 +327,12 @@ export class RequestHandler {
     ) {
       const context = await this.service.getGroundingContext(
         identity,
-        segments[1] as SpaceId
+        segments[1] as GroupId
       );
       return { status: 200, body: context };
     }
 
-    // GET /spaces/:spaceId/conflicts?category=hotel
+    // GET /spaces/:groupId/conflicts?category=hotel
     if (
       method === "GET" &&
       segments[0] === "spaces" &&
@@ -341,7 +341,7 @@ export class RequestHandler {
       const category = req.query?.category ?? "";
       const conflicts = await this.service.checkConflicts(
         identity,
-        segments[1] as SpaceId,
+        segments[1] as GroupId,
         category
       );
       return { status: 200, body: conflicts };

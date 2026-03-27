@@ -35,7 +35,7 @@ async function hashPassword(password: string): Promise<string> {
   return data as string;
 }
 
-export async function seedXarkGalaxy() {
+export async function seedHelloHome() {
   console.log("seeding xark galaxy...\n");
 
   // ══════════════════════════════════
@@ -89,7 +89,7 @@ export async function seedXarkGalaxy() {
       id: "space_ananya",
       title: "ananya",
       owner_id: "name_ram",
-      atmosphere: "sanctuary",
+      atmosphere: "dm",
       is_public: false,
     },
     {
@@ -121,51 +121,51 @@ export async function seedXarkGalaxy() {
   // ══════════════════════════════════
   const members = [
     // San Diego: all 5
-    { space_id: "space_san-diego-trip", user_id: "name_ram", role: "owner" },
-    { space_id: "space_san-diego-trip", user_id: "name_myna", role: "member" },
+    { group_id: "space_san-diego-trip", user_id: "name_ram", role: "owner" },
+    { group_id: "space_san-diego-trip", user_id: "name_myna", role: "member" },
     {
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       user_id: "name_anjan",
       role: "member",
     },
     {
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       user_id: "name_shiva",
       role: "member",
     },
     {
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       user_id: "name_venky",
       role: "member",
     },
-    // Ananya sanctuary: 2
-    { space_id: "space_ananya", user_id: "name_ram", role: "owner" },
-    { space_id: "space_ananya", user_id: "name_myna", role: "member" },
+    // Ananya dm: 2
+    { group_id: "space_ananya", user_id: "name_ram", role: "owner" },
+    { group_id: "space_ananya", user_id: "name_myna", role: "member" },
     // Tokyo: 3
     {
-      space_id: "space_tokyo-neon-nights",
+      group_id: "space_tokyo-neon-nights",
       user_id: "name_myna",
       role: "owner",
     },
     {
-      space_id: "space_tokyo-neon-nights",
+      group_id: "space_tokyo-neon-nights",
       user_id: "name_ram",
       role: "member",
     },
     {
-      space_id: "space_tokyo-neon-nights",
+      group_id: "space_tokyo-neon-nights",
       user_id: "name_anjan",
       role: "member",
     },
     // Summer: 3
-    { space_id: "space_summer-2026", user_id: "name_ram", role: "owner" },
-    { space_id: "space_summer-2026", user_id: "name_myna", role: "member" },
-    { space_id: "space_summer-2026", user_id: "name_venky", role: "member" },
+    { group_id: "space_summer-2026", user_id: "name_ram", role: "owner" },
+    { group_id: "space_summer-2026", user_id: "name_myna", role: "member" },
+    { group_id: "space_summer-2026", user_id: "name_venky", role: "member" },
   ];
 
   const { error: membersError } = await supabase
     .from("space_members")
-    .upsert(members, { onConflict: "space_id,user_id" });
+    .upsert(members, { onConflict: "group_id,user_id" });
 
   if (membersError) console.error("  members:", membersError.message);
   else console.log("  13 space memberships seeded");
@@ -176,7 +176,7 @@ export async function seedXarkGalaxy() {
   const items = [
     {
       id: "item_hotel-del",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       title: "hotel del coronado",
       category: "Hotel",
       description: "iconic beachfront resort on coronado island",
@@ -202,7 +202,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "item_surf-lessons",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       title: "surf lessons",
       category: "Activity",
       description:
@@ -217,7 +217,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "item_balboa-park",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       title: "balboa park tour",
       category: "Activity",
       description:
@@ -232,7 +232,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "item_gaslamp-dinner",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       title: "gaslamp quarter dinner",
       category: "Dining",
       description: "group dinner at a rooftop restaurant downtown",
@@ -258,7 +258,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "item_shibuya",
-      space_id: "space_tokyo-neon-nights",
+      group_id: "space_tokyo-neon-nights",
       title: "shibuya crossing at midnight",
       category: "Experience",
       description: "witness the world's busiest intersection under neon",
@@ -272,7 +272,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "item_teamlab",
-      space_id: "space_tokyo-neon-nights",
+      group_id: "space_tokyo-neon-nights",
       title: "teamlab borderless",
       category: "Activity",
       description: "immersive digital art museum in odaiba",
@@ -305,7 +305,7 @@ export async function seedXarkGalaxy() {
     // San Diego group chat (10 messages)
     {
       id: "msg_sd_01",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "user",
       content: "alright who's looking into hotels?",
       user_id: "name_ram",
@@ -313,7 +313,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_sd_02",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "user",
       content: "i found a few near coronado beach",
       user_id: "name_myna",
@@ -321,7 +321,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_sd_03",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "xark",
       content:
         "hotel del coronado fits the group's vibe — beachfront, historic, within budget range. coronado island marriott is bayfront, lower price.",
@@ -330,7 +330,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_sd_04",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "user",
       content: "what about the price though?",
       user_id: "name_ram",
@@ -338,7 +338,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_sd_05",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "user",
       content: "450 a night but the beach access is worth it",
       user_id: "name_myna",
@@ -346,7 +346,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_sd_06",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "user",
       content: "i'm in for hotel del",
       user_id: "name_ram",
@@ -354,7 +354,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_sd_07",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "user",
       content: "same. let's lock it",
       user_id: "name_myna",
@@ -362,7 +362,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_sd_08",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "xark",
       content:
         "consensus reached on hotel del coronado. locked with confirmation HDC-29441.",
@@ -371,7 +371,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_sd_09",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "user",
       content: "locked. what activities are we doing?",
       user_id: "name_ram",
@@ -379,16 +379,16 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_sd_10",
-      space_id: "space_san-diego-trip",
+      group_id: "space_san-diego-trip",
       role: "user",
       content: "i proposed surf lessons at la jolla — check it out",
       user_id: "name_myna",
       created_at: new Date(now - 1 * minute).toISOString(),
     },
-    // Ananya sanctuary (5 messages)
+    // Ananya dm (5 messages)
     {
       id: "msg_an_01",
-      space_id: "space_ananya",
+      group_id: "space_ananya",
       role: "user",
       content: "hey, are you excited about the trip?",
       user_id: "name_myna",
@@ -396,7 +396,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_an_02",
-      space_id: "space_ananya",
+      group_id: "space_ananya",
       role: "user",
       content: "so excited. finally getting the whole group together",
       user_id: "name_ram",
@@ -404,7 +404,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_an_03",
-      space_id: "space_ananya",
+      group_id: "space_ananya",
       role: "user",
       content: "i've been looking at activities near la jolla",
       user_id: "name_myna",
@@ -412,7 +412,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_an_04",
-      space_id: "space_ananya",
+      group_id: "space_ananya",
       role: "user",
       content: "the kayaking looks amazing, those sea caves",
       user_id: "name_ram",
@@ -420,7 +420,7 @@ export async function seedXarkGalaxy() {
     },
     {
       id: "msg_an_05",
-      space_id: "space_ananya",
+      group_id: "space_ananya",
       role: "user",
       content: "did you see the surf lesson proposal?",
       user_id: "name_myna",
@@ -439,4 +439,4 @@ export async function seedXarkGalaxy() {
 }
 
 // Allow direct execution: npx tsx src/lib/seed.ts
-seedXarkGalaxy().catch(console.error);
+seedHelloHome().catch(console.error);

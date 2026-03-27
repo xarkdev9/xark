@@ -5,7 +5,7 @@ import '../theme.dart';
 import '../widgets/encrypted_image_view.dart';
 import '../providers/consensus_listener.dart';
 
-import 'package:chat_engine/chat_engine.dart';
+import 'package:hello_engine/chat_engine.dart';
 
 class ActionCardWidget extends ConsumerStatefulWidget {
   final Message message;

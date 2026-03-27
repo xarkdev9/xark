@@ -1,5 +1,5 @@
 // XARK OS v2.0 — SUMMON LINK VALIDATION
-// GET /api/summon/validate?code=<code> — validates a summon link (public, no auth).
+// GET /api/invite/validate?code=<code> — validates a summon link (public, no auth).
 // Returns { valid: true, creatorName } or { valid: false, reason }.
 
 import { NextRequest, NextResponse } from "next/server";

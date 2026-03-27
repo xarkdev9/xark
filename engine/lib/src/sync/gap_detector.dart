@@ -1,6 +1,6 @@
-import 'package:chat_engine/src/domain/repositories/message_repository.dart';
-import 'package:chat_engine/src/sync/sync_observer.dart';
-import 'package:chat_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/domain/repositories/message_repository.dart';
+import 'package:hello_engine/src/sync/sync_observer.dart';
+import 'package:hello_engine/src/transport/supabase_client.dart';
 
 /// Fills message gaps after a reconnect or cold start.
 ///
@@ -22,7 +22,7 @@ class GapDetector {
   /// Optional observer for diagnostic callbacks.
   final SyncObserver? observer;
 
-  /// Fetches messages missed while offline for the given [spaceIds].
+  /// Fetches messages missed while offline for the given [groupIds].
   ///
   /// For each space, looks up the latest local message timestamp and
   /// pulls any server messages created after that point.
@@ -30,21 +30,21 @@ class GapDetector {
   /// Returns a flat list of raw server row maps. The caller is
   /// responsible for decrypting, deduplicating, and persisting them.
   Future<List<Map<String, dynamic>>> fillGaps(
-    List<String> spaceIds,
+    List<String> groupIds,
   ) async {
     final stopwatch = Stopwatch()..start();
     final allMissed = <Map<String, dynamic>>[];
 
-    for (final spaceId in spaceIds) {
+    for (final groupId in groupIds) {
       // Get the latest message we have locally for this space.
-      final messages = await _messageRepo.getMessages(spaceId, limit: 1);
+      final messages = await _messageRepo.getMessages(groupId, limit: 1);
 
       final after =
           messages.isNotEmpty ? messages.first.timestamp : null;
 
       // Fetch from server anything newer than our latest.
       final serverMessages = await _apiClient.fetchMessageHistory(
-        spaceId,
+        groupId,
         after: after,
       );
 

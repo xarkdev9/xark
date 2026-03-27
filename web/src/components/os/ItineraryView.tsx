@@ -30,7 +30,7 @@ interface CommittedItem {
 }
 
 interface ItineraryViewProps {
-  spaceId: string;
+  groupId: string;
 }
 
 function formatDate(iso: string): string {
@@ -41,7 +41,7 @@ function formatDate(iso: string): string {
   });
 }
 
-export function ItineraryView({ spaceId }: ItineraryViewProps) {
+export function ItineraryView({ groupId }: ItineraryViewProps) {
   const [items, setItems] = useState<CommittedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +52,7 @@ export function ItineraryView({ spaceId }: ItineraryViewProps) {
         .select(
           "id, title, category, state, weighted_score, agreement_score, metadata, ownership, locked_at"
         )
-        .eq("space_id", spaceId)
+        .eq("group_id", groupId)
         .in("state", ["purchased", "locked", "claimed", "chosen", "decided"])
         .order("locked_at", { ascending: true });
 
@@ -69,7 +69,7 @@ export function ItineraryView({ spaceId }: ItineraryViewProps) {
     }
 
     fetchCommitted();
-  }, [spaceId]);
+  }, [groupId]);
 
   if (loading) {
     return (

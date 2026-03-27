@@ -16,7 +16,7 @@ function generateId(): string {
 
 export interface MediaItem {
   id: string;
-  spaceId: string;
+  groupId: string;
   uploadedBy: string;
   storagePath: string;
   thumbnailUrl?: string;
@@ -26,12 +26,12 @@ export interface MediaItem {
 
 export async function uploadMedia(
   file: File,
-  spaceId: string,
+  groupId: string,
   userId: string,
   caption?: string
 ): Promise<MediaItem | null> {
   const mediaId = `media_${generateId()}`;
-  const storagePath = `spaces/${spaceId}/media/${mediaId}`;
+  const storagePath = `spaces/${groupId}/media/${mediaId}`;
   let downloadUrl: string;
   try {
     downloadUrl = await storageAdapter.upload(storagePath, file, file.type);
@@ -43,7 +43,7 @@ export async function uploadMedia(
   // Save metadata to Supabase
   const { error } = await supabase.from("media").insert({
     id: mediaId,
-    space_id: spaceId,
+    group_id: groupId,
     uploaded_by: userId,
     storage_path: storagePath,
     thumbnail_url: downloadUrl,
@@ -58,7 +58,7 @@ export async function uploadMedia(
 
   return {
     id: mediaId,
-    spaceId,
+    groupId,
     uploadedBy: userId,
     storagePath,
     thumbnailUrl: downloadUrl,
@@ -67,18 +67,18 @@ export async function uploadMedia(
   };
 }
 
-export async function fetchMedia(spaceId: string): Promise<MediaItem[]> {
+export async function fetchMedia(groupId: string): Promise<MediaItem[]> {
   const { data, error } = await supabase
     .from("media")
     .select("*")
-    .eq("space_id", spaceId)
+    .eq("group_id", groupId)
     .order("created_at", { ascending: true });
 
   if (error || !data) return [];
 
   return data.map((m) => ({
     id: m.id,
-    spaceId: m.space_id,
+    groupId: m.group_id,
     uploadedBy: m.uploaded_by,
     storagePath: m.storage_path,
     thumbnailUrl: m.thumbnail_url,

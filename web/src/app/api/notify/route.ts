@@ -21,11 +21,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "too many notifications" }, { status: 429 });
   }
 
-  const { event, spaceId, senderName, excludeUserId } = await req.json();
+  const { event, groupId, senderName, excludeUserId } = await req.json();
 
   // Input validation — E2EE COMPLIANT: no `body` field accepted (no plaintext in push)
-  if (!spaceId || typeof spaceId !== 'string') {
-    return NextResponse.json({ error: 'spaceId required' }, { status: 400 });
+  if (!groupId || typeof groupId !== 'string') {
+    return NextResponse.json({ error: 'groupId required' }, { status: 400 });
   }
   if (senderName && (typeof senderName !== 'string' || senderName.length > 50)) {
     return NextResponse.json({ error: 'invalid senderName' }, { status: 400 });
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const { data: membership } = await supabaseAdmin
     .from("space_members")
     .select("user_id")
-    .eq("space_id", spaceId)
+    .eq("group_id", groupId)
     .eq("user_id", auth.userId)
     .single();
 
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const { data: members } = await supabaseAdmin
     .from("space_members")
     .select("user_id")
-    .eq("space_id", spaceId);
+    .eq("group_id", groupId);
 
   const memberUserIds = (members ?? [])
     .map((m: { user_id: string }) => m.user_id)
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   for (const u of userPrefs ?? []) {
     const prefs = u.preferences as Record<string, unknown> | null;
     const muted = prefs?.muted_spaces;
-    if (Array.isArray(muted) && muted.includes(spaceId)) {
+    if (Array.isArray(muted) && muted.includes(groupId)) {
       mutedUserIds.add(u.id as string);
     }
   }
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
   // E2EE COMPLIANT: metadata only — no message plaintext in push payload
   await sendPush(tokens, {
-    spaceId,
+    groupId,
     event: event ?? "new_message",
     senderName: senderName ?? "someone",
   });

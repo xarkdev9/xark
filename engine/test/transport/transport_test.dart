@@ -2,16 +2,16 @@
 
 import 'dart:convert';
 
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
-import 'package:chat_engine/src/transport/dto/realtime_event.dart';
-import 'package:chat_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/transport/dto/realtime_event.dart';
+import 'package:hello_engine/src/transport/supabase_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('MessageEnvelope', () {
     test('serialises to snake_case JSON', () {
       final envelope = MessageEnvelope(
-        spaceId: 'space-123',
+        groupId: 'space-123',
         senderDeviceId: 1,
         ciphertext: 'Y2lwaGVydGV4dA==',
         recipientId: 'name_bob',
@@ -22,7 +22,7 @@ void main() {
 
       final json = envelope.toJson();
 
-      expect(json['space_id'], 'space-123');
+      expect(json['group_id'], 'space-123');
       expect(json['sender_device_id'], 1);
       expect(json['ciphertext'], 'Y2lwaGVydGV4dA==');
       expect(json['ratchet_header'], 'aGVhZGVy');
@@ -35,7 +35,7 @@ void main() {
 
     test('round-trips through JSON', () {
       final original = MessageEnvelope(
-        spaceId: 'space-abc',
+        groupId: 'space-abc',
         senderDeviceId: 3,
         ciphertext: 'dGVzdA==',
         recipientId: '_group_',
@@ -55,7 +55,7 @@ void main() {
       final json = original.toJson();
       final restored = MessageEnvelope.fromJson(json);
 
-      expect(restored.spaceId, original.spaceId);
+      expect(restored.groupId, original.groupId);
       expect(restored.senderDeviceId, original.senderDeviceId);
       expect(restored.ciphertext, original.ciphertext);
       expect(restored.ratchetHeader, isNull);
@@ -68,7 +68,7 @@ void main() {
 
     test('defaults messageType to e2ee', () {
       final json = <String, dynamic>{
-        'space_id': 's1',
+        'group_id': 's1',
         'sender_device_id': 1,
         'ciphertext': 'ct',
         'recipient_id': 'u1',
@@ -81,7 +81,7 @@ void main() {
 
     test('defaults distributionCiphertexts to empty list', () {
       final envelope = MessageEnvelope(
-        spaceId: 's1',
+        groupId: 's1',
         senderDeviceId: 1,
         ciphertext: 'ct',
         recipientId: 'u1',
@@ -148,7 +148,7 @@ void main() {
 
     test('group envelope uses _group_ as recipientId', () {
       final envelope = MessageEnvelope(
-        spaceId: 'space-grp',
+        groupId: 'space-grp',
         senderDeviceId: 1,
         ciphertext: 'ct',
         recipientId: groupRecipientSentinel,
@@ -164,7 +164,7 @@ void main() {
     test('constructs from Postgres payload', () {
       final record = <String, dynamic>{
         'id': 'msg-1',
-        'space_id': 'space-abc',
+        'group_id': 'space-abc',
         'user_id': 'name_alice',
         'sender_device_id': 1,
         'message_type': 'e2ee',
@@ -174,7 +174,7 @@ void main() {
       final event = RealtimeMessageEvent.fromPostgresPayload(record);
 
       expect(event.messageId, 'msg-1');
-      expect(event.spaceId, 'space-abc');
+      expect(event.groupId, 'space-abc');
       expect(event.senderId, 'name_alice');
       expect(event.senderDeviceId, 1);
       expect(event.messageType, 'e2ee');
@@ -184,7 +184,7 @@ void main() {
     test('handles null sender_device_id for system messages', () {
       final record = <String, dynamic>{
         'id': 'sys-msg',
-        'space_id': 'space-abc',
+        'group_id': 'space-abc',
         'user_id': 'system',
         'sender_device_id': null,
         'message_type': 'system',
@@ -200,7 +200,7 @@ void main() {
     test('defaults message_type to e2ee when missing', () {
       final record = <String, dynamic>{
         'id': 'msg-2',
-        'space_id': 'sp',
+        'group_id': 'sp',
         'user_id': 'u1',
         'created_at': '2026-01-01T00:00:00.000Z',
       };
@@ -212,7 +212,7 @@ void main() {
     test('toString includes key fields', () {
       final event = RealtimeMessageEvent(
         messageId: 'm1',
-        spaceId: 's1',
+        groupId: 's1',
         senderId: 'u1',
         messageType: 'e2ee',
         createdAt: DateTime.utc(2026),
@@ -231,7 +231,7 @@ void main() {
         'requester_id': 'name_bob',
         'requester_device_id': 2,
         'target_sender_id': 'name_alice',
-        'space_id': 'group-xyz',
+        'group_id': 'group-xyz',
       };
 
       final request = SKRecoveryRequest.fromBroadcastPayload(payload);
@@ -239,7 +239,7 @@ void main() {
       expect(request.requesterId, 'name_bob');
       expect(request.requesterDeviceId, 2);
       expect(request.targetSenderId, 'name_alice');
-      expect(request.spaceId, 'group-xyz');
+      expect(request.groupId, 'group-xyz');
     });
 
     test('round-trips through broadcast payload', () {
@@ -247,7 +247,7 @@ void main() {
         requesterId: 'name_carol',
         requesterDeviceId: 3,
         targetSenderId: 'name_dave',
-        spaceId: 'grp-1',
+        groupId: 'grp-1',
       );
 
       final payload = original.toBroadcastPayload();
@@ -256,7 +256,7 @@ void main() {
       expect(restored.requesterId, original.requesterId);
       expect(restored.requesterDeviceId, original.requesterDeviceId);
       expect(restored.targetSenderId, original.targetSenderId);
-      expect(restored.spaceId, original.spaceId);
+      expect(restored.groupId, original.groupId);
     });
 
     test('toBroadcastPayload uses snake_case keys', () {
@@ -264,14 +264,14 @@ void main() {
         requesterId: 'u1',
         requesterDeviceId: 1,
         targetSenderId: 'u2',
-        spaceId: 's1',
+        groupId: 's1',
       );
 
       final payload = request.toBroadcastPayload();
       expect(payload.containsKey('requester_id'), isTrue);
       expect(payload.containsKey('requester_device_id'), isTrue);
       expect(payload.containsKey('target_sender_id'), isTrue);
-      expect(payload.containsKey('space_id'), isTrue);
+      expect(payload.containsKey('group_id'), isTrue);
     });
 
     test('toString includes key fields', () {
@@ -279,7 +279,7 @@ void main() {
         requesterId: 'u1',
         requesterDeviceId: 1,
         targetSenderId: 'u2',
-        spaceId: 's1',
+        groupId: 's1',
       );
 
       final str = request.toString();
@@ -306,7 +306,7 @@ void main() {
   group('MessageEnvelope wire format', () {
     test('matches server-expected JSON structure', () {
       final envelope = MessageEnvelope(
-        spaceId: 'space-1',
+        groupId: 'space-1',
         senderDeviceId: 1,
         ciphertext: base64Encode([1, 2, 3]),
         recipientId: 'name_peer',
@@ -325,7 +325,7 @@ void main() {
       final json = envelope.toJson();
 
       // Verify all expected keys are snake_case.
-      expect(json.containsKey('space_id'), isTrue);
+      expect(json.containsKey('group_id'), isTrue);
       expect(json.containsKey('sender_device_id'), isTrue);
       expect(json.containsKey('recipient_id'), isTrue);
       expect(json.containsKey('recipient_device_id'), isTrue);
@@ -334,7 +334,7 @@ void main() {
       expect(json.containsKey('message_type'), isTrue);
 
       // Verify no camelCase keys leaked through.
-      expect(json.containsKey('spaceId'), isFalse);
+      expect(json.containsKey('groupId'), isFalse);
       expect(json.containsKey('senderDeviceId'), isFalse);
       expect(json.containsKey('recipientId'), isFalse);
       expect(json.containsKey('recipientDeviceId'), isFalse);
@@ -352,7 +352,7 @@ void main() {
 
     test('can be JSON-encoded and decoded for HTTP body', () {
       final envelope = MessageEnvelope(
-        spaceId: 's1',
+        groupId: 's1',
         senderDeviceId: 1,
         ciphertext: 'ct',
         recipientId: 'u1',
@@ -363,7 +363,7 @@ void main() {
       final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
       final restored = MessageEnvelope.fromJson(decoded);
 
-      expect(restored.spaceId, 's1');
+      expect(restored.groupId, 's1');
       expect(restored.senderDeviceId, 1);
       expect(restored.ciphertext, 'ct');
     });

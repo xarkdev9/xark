@@ -2,8 +2,8 @@
 
 import 'dart:convert';
 
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
-import 'package:chat_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/transport/supabase_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -48,7 +48,7 @@ void main() {
 
       final wrapper = buildWrapper(mock);
       final envelope = MessageEnvelope(
-        spaceId: 'space-abc',
+        groupId: 'space-abc',
         senderDeviceId: 1,
         ciphertext: 'Y2lwaGVydGV4dA==',
         recipientId: 'name_bob',
@@ -60,7 +60,7 @@ void main() {
       final result = await wrapper.sendMessage(envelope);
 
       expect(capturedBody, isNotNull);
-      expect(capturedBody!['space_id'], 'space-abc');
+      expect(capturedBody!['group_id'], 'space-abc');
       expect(capturedBody!['sender_device_id'], 1);
       expect(capturedBody!['ciphertext'], 'Y2lwaGVydGV4dA==');
       expect(capturedBody!['recipient_id'], 'name_bob');
@@ -86,7 +86,7 @@ void main() {
 
       final wrapper = buildWrapper(mock);
       final envelope = MessageEnvelope(
-        spaceId: 'group-space',
+        groupId: 'group-space',
         senderDeviceId: 3,
         ciphertext: 'Z3JvdXBfY3Q=',
         recipientId: '_group_',
@@ -129,7 +129,7 @@ void main() {
 
       final wrapper = buildWrapper(mock);
       await wrapper.sendMessage(MessageEnvelope(
-        spaceId: 's',
+        groupId: 's',
         senderDeviceId: 1,
         ciphertext: 'ct',
         recipientId: 'u',
@@ -146,7 +146,7 @@ void main() {
 
       expect(
         () => wrapper.sendMessage(MessageEnvelope(
-          spaceId: 's',
+          groupId: 's',
           senderDeviceId: 1,
           ciphertext: 'ct',
           recipientId: 'u',
@@ -344,20 +344,20 @@ void main() {
   // findOrCreateChat
   // -------------------------------------------------------------------------
   group('findOrCreateChat', () {
-    test('sends peer_id and returns space_id', () async {
+    test('sends peer_id and returns group_id', () async {
       final mock = MockClient((request) async {
         expect(request.url.path, '/api/chat/start');
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         expect(body['peer_id'], 'name_bob');
         return http.Response(
-          jsonEncode({'space_id': 'dm-space-123'}),
+          jsonEncode({'group_id': 'dm-space-123'}),
           200,
         );
       });
 
       final wrapper = buildWrapper(mock);
-      final spaceId = await wrapper.findOrCreateChat('name_bob');
-      expect(spaceId, 'dm-space-123');
+      final groupId = await wrapper.findOrCreateChat('name_bob');
+      expect(groupId, 'dm-space-123');
     });
   });
 

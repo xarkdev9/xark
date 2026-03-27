@@ -42,7 +42,7 @@ interface InlineCard {
 }
 
 interface XarkChatProps {
-  spaceId: string;
+  groupId: string;
   spaceTitle?: string;
   messages: ChatMessage[];
   isThinking?: boolean;
@@ -65,7 +65,7 @@ const SANCTUARY_MAP: Record<string, string> = {
 };
 
 export function XarkChat({
-  spaceId,
+  groupId,
   spaceTitle,
   messages,
   isThinking,
@@ -86,20 +86,20 @@ export function XarkChat({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // ── Sanctuary Bridge state ──
-  const [sanctuaryOpen, setSanctuaryOpen] = useState(false);
-  const [sanctuaryName, setSanctuaryName] = useState("");
-  const [sanctuaryMessages, setSanctuaryMessages] = useState<ChatMessage[]>([]);
+  const [dmOpen, setDmOpen] = useState(false);
+  const [dmName, setDmName] = useState("");
+  const [dmMessages, setDmMessages] = useState<ChatMessage[]>([]);
 
   // ── Handshake Protocol — silent until consensus ignites ──
   const { proposal, whisper, confirm, dismiss, isCommitting, goldBurst } =
-    useHandshake(spaceId);
+    useHandshake(groupId);
 
   // Load grounding context
   useEffect(() => {
-    buildGroundingContext(spaceId)
+    buildGroundingContext(groupId)
       .then(setGroundingContext)
       .catch(() => {});
-  }, [spaceId]);
+  }, [groupId]);
 
   // Auto-scroll
   useEffect(() => {
@@ -134,15 +134,15 @@ export function XarkChat({
   // ── Sanctuary Bridge ──
   const openSanctuary = useCallback(
     async (name: string) => {
-      const sanctuarySpaceId =
+      const dmGroupId =
         SANCTUARY_MAP[name.toLowerCase()];
-      if (!sanctuarySpaceId) return;
-      setSanctuaryName(name);
-      setSanctuaryOpen(true);
+      if (!dmGroupId) return;
+      setDmName(name);
+      setDmOpen(true);
       try {
-        const msgs = await fetchMessages(sanctuarySpaceId, { limit: 30 });
+        const msgs = await fetchMessages(dmGroupId, { limit: 30 });
         if (msgs.length > 0) {
-          setSanctuaryMessages(
+          setDmMessages(
             msgs.map((m) => ({
               id: m.id,
               role: m.role,
@@ -307,7 +307,7 @@ export function XarkChat({
             const isXarkQuery = msg.messageType === "xark_query" ||
               (msg.role === "user" && msg.content?.toLowerCase().startsWith("@hello"));
 
-            // ── User's @xark query: centered compact rose text (no bubble) ──
+            // ── User's @hello query: centered compact rose text (no bubble) ──
             if (isXarkQuery) {
               return (
                 <motion.div
@@ -342,7 +342,7 @@ export function XarkChat({
               );
             }
 
-            // ── @xark responses: left-aligned rose whisper (no bubble, timestamp size) ──
+            // ── @hello responses: left-aligned rose whisper (no bubble, timestamp size) ──
             if (isXark) {
               const msgType = msg.messageType ?? 'legacy';
               // Polls still get full treatment
@@ -368,7 +368,7 @@ export function XarkChat({
                         <span>{pollPayload.text || "Created a live poll."}</span>
                         {pollPayload.poll_id && (
                           <div className="mt-2 w-full" onClick={(e) => e.stopPropagation()}>
-                            <InlinePoll spaceId={spaceId} pollId={pollPayload.poll_id} title={pollPayload.title || "Live Poll"} />
+                            <InlinePoll groupId={groupId} pollId={pollPayload.poll_id} title={pollPayload.title || "Live Poll"} />
                           </div>
                         )}
                       </div>
@@ -376,7 +376,7 @@ export function XarkChat({
                   </motion.div>
                 );
               }
-              // Standard @xark messages: centered compact system line
+              // Standard @hello messages: centered compact system line
               return (
                 <motion.div
                   key={msg.id}
@@ -645,7 +645,7 @@ export function XarkChat({
           </div>
         )}
 
-        {/* ── Inline Card Previews (playground @xark results) ── */}
+        {/* ── Inline Card Previews (playground @hello results) ── */}
         {inlineCards && inlineCards.length > 0 && (
           <div style={{ maxWidth: "640px", marginTop: "14px", paddingLeft: "32px" }}>
             {inlineCards.map((card, i) => (
@@ -778,7 +778,7 @@ export function XarkChat({
           </p>
         )}
 
-        {/* ── @xark Thinking Indicator — appears immediately after SpotlightSheet send ── */}
+        {/* ── @hello Thinking Indicator — appears immediately after SpotlightSheet send ── */}
         {isThinking && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -793,7 +793,7 @@ export function XarkChat({
               marginTop: "12px",
             }}
           >
-            {/* @xark avatar */}
+            {/* @hello avatar */}
             <div style={{
               width: 24,
               height: 24,
@@ -851,7 +851,7 @@ export function XarkChat({
           SANCTUARY BRIDGE — 1:1 Slide-Up Sheet
           ═══════════════════════════════════════════ */}
       <AnimatePresence>
-        {sanctuaryOpen && (
+        {dmOpen && (
           <>
             <motion.div
               className="fixed inset-0 z-40"
@@ -859,7 +859,7 @@ export function XarkChat({
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.8 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSanctuaryOpen(false)}
+              onClick={() => setDmOpen(false)}
             />
             <motion.div
               className="fixed inset-x-0 bottom-0 z-50 overflow-y-auto px-6 pb-12 pt-8"
@@ -882,16 +882,16 @@ export function XarkChat({
                     opacity: 0.6,
                   }}
                 >
-                  {sanctuaryName}
+                  {dmName}
                 </span>
 
                 <div className="mt-4">
-                  {sanctuaryMessages.map((msg, i) => {
+                  {dmMessages.map((msg, i) => {
                     const label =
                       msg.role === "xark"
                         ? "@hello"
                         : msg.senderName ?? "you";
-                    const prev = i > 0 ? sanctuaryMessages[i - 1] : null;
+                    const prev = i > 0 ? dmMessages[i - 1] : null;
                     const prevLabel = prev
                       ? prev.role === "xark"
                         ? "@hello"
@@ -928,7 +928,7 @@ export function XarkChat({
                             style={{
                               ...text.subtitle,
                               color: colors.white,
-                              opacity: Math.max(0.55, fovealOpacity(i, sanctuaryMessages.length, "user")),
+                              opacity: Math.max(0.55, fovealOpacity(i, dmMessages.length, "user")),
                               margin: 0,
                             }}
                           >

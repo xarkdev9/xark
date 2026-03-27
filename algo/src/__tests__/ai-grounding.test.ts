@@ -10,7 +10,7 @@ import type { BookableItem, Task } from "../models/types.js";
 function makeItem(overrides: Partial<BookableItem> = {}): BookableItem {
   return {
     id: "item_1",
-    spaceId: "group_1",
+    groupId: "group_1",
     groupId: "group_1",
     title: "Hilton San Diego",
     description: "Downtown hotel",

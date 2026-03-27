@@ -113,7 +113,7 @@ describe("ConsensusEngine", () => {
   });
 
   describe("AI Grounding", () => {
-    it("grounds @xark to locked state — prevents contradicting bookings", () => {
+    it("grounds @hello to locked state — prevents contradicting bookings", () => {
       // Book a hotel
       const hotel = engine.proposeItem(
         "trip_sd", "Hilton San Diego", "Downtown", "hotel", "apify", 1000

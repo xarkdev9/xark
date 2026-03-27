@@ -9,13 +9,13 @@ import {
   confirmHandshake as executeHandshake,
   generateHandshakeWhisper,
   unsubscribeFromConsensus,
-} from "@/lib/handshake";
-import type { HandshakeProposal, HandshakeResult } from "@/lib/handshake";
+} from "@/lib/consensus";
+import type { HandshakeProposal, HandshakeResult } from "@/lib/consensus";
 
 export interface UseHandshakeReturn {
   /** Active handshake proposal — null when silent */
   proposal: HandshakeProposal | null;
-  /** @xark whisper message for the active proposal */
+  /** @hello whisper message for the active proposal */
   whisper: string | null;
   /** Post-lock whisper — changes based on flow type */
   postLockWhisper: string | null;
@@ -29,7 +29,7 @@ export interface UseHandshakeReturn {
   goldBurst: boolean;
 }
 
-export function useHandshake(spaceId: string): UseHandshakeReturn {
+export function useHandshake(groupId: string): UseHandshakeReturn {
   const [proposal, setProposal] = useState<HandshakeProposal | null>(null);
   const [isCommitting, setIsCommitting] = useState(false);
   const [goldBurst, setGoldBurst] = useState(false);
@@ -38,14 +38,14 @@ export function useHandshake(spaceId: string): UseHandshakeReturn {
 
   // ── Subscribe to consensus detection on mount ──
   useEffect(() => {
-    const channel = subscribeToConsensus(spaceId, (incoming) => {
+    const channel = subscribeToConsensus(groupId, (incoming) => {
       setProposal(incoming);
     });
 
     return () => {
       unsubscribeFromConsensus(channel);
     };
-  }, [spaceId]);
+  }, [groupId]);
 
   // ── Cleanup gold burst timer ──
   useEffect(() => {

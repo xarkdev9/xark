@@ -1,4 +1,4 @@
-import 'package:chat_engine/src/domain/models/conversation.dart';
+import 'package:hello_engine/src/domain/models/conversation.dart';
 
 /// Abstract repository for conversation persistence.
 ///
@@ -14,17 +14,17 @@ abstract class ConversationRepository {
   Future<List<Conversation>> getAllConversations();
 
   /// Updates the unread message count for a conversation.
-  Future<void> updateUnreadCount(String conversationId, int count);
+  Future<void> updateUnreadCount(String groupId, int count);
 
   /// Pins or unpins a conversation.
-  Future<void> setPin(String conversationId, {required bool pinned});
+  Future<void> setPin(String groupId, {required bool pinned});
 
   /// Archives or unarchives a conversation.
-  Future<void> setArchive(String conversationId, {required bool archived});
+  Future<void> setArchive(String groupId, {required bool archived});
 
   /// Mutes or unmutes a conversation, optionally until a specific time.
   Future<void> setMute(
-    String conversationId, {
+    String groupId, {
     required bool muted,
     DateTime? until,
   });

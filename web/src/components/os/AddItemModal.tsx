@@ -11,11 +11,11 @@ import { colors, ink, text, surface } from "@/lib/theme";
 interface AddItemModalProps {
   open: boolean;
   onClose: () => void;
-  spaceId: string;
+  groupId: string;
   userId?: string;
   e2eeAvailable: boolean;
   e2eeDeviceId: number | null;
-  encrypt: (text: string, spaceId: string, media?: {
+  encrypt: (text: string, groupId: string, media?: {
     mediaUrl: string; aesKeyBase64: string; ivBase64: string; mimeType: string; inlineThumbnail?: string;
   }) => Promise<unknown>;
 }
@@ -23,7 +23,7 @@ interface AddItemModalProps {
 export function AddItemModal({
   open,
   onClose,
-  spaceId,
+  groupId,
   userId,
   e2eeAvailable,
   e2eeDeviceId,
@@ -130,7 +130,7 @@ export function AddItemModal({
       // Upload encrypted blob to Firebase
       const { storageAdapter } = await import("@/lib/storage");
       const mediaId = `decide_${crypto.randomUUID()}`;
-      const storagePath = `spaces/${spaceId}/media/${mediaId}.enc`;
+      const storagePath = `spaces/${groupId}/media/${mediaId}.enc`;
       const downloadUrl = await storageAdapter.upload(storagePath, encryptedBlob, 'application/octet-stream');
 
       console.log("[add-item] Encrypted + uploaded to Firebase:", downloadUrl.slice(0, 60));
@@ -152,7 +152,7 @@ export function AddItemModal({
       const itemId = `item_${crypto.randomUUID()}`;
       const { error: insertError } = await supabase.from("decision_items").insert({
         id: itemId,
-        space_id: spaceId,
+        group_id: groupId,
         title: title.trim(),
         category: category.trim().toLowerCase() || "shared",
         state: "proposed",

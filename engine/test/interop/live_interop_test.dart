@@ -112,7 +112,7 @@ void main() {
 
       // Build a message envelope matching CODEBASE_CONTEXT.md §2.5.
       final envelope = {
-        'space_id': 'interop-test-space',
+        'group_id': 'interop-test-space',
         'sender_device_id': 99, // Flutter test device
         'ciphertext': base64Encode(utf8.encode('flutter-interop-test')),
         'recipient_id': '_group_',

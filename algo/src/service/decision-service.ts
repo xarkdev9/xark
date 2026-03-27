@@ -29,7 +29,7 @@ import type {
   GroupMember,
   ItemId,
   SpaceConfig,
-  SpaceId,
+  GroupId,
   Task,
   TaskId,
   UserId,
@@ -81,8 +81,8 @@ export interface ServiceOptions {
 // --- Auth Error ---
 
 export class AuthError extends Error {
-  constructor(action: Action, spaceId: SpaceId) {
-    super(`Not authorized: ${action} on space "${spaceId}"`);
+  constructor(action: Action, groupId: GroupId) {
+    super(`Not authorized: ${action} on space "${groupId}"`);
     this.name = "AuthError";
   }
 }
@@ -124,11 +124,11 @@ export class DecisionService {
     config?: Partial<SpaceConfig>,
     flow?: StateFlowConfig
   ): Promise<DecisionSpace> {
-    const spaceId = `space_${randomUUID()}` as SpaceId;
-    await this.authorize(identity, "space:create", spaceId);
+    const groupId = `space_${randomUUID()}` as GroupId;
+    await this.authorize(identity, "space:create", groupId);
 
     const space: DecisionSpace = {
-      id: spaceId,
+      id: groupId,
       name,
       members,
       config: { ...this.defaultConfig, ...config },
@@ -140,38 +140,38 @@ export class DecisionService {
     return space;
   }
 
-  async getSpace(identity: Identity, spaceId: SpaceId): Promise<DecisionSpace> {
-    await this.authorize(identity, "space:read", spaceId);
-    const space = await this.persistence.getSpace(spaceId);
-    if (!space) throw new NotFoundError("Space", spaceId);
+  async getSpace(identity: Identity, groupId: GroupId): Promise<DecisionSpace> {
+    await this.authorize(identity, "space:read", groupId);
+    const space = await this.persistence.getSpace(groupId);
+    if (!space) throw new NotFoundError("Space", groupId);
     return space;
   }
 
-  async deleteSpace(identity: Identity, spaceId: SpaceId): Promise<void> {
-    await this.authorize(identity, "space:delete", spaceId);
-    await this.persistence.deleteSpace(spaceId);
-    await this.invalidateSpaceCache(spaceId);
+  async deleteSpace(identity: Identity, groupId: GroupId): Promise<void> {
+    await this.authorize(identity, "space:delete", groupId);
+    await this.persistence.deleteSpace(groupId);
+    await this.invalidateSpaceCache(groupId);
   }
 
   // --- Items ---
 
   async addItem(
     identity: Identity,
-    spaceId: SpaceId,
+    groupId: GroupId,
     title: string,
     description: string,
     category: string
   ): Promise<BookableItem> {
-    await this.authorize(identity, "item:propose", spaceId);
-    const space = await this.loadSpace(spaceId);
+    await this.authorize(identity, "item:propose", groupId);
+    const space = await this.loadSpace(groupId);
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
     const now = Date.now();
     const id = `item_${randomUUID()}` as ItemId;
 
     const item: BookableItem = {
       id,
-      spaceId,
-      groupId: spaceId as GroupId,
+      groupId,
+      groupId: groupId as GroupId,
       title,
       description,
       category,
@@ -190,16 +190,16 @@ export class DecisionService {
     };
 
     await this.persistence.saveItem(item);
-    await this.invalidateSpaceCache(spaceId);
+    await this.invalidateSpaceCache(groupId);
 
     const event: EngineEvent = {
       type: EventType.ItemProposed,
       timestamp: now,
-      groupId: spaceId as GroupId,
+      groupId: groupId as GroupId,
       actorId: identity.userId,
       payload: { itemId: id, title, category },
     };
-    await this.eventBus.publish(`space:${spaceId}`, event);
+    await this.eventBus.publish(`space:${groupId}`, event);
 
     return item;
   }
@@ -210,9 +210,9 @@ export class DecisionService {
     reactionType: ReactionType
   ): Promise<BookableItem> {
     const item = await this.loadItem(itemId);
-    await this.authorize(identity, "item:react", item.spaceId);
+    await this.authorize(identity, "item:react", item.groupId);
 
-    const space = await this.loadSpace(item.spaceId);
+    const space = await this.loadSpace(item.groupId);
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
     const config = space.config ?? this.defaultConfig;
     const now = Date.now();
@@ -237,16 +237,16 @@ export class DecisionService {
 
     updated = { ...updated, version: item.version + 1 };
     await this.persistence.saveItem(updated);
-    await this.invalidateSpaceCache(item.spaceId);
+    await this.invalidateSpaceCache(item.groupId);
 
     const event: EngineEvent = {
       type: EventType.ReactionAdded,
       timestamp: now,
-      groupId: item.spaceId as GroupId,
+      groupId: item.groupId as GroupId,
       actorId: identity.userId,
       payload: { itemId, reactionType, newScore: updated.weightedScore },
     };
-    await this.eventBus.publish(`space:${item.spaceId}`, event);
+    await this.eventBus.publish(`space:${item.groupId}`, event);
 
     return updated;
   }
@@ -256,9 +256,9 @@ export class DecisionService {
     itemId: ItemId
   ): Promise<BookableItem> {
     const item = await this.loadItem(itemId);
-    await this.authorize(identity, "item:react", item.spaceId);
+    await this.authorize(identity, "item:react", item.groupId);
 
-    const space = await this.loadSpace(item.spaceId);
+    const space = await this.loadSpace(item.groupId);
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
     const config = space.config ?? this.defaultConfig;
     const now = Date.now();
@@ -270,16 +270,16 @@ export class DecisionService {
     let updated = removeReaction(item, identity.userId, config.reactionWeights);
     updated = { ...updated, version: item.version + 1 };
     await this.persistence.saveItem(updated);
-    await this.invalidateSpaceCache(item.spaceId);
+    await this.invalidateSpaceCache(item.groupId);
 
     const event: EngineEvent = {
       type: EventType.ReactionRemoved,
       timestamp: now,
-      groupId: item.spaceId as GroupId,
+      groupId: item.groupId as GroupId,
       actorId: identity.userId,
       payload: { itemId, newScore: updated.weightedScore },
     };
-    await this.eventBus.publish(`space:${item.spaceId}`, event);
+    await this.eventBus.publish(`space:${item.groupId}`, event);
 
     return updated;
   }
@@ -290,21 +290,21 @@ export class DecisionService {
     proof: CommitmentProof
   ): Promise<BookableItem> {
     const item = await this.loadItem(itemId);
-    await this.authorize(identity, "item:lock", item.spaceId);
+    await this.authorize(identity, "item:lock", item.groupId);
 
-    const space = await this.loadSpace(item.spaceId);
+    const space = await this.loadSpace(item.groupId);
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
 
     const config = space.config ?? this.defaultConfig;
     let locked = commitItem(item, proof, machine, config.requireProofForLock);
     locked = { ...locked, version: item.version + 1 };
     await this.persistence.saveItem(locked);
-    await this.invalidateSpaceCache(item.spaceId);
+    await this.invalidateSpaceCache(item.groupId);
 
     const event: EngineEvent = {
       type: EventType.ItemLocked,
       timestamp: proof.submittedAt,
-      groupId: item.spaceId as GroupId,
+      groupId: item.groupId as GroupId,
       actorId: proof.submittedBy,
       payload: {
         itemId,
@@ -313,7 +313,7 @@ export class DecisionService {
         ownerId: proof.submittedBy,
       },
     };
-    await this.eventBus.publish(`space:${item.spaceId}`, event);
+    await this.eventBus.publish(`space:${item.groupId}`, event);
 
     return locked;
   }
@@ -324,9 +324,9 @@ export class DecisionService {
     newOwnerId: UserId
   ): Promise<BookableItem> {
     const item = await this.loadItem(itemId);
-    await this.authorize(identity, "item:transfer", item.spaceId);
+    await this.authorize(identity, "item:transfer", item.groupId);
 
-    const space = await this.loadSpace(item.spaceId);
+    const space = await this.loadSpace(item.groupId);
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
     const now = Date.now();
     const previousOwnerId = item.ownership?.ownerId;
@@ -334,16 +334,16 @@ export class DecisionService {
     let updated = transferOwnership(item, newOwnerId, now, machine);
     updated = { ...updated, version: item.version + 1 };
     await this.persistence.saveItem(updated);
-    await this.invalidateSpaceCache(item.spaceId);
+    await this.invalidateSpaceCache(item.groupId);
 
     const event: EngineEvent = {
       type: EventType.OwnershipTransferred,
       timestamp: now,
-      groupId: item.spaceId as GroupId,
+      groupId: item.groupId as GroupId,
       actorId: newOwnerId,
       payload: { itemId, title: item.title, previousOwnerId, newOwnerId },
     };
-    await this.eventBus.publish(`space:${item.spaceId}`, event);
+    await this.eventBus.publish(`space:${item.groupId}`, event);
 
     return updated;
   }
@@ -352,15 +352,15 @@ export class DecisionService {
 
   async addTask(
     identity: Identity,
-    spaceId: SpaceId,
+    groupId: GroupId,
     title: string,
     description: string
   ): Promise<Task> {
-    await this.authorize(identity, "task:create", spaceId);
+    await this.authorize(identity, "task:create", groupId);
     const now = Date.now();
 
     const task = createTask(
-      spaceId as GroupId,
+      groupId as GroupId,
       title,
       description,
       identity.userId,
@@ -368,16 +368,16 @@ export class DecisionService {
     );
 
     await this.persistence.saveTask(task);
-    await this.invalidateSpaceCache(spaceId);
+    await this.invalidateSpaceCache(groupId);
 
     const event: EngineEvent = {
       type: EventType.TaskCreated,
       timestamp: now,
-      groupId: spaceId as GroupId,
+      groupId: groupId as GroupId,
       actorId: identity.userId,
       payload: { taskId: task.id, title },
     };
-    await this.eventBus.publish(`space:${spaceId}`, event);
+    await this.eventBus.publish(`space:${groupId}`, event);
 
     return task;
   }
@@ -387,8 +387,8 @@ export class DecisionService {
     taskId: TaskId
   ): Promise<Task> {
     const task = await this.loadTask(taskId);
-    const spaceId = task.groupId as SpaceId;
-    await this.authorize(identity, "task:claim", spaceId);
+    const groupId = task.groupId as GroupId;
+    await this.authorize(identity, "task:claim", groupId);
     const now = Date.now();
 
     const updated = task.assignee
@@ -396,7 +396,7 @@ export class DecisionService {
       : assignTask(task, identity.userId, now);
 
     await this.persistence.saveTask(updated);
-    await this.invalidateSpaceCache(spaceId);
+    await this.invalidateSpaceCache(groupId);
 
     const event: EngineEvent = {
       type: EventType.TaskAssigned,
@@ -405,7 +405,7 @@ export class DecisionService {
       actorId: identity.userId,
       payload: { taskId, title: task.title, assigneeId: identity.userId },
     };
-    await this.eventBus.publish(`space:${spaceId}`, event);
+    await this.eventBus.publish(`space:${groupId}`, event);
 
     return updated;
   }
@@ -415,12 +415,12 @@ export class DecisionService {
     taskId: TaskId
   ): Promise<Task> {
     const task = await this.loadTask(taskId);
-    const spaceId = task.groupId as SpaceId;
-    await this.authorize(identity, "task:release", spaceId);
+    const groupId = task.groupId as GroupId;
+    await this.authorize(identity, "task:release", groupId);
 
     const updated = unassignTask(task);
     await this.persistence.saveTask(updated);
-    await this.invalidateSpaceCache(spaceId);
+    await this.invalidateSpaceCache(groupId);
 
     const event: EngineEvent = {
       type: EventType.TaskReleased,
@@ -429,7 +429,7 @@ export class DecisionService {
       actorId: identity.userId,
       payload: { taskId, title: task.title },
     };
-    await this.eventBus.publish(`space:${spaceId}`, event);
+    await this.eventBus.publish(`space:${groupId}`, event);
 
     return updated;
   }
@@ -438,27 +438,27 @@ export class DecisionService {
 
   async getItem(identity: Identity, itemId: ItemId): Promise<BookableItem> {
     const item = await this.loadItem(itemId);
-    await this.authorize(identity, "space:read", item.spaceId);
+    await this.authorize(identity, "space:read", item.groupId);
     return item;
   }
 
   async getRankedItems(
     identity: Identity,
-    spaceId: SpaceId
+    groupId: GroupId
   ): Promise<ReturnType<typeof getRankedSummary>> {
-    await this.authorize(identity, "space:read", spaceId);
+    await this.authorize(identity, "space:read", groupId);
 
     // Try cache
-    const cacheKey = `ranked:${spaceId}`;
+    const cacheKey = `ranked:${groupId}`;
     if (this.cache) {
       const cached = await this.cache.get<ReturnType<typeof getRankedSummary>>(cacheKey);
       if (cached) return cached;
     }
 
-    const space = await this.loadSpace(spaceId);
+    const space = await this.loadSpace(groupId);
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
     const config = space.config ?? this.defaultConfig;
-    const items = await this.persistence.getItemsBySpace(spaceId);
+    const items = await this.persistence.getItemsBySpace(groupId);
     const active = items.filter((item) => !isLocked(item, machine));
     const totalMembers = space.members.length;
     const ranked = getRankedSummary(active, totalMembers, config.groupFavoriteThreshold);
@@ -472,23 +472,23 @@ export class DecisionService {
 
   async getLockedItems(
     identity: Identity,
-    spaceId: SpaceId
+    groupId: GroupId
   ): Promise<BookableItem[]> {
-    await this.authorize(identity, "space:read", spaceId);
-    const space = await this.loadSpace(spaceId);
+    await this.authorize(identity, "space:read", groupId);
+    const space = await this.loadSpace(groupId);
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
-    const items = await this.persistence.getItemsBySpace(spaceId);
+    const items = await this.persistence.getItemsBySpace(groupId);
     return items.filter((item) => isLocked(item, machine));
   }
 
   async getActiveItems(
     identity: Identity,
-    spaceId: SpaceId
+    groupId: GroupId
   ): Promise<BookableItem[]> {
-    await this.authorize(identity, "space:read", spaceId);
-    const space = await this.loadSpace(spaceId);
+    await this.authorize(identity, "space:read", groupId);
+    const space = await this.loadSpace(groupId);
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
-    const items = await this.persistence.getItemsBySpace(spaceId);
+    const items = await this.persistence.getItemsBySpace(groupId);
     const active = items.filter((item) => !isLocked(item, machine));
     return heartSort(active);
   }
@@ -498,8 +498,8 @@ export class DecisionService {
     itemId: ItemId
   ): Promise<{ percentage: number; isGroupFavorite: boolean }> {
     const item = await this.loadItem(itemId);
-    await this.authorize(identity, "space:read", item.spaceId);
-    const space = await this.loadSpace(item.spaceId);
+    await this.authorize(identity, "space:read", item.groupId);
+    const space = await this.loadSpace(item.groupId);
     const config = space.config ?? this.defaultConfig;
     return calculateAgreementScore(item, space.members.length, config.groupFavoriteThreshold);
   }
@@ -514,8 +514,8 @@ export class DecisionService {
     isUnanimousLoveIt: boolean;
   }> {
     const item = await this.loadItem(itemId);
-    await this.authorize(identity, "space:read", item.spaceId);
-    const space = await this.loadSpace(item.spaceId);
+    await this.authorize(identity, "space:read", item.groupId);
+    const space = await this.loadSpace(item.groupId);
     const totalMembers = space.members.length;
 
     const loveIt = item.reactions.filter((r) => r.type === ReactionType.LoveIt).length;
@@ -530,30 +530,30 @@ export class DecisionService {
 
   async getGroundingContext(
     identity: Identity,
-    spaceId: SpaceId
+    groupId: GroupId
   ): Promise<GroundingContext> {
-    await this.authorize(identity, "space:read", spaceId);
-    const space = await this.loadSpace(spaceId);
+    await this.authorize(identity, "space:read", groupId);
+    const space = await this.loadSpace(groupId);
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
-    const items = await this.persistence.getItemsBySpace(spaceId);
-    const tasks = await this.persistence.getTasksBySpace(spaceId);
-    return buildGroundingContext(spaceId as GroupId, items, tasks, machine);
+    const items = await this.persistence.getItemsBySpace(groupId);
+    const tasks = await this.persistence.getTasksBySpace(groupId);
+    return buildGroundingContext(groupId as GroupId, items, tasks, machine);
   }
 
   async getGroundingPrompt(
     identity: Identity,
-    spaceId: SpaceId
+    groupId: GroupId
   ): Promise<string> {
-    const context = await this.getGroundingContext(identity, spaceId);
+    const context = await this.getGroundingContext(identity, groupId);
     return generateGroundingPrompt(context);
   }
 
   async checkConflicts(
     identity: Identity,
-    spaceId: SpaceId,
+    groupId: GroupId,
     category: string
   ): Promise<ReturnType<typeof checkSuggestionConflicts>> {
-    const context = await this.getGroundingContext(identity, spaceId);
+    const context = await this.getGroundingContext(identity, groupId);
     return checkSuggestionConflicts(context, category);
   }
 
@@ -565,9 +565,9 @@ export class DecisionService {
     return item;
   }
 
-  private async loadSpace(spaceId: SpaceId): Promise<DecisionSpace> {
-    const space = await this.persistence.getSpace(spaceId);
-    if (!space) throw new NotFoundError("Space", spaceId);
+  private async loadSpace(groupId: GroupId): Promise<DecisionSpace> {
+    const space = await this.persistence.getSpace(groupId);
+    if (!space) throw new NotFoundError("Space", groupId);
     return space;
   }
 
@@ -580,15 +580,15 @@ export class DecisionService {
   private async authorize(
     identity: Identity,
     action: Action,
-    spaceId: SpaceId
+    groupId: GroupId
   ): Promise<void> {
-    const allowed = await this.auth.authorize(identity, action, spaceId);
-    if (!allowed) throw new AuthError(action, spaceId);
+    const allowed = await this.auth.authorize(identity, action, groupId);
+    if (!allowed) throw new AuthError(action, groupId);
   }
 
-  private async invalidateSpaceCache(spaceId: SpaceId): Promise<void> {
+  private async invalidateSpaceCache(groupId: GroupId): Promise<void> {
     if (this.cache) {
-      await this.cache.deleteByPrefix(`ranked:${spaceId}`);
+      await this.cache.deleteByPrefix(`ranked:${groupId}`);
     }
   }
 }

@@ -1,4 +1,4 @@
-import 'package:chat_engine/src/domain/models/receipt.dart';
+import 'package:hello_engine/src/domain/models/receipt.dart';
 
 /// Abstract repository for delivery/read receipt persistence.
 ///
@@ -11,5 +11,5 @@ abstract class ReceiptRepository {
   Future<List<Receipt>> getReceipts(String messageId);
 
   /// Returns a reactive stream of receipts for a conversation.
-  Stream<List<Receipt>> watchReceipts(String conversationId);
+  Stream<List<Receipt>> watchReceipts(String groupId);
 }

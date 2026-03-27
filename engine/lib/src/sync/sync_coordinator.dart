@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/domain/models/presence_state.dart';
-import 'package:chat_engine/src/domain/models/typing_indicator.dart';
-import 'package:chat_engine/src/domain/repositories/receipt_repository.dart';
-import 'package:chat_engine/src/sync/gap_detector.dart';
-import 'package:chat_engine/src/sync/outbox_processor.dart';
-import 'package:chat_engine/src/transport/dto/realtime_event.dart';
-import 'package:chat_engine/src/transport/realtime_listener.dart';
+import 'package:hello_engine/src/domain/models/presence_state.dart';
+import 'package:hello_engine/src/domain/models/typing_indicator.dart';
+import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
+import 'package:hello_engine/src/sync/gap_detector.dart';
+import 'package:hello_engine/src/sync/outbox_processor.dart';
+import 'package:hello_engine/src/transport/dto/realtime_event.dart';
+import 'package:hello_engine/src/transport/realtime_listener.dart';
 
 /// Orchestrates all sync components for the chat engine.
 ///
@@ -59,46 +59,46 @@ class SyncCoordinator {
 
   /// Called when a connection is established or re-established.
   ///
-  /// 1. Fills gaps for all [activeSpaceIds] (fetches missed messages).
+  /// 1. Fills gaps for all [activeGroupIds] (fetches missed messages).
   /// 2. Drains the outbox (sends queued messages).
   ///
   /// Returns the list of raw server rows from the gap fill.
   Future<List<Map<String, dynamic>>> onConnected(
-    List<String> activeSpaceIds,
+    List<String> activeGroupIds,
   ) async {
-    final missed = await _gapDetector.fillGaps(activeSpaceIds);
+    final missed = await _gapDetector.fillGaps(activeGroupIds);
     await _outboxProcessor.drainOutbox();
     return missed;
   }
 
-  /// Subscribes to real-time message events for [spaceId].
+  /// Subscribes to real-time message events for [groupId].
   ///
   /// Calling this multiple times for the same space is idempotent --
   /// the existing subscription is reused.
-  void subscribeToSpace(String spaceId) {
-    if (_subscriptions.containsKey(spaceId)) return;
+  void subscribeToSpace(String groupId) {
+    if (_subscriptions.containsKey(groupId)) return;
 
-    _subscriptions[spaceId] =
-        _realtimeListener.subscribeToSpace(spaceId).listen((event) {
+    _subscriptions[groupId] =
+        _realtimeListener.subscribeToSpace(groupId).listen((event) {
       if (!_messageController.isClosed) {
         _messageController.add(event);
       }
     });
   }
 
-  /// Unsubscribes from real-time events for [spaceId].
-  Future<void> unsubscribeFromSpace(String spaceId) async {
-    await _subscriptions.remove(spaceId)?.cancel();
-    await _realtimeListener.unsubscribeFromSpace(spaceId);
+  /// Unsubscribes from real-time events for [groupId].
+  Future<void> unsubscribeFromSpace(String groupId) async {
+    await _subscriptions.remove(groupId)?.cancel();
+    await _realtimeListener.unsubscribeFromSpace(groupId);
   }
 
-  /// Sends a typing indicator for [conversationId].
+  /// Sends a typing indicator for [groupId].
   ///
   /// Emits a local typing indicator event. In a production
   /// implementation this would also broadcast via WebSocket.
-  Future<void> sendTyping(String conversationId) async {
+  Future<void> sendTyping(String groupId) async {
     final indicator = TypingIndicator(
-      conversationId: conversationId,
+      groupId: groupId,
       userId: '',
       startedAt: DateTime.now(),
     );
@@ -106,12 +106,12 @@ class SyncCoordinator {
   }
 
   /// Returns the raw identity key bytes for the peer in
-  /// [conversationId], used for safety number computation.
+  /// [groupId], used for safety number computation.
   ///
   /// Returns a zero-filled 30-byte placeholder if the peer's
   /// identity key is not yet cached locally.
   Future<Uint8List> getIdentityKeyForConversation(
-    String conversationId,
+    String groupId,
   ) async {
     // In a full implementation this would look up the peer's stored
     // identity key from the key store. For now, return a

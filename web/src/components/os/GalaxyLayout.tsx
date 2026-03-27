@@ -8,14 +8,14 @@ import { ReactNode } from "react";
 
 export type LayoutName = "stream" | "split";
 
-interface GalaxyLayoutProps {
+interface HomeLayoutProps {
   layout: LayoutName;
   awarenessStream: ReactNode;
   peopleDock: ReactNode;
 }
 
 // StreamLayout: (default) full-width vertical: people on top, awareness below
-function StreamLayout({ awarenessStream, peopleDock }: Omit<GalaxyLayoutProps, "layout">) {
+function StreamLayout({ awarenessStream, peopleDock }: Omit<HomeLayoutProps, "layout">) {
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: "160px" }}>
@@ -30,7 +30,7 @@ function StreamLayout({ awarenessStream, peopleDock }: Omit<GalaxyLayoutProps, "
 
 // SplitLayout: side-by-side: people (private chats) on LEFT, awareness on RIGHT
 // NOTE: Gradient separator line — NOT a border (Zero Box doctrine).
-function SplitLayout({ awarenessStream, peopleDock }: Omit<GalaxyLayoutProps, "layout">) {
+function SplitLayout({ awarenessStream, peopleDock }: Omit<HomeLayoutProps, "layout">) {
   return (
     <div style={{ display: "flex", minHeight: "100dvh" }}>
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: "160px" }}>
@@ -54,7 +54,7 @@ const LAYOUTS: Record<LayoutName, typeof StreamLayout> = {
   split: SplitLayout,
 };
 
-export function GalaxyLayout({ layout, ...props }: GalaxyLayoutProps) {
+export function HomeLayout({ layout, ...props }: HomeLayoutProps) {
   const Layout = LAYOUTS[layout];
   return <Layout {...props} />;
 }

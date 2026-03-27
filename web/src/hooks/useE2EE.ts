@@ -90,18 +90,18 @@ async function requestSKsFromAllSpaces(userId: string, deviceId: number): Promis
     // Find all spaces this user belongs to
     const { data: memberships } = await supabase
       .from("space_members")
-      .select("space_id")
+      .select("group_id")
       .eq("user_id", userId);
 
     if (!memberships || memberships.length === 0) return;
 
-    const spaceIds = memberships.map((m) => m.space_id);
-    console.log(`[xark-e2ee] Proactive SK recovery: ${spaceIds.length} spaces`);
+    const groupIds = memberships.map((m) => m.group_id);
+    console.log(`[xark-e2ee] Proactive SK recovery: ${groupIds.length} spaces`);
 
     // For each space, find other members who have registered keys
-    for (const spaceId of spaceIds) {
+    for (const groupId of groupIds) {
       const { data: devices } = await supabase.rpc("get_space_member_devices", {
-        p_space_id: spaceId,
+        p_group_id: groupId,
         p_exclude_user: userId,
       });
 
@@ -109,10 +109,10 @@ async function requestSKsFromAllSpaces(userId: string, deviceId: number): Promis
 
       // Request SK from each member — fire-and-forget, non-blocking
       for (const dev of devices as Array<{ user_id: string; device_id: number }>) {
-        requestMissingSenderKey(spaceId, dev.user_id, userId, deviceId).catch(() => {});
+        requestMissingSenderKey(groupId, dev.user_id, userId, deviceId).catch(() => {});
       }
 
-      console.log(`[xark-e2ee] Requested SK from ${devices.length} member(s) in ${spaceId.slice(0, 12)}...`);
+      console.log(`[xark-e2ee] Requested SK from ${devices.length} member(s) in ${groupId.slice(0, 12)}...`);
     }
   } catch (err) {
     console.warn("[xark-e2ee] Proactive SK recovery failed:", err);
@@ -126,7 +126,7 @@ export interface E2EEState {
 }
 
 export function useE2EE(userId: string | null): E2EEState & {
-  encrypt: (text: string, spaceId: string, media?: {
+  encrypt: (text: string, groupId: string, media?: {
     mediaUrl: string; aesKeyBase64: string; ivBase64: string; mimeType: string; inlineThumbnail?: string;
   }, linkPreview?: {
     url: string; title?: string; description?: string; mediaUrl?: string;
@@ -139,7 +139,7 @@ export function useE2EE(userId: string | null): E2EEState & {
     ciphertextB64: string,
     ratchetHeaderB64: string | null,
     recipientId: string,
-    spaceId: string
+    groupId: string
   ) => Promise<DecryptedMessage | null>;
 } {
   const [state, setState] = useState<E2EEState>({
@@ -260,7 +260,7 @@ export function useE2EE(userId: string | null): E2EEState & {
   }, [userId]);
 
   const encrypt = useCallback(
-    async (text: string, spaceId: string, media?: {
+    async (text: string, groupId: string, media?: {
       mediaUrl: string; aesKeyBase64: string; ivBase64: string; mimeType: string; inlineThumbnail?: string;
     }, linkPreview?: {
       url: string; title?: string; description?: string; mediaUrl?: string;
@@ -271,7 +271,7 @@ export function useE2EE(userId: string | null): E2EEState & {
         const { encryptForSpace } = await import(
           "@/lib/crypto/encryption-service"
         );
-        return await encryptForSpace(text, spaceId, media, linkPreview);
+        return await encryptForSpace(text, groupId, media, linkPreview);
       } catch (err) {
         console.warn("[xark-e2ee] Encrypt failed:", err);
         return null;
@@ -288,7 +288,7 @@ export function useE2EE(userId: string | null): E2EEState & {
       ciphertextB64: string,
       ratchetHeaderB64: string | null,
       recipientId: string,
-      spaceId: string
+      groupId: string
     ): Promise<DecryptedMessage | null> => {
       if (!state.available) return null;
       try {
@@ -302,7 +302,7 @@ export function useE2EE(userId: string | null): E2EEState & {
           ciphertextB64,
           ratchetHeaderB64,
           recipientId,
-          spaceId
+          groupId
         );
       } catch (err) {
         console.warn("[xark-e2ee] Decrypt failed:", err);

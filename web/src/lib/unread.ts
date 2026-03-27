@@ -4,7 +4,7 @@
 import { supabase } from "./supabase";
 
 export interface UnreadCount {
-  space_id: string;
+  group_id: string;
   unread_count: number;
 }
 
@@ -16,7 +16,7 @@ export async function fetchUnreadCounts(): Promise<Record<string, number>> {
     const result: Record<string, number> = {};
     for (const row of data as UnreadCount[]) {
       if (row.unread_count > 0) {
-        result[row.space_id] = row.unread_count;
+        result[row.group_id] = row.unread_count;
       }
     }
     return result;
@@ -26,9 +26,9 @@ export async function fetchUnreadCounts(): Promise<Record<string, number>> {
 }
 
 /** Mark a space as read (sets last_read_at to now) */
-export async function markSpaceRead(spaceId: string): Promise<void> {
+export async function markSpaceRead(groupId: string): Promise<void> {
   try {
-    await supabase.rpc("mark_space_read", { p_space_id: spaceId });
+    await supabase.rpc("mark_space_read", { p_group_id: groupId });
   } catch {
     // Silent — best effort
   }

@@ -10,7 +10,7 @@ function GlobalUserMenuInner() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
-  if (pathname !== "/galaxy") return null;
+  if (pathname !== "/home") return null;
 
   const userName = user?.displayName ?? searchParams.get("name") ?? "";
   const userId = user?.uid ?? "";

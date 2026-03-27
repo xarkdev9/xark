@@ -43,7 +43,7 @@ export interface RecentlyLocked {
 }
 
 export interface GroundingContext {
-  spaceId: string;
+  groupId: string;
   constraints: GroundingConstraint[];
   forbiddenCategories: string[];
   lockedCategories: string[];
@@ -61,11 +61,11 @@ export interface ConflictResult {
 
 // ── Supabase Queries ──
 
-async function fetchLockedItems(spaceId: string) {
+async function fetchLockedItems(groupId: string) {
   const { data, error } = await supabase
     .from("decision_items")
     .select("id, title, category, description, state, weighted_score, ownership")
-    .eq("space_id", spaceId)
+    .eq("group_id", groupId)
     .eq("is_locked", true)
     .order("locked_at", { ascending: false });
 
@@ -73,11 +73,11 @@ async function fetchLockedItems(spaceId: string) {
   return data ?? [];
 }
 
-async function fetchAllItems(spaceId: string): Promise<SpaceItem[]> {
+async function fetchAllItems(groupId: string): Promise<SpaceItem[]> {
   const { data, error } = await supabase
     .from("decision_items")
     .select("id, title, category, description, state, weighted_score, agreement_score, ownership")
-    .eq("space_id", spaceId);
+    .eq("group_id", groupId);
 
   if (error) throw new Error(`Supabase query failed: ${error.message}`);
   return (data ?? []).map((d) => ({
@@ -92,11 +92,11 @@ async function fetchAllItems(spaceId: string): Promise<SpaceItem[]> {
   }));
 }
 
-async function fetchAssignedTasks(spaceId: string) {
+async function fetchAssignedTasks(groupId: string) {
   const { data, error } = await supabase
     .from("tasks")
     .select("id, title, assignee_id")
-    .eq("space_id", spaceId)
+    .eq("group_id", groupId)
     .not("assignee_id", "is", null);
 
   if (error) throw new Error(`Supabase query failed: ${error.message}`);
@@ -106,12 +106,12 @@ async function fetchAssignedTasks(spaceId: string) {
 // ── Context Builder ──
 
 export async function buildGroundingContext(
-  spaceId: string
+  groupId: string
 ): Promise<GroundingContext> {
   const [lockedItems, assignedTasks, allItems] = await Promise.all([
-    fetchLockedItems(spaceId),
-    fetchAssignedTasks(spaceId),
-    fetchAllItems(spaceId),
+    fetchLockedItems(groupId),
+    fetchAssignedTasks(groupId),
+    fetchAllItems(groupId),
   ]);
 
   const constraints: GroundingConstraint[] = [];
@@ -173,7 +173,7 @@ export async function buildGroundingContext(
   }
 
   return {
-    spaceId,
+    groupId,
     constraints,
     forbiddenCategories: lockedCategories,
     lockedCategories,

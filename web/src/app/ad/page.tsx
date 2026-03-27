@@ -76,7 +76,7 @@ function WhatsAppBubble({ text, out, visible, delay = 0 }: {
   );
 }
 
-// ── Fake Galaxy Chat List ──
+// ── Fake Home Chat List ──
 interface ChatRow {
   name: string;
   preview: string;

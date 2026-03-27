@@ -5,12 +5,12 @@ import { uploadMedia } from "@/lib/media";
 import { colors, text, textColor } from "@/lib/theme";
 
 interface MediaUploadProps {
-  spaceId: string;
+  groupId: string;
   userId: string;
   onUpload?: () => void;
 }
 
-export function MediaUpload({ spaceId, userId, onUpload }: MediaUploadProps) {
+export function MediaUpload({ groupId, userId, onUpload }: MediaUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [caption, setCaption] = useState("");
   const [showCaption, setShowCaption] = useState(false);
@@ -33,7 +33,7 @@ export function MediaUpload({ spaceId, userId, onUpload }: MediaUploadProps) {
     if (!file) return;
 
     setUploading(true);
-    await uploadMedia(file, spaceId, userId, caption || undefined);
+    await uploadMedia(file, groupId, userId, caption || undefined);
     setUploading(false);
     setCaption("");
     setShowCaption(false);

@@ -17,13 +17,13 @@ function generateId(): string {
 }
 
 export interface CreateSpaceResult {
-  spaceId: string;
+  groupId: string;
   title: string;
   seedItemTitle: string;
 }
 
 // ── Generate a URL-safe space ID from a title ──
-function generateSpaceId(title: string): string {
+function generateGroupId(title: string): string {
   const slug = title
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
@@ -52,7 +52,7 @@ function generateSeedTitle(dream: string): string {
 // The UI has ALREADY navigated. This runs in parallel.
 // inviteUsername: if provided, looks up user by display_name and adds as member (fallback).
 // inviteUserId: explicit UUID of the user to invite (primary path).
-export async function createSpace(
+export async function createGroup(
   dream: string,
   ownerId: string,
   inviteUsername?: string,
@@ -63,7 +63,7 @@ export async function createSpace(
 
   const isPersonalChat = !!inviteUsername;
 
-  let finalSpaceId: string = "";
+  let finalGroupId: string = "";
   // Route through /api/local-action (server-side, supabaseAdmin)
   // This handles: space creation + creator as member + invite + seed message atomically
   try {
@@ -76,12 +76,12 @@ export async function createSpace(
       },
       body: JSON.stringify({
         action: "create_space",
-        spaceId: generateSpaceId(title), // We still pass a base ID, backend appends a UUID
+        groupId: generateGroupId(title), // We still pass a base ID, backend appends a UUID
         payload: {
           title,
           invite_username: inviteUsername ?? null,
           invite_user_id: inviteUserId ?? null,
-          atmosphere: isPersonalChat ? "sanctuary" : "cyan_horizon",
+          atmosphere: isPersonalChat ? "dm" : "cyan_horizon",
         },
         actorName: null,
       }),
@@ -92,17 +92,17 @@ export async function createSpace(
     }
     
     const data = await res.json();
-    if (data.spaceId) {
-        finalSpaceId = data.spaceId;
+    if (data.groupId) {
+        finalGroupId = data.groupId;
     } else {
-        throw new Error("API did not return a spaceId");
+        throw new Error("API did not return a groupId");
     }
   } catch (err) {
-    console.error("[spaces] createSpace via API failed:", err);
+    console.error("[spaces] createGroup via API failed:", err);
     throw err;
   }
 
-  if (!finalSpaceId) throw new Error("API did not return a valid spaceId");
+  if (!finalGroupId) throw new Error("API did not return a valid groupId");
 
   // 6. Fetch Unsplash hero → upload to Firebase Storage → store Firebase CDN URL
   // Fire-and-forget. Non-blocking. Space is already navigable.
@@ -113,7 +113,7 @@ export async function createSpace(
 
     // Upload to storage adapter — eliminates Unsplash dependency
     try {
-      const storagePath = `heroes/${finalSpaceId}/hero.jpg`;
+      const storagePath = `heroes/${finalGroupId}/hero.jpg`;
       heroUrl = await storageAdapter.upload(storagePath, photo.imageBlob, "image/jpeg");
     } catch {
       // Storage upload failed — fall back to Unsplash URL
@@ -128,19 +128,19 @@ export async function createSpace(
           hero_photographer_url: photo.photographerUrl,
         },
       })
-      .eq("id", finalSpaceId)
+      .eq("id", finalGroupId)
       .then(() => {});
   }).catch(() => {});
 
-  return { spaceId: finalSpaceId, title, seedItemTitle };
+  return { groupId: finalGroupId, title, seedItemTitle };
 }
 
 /** Generate a shareable invite link for a space */
-export async function createInviteLink(spaceId: string, userId: string): Promise<string | null> {
+export async function createInviteLink(groupId: string, userId: string): Promise<string | null> {
   try {
     const { data } = await supabase
       .from("space_invites")
-      .insert({ space_id: spaceId, created_by: userId })
+      .insert({ group_id: groupId, created_by: userId })
       .select("token")
       .single();
 

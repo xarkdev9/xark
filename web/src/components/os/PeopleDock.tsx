@@ -1,7 +1,7 @@
 "use client";
 
 // XARK OS v2.0 — PEOPLE DOCK
-// Extracted from Galaxy page. Renders personal chats (sanctuary spaces).
+// Extracted from Home page. Renders personal chats (dm spaces).
 // Independent data fetching + real-time subscription for new messages.
 // Includes Contact Picker API for inviting people.
 
@@ -10,8 +10,8 @@ import { motion } from "framer-motion";
 import {
   fetchPersonalChats,
   getDemoPersonalChats,
-} from "@/lib/awareness";
-import type { PersonalChat } from "@/lib/awareness";
+} from "@/lib/home-feed";
+import type { PersonalChat } from "@/lib/home-feed";
 import { recencyLabel } from "@/lib/space-data";
 import { supabase } from "@/lib/supabase";
 import { ink, timing, layout, text } from "@/lib/theme";
@@ -23,7 +23,7 @@ import { fetchUnreadCounts } from "@/lib/unread";
 interface PeopleDockProps {
   userId: string;
   userName: string;
-  onPersonTap: (spaceId: string) => void;
+  onPersonTap: (groupId: string) => void;
 }
 
 export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
@@ -33,7 +33,7 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
   const [mounted, setMounted] = useState(false);
 
   // Stabilized subscription ref
-  const sanctuaryIdsRef = useRef<string>("");
+  const dmIdsRef = useRef<string>("");
 
   useEffect(() => {
     setMounted(true);
@@ -50,7 +50,7 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
       .catch(() => {});
   }, [userId]);
 
-  // Real-time: refetch when user is added to a new space (sanctuary might appear)
+  // Real-time: refetch when user is added to a new space (dm might appear)
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
@@ -77,12 +77,12 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
   // Real-time: personal chat message updates — stabilized subscription
   useEffect(() => {
     if (!userId || personalChats.length === 0) return;
-    const sanctuaryIds = personalChats.map((c) => c.spaceId);
-    const sanctuaryKey = sanctuaryIds.sort().join(",");
+    const dmIds = personalChats.map((c) => c.groupId);
+    const dmKey = dmIds.sort().join(",");
 
     // Only re-subscribe when the actual set of space IDs changes
-    if (sanctuaryKey === sanctuaryIdsRef.current) return;
-    sanctuaryIdsRef.current = sanctuaryKey;
+    if (dmKey === dmIdsRef.current) return;
+    dmIdsRef.current = dmKey;
 
     const channel = supabase
       .channel(`people-chats:${userId}`)
@@ -92,14 +92,14 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `space_id=in.(${sanctuaryIds.join(",")})`,
+          filter: `group_id=in.(${dmIds.join(",")})`,
         },
         (payload) => {
-          const msg = payload.new as { space_id: string; content: string; created_at: string };
+          const msg = payload.new as { group_id: string; content: string; created_at: string };
           setPersonalChats((prev) =>
             prev
               .map((chat) =>
-                chat.spaceId === msg.space_id
+                chat.groupId === msg.group_id
                   ? { ...chat, lastMessage: msg.content, lastActivityAt: new Date(msg.created_at).getTime() }
                   : chat
               )
@@ -112,9 +112,9 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
     return () => { supabase.removeChannel(channel); };
   }, [userId, personalChats]);
 
-  const handleChatTap = useCallback((spaceId: string) => {
+  const handleChatTap = useCallback((groupId: string) => {
     dismissOnboardingWhisper("galaxy_tap");
-    onPersonTap(spaceId);
+    onPersonTap(groupId);
   }, [onPersonTap]);
 
   const hasPersonalChats = personalChats.length > 0;
@@ -131,11 +131,11 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
           >
             {personalChats.map((chat, index) => (
               <motion.div
-                key={chat.spaceId}
+                key={chat.groupId}
                 role="button"
                 tabIndex={0}
-                onClick={() => handleChatTap(chat.spaceId)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleChatTap(chat.spaceId); }}
+                onClick={() => handleChatTap(chat.groupId)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleChatTap(chat.groupId); }}
                 className="cursor-pointer outline-none"
                 style={{ paddingBottom: "14px" }}
                 initial={{ opacity: 0, y: 8 }}
@@ -157,7 +157,7 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
                         <p style={{ ...text.timestamp, color: ink.tertiary }}>
                           {recencyLabel(new Date(chat.lastActivityAt))}
                         </p>
-                        {(unreadCounts[chat.spaceId] ?? 0) > 0 && (
+                        {(unreadCounts[chat.groupId] ?? 0) > 0 && (
                           <span style={{
                             display: "inline-flex",
                             alignItems: "center",
@@ -171,7 +171,7 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
                             color: "#fff",
                             backgroundColor: "#FF6B35",
                           }}>
-                            {unreadCounts[chat.spaceId] > 99 ? "99+" : unreadCounts[chat.spaceId]}
+                            {unreadCounts[chat.groupId] > 99 ? "99+" : unreadCounts[chat.groupId]}
                           </span>
                         )}
                       </div>

@@ -14,7 +14,7 @@ import type { BookableItem, Reaction } from "../models/types.js";
 function makeItem(overrides: Partial<BookableItem> = {}): BookableItem {
   return {
     id: "item_1",
-    spaceId: "group_1",
+    groupId: "group_1",
     groupId: "group_1",
     title: "Test Hotel",
     description: "A nice hotel",

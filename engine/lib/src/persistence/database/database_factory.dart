@@ -1,6 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:chat_engine/src/persistence/database/app_database.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
 import 'package:drift/web.dart';
 
 /// Factory for creating an [AppDatabase] instance.

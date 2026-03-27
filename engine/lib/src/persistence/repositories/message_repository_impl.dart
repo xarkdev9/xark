@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:chat_engine/src/domain/models/message.dart';
-import 'package:chat_engine/src/domain/repositories/message_repository.dart';
-import 'package:chat_engine/src/persistence/database/app_database.dart';
+import 'package:hello_engine/src/domain/models/message.dart';
+import 'package:hello_engine/src/domain/repositories/message_repository.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
 import 'package:drift/drift.dart';
 
 /// Drift-backed implementation of [MessageRepository].
@@ -23,7 +23,7 @@ class MessageRepositoryImpl implements MessageRepository {
   MessageRow _toRow(Message m) {
     return MessageRow(
       id: m.id,
-      spaceId: m.conversationId,
+      groupId: m.groupId,
       senderId: m.senderId,
       senderDeviceId: m.senderDeviceId,
       messageType: _messageTypeToString(m.type),
@@ -44,7 +44,7 @@ class MessageRepositoryImpl implements MessageRepository {
   Message _fromRow(MessageRow row) {
     return Message(
       id: row.id,
-      conversationId: row.spaceId,
+      groupId: row.groupId,
       senderId: row.senderId,
       senderDeviceId: row.senderDeviceId ?? '',
       type: _messageTypeFromString(row.messageType),
@@ -140,12 +140,12 @@ class MessageRepositoryImpl implements MessageRepository {
 
   @override
   Future<List<Message>> getMessages(
-    String conversationId, {
+    String groupId, {
     int limit = 50,
     String? beforeId,
   }) async {
     final query = _db.select(_db.messages)
-      ..where((t) => t.spaceId.equals(conversationId))
+      ..where((t) => t.groupId.equals(groupId))
       ..orderBy([
         (t) => OrderingTerm.desc(t.createdAt),
       ])
@@ -236,7 +236,7 @@ class MessageRepositoryImpl implements MessageRepository {
   @override
   Future<List<Message>> search(
     String query, {
-    String? conversationId,
+    String? groupId,
   }) async {
     // Search operates against the plaintext cache.
     // Load candidate decrypted messages and filter client-side.
@@ -252,8 +252,8 @@ class MessageRepositoryImpl implements MessageRepository {
 
     final msgQuery = _db.select(_db.messages)
       ..where((t) => t.id.isIn(messageIds));
-    if (conversationId != null) {
-      msgQuery.where((t) => t.spaceId.equals(conversationId));
+    if (groupId != null) {
+      msgQuery.where((t) => t.groupId.equals(groupId));
     }
     msgQuery.orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
 
@@ -262,9 +262,9 @@ class MessageRepositoryImpl implements MessageRepository {
   }
 
   @override
-  Stream<List<Message>> watchMessages(String conversationId) {
+  Stream<List<Message>> watchMessages(String groupId) {
     final query = _db.select(_db.messages)
-      ..where((t) => t.spaceId.equals(conversationId))
+      ..where((t) => t.groupId.equals(groupId))
       ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
     return query.watch().map(
           (rows) => rows.map(_fromRow).toList(),

@@ -2,7 +2,7 @@
 
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/domain/domain.dart';
+import 'package:hello_engine/src/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -10,7 +10,7 @@ void main() {
     test('serialization round-trip preserves all fields', () {
       final message = Message(
         id: 'msg-001',
-        conversationId: 'conv-001',
+        groupId: 'conv-001',
         senderId: 'name_ram',
         senderDeviceId: 'device-abc',
         type: MessageType.e2ee,
@@ -44,7 +44,7 @@ void main() {
     test('default values are applied correctly', () {
       final message = Message(
         id: 'msg-002',
-        conversationId: 'conv-001',
+        groupId: 'conv-001',
         senderId: 'name_ram',
         senderDeviceId: 'device-abc',
         type: MessageType.text,
@@ -76,7 +76,7 @@ void main() {
         // Create a minimal message with this type and check the JSON output
         final message = Message(
           id: 'test',
-          conversationId: 'c',
+          groupId: 'c',
           senderId: 's',
           senderDeviceId: 'd',
           type: entry.key,
@@ -203,7 +203,7 @@ void main() {
     test('serialization round-trip preserves all fields', () {
       final now = DateTime.utc(2026, 3, 26, 12, 30);
       final indicator = TypingIndicator(
-        conversationId: 'conv-001',
+        groupId: 'conv-001',
         userId: 'name_alice',
         startedAt: now,
       );
@@ -212,7 +212,7 @@ void main() {
       final restored = TypingIndicator.fromJson(json);
 
       expect(restored, equals(indicator));
-      expect(restored.conversationId, 'conv-001');
+      expect(restored.groupId, 'conv-001');
       expect(restored.userId, 'name_alice');
     });
   });
@@ -458,7 +458,7 @@ void main() {
     test('nested media metadata round-trips through JSON', () {
       final message = Message(
         id: 'msg-media-001',
-        conversationId: 'conv-001',
+        groupId: 'conv-001',
         senderId: 'name_ram',
         senderDeviceId: 'device-abc',
         type: MessageType.media,

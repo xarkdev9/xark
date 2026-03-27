@@ -10,7 +10,7 @@ export type MessageType = 'e2ee' | 'e2ee_xark' | 'xark' | 'system' | 'legacy' | 
 
 export interface ChatMessage {
   id: string;
-  space_id: string;
+  group_id: string;
   role: "user" | "xark" | "system";
   content: string;
   user_id: string | null;
@@ -25,15 +25,15 @@ export interface ChatMessage {
 
 // ── Fetch messages for a space with pagination ──
 export async function fetchMessages(
-  spaceId: string,
+  groupId: string,
   opts?: { limit?: number; before?: string; after?: string }
 ): Promise<ChatMessage[]> {
   const limit = opts?.limit ?? 50;
 
   let query = supabase
     .from("messages")
-    .select("id, space_id, role, content, user_id, sender_name, created_at, message_type, sender_device_id")
-    .eq("space_id", spaceId)
+    .select("id, group_id, role, content, user_id, sender_name, created_at, message_type, sender_device_id")
+    .eq("group_id", groupId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -47,7 +47,7 @@ export async function fetchMessages(
   const { data, error } = await query;
 
   if (error) {
-    console.error("[xark] fetchMessages failed:", error.message, { spaceId });
+    console.error("[xark] fetchMessages failed:", error.message, { groupId });
     return [];
   }
   if (!data) return [];
@@ -59,12 +59,12 @@ export async function fetchMessages(
 // Must be called BEFORE regular message fetch to ensure Sender Keys are available.
 // BUG 9 fix: sender_key_dist may fall outside the 50-message window.
 export async function fetchSenderKeyDistributions(
-  spaceId: string
+  groupId: string
 ): Promise<ChatMessage[]> {
   const { data, error } = await supabase
     .from("messages")
-    .select("id, space_id, role, content, user_id, sender_name, created_at, message_type, sender_device_id")
-    .eq("space_id", spaceId)
+    .select("id, group_id, role, content, user_id, sender_name, created_at, message_type, sender_device_id")
+    .eq("group_id", groupId)
     .eq("message_type", "sender_key_dist")
     .order("created_at", { ascending: true });
 
@@ -78,7 +78,7 @@ export async function fetchSenderKeyDistributions(
 // ── Persist a single message ──
 export async function saveMessage(msg: {
   id: string;
-  spaceId: string;
+  groupId: string;
   role: "user" | "xark";
   content: string;
   userId?: string;
@@ -92,7 +92,7 @@ export async function saveMessage(msg: {
   }
   const row: Record<string, unknown> = {
     id: msg.id,
-    space_id: msg.spaceId,
+    group_id: msg.groupId,
     role: msg.role,
     content: msg.content,
     user_id: msg.userId ?? null,
@@ -107,7 +107,7 @@ export async function saveMessage(msg: {
   }
   const { error } = await supabase.from("messages").insert(row);
   if (error) {
-    console.error("[xark] saveMessage failed:", error.message, { userId: msg.userId, spaceId: msg.spaceId, hasJWT });
+    console.error("[xark] saveMessage failed:", error.message, { userId: msg.userId, groupId: msg.groupId, hasJWT });
     throw error;
   }
 }
@@ -145,12 +145,12 @@ export async function fetchCiphertexts(
 
 // ── Subscribe via Broadcast — instant WebSocket delivery, bypasses DB WAL ──
 export function subscribeToMessages(
-  spaceId: string,
+  groupId: string,
   onMessage: (msg: ChatMessage) => void,
   onUpdate?: (msg: ChatMessage) => void
 ): RealtimeChannel {
   const channel = supabase
-    .channel(`chat:${spaceId}`, {
+    .channel(`chat:${groupId}`, {
       config: { broadcast: { self: false } },
     })
     .on("broadcast", { event: "message" }, ({ payload }) => {
@@ -158,7 +158,7 @@ export function subscribeToMessages(
     })
     .on(
       'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'messages', filter: `space_id=eq.${spaceId}` },
+      { event: 'UPDATE', schema: 'public', table: 'messages', filter: `group_id=eq.${groupId}` },
       (payload) => {
         if (onUpdate) onUpdate(payload.new as ChatMessage);
       }
@@ -187,10 +187,10 @@ export function unsubscribeFromMessages(channel: RealtimeChannel): void {
 
 // ── System messages — via SECURITY DEFINER RPC (RLS blocks role='system') ──
 
-export async function saveSystemMessage(spaceId: string, content: string): Promise<void> {
+export async function saveSystemMessage(groupId: string, content: string): Promise<void> {
   try {
     await supabase.rpc("insert_system_message", {
-      p_space_id: spaceId,
+      p_group_id: groupId,
       p_content: content,
     });
   } catch {

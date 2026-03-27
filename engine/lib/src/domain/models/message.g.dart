@@ -9,7 +9,7 @@ part of 'message.dart';
 _$MessageImpl _$$MessageImplFromJson(Map<String, dynamic> json) =>
     _$MessageImpl(
       id: json['id'] as String,
-      conversationId: json['conversationId'] as String,
+      groupId: json['groupId'] as String,
       senderId: json['senderId'] as String,
       senderDeviceId: json['senderDeviceId'] as String,
       type: $enumDecode(_$MessageTypeEnumMap, json['type']),
@@ -36,7 +36,7 @@ _$MessageImpl _$$MessageImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$MessageImplToJson(_$MessageImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'conversationId': instance.conversationId,
+      'groupId': instance.groupId,
       'senderId': instance.senderId,
       'senderDeviceId': instance.senderDeviceId,
       'type': _$MessageTypeEnumMap[instance.type]!,

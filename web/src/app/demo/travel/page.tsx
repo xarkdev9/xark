@@ -8,7 +8,7 @@
 import { useState, useCallback, useRef, useEffect, type TouchEvent } from "react";
 import { motion } from "framer-motion";
 import { XarkChat } from "@/components/os/XarkChat";
-import PossibilityHorizon from "@/components/os/PossibilityHorizon";
+import DecisionBoard from "@/components/os/DecisionBoard";
 import { ChatInput } from "@/components/os/ChatInput";
 import { colors, ink, text, surface } from "@/lib/theme";
 import type { ReactionType } from "@/hooks/useReactions";
@@ -414,15 +414,15 @@ export default function TravelDemoPage() {
       >
         {view === "discuss" && (
           <XarkChat
-            spaceId="demo_travel"
+            groupId="demo_travel"
             spaceTitle="tokyo april 2026"
             messages={messages}
             isThinking={isThinking}
           />
         )}
         {view === "decide" && (
-          <PossibilityHorizon
-            spaceId="demo_travel"
+          <DecisionBoard
+            groupId="demo_travel"
             userId="demo_user"
             isThinking={false}
             playgroundItems={items}

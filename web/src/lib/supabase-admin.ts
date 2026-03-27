@@ -1,7 +1,7 @@
 // XARK OS v2.0 — SUPABASE ADMIN CLIENT
 // Service-role key for server-side operations ONLY.
 // This client bypasses RLS — never expose to the browser.
-// Used by: /api/dev-auth, /api/xark, seed.ts
+// Used by: /api/dev-auth, /api/hello, seed.ts
 
 import { createClient } from "@supabase/supabase-js";
 

@@ -2,18 +2,18 @@
 // Deterministic regex matching for admin commands + state queries.
 // <1ms, zero AI, zero network. First gate in sendMessage().
 
-import type { SpaceStateItem } from "./space-state";
+import type { GroupStateItem } from "./space-state";
 
 export interface LocalContext {
-  spaceId: string;
+  groupId: string;
   userId: string;
   userName: string;
-  spaceItems: SpaceStateItem[];
+  spaceItems: GroupStateItem[];
   supabaseToken: string | null;
 }
 
 export interface LedgerEntry {
-  space_id: string;
+  group_id: string;
   actor_id: string;
   actor_name: string;
   action: string;
@@ -99,7 +99,7 @@ const DATE_COMMANDS: LocalCommand[] = [
       return {
         handled: true,
         ledgerEntry: {
-          space_id: ctx.spaceId,
+          group_id: ctx.groupId,
           actor_id: ctx.userId,
           actor_name: ctx.userName,
           action: "update_dates",
@@ -123,7 +123,7 @@ const RENAME_COMMANDS: LocalCommand[] = [
       return {
         handled: true,
         ledgerEntry: {
-          space_id: ctx.spaceId,
+          group_id: ctx.groupId,
           actor_id: ctx.userId,
           actor_name: ctx.userName,
           action: "rename_space",

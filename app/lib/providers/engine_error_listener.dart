@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:chat_engine/chat_engine.dart';
+import 'package:hello_engine/chat_engine.dart';
 import '../main.dart';
 import 'consensus_listener.dart';
 

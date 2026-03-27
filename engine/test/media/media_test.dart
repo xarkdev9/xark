@@ -3,16 +3,16 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/media/media_crypto.dart';
-import 'package:chat_engine/src/domain/models/chat_engine_error.dart';
-import 'package:chat_engine/src/domain/models/media_metadata.dart';
-import 'package:chat_engine/src/domain/models/media_payload.dart';
-import 'package:chat_engine/src/media/download_manager.dart';
-import 'package:chat_engine/src/media/media_cache.dart';
-import 'package:chat_engine/src/media/upload_manager.dart';
-import 'package:chat_engine/src/media/upload_progress.dart';
-import 'package:chat_engine/src/observer/chat_engine_observer.dart';
-import 'package:chat_engine/src/transport/media_upload_client.dart';
+import 'package:hello_engine/src/crypto/media/media_crypto.dart';
+import 'package:hello_engine/src/domain/models/chat_engine_error.dart';
+import 'package:hello_engine/src/domain/models/media_metadata.dart';
+import 'package:hello_engine/src/domain/models/media_payload.dart';
+import 'package:hello_engine/src/media/download_manager.dart';
+import 'package:hello_engine/src/media/media_cache.dart';
+import 'package:hello_engine/src/media/upload_manager.dart';
+import 'package:hello_engine/src/media/upload_progress.dart';
+import 'package:hello_engine/src/observer/chat_engine_observer.dart';
+import 'package:hello_engine/src/transport/media_upload_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

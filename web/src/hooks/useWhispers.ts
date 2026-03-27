@@ -4,7 +4,7 @@
 // dismissWhisper moves current to the back.
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { generateWhispers, type Whisper } from "@/lib/whispers";
+import { generateWhispers, type Whisper } from "@/lib/suggestions";
 
 const POLL_INTERVAL_MS = 60_000;
 

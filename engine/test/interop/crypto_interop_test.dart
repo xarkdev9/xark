@@ -18,7 +18,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/crypto.dart';
+import 'package:hello_engine/src/crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/test_helpers.dart';

@@ -1,6 +1,6 @@
-import 'package:chat_engine/src/domain/models/message.dart';
-import 'package:chat_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:chat_engine/src/domain/repositories/message_repository.dart';
+import 'package:hello_engine/src/domain/models/message.dart';
+import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
+import 'package:hello_engine/src/domain/repositories/message_repository.dart';
 
 /// Marks a message as read and resets the conversation unread count.
 ///
@@ -18,9 +18,9 @@ class MarkReadUseCase {
   final ConversationRepository _conversationRepo;
 
   /// Marks [messageId] as read and resets unread count for
-  /// [conversationId] to zero.
-  Future<void> markRead(String messageId, String conversationId) async {
+  /// [groupId] to zero.
+  Future<void> markRead(String messageId, String groupId) async {
     await _messageRepo.updateMessageStatus(messageId, MessageStatus.read);
-    await _conversationRepo.updateUnreadCount(conversationId, 0);
+    await _conversationRepo.updateUnreadCount(groupId, 0);
   }
 }

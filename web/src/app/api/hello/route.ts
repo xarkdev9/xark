@@ -1,5 +1,5 @@
-// XARK OS v2.0 — @xark Intelligence Endpoint
-// Silent unless message contains "@xark". Privacy-first.
+// XARK OS v2.0 — @hello Intelligence Endpoint
+// Silent unless message contains "@hello". Privacy-first.
 // UPGRADE 4: maxDuration + optimistic "thinking..." UI via Supabase Realtime.
 
 export const maxDuration = 60; // Prevent Vercel from killing long Apify searches
@@ -50,10 +50,10 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { message, spaceId: reqSpaceId, userId, confirm_action, payload, slotPayload, silent } = body;
+  const { message, groupId: reqGroupId, userId, confirm_action, payload, slotPayload, silent } = body;
 
   // ── Input validation ──
-  if (!reqSpaceId || typeof reqSpaceId !== "string") {
+  if (!reqGroupId || typeof reqGroupId !== "string") {
     return NextResponse.json({ response: null }, { status: 400 });
   }
 
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     const { data: membership } = await supabaseAdmin
       .from("space_members")
       .select("user_id")
-      .eq("space_id", reqSpaceId)
+      .eq("group_id", reqGroupId)
       .eq("user_id", auth.userId)
       .maybeSingle();
 
@@ -99,11 +99,11 @@ export async function POST(req: NextRequest) {
       const { data: existing } = await supabaseAdmin
         .from("space_dates")
         .select("version")
-        .eq("space_id", reqSpaceId)
+        .eq("group_id", reqGroupId)
         .maybeSingle();
 
       await supabaseAdmin.from("space_dates").upsert({
-        space_id: reqSpaceId,
+        group_id: reqGroupId,
         start_date,
         end_date,
         label: label ?? null,
@@ -116,11 +116,11 @@ export async function POST(req: NextRequest) {
       await supabaseAdmin
         .from("decision_items")
         .update({ metadata: { needs_refresh: true } })
-        .eq("space_id", reqSpaceId)
+        .eq("group_id", reqGroupId)
         .not("metadata->>source", "is", null);
 
       // Flag stale logistics
-      const staleCount = await flagStaleLogistics(reqSpaceId);
+      const staleCount = await flagStaleLogistics(reqGroupId);
       const staleNote = staleCount > 0
         ? ` ${staleCount} logistics entries may need updating.`
         : "";
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
 
     if (confirm_action === "confirm_logistics" && payload?.extractions) {
       const { applied, skipped } = await applyLogisticsExtractions(
-        reqSpaceId,
+        reqGroupId,
         payload.extractions
       );
 
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Normal @xark flow — require auth + space membership ──
+  // ── Normal @hello flow — require auth + space membership ──
   const auth = await verifyAuth(req.headers.get("authorization"));
   if (!auth) {
     return NextResponse.json({ response: null }, { status: 401 });
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
   const { data: membershipCheck } = await supabaseAdmin
     .from("space_members")
     .select("user_id")
-    .eq("space_id", reqSpaceId)
+    .eq("group_id", reqGroupId)
     .eq("user_id", auth.userId)
     .maybeSingle();
 
@@ -170,10 +170,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ response: "not a member of this space." }, { status: 403 });
   }
 
-  const spaceId = reqSpaceId;
+  const groupId = reqGroupId;
 
   // ── PRIORITY 2: Short-circuit — fetch messages FIRST, check prefix before heavy reads ──
-  const recentMsgs = await fetchMessages(spaceId, { limit: 15 });
+  const recentMsgs = await fetchMessages(groupId, { limit: 15 });
 
   const msgLower = message?.toLowerCase() ?? "";
   const hasXarkPrefix = !!(message && msgLower.includes("@hello"));
@@ -193,24 +193,24 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (isFollowUp && !checkRateLimit(`xark-followup:${spaceId}`, 1, 300_000)) {
+  if (isFollowUp && !checkRateLimit(`xark-followup:${groupId}`, 1, 300_000)) {
     return NextResponse.json({ response: null });
   }
 
-  // SILENT MODE: no "@xark" prefix and not a valid follow-up = exit early (ZERO heavy DB reads)
+  // SILENT MODE: no "@hello" prefix and not a valid follow-up = exit early (ZERO heavy DB reads)
   if (!message || (!hasXarkPrefix && !isFollowUp)) {
     return NextResponse.json({ response: null });
   }
 
-  // ── NOW fetch heavy context (only when @xark is actually triggered) ──
+  // ── NOW fetch heavy context (only when @hello is actually triggered) ──
   const tasteTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 800));
   const tasteFetch = supabaseAdmin
-    ? supabaseAdmin.rpc("get_space_taste_profiles", { p_space_id: spaceId }).then((r) => r.data)
+    ? supabaseAdmin.rpc("get_space_taste_profiles", { p_group_id: groupId }).then((r) => r.data)
     : Promise.resolve(null);
 
   const [spaceRow, groundingContext, tasteRaw, senderRow] = await Promise.all([
-    supabaseAdmin.from("spaces").select("title").eq("id", spaceId).maybeSingle().then((r) => r.data),
-    buildGroundingContext(spaceId),
+    supabaseAdmin.from("spaces").select("title").eq("id", groupId).maybeSingle().then((r) => r.data),
+    buildGroundingContext(groupId),
     Promise.race([tasteFetch, tasteTimeout]),
     supabaseAdmin.from("users").select("display_name").eq("id", auth.userId).maybeSingle().then((r) => r.data),
   ]);
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
     userMessage = `[Answering your question: "${xarkQuestion}"] ${userMessage}`;
   }
 
-  const spaceTitle = spaceRow?.title ?? spaceId.replace(/^space_/, "").replace(/-/g, " ");
+  const spaceTitle = spaceRow?.title ?? groupId.replace(/^space_/, "").replace(/-/g, " ");
   const groundingPrompt = generateGroundingPrompt(groundingContext);
   const sanitizedMessages = sanitizeForIntelligence(recentMsgs);
   const recentMessages = sanitizedMessages.map((m) => ({
@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
   if (!silent) {
     await supabaseAdmin.from("messages").insert({
       id: xarkMsgId,
-      space_id: spaceId,
+      group_id: groupId,
       role: "xark",
       content: `${senderName} is scouting ${queryText || "..."}`,
       user_id: auth.userId,
@@ -259,13 +259,13 @@ export async function POST(req: NextRequest) {
   // The orchestrator appends &tool=<toolName> after Gemini determines the tool.
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gethello.ai";
   const queryTextForLabel = (message ?? "").replace(/@(?:xark|hello)\s*/i, "").trim().toLowerCase();
-  const webhookUrl = `${baseUrl}/api/xark/webhook?spaceId=${encodeURIComponent(spaceId)}&msgId=${encodeURIComponent(xarkMsgId)}&label=${encodeURIComponent(queryTextForLabel)}`;
+  const webhookUrl = `${baseUrl}/api/hello/webhook?groupId=${encodeURIComponent(groupId)}&msgId=${encodeURIComponent(xarkMsgId)}&label=${encodeURIComponent(queryTextForLabel)}`;
 
   const result = await orchestrate({
     userMessage,
     groundingPrompt,
     recentMessages,
-    spaceId,
+    groupId,
     spaceTitle,
     tasteContext,
     onProgress: updateReceipt,
@@ -305,7 +305,7 @@ export async function POST(req: NextRequest) {
       try {
         const items = options.map((opt) => ({
           id: `item_${crypto.randomUUID()}`,
-          space_id: spaceId,
+          group_id: groupId,
           title: String(opt),
           category: "poll",
           description: "",
@@ -325,7 +325,7 @@ export async function POST(req: NextRequest) {
           message_type: "xark_poll",
         }).eq("id", bgPollMsgId);
       } catch (bgErr) {
-        console.error("[/api/xark] background poll write failed:", bgErr instanceof Error ? bgErr.message : String(bgErr));
+        console.error("[/api/hello] background poll write failed:", bgErr instanceof Error ? bgErr.message : String(bgErr));
       }
     });
 
@@ -375,7 +375,7 @@ export async function POST(req: NextRequest) {
 
         const items = result.searchResults.map((r, idx) => ({
           id: `item_${crypto.randomUUID()}`,
-          space_id: spaceId,
+          group_id: groupId,
           title: r.title.toLowerCase(),
           category,
           description: r.description ?? "",
@@ -407,7 +407,7 @@ export async function POST(req: NextRequest) {
         }).eq("id", bgXarkMsgId);
       }
     } catch (bgErr) {
-      console.error("[/api/xark] background write failed:", bgErr instanceof Error ? bgErr.message : String(bgErr));
+      console.error("[/api/hello] background write failed:", bgErr instanceof Error ? bgErr.message : String(bgErr));
     }
   });
 
@@ -429,7 +429,7 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.error("[/api/xark] error:", errMsg);
+    console.error("[/api/hello] error:", errMsg);
 
     if (xarkMsgId && supabaseAdmin) {
       await supabaseAdmin.from("messages").update({

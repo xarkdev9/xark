@@ -16,7 +16,7 @@ import type {
   BookableItem,
   DecisionSpace,
   ItemId,
-  SpaceId,
+  GroupId,
   Task,
   TaskId,
 } from "../models/types.js";
@@ -24,9 +24,9 @@ import type {
 export class MemoryPersistenceAdapter implements PersistencePort {
   private items = new Map<ItemId, BookableItem>();
   private tasks = new Map<TaskId, Task>();
-  private spaces = new Map<SpaceId, DecisionSpace>();
-  private spaceItems = new Map<SpaceId, Set<ItemId>>();
-  private spaceTasks = new Map<SpaceId, Set<TaskId>>();
+  private spaces = new Map<GroupId, DecisionSpace>();
+  private spaceItems = new Map<GroupId, Set<ItemId>>();
+  private spaceTasks = new Map<GroupId, Set<TaskId>>();
 
   async saveItem(item: BookableItem): Promise<void> {
     const existing = this.items.get(item.id);
@@ -34,11 +34,11 @@ export class MemoryPersistenceAdapter implements PersistencePort {
       throw new VersionConflictError(item.id, item.version, existing.version);
     }
     this.items.set(item.id, structuredClone(item));
-    const spaceId = item.spaceId;
-    if (!this.spaceItems.has(spaceId)) {
-      this.spaceItems.set(spaceId, new Set());
+    const groupId = item.groupId;
+    if (!this.spaceItems.has(groupId)) {
+      this.spaceItems.set(groupId, new Set());
     }
-    this.spaceItems.get(spaceId)!.add(item.id);
+    this.spaceItems.get(groupId)!.add(item.id);
   }
 
   async getItem(itemId: ItemId): Promise<BookableItem | undefined> {
@@ -46,8 +46,8 @@ export class MemoryPersistenceAdapter implements PersistencePort {
     return item ? structuredClone(item) : undefined;
   }
 
-  async getItemsBySpace(spaceId: SpaceId): Promise<BookableItem[]> {
-    const ids = this.spaceItems.get(spaceId);
+  async getItemsBySpace(groupId: GroupId): Promise<BookableItem[]> {
+    const ids = this.spaceItems.get(groupId);
     if (!ids) return [];
     const items: BookableItem[] = [];
     for (const id of ids) {
@@ -60,18 +60,18 @@ export class MemoryPersistenceAdapter implements PersistencePort {
   async deleteItem(itemId: ItemId): Promise<void> {
     const item = this.items.get(itemId);
     if (item) {
-      this.spaceItems.get(item.spaceId)?.delete(itemId);
+      this.spaceItems.get(item.groupId)?.delete(itemId);
     }
     this.items.delete(itemId);
   }
 
   async saveTask(task: Task): Promise<void> {
     this.tasks.set(task.id, structuredClone(task));
-    const spaceId = task.groupId as SpaceId;
-    if (!this.spaceTasks.has(spaceId)) {
-      this.spaceTasks.set(spaceId, new Set());
+    const groupId = task.groupId as GroupId;
+    if (!this.spaceTasks.has(groupId)) {
+      this.spaceTasks.set(groupId, new Set());
     }
-    this.spaceTasks.get(spaceId)!.add(task.id);
+    this.spaceTasks.get(groupId)!.add(task.id);
   }
 
   async getTask(taskId: TaskId): Promise<Task | undefined> {
@@ -79,8 +79,8 @@ export class MemoryPersistenceAdapter implements PersistencePort {
     return task ? structuredClone(task) : undefined;
   }
 
-  async getTasksBySpace(spaceId: SpaceId): Promise<Task[]> {
-    const ids = this.spaceTasks.get(spaceId);
+  async getTasksBySpace(groupId: GroupId): Promise<Task[]> {
+    const ids = this.spaceTasks.get(groupId);
     if (!ids) return [];
     const tasks: Task[] = [];
     for (const id of ids) {
@@ -93,8 +93,8 @@ export class MemoryPersistenceAdapter implements PersistencePort {
   async deleteTask(taskId: TaskId): Promise<void> {
     const task = this.tasks.get(taskId);
     if (task) {
-      const spaceId = task.groupId as SpaceId;
-      this.spaceTasks.get(spaceId)?.delete(taskId);
+      const groupId = task.groupId as GroupId;
+      this.spaceTasks.get(groupId)?.delete(taskId);
     }
     this.tasks.delete(taskId);
   }
@@ -103,8 +103,8 @@ export class MemoryPersistenceAdapter implements PersistencePort {
     this.spaces.set(space.id, structuredClone(space));
   }
 
-  async getSpace(spaceId: SpaceId): Promise<DecisionSpace | undefined> {
-    const space = this.spaces.get(spaceId);
+  async getSpace(groupId: GroupId): Promise<DecisionSpace | undefined> {
+    const space = this.spaces.get(groupId);
     return space ? structuredClone(space) : undefined;
   }
 
@@ -112,18 +112,18 @@ export class MemoryPersistenceAdapter implements PersistencePort {
     return [...this.spaces.values()].map((s) => structuredClone(s));
   }
 
-  async deleteSpace(spaceId: SpaceId): Promise<void> {
-    const itemIds = this.spaceItems.get(spaceId);
+  async deleteSpace(groupId: GroupId): Promise<void> {
+    const itemIds = this.spaceItems.get(groupId);
     if (itemIds) {
       for (const id of itemIds) this.items.delete(id);
-      this.spaceItems.delete(spaceId);
+      this.spaceItems.delete(groupId);
     }
-    const taskIds = this.spaceTasks.get(spaceId);
+    const taskIds = this.spaceTasks.get(groupId);
     if (taskIds) {
       for (const id of taskIds) this.tasks.delete(id);
-      this.spaceTasks.delete(spaceId);
+      this.spaceTasks.delete(groupId);
     }
-    this.spaces.delete(spaceId);
+    this.spaces.delete(groupId);
   }
 
   /** Clears all data. Useful for test teardown. */

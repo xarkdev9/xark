@@ -81,11 +81,11 @@ export async function startActorAsync(
       }),
     });
   } catch (err) {
-    console.warn("[@xark] failed to register Apify webhook, run will complete but results won't be processed:", err);
+    console.warn("[@hello] failed to register Apify webhook, run will complete but results won't be processed:", err);
     // The actor is already running — it just won't call back. Not fatal.
   }
 
-  console.log(`[@xark] started async actor ${actorId}, runId=${run.id}`);
+  console.log(`[@hello] started async actor ${actorId}, runId=${run.id}`);
   return { runId: run.id };
 }
 

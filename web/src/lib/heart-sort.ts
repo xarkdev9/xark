@@ -79,7 +79,7 @@ export interface OwnershipRecord {
 
 export interface DecisionItem {
   id: string;
-  spaceId: string;
+  groupId: string;
   title: string;
   description: string;
   category: string;

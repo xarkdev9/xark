@@ -1,6 +1,6 @@
 // XARK OS v2.0 — Deterministic 1:1 Routing
 // Both peers compute the identical space ID without network calls.
-// Used for sanctuary (1:1) message routing.
+// Used for dm (1:1) message routing.
 
 const DM_PREFIX = 'dm_';
 
@@ -8,10 +8,10 @@ const DM_PREFIX = 'dm_';
  * Generate deterministic space ID for 1:1 chat between two users.
  * Both users compute the same ID regardless of who initiates.
  *
- * @example getDMSpaceId('name_ram', 'name_kai') === getDMSpaceId('name_kai', 'name_ram')
+ * @example getDMGroupId('name_ram', 'name_kai') === getDMGroupId('name_kai', 'name_ram')
  * // Both return 'dm_name_kai_name_ram'
  */
-export function getDMSpaceId(myId: string, peerId: string): string {
+export function getDMGroupId(myId: string, peerId: string): string {
   if (!myId || !peerId) throw new Error('DM routing: both user IDs required');
   if (myId === peerId) throw new Error('DM routing: cannot create DM with self');
   const sorted = [myId, peerId].sort();
@@ -19,19 +19,19 @@ export function getDMSpaceId(myId: string, peerId: string): string {
 }
 
 /**
- * Check if a space ID represents a 1:1 DM (sanctuary) space.
+ * Check if a space ID represents a 1:1 DM (dm) space.
  */
-export function isDMSpace(spaceId: string): boolean {
-  return spaceId.startsWith(DM_PREFIX);
+export function isDMSpace(groupId: string): boolean {
+  return groupId.startsWith(DM_PREFIX);
 }
 
 /**
  * Extract the two participant user IDs from a DM space ID.
  * Returns null if not a valid DM space ID.
  */
-export function parseDMSpaceId(spaceId: string): { userA: string; userB: string } | null {
-  if (!isDMSpace(spaceId)) return null;
-  const rest = spaceId.slice(DM_PREFIX.length);
+export function parseDMGroupId(groupId: string): { userA: string; userB: string } | null {
+  if (!isDMSpace(groupId)) return null;
+  const rest = groupId.slice(DM_PREFIX.length);
   // Find the split point — user IDs contain underscores, so we need to be smart
   // DM IDs are always sorted, so we look for the pattern
   const parts = rest.split('_');

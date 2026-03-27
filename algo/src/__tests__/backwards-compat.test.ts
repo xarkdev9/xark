@@ -67,7 +67,7 @@ import type {
   DecisionItem,
   DecisionItemState,
   DecisionSpace,
-  SpaceId,
+  GroupId,
   SpaceConfig,
   GroundingConstraint,
   GroundingContext,
@@ -94,7 +94,7 @@ describe("Backwards Compatibility", () => {
     it("BookableItem has version and metadata fields with defaults", () => {
       const item: BookableItem = {
         id: "item_1" as ItemId,
-        spaceId: "g1" as SpaceId,
+        groupId: "g1" as GroupId,
         groupId: "g1" as GroupId,
         title: "Test",
         description: "",
@@ -119,7 +119,7 @@ describe("Backwards Compatibility", () => {
     it("BookableItem.category accepts any string", () => {
       const hotel: BookableItem = {
         id: "item_1" as ItemId,
-        spaceId: "g1" as SpaceId,
+        groupId: "g1" as GroupId,
         groupId: "g1" as GroupId,
         title: "Test",
         description: "",
@@ -225,7 +225,7 @@ describe("Backwards Compatibility", () => {
     it("lockItem still works with BookableItemState enum", () => {
       const item: BookableItem = {
         id: "item_1" as ItemId,
-        spaceId: "g1" as SpaceId,
+        groupId: "g1" as GroupId,
         groupId: "g1" as GroupId,
         title: "Hotel",
         description: "",
@@ -258,7 +258,7 @@ describe("Backwards Compatibility", () => {
     it("heartSort still works", () => {
       const makeItem = (id: string, score: number): BookableItem => ({
         id: id as ItemId,
-        spaceId: "g1" as SpaceId,
+        groupId: "g1" as GroupId,
         groupId: "g1" as GroupId,
         title: id,
         description: "",
@@ -344,7 +344,7 @@ describe("Backwards Compatibility", () => {
       const adapter = new InMemoryAdapter();
       const item: BookableItem = {
         id: "item_1" as ItemId,
-        spaceId: "g1" as SpaceId,
+        groupId: "g1" as GroupId,
         groupId: "g1" as GroupId,
         title: "Test",
         description: "",
@@ -379,7 +379,7 @@ describe("Backwards Compatibility", () => {
       const sm = new StateMachine(BOOKING_FLOW);
       const item: BookableItem = {
         id: "item_1" as ItemId,
-        spaceId: "g1" as SpaceId,
+        groupId: "g1" as GroupId,
         groupId: "g1" as GroupId,
         title: "Hotel",
         description: "",

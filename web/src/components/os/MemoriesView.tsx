@@ -16,7 +16,7 @@ interface MemoryPhoto {
 }
 
 interface MemoriesViewProps {
-  spaceId: string;
+  groupId: string;
 }
 
 type MemoriesMode = "memories" | "details";
@@ -29,7 +29,7 @@ function formatDateGroup(iso: string): string {
   });
 }
 
-export function MemoriesView({ spaceId }: MemoriesViewProps) {
+export function MemoriesView({ groupId }: MemoriesViewProps) {
   const [photos, setPhotos] = useState<MemoryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<MemoriesMode>("memories");
@@ -44,7 +44,7 @@ export function MemoriesView({ spaceId }: MemoriesViewProps) {
         const { data } = await supabase
           .from("media")
           .select("id, url, caption, taken_at, uploaded_by")
-          .eq("space_id", spaceId)
+          .eq("group_id", groupId)
           .eq("type", "photo")
           .order("taken_at", { ascending: true });
 
@@ -56,7 +56,7 @@ export function MemoriesView({ spaceId }: MemoriesViewProps) {
     }
 
     fetchPhotos();
-  }, [spaceId]);
+  }, [groupId]);
 
   // ── Pointer-based drag for horizontal scroll ──
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -154,7 +154,7 @@ export function MemoriesView({ spaceId }: MemoriesViewProps) {
       </div>
 
       {/* ── Details mode: ItineraryView ── */}
-      {mode === "details" && <ItineraryView spaceId={spaceId} />}
+      {mode === "details" && <ItineraryView groupId={groupId} />}
 
       {/* ── Memories mode: photo stream ── */}
       {mode === "memories" && (

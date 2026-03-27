@@ -247,12 +247,12 @@ export default function LoginPage() {
   }, [name, password]);
 
   // ── Photo / Finalize ──
-  const goToGalaxy = useCallback(() => {
+  const goToHome = useCallback(() => {
     router.push(`/galaxy?name=${encodeURIComponent(name.trim())}`);
   }, [name, router]);
 
   const handlePhotoSelect = useCallback(async (file: File) => {
-    if (file.size > 2 * 1024 * 1024) { goToGalaxy(); return; }
+    if (file.size > 2 * 1024 * 1024) { goToHome(); return; }
     setPhotoUploading(true);
     try {
       const userId = makeUserId("name", name.trim().toLowerCase());
@@ -260,8 +260,8 @@ export default function LoginPage() {
       await supabase.from("users").update({ photo_url: downloadUrl }).eq("id", userId);
     } catch {}
     setPhotoUploading(false);
-    goToGalaxy();
-  }, [name, goToGalaxy]);
+    goToHome();
+  }, [name, goToHome]);
 
   const phoneReady = phoneInput.replace(/\D/g, "").length >= 7;
   const isBusy = phoneAction !== "idle";
@@ -615,7 +615,7 @@ export default function LoginPage() {
 
                       <span
                         role="button"
-                        onClick={goToGalaxy}
+                        onClick={goToHome}
                         style={{ ...text.hint, color: ink.secondary, cursor: "pointer", letterSpacing: "0.05em", textTransform: "uppercase" }}
                       >
                         Skip for now

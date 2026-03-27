@@ -15,7 +15,7 @@ import {
   opacity as opacityTokens,
 } from "@/lib/theme";
 import { GhostInput } from "@/components/os/GhostInput";
-import { fetchSpaceList, type SpaceListItem } from "@/lib/space-data";
+import { fetchGroupList, type GroupListItem } from "@/lib/space-data";
 import { spring, ambient, tap } from "@/lib/motion";
 
 // ── Props ──────────────────────────────────────────────────────────────────
@@ -23,18 +23,18 @@ import { spring, ambient, tap } from "@/lib/motion";
 interface SpotlightSheetProps {
   isOpen: boolean;
   morphText: string | null;
-  targetSpaceId: string | null;
+  targetGroupId: string | null;
   isInsideSpace: boolean;
   ghostText: string | null;
-  ghostSpaceId: string | null;
+  ghostGroupId: string | null;
   getToken: () => string | null;
   onClose: () => void;
-  onSend: (text: string, spaceId: string, spaceTitle?: string) => void;
-  onSetTargetSpace: (spaceId: string) => void;
+  onSend: (text: string, groupId: string, spaceTitle?: string) => void;
+  onSetTargetSpace: (groupId: string) => void;
   onGhostAccepted: () => void;
   onGhostDismissed: () => void;
   knownContacts?: string[];
-  knownSpaces?: SpaceListItem[];
+  knownSpaces?: GroupListItem[];
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -48,10 +48,10 @@ const BRAND_ROSE = "#FF6B35";
 export function SpotlightSheet({
   isOpen,
   morphText,
-  targetSpaceId,
+  targetGroupId,
   isInsideSpace,
   ghostText,
-  ghostSpaceId,
+  ghostGroupId,
   getToken,
   onClose,
   onSend,
@@ -61,11 +61,11 @@ export function SpotlightSheet({
   knownContacts = [],
   knownSpaces,
 }: SpotlightSheetProps) {
-  const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
+  const [spaces, setSpaces] = useState<GroupListItem[]>([]);
   const [spacesLoaded, setSpacesLoaded] = useState(false);
   const chipsRef = useRef<HTMLDivElement>(null);
 
-  // Fetch space list when sheet opens on Galaxy (not inside a space)
+  // Fetch space list when sheet opens on Home (not inside a space)
   useEffect(() => {
     if (!isOpen || isInsideSpace) return;
     if (spacesLoaded) return;
@@ -73,17 +73,17 @@ export function SpotlightSheet({
     if (knownSpaces && knownSpaces.length > 0) {
       setSpaces(knownSpaces.slice(0, MAX_CHIPS));
       setSpacesLoaded(true);
-      if (!targetSpaceId) onSetTargetSpace(knownSpaces[0].id);
+      if (!targetGroupId) onSetTargetSpace(knownSpaces[0].id);
       return;
     }
 
     let cancelled = false;
-    fetchSpaceList().then((list) => {
+    fetchGroupList().then((list) => {
       if (!cancelled) {
         setSpaces(list.slice(0, MAX_CHIPS));
         setSpacesLoaded(true);
         // Auto-select first space if none selected
-        if (!targetSpaceId && list.length > 0) {
+        if (!targetGroupId && list.length > 0) {
           onSetTargetSpace(list[0].id);
         }
       }
@@ -92,7 +92,7 @@ export function SpotlightSheet({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, isInsideSpace, spacesLoaded, targetSpaceId, onSetTargetSpace]);
+  }, [isOpen, isInsideSpace, spacesLoaded, targetGroupId, onSetTargetSpace]);
 
   // Reset spaces cache when sheet closes
   useEffect(() => {
@@ -106,25 +106,25 @@ export function SpotlightSheet({
 
   // Fetch space title when inside a space (spaces array is empty in this case)
   useEffect(() => {
-    if (!isOpen || !isInsideSpace || !targetSpaceId) return;
+    if (!isOpen || !isInsideSpace || !targetGroupId) return;
     let cancelled = false;
     import("@/lib/supabase").then(({ supabase }) => {
       supabase
         .from("spaces")
         .select("title")
-        .eq("id", targetSpaceId)
+        .eq("id", targetGroupId)
         .maybeSingle()
         .then(({ data }) => {
           if (!cancelled && data?.title) setInsideSpaceTitle(data.title);
         });
     });
     return () => { cancelled = true; };
-  }, [isOpen, isInsideSpace, targetSpaceId]);
+  }, [isOpen, isInsideSpace, targetGroupId]);
 
   const activeSpaceTitle = (() => {
-    if (!targetSpaceId) return null;
+    if (!targetGroupId) return null;
     if (isInsideSpace && insideSpaceTitle) return insideSpaceTitle;
-    const found = spaces.find((s) => s.id === targetSpaceId);
+    const found = spaces.find((s) => s.id === targetGroupId);
     if (found) return found.title;
     return null;
   })();
@@ -132,11 +132,11 @@ export function SpotlightSheet({
   // Handle send from GhostInput
   const handleSend = useCallback(
     (text: string, wasGhost: boolean) => {
-      // Onboarding whisper: ghostSpaceId === "" means taste onboarding
-      if (wasGhost && ghostSpaceId === "") {
+      // Onboarding whisper: ghostGroupId === "" means taste onboarding
+      if (wasGhost && ghostGroupId === "") {
         const token = getToken();
         if (token) {
-          fetch("/api/taste", {
+          fetch("/api/onboarding", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -151,12 +151,12 @@ export function SpotlightSheet({
       }
 
       // Normal send: must have a target space
-      if (!targetSpaceId) return;
-      onSend(text, targetSpaceId, activeSpaceTitle ?? undefined);
+      if (!targetGroupId) return;
+      onSend(text, targetGroupId, activeSpaceTitle ?? undefined);
     },
     [
-      ghostSpaceId,
-      targetSpaceId,
+      ghostGroupId,
+      targetGroupId,
       activeSpaceTitle,
       getToken,
       knownContacts,
@@ -229,7 +229,7 @@ export function SpotlightSheet({
             </div>
 
             {/* ── Context pill (inside space) ── */}
-            {isInsideSpace && targetSpaceId && activeSpaceTitle && !isMorphing && (
+            {isInsideSpace && targetGroupId && activeSpaceTitle && !isMorphing && (
               <div
                 style={{
                   paddingLeft: "24px",
@@ -250,7 +250,7 @@ export function SpotlightSheet({
               </div>
             )}
 
-            {/* ── Space chips (on Galaxy, not morphing) ── */}
+            {/* ── Space chips (on Home, not morphing) ── */}
             {showChips && (
               <div
                 style={{
@@ -283,7 +283,7 @@ export function SpotlightSheet({
                   }}
                 >
                   {spaces.map((space) => {
-                    const isActive = space.id === targetSpaceId;
+                    const isActive = space.id === targetGroupId;
                     return (
                       <button
                         key={space.id}

@@ -2,7 +2,7 @@
 
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/crypto.dart';
+import 'package:hello_engine/src/crypto/crypto.dart';
 import 'package:cryptography/cryptography.dart';
 
 /// Generates a fresh Ed25519 + X25519 identity key pair for tests.

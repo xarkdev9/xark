@@ -34,7 +34,7 @@ async function getAdmin() {
 /**
  * Send push notification to devices.
  * E2EE COMPLIANT: Never include message plaintext in the push payload.
- * The payload contains ONLY metadata (senderName, spaceId, event).
+ * The payload contains ONLY metadata (senderName, groupId, event).
  * The Service Worker shows a generic notification. Decryption happens on app open.
  */
 export async function sendPush(
@@ -53,7 +53,7 @@ export async function sendPush(
       // ALL content goes through `data` so the SW controls what's displayed.
       data,
       webpush: {
-        fcmOptions: { link: `/space/${data.spaceId ?? ''}` },
+        fcmOptions: { link: `/space/${data.groupId ?? ''}` },
       },
       // Safari/APNs fallback — generic text, zero plaintext
       apns: {

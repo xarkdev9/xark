@@ -1,5 +1,5 @@
 // XARK OS v2.0 — Reactions Hook
-// Drives PossibilityHorizon voting surface.
+// Drives DecisionBoard voting surface.
 // One reaction per user per item. Last wins.
 // Uses auth.jwt()->>'sub' inside SECURITY DEFINER RPCs.
 

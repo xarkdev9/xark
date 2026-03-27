@@ -4,24 +4,24 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/domain/models/message.dart';
-import 'package:chat_engine/src/domain/models/presence_state.dart';
-import 'package:chat_engine/src/domain/models/typing_indicator.dart';
-import 'package:chat_engine/src/domain/repositories/message_repository.dart';
-import 'package:chat_engine/src/domain/repositories/receipt_repository.dart';
-import 'package:chat_engine/src/persistence/database/app_database.dart';
-import 'package:chat_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:chat_engine/src/persistence/repositories/outbox_repository.dart';
-import 'package:chat_engine/src/sync/deduplication_set.dart';
-import 'package:chat_engine/src/sync/gap_detector.dart';
-import 'package:chat_engine/src/sync/message_processor.dart';
-import 'package:chat_engine/src/sync/outbox_processor.dart';
-import 'package:chat_engine/src/sync/sync_coordinator.dart';
-import 'package:chat_engine/src/sync/sync_observer.dart';
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
-import 'package:chat_engine/src/transport/dto/realtime_event.dart';
-import 'package:chat_engine/src/transport/realtime_listener.dart';
-import 'package:chat_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/domain/models/message.dart';
+import 'package:hello_engine/src/domain/models/presence_state.dart';
+import 'package:hello_engine/src/domain/models/typing_indicator.dart';
+import 'package:hello_engine/src/domain/repositories/message_repository.dart';
+import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:hello_engine/src/persistence/repositories/outbox_repository.dart';
+import 'package:hello_engine/src/sync/deduplication_set.dart';
+import 'package:hello_engine/src/sync/gap_detector.dart';
+import 'package:hello_engine/src/sync/message_processor.dart';
+import 'package:hello_engine/src/sync/outbox_processor.dart';
+import 'package:hello_engine/src/sync/sync_coordinator.dart';
+import 'package:hello_engine/src/sync/sync_observer.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/transport/dto/realtime_event.dart';
+import 'package:hello_engine/src/transport/realtime_listener.dart';
+import 'package:hello_engine/src/transport/supabase_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -79,9 +79,9 @@ class TestSyncObserver with SyncObserver {
 // ---------------------------------------------------------------------------
 
 /// Creates a valid serialised MessageEnvelope as Uint8List bytes.
-Uint8List _makeEnvelopeBytes({String spaceId = 'space-1'}) {
+Uint8List _makeEnvelopeBytes({String groupId = 'space-1'}) {
   final json = jsonEncode(<String, dynamic>{
-    'space_id': spaceId,
+    'group_id': groupId,
     'sender_device_id': 1,
     'ciphertext': 'dGVzdA==',
     'recipient_id': 'bob',
@@ -100,7 +100,7 @@ OutboxItemRow _makeOutboxItem({
 }) {
   return OutboxItemRow(
     id: id,
-    conversationId: 'conv-1',
+    groupId: 'conv-1',
     encryptedEnvelope: envelope ?? _makeEnvelopeBytes(),
     recipientDeviceIds: '["bob:2"]',
     retryCount: retryCount,
@@ -115,7 +115,7 @@ RealtimeMessageEvent _makeEvent({
 }) {
   return RealtimeMessageEvent(
     messageId: messageId,
-    spaceId: 'space-1',
+    groupId: 'space-1',
     senderId: senderId,
     messageType: 'e2ee',
     createdAt: DateTime(2025, 6),
@@ -407,7 +407,7 @@ void main() {
     test('fetches messages after latest local timestamp', () async {
       final latestMessage = Message(
         id: 'msg-latest',
-        conversationId: 'space-1',
+        groupId: 'space-1',
         senderId: 'alice',
         senderDeviceId: 'device-1',
         type: MessageType.e2ee,
@@ -781,7 +781,7 @@ void main() {
 
       coordinator.emitTyping(
         TypingIndicator(
-          conversationId: 'space-1',
+          groupId: 'space-1',
           userId: 'bob',
           startedAt: DateTime(2025, 6),
         ),
@@ -838,7 +838,7 @@ void main() {
       // Adding events should not throw, just be silently ignored.
       coordinator.emitTyping(
         TypingIndicator(
-          conversationId: 'x',
+          groupId: 'x',
           userId: 'y',
           startedAt: DateTime.now(),
         ),

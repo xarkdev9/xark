@@ -303,8 +303,8 @@ MessageEnvelope _$MessageEnvelopeFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$MessageEnvelope {
   /// Conversation / space ID.
-  @JsonKey(name: 'space_id')
-  String get spaceId => throw _privateConstructorUsedError;
+  @JsonKey(name: 'group_id')
+  String get groupId => throw _privateConstructorUsedError;
 
   /// Sender's device ID.
   @JsonKey(name: 'sender_device_id')
@@ -354,7 +354,7 @@ abstract class $MessageEnvelopeCopyWith<$Res> {
       _$MessageEnvelopeCopyWithImpl<$Res, MessageEnvelope>;
   @useResult
   $Res call(
-      {@JsonKey(name: 'space_id') String spaceId,
+      {@JsonKey(name: 'group_id') String groupId,
       @JsonKey(name: 'sender_device_id') int senderDeviceId,
       String ciphertext,
       @JsonKey(name: 'recipient_id') String recipientId,
@@ -381,7 +381,7 @@ class _$MessageEnvelopeCopyWithImpl<$Res, $Val extends MessageEnvelope>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? spaceId = null,
+    Object? groupId = null,
     Object? senderDeviceId = null,
     Object? ciphertext = null,
     Object? recipientId = null,
@@ -392,9 +392,9 @@ class _$MessageEnvelopeCopyWithImpl<$Res, $Val extends MessageEnvelope>
     Object? id = freezed,
   }) {
     return _then(_value.copyWith(
-      spaceId: null == spaceId
-          ? _value.spaceId
-          : spaceId // ignore: cast_nullable_to_non_nullable
+      groupId: null == groupId
+          ? _value.groupId
+          : groupId // ignore: cast_nullable_to_non_nullable
               as String,
       senderDeviceId: null == senderDeviceId
           ? _value.senderDeviceId
@@ -441,7 +441,7 @@ abstract class _$$MessageEnvelopeImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {@JsonKey(name: 'space_id') String spaceId,
+      {@JsonKey(name: 'group_id') String groupId,
       @JsonKey(name: 'sender_device_id') int senderDeviceId,
       String ciphertext,
       @JsonKey(name: 'recipient_id') String recipientId,
@@ -466,7 +466,7 @@ class __$$MessageEnvelopeImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? spaceId = null,
+    Object? groupId = null,
     Object? senderDeviceId = null,
     Object? ciphertext = null,
     Object? recipientId = null,
@@ -477,9 +477,9 @@ class __$$MessageEnvelopeImplCopyWithImpl<$Res>
     Object? id = freezed,
   }) {
     return _then(_$MessageEnvelopeImpl(
-      spaceId: null == spaceId
-          ? _value.spaceId
-          : spaceId // ignore: cast_nullable_to_non_nullable
+      groupId: null == groupId
+          ? _value.groupId
+          : groupId // ignore: cast_nullable_to_non_nullable
               as String,
       senderDeviceId: null == senderDeviceId
           ? _value.senderDeviceId
@@ -521,7 +521,7 @@ class __$$MessageEnvelopeImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$MessageEnvelopeImpl implements _MessageEnvelope {
   const _$MessageEnvelopeImpl(
-      {@JsonKey(name: 'space_id') required this.spaceId,
+      {@JsonKey(name: 'group_id') required this.groupId,
       @JsonKey(name: 'sender_device_id') required this.senderDeviceId,
       required this.ciphertext,
       @JsonKey(name: 'recipient_id') required this.recipientId,
@@ -538,8 +538,8 @@ class _$MessageEnvelopeImpl implements _MessageEnvelope {
 
   /// Conversation / space ID.
   @override
-  @JsonKey(name: 'space_id')
-  final String spaceId;
+  @JsonKey(name: 'group_id')
+  final String groupId;
 
   /// Sender's device ID.
   @override
@@ -589,7 +589,7 @@ class _$MessageEnvelopeImpl implements _MessageEnvelope {
 
   @override
   String toString() {
-    return 'MessageEnvelope(spaceId: $spaceId, senderDeviceId: $senderDeviceId, ciphertext: $ciphertext, recipientId: $recipientId, recipientDeviceId: $recipientDeviceId, ratchetHeader: $ratchetHeader, distributionCiphertexts: $distributionCiphertexts, messageType: $messageType, id: $id)';
+    return 'MessageEnvelope(groupId: $groupId, senderDeviceId: $senderDeviceId, ciphertext: $ciphertext, recipientId: $recipientId, recipientDeviceId: $recipientDeviceId, ratchetHeader: $ratchetHeader, distributionCiphertexts: $distributionCiphertexts, messageType: $messageType, id: $id)';
   }
 
   @override
@@ -597,7 +597,7 @@ class _$MessageEnvelopeImpl implements _MessageEnvelope {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$MessageEnvelopeImpl &&
-            (identical(other.spaceId, spaceId) || other.spaceId == spaceId) &&
+            (identical(other.groupId, groupId) || other.groupId == groupId) &&
             (identical(other.senderDeviceId, senderDeviceId) ||
                 other.senderDeviceId == senderDeviceId) &&
             (identical(other.ciphertext, ciphertext) ||
@@ -619,7 +619,7 @@ class _$MessageEnvelopeImpl implements _MessageEnvelope {
   @override
   int get hashCode => Object.hash(
       runtimeType,
-      spaceId,
+      groupId,
       senderDeviceId,
       ciphertext,
       recipientId,
@@ -648,7 +648,7 @@ class _$MessageEnvelopeImpl implements _MessageEnvelope {
 
 abstract class _MessageEnvelope implements MessageEnvelope {
   const factory _MessageEnvelope(
-      {@JsonKey(name: 'space_id') required final String spaceId,
+      {@JsonKey(name: 'group_id') required final String groupId,
       @JsonKey(name: 'sender_device_id') required final int senderDeviceId,
       required final String ciphertext,
       @JsonKey(name: 'recipient_id') required final String recipientId,
@@ -665,8 +665,8 @@ abstract class _MessageEnvelope implements MessageEnvelope {
 
   /// Conversation / space ID.
   @override
-  @JsonKey(name: 'space_id')
-  String get spaceId;
+  @JsonKey(name: 'group_id')
+  String get groupId;
 
   /// Sender's device ID.
   @override

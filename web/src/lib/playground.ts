@@ -2,7 +2,7 @@
 // Client-side sandbox for first-time users. 5 fake friends, 4 curated spaces.
 // Zero database records. Vanishes when user creates first real space.
 
-import type { SpaceAwareness } from "@/lib/awareness";
+import type { SpaceAwareness } from "@/lib/home-feed";
 
 // ── Types ──
 
@@ -390,7 +390,7 @@ const HIKE_PHOTOS: string[] = [
   "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&h=400&fit=crop", // road trip
 ];
 
-// ── Hardcoded @xark restaurant results for playground ──
+// ── Hardcoded @hello restaurant results for playground ──
 
 export const PLAYGROUND_XARK_RESTAURANTS: PlaygroundItem[] = [
   {
@@ -476,22 +476,22 @@ const SPACE_MESSAGES: Record<string, PlaygroundMessage[]> = {
 
 /** Returns true when user has zero real spaces and zero personal chats */
 export function isPlaygroundMode(
-  realSpaces: { spaceId?: string; id?: string }[],
-  realChats: { spaceId?: string }[]
+  realSpaces: { groupId?: string; id?: string }[],
+  realChats: { groupId?: string }[]
 ): boolean {
   return realSpaces.length === 0 && realChats.length === 0;
 }
 
-/** Check if a spaceId is a playground space */
-export function isPlaygroundSpace(spaceId: string): boolean {
-  return Object.values(SPACE_IDS).includes(spaceId);
+/** Check if a groupId is a playground space */
+export function isPlaygroundSpace(groupId: string): boolean {
+  return Object.values(SPACE_IDS).includes(groupId);
 }
 
 /** Get all 4 playground spaces formatted for AwarenessStream */
 export function getPlaygroundSpaces(): SpaceAwareness[] {
   return [
     {
-      spaceId: SPACE_IDS.tokyo,
+      groupId: SPACE_IDS.tokyo,
       spaceTitle: "tokyo neon nights",
       lastActivityAt: ago(40),
       actionNeeded: true,
@@ -503,7 +503,7 @@ export function getPlaygroundSpaces(): SpaceAwareness[] {
       priority: 0.95,
     },
     {
-      spaceId: SPACE_IDS.dinner,
+      groupId: SPACE_IDS.dinner,
       spaceTitle: "dinner tonight",
       lastActivityAt: ago(12),
       actionNeeded: false,
@@ -515,7 +515,7 @@ export function getPlaygroundSpaces(): SpaceAwareness[] {
       priority: 0.5,
     },
     {
-      spaceId: SPACE_IDS.maya,
+      groupId: SPACE_IDS.maya,
       spaceTitle: "maya's birthday",
       lastActivityAt: ago(85),
       actionNeeded: true,
@@ -527,7 +527,7 @@ export function getPlaygroundSpaces(): SpaceAwareness[] {
       priority: 0.7,
     },
     {
-      spaceId: SPACE_IDS.hike,
+      groupId: SPACE_IDS.hike,
       spaceTitle: "weekend hike",
       lastActivityAt: ago(1400),
       actionNeeded: false,
@@ -542,23 +542,23 @@ export function getPlaygroundSpaces(): SpaceAwareness[] {
 }
 
 /** Get decision items for a playground space */
-export function getPlaygroundItems(spaceId: string): PlaygroundItem[] {
-  return SPACE_ITEMS[spaceId] ?? [];
+export function getPlaygroundItems(groupId: string): PlaygroundItem[] {
+  return SPACE_ITEMS[groupId] ?? [];
 }
 
 /** Get chat messages for a playground space */
-export function getPlaygroundMessages(spaceId: string): PlaygroundMessage[] {
-  return SPACE_MESSAGES[spaceId] ?? [];
+export function getPlaygroundMessages(groupId: string): PlaygroundMessage[] {
+  return SPACE_MESSAGES[groupId] ?? [];
 }
 
 /** Get members for a playground space */
-export function getPlaygroundMembers(spaceId: string): PlaygroundFriend[] {
-  return SPACE_MEMBERS[spaceId] ?? [];
+export function getPlaygroundMembers(groupId: string): PlaygroundFriend[] {
+  return SPACE_MEMBERS[groupId] ?? [];
 }
 
 /** Get photo URLs for the settled "weekend hike" space */
-export function getPlaygroundPhotos(spaceId: string): string[] {
-  if (spaceId === SPACE_IDS.hike) return HIKE_PHOTOS;
+export function getPlaygroundPhotos(groupId: string): string[] {
+  if (groupId === SPACE_IDS.hike) return HIKE_PHOTOS;
   return [];
 }
 

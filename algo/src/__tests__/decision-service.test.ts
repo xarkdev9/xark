@@ -5,7 +5,7 @@ import { MemoryEventBusAdapter } from "../adapters/memory-event-bus.js";
 import { MemoryCacheAdapter } from "../adapters/memory-cache.js";
 import { NoopAuthAdapter } from "../adapters/noop-auth.js";
 import { ReactionType, BookableItemState, EventType } from "../models/types.js";
-import type { EngineEvent, UserId, SpaceId, GroupMember } from "../models/types.js";
+import type { EngineEvent, UserId, GroupId, GroupMember } from "../models/types.js";
 import type { Identity } from "../ports/auth.js";
 
 function makeIdentity(userId: string): Identity {
@@ -65,7 +65,7 @@ describe("DecisionService", () => {
 
     it("throws NotFoundError for non-existent space", async () => {
       await expect(
-        service.getSpace(alice, "nope" as SpaceId)
+        service.getSpace(alice, "nope" as GroupId)
       ).rejects.toThrow(NotFoundError);
     });
   });

@@ -14,12 +14,12 @@ interface PollItem {
 }
 
 interface InlinePollProps {
-  spaceId: string;
+  groupId: string;
   pollId: string;
   title: string;
 }
 
-export function InlinePoll({ spaceId, pollId, title }: InlinePollProps) {
+export function InlinePoll({ groupId, pollId, title }: InlinePollProps) {
   const [items, setItems] = useState<PollItem[]>([]);
   const { react, isReacting } = useReactions();
 
@@ -28,13 +28,13 @@ export function InlinePoll({ spaceId, pollId, title }: InlinePollProps) {
     supabase
       .from("decision_items")
       .select("id, title, agreement_score, weighted_score, metadata")
-      .eq("space_id", spaceId)
+      .eq("group_id", groupId)
       // JSON filter: metadata->>search_batch = pollId
       .filter("metadata->>search_batch", "eq", pollId)
       .then(({ data }) => {
         if (data) setItems(data as PollItem[]);
       });
-  }, [spaceId, pollId]);
+  }, [groupId, pollId]);
 
   // Real-time subscription to decision items
   useEffect(() => {
@@ -46,7 +46,7 @@ export function InlinePoll({ spaceId, pollId, title }: InlinePollProps) {
           event: "*",
           schema: "public",
           table: "decision_items",
-          filter: `space_id=eq.${spaceId}`,
+          filter: `group_id=eq.${groupId}`,
         },
         (payload) => {
           const newItem = payload.new as Record<string, any>;
@@ -66,7 +66,7 @@ export function InlinePoll({ spaceId, pollId, title }: InlinePollProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [spaceId, pollId]);
+  }, [groupId, pollId]);
 
   // Calculate percentages based on weighted_score (+1 per vote)
   const totalVotes = useMemo(() => {

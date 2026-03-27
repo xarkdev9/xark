@@ -208,11 +208,11 @@ export function deserializeSenderKey(data: Uint8Array): SenderKeyState {
 
 /** Create a distribution message — ALWAYS uses safe serialization (no private key) */
 export function createSenderKeyDistribution(
-  spaceId: string,
+  groupId: string,
   state: SenderKeyState
-): { spaceId: string; serializedKey: Uint8Array } {
+): { groupId: string; serializedKey: Uint8Array } {
   return {
-    spaceId,
+    groupId,
     serializedKey: serializeSenderKeyForDistribution(state),
   };
 }

@@ -2,12 +2,12 @@
 
 // XARK OS — Ad Demo Simulation
 // Fully scripted, self-contained. No Supabase, no playground.
-// Flow: chat history → "@xark dinner tonight" → shimmer → cards → love → GOLD BURST
+// Flow: chat history → "@hello dinner tonight" → shimmer → cards → love → GOLD BURST
 
 import { useState, useCallback, useRef, useEffect, type TouchEvent } from "react";
 import { motion } from "framer-motion";
 import { XarkChat } from "@/components/os/XarkChat";
-import PossibilityHorizon from "@/components/os/PossibilityHorizon";
+import DecisionBoard from "@/components/os/DecisionBoard";
 import { ChatInput } from "@/components/os/ChatInput";
 import { colors, ink, text, surface } from "@/lib/theme";
 import type { ReactionType } from "@/hooks/useReactions";
@@ -164,7 +164,7 @@ export default function DemoPage() {
     }
   }, [view]);
 
-  // ── Send message — scripted @xark flow ──
+  // ── Send message — scripted @hello flow ──
   const sendMessage = useCallback(() => {
     const txt = input.trim();
     if (!txt) return;
@@ -181,7 +181,7 @@ export default function DemoPage() {
     ]);
     setInput("");
 
-    // @xark trigger
+    // @hello trigger
     if (txt.toLowerCase().includes("@hello")) {
       setIsThinking(true);
 
@@ -189,7 +189,7 @@ export default function DemoPage() {
       setTimeout(() => {
         setIsThinking(false);
 
-        // @xark response
+        // @hello response
         setMessages((prev) => [
           ...prev,
           {
@@ -314,15 +314,15 @@ export default function DemoPage() {
       >
         {view === "discuss" && (
           <XarkChat
-            spaceId="demo_dinner"
+            groupId="demo_dinner"
             spaceTitle="dinner tonight"
             messages={messages}
             isThinking={isThinking}
           />
         )}
         {view === "decide" && (
-          <PossibilityHorizon
-            spaceId="demo_dinner"
+          <DecisionBoard
+            groupId="demo_dinner"
             userId="demo_user"
             isThinking={false}
             playgroundItems={items}

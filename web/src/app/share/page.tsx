@@ -77,7 +77,7 @@ function ShareContent() {
   }, [filePreviewUrl]);
 
   // ── URL/text share handler (existing flow) ──
-  const handleUrlShare = async (spaceId: string) => {
+  const handleUrlShare = async (groupId: string) => {
     setSaving(true);
     try {
       const token = getSupabaseToken();
@@ -91,16 +91,16 @@ function ShareContent() {
           url,
           title: title || sharedText.slice(0, 100),
           text: sharedText,
-          spaceId,
+          groupId,
           insertAsItem: true,
         }),
       });
     } catch { /* proceed to space regardless */ }
-    router.push(`/space/${spaceId}`);
+    router.push(`/space/${groupId}`);
   };
 
   // ── File share handler (E2EE pipeline) ──
-  const handleFileShare = async (spaceId: string) => {
+  const handleFileShare = async (groupId: string) => {
     if (!sharedFile || !resolvedUserId || !e2ee.available) return;
     setSaving(true);
 
@@ -118,7 +118,7 @@ function ShareContent() {
       // Upload encrypted blob to Firebase
       const { storageAdapter } = await import("@/lib/storage");
       const mediaId = `share_${crypto.randomUUID()}`;
-      const storagePath = `spaces/${spaceId}/media/${mediaId}.enc`;
+      const storagePath = `spaces/${groupId}/media/${mediaId}.enc`;
       const downloadUrl = await storageAdapter.upload(storagePath, encryptedBlob, "application/octet-stream");
 
       // Build encrypted image payload
@@ -135,7 +135,7 @@ function ShareContent() {
       const itemId = `item_${crypto.randomUUID()}`;
       await supabase.from("decision_items").insert({
         id: itemId,
-        space_id: spaceId,
+        group_id: groupId,
         title: itemTitle.trim() || sharedFile.name || "shared item",
         category: "shared",
         state: "proposed",
@@ -149,7 +149,7 @@ function ShareContent() {
       console.warn("[share] E2EE upload failed:", err);
     }
 
-    router.push(`/space/${spaceId}?view=decide`);
+    router.push(`/space/${groupId}?view=decide`);
   };
 
   // ── File share UI ──
@@ -231,7 +231,7 @@ function ShareContent() {
         </div>
 
         {!saving && (
-          <SpacePicker onSelect={(spaceId) => handleFileShare(spaceId)} />
+          <SpacePicker onSelect={(groupId) => handleFileShare(groupId)} />
         )}
       </div>
     );
@@ -250,7 +250,7 @@ function ShareContent() {
           </p>
         )}
       </div>
-      {!saving && <SpacePicker onSelect={(spaceId) => handleUrlShare(spaceId)} />}
+      {!saving && <SpacePicker onSelect={(groupId) => handleUrlShare(groupId)} />}
     </div>
   );
 }

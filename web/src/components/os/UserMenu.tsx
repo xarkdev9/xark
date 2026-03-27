@@ -150,7 +150,7 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
     setSpacesLoading(true);
     supabase
       .from("space_members")
-      .select("space_id, spaces(title)")
+      .select("group_id, spaces(title)")
       .eq("user_id", userId)
       .then(({ data, error }) => {
         if (error) {
@@ -158,7 +158,7 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
           return;
         }
         const spaces = (data ?? []).map((row: Record<string, unknown>) => ({
-          id: row.space_id as string,
+          id: row.group_id as string,
           title: ((row.spaces as Record<string, unknown>)?.title as string) ?? "untitled",
         }));
         setUserSpaces(spaces);
@@ -310,10 +310,10 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
     setNotificationsEnabled(false);
   };
 
-  const toggleMuteSpace = async (spaceId: string, currentlyMuted: boolean) => {
+  const toggleMuteSpace = async (groupId: string, currentlyMuted: boolean) => {
     const newMuted = currentlyMuted
-      ? mutedSpaces.filter((id) => id !== spaceId)
-      : [...mutedSpaces, spaceId];
+      ? mutedSpaces.filter((id) => id !== groupId)
+      : [...mutedSpaces, groupId];
     setMutedSpaces(newMuted);
 
     const { data: fresh } = await supabase
@@ -912,7 +912,7 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
 
   return (
     <>
-      {/* ── Avatar trigger — inline in Galaxy header, ambient glow ── */}
+      {/* ── Avatar trigger — inline in Home header, ambient glow ── */}
       <div
         role="button"
         tabIndex={0}

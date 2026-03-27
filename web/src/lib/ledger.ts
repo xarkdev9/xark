@@ -49,11 +49,11 @@ function parsePrice(metadata: Record<string, string> | null): number {
 // ── Fetch Settlement ──
 // Queries all locked items for a space, groups by owner, calculates deltas.
 
-export async function fetchSettlement(spaceId: string): Promise<Settlement> {
+export async function fetchSettlement(groupId: string): Promise<Settlement> {
   const { data, error } = await supabase
     .from("decision_items")
     .select("id, title, ownership, metadata")
-    .eq("space_id", spaceId)
+    .eq("group_id", groupId)
     .eq("is_locked", true);
 
   if (error || !data || data.length === 0) {
@@ -90,7 +90,7 @@ export async function fetchSettlement(spaceId: string): Promise<Settlement> {
   const { data: membersData } = await supabase
     .from("space_members")
     .select("user_id")
-    .eq("space_id", spaceId);
+    .eq("group_id", groupId);
   const memberCount = (membersData?.length ?? entries.length) || 1;
 
   const totalSpent = entries.reduce((sum, e) => sum + e.totalPaid, 0);

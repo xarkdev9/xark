@@ -2,9 +2,9 @@
 
 import 'dart:async';
 
-import 'package:chat_engine/src/domain/models/connection_state.dart';
-import 'package:chat_engine/src/transport/dto/realtime_event.dart';
-import 'package:chat_engine/src/transport/realtime_listener.dart';
+import 'package:hello_engine/src/domain/models/connection_state.dart';
+import 'package:hello_engine/src/transport/dto/realtime_event.dart';
+import 'package:hello_engine/src/transport/realtime_listener.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show
@@ -25,7 +25,7 @@ void main() {
     test('parses a complete E2EE message record', () {
       final record = <String, dynamic>{
         'id': 'msg-001',
-        'space_id': 'space-travel',
+        'group_id': 'space-travel',
         'user_id': 'name_alice',
         'sender_device_id': 1,
         'message_type': 'e2ee',
@@ -35,7 +35,7 @@ void main() {
       final event = RealtimeMessageEvent.fromPostgresPayload(record);
 
       expect(event.messageId, 'msg-001');
-      expect(event.spaceId, 'space-travel');
+      expect(event.groupId, 'space-travel');
       expect(event.senderId, 'name_alice');
       expect(event.senderDeviceId, 1);
       expect(event.messageType, 'e2ee');
@@ -45,7 +45,7 @@ void main() {
     test('handles sender_key_dist message type', () {
       final record = <String, dynamic>{
         'id': 'sk-dist-1',
-        'space_id': 'group-1',
+        'group_id': 'group-1',
         'user_id': 'name_bob',
         'sender_device_id': 2,
         'message_type': 'sender_key_dist',
@@ -61,7 +61,7 @@ void main() {
     test('handles null sender_device_id (system messages)', () {
       final record = <String, dynamic>{
         'id': 'sys-1',
-        'space_id': 'space-abc',
+        'group_id': 'space-abc',
         'user_id': 'system',
         'sender_device_id': null,
         'message_type': 'system',
@@ -77,7 +77,7 @@ void main() {
     test('defaults message_type to e2ee when absent', () {
       final record = <String, dynamic>{
         'id': 'msg-2',
-        'space_id': 'sp',
+        'group_id': 'sp',
         'user_id': 'name_carol',
         'created_at': '2026-06-15T12:00:00.000Z',
       };
@@ -89,7 +89,7 @@ void main() {
     test('parses xark AI assistant messages', () {
       final record = <String, dynamic>{
         'id': 'xark-msg-1',
-        'space_id': 'space-trip',
+        'group_id': 'space-trip',
         'user_id': 'name_xark',
         'sender_device_id': null,
         'message_type': 'xark',
@@ -113,7 +113,7 @@ void main() {
         'requester_id': 'name_bob',
         'requester_device_id': 2,
         'target_sender_id': 'name_alice',
-        'space_id': 'group-xyz',
+        'group_id': 'group-xyz',
       };
 
       final request = SKRecoveryRequest.fromBroadcastPayload(payload);
@@ -121,7 +121,7 @@ void main() {
       expect(request.requesterId, 'name_bob');
       expect(request.requesterDeviceId, 2);
       expect(request.targetSenderId, 'name_alice');
-      expect(request.spaceId, 'group-xyz');
+      expect(request.groupId, 'group-xyz');
     });
 
     test('round-trips through toBroadcastPayload', () {
@@ -129,7 +129,7 @@ void main() {
         requesterId: 'name_carol',
         requesterDeviceId: 3,
         targetSenderId: 'name_dave',
-        spaceId: 'grp-1',
+        groupId: 'grp-1',
       );
 
       final payload = original.toBroadcastPayload();
@@ -138,7 +138,7 @@ void main() {
       expect(restored.requesterId, original.requesterId);
       expect(restored.requesterDeviceId, original.requesterDeviceId);
       expect(restored.targetSenderId, original.targetSenderId);
-      expect(restored.spaceId, original.spaceId);
+      expect(restored.groupId, original.groupId);
     });
 
     test('toBroadcastPayload produces all required snake_case keys', () {
@@ -146,7 +146,7 @@ void main() {
         requesterId: 'u1',
         requesterDeviceId: 1,
         targetSenderId: 'u2',
-        spaceId: 's1',
+        groupId: 's1',
       );
 
       final payload = request.toBroadcastPayload();
@@ -155,7 +155,7 @@ void main() {
       expect(payload, containsPair('requester_id', 'u1'));
       expect(payload, containsPair('requester_device_id', 1));
       expect(payload, containsPair('target_sender_id', 'u2'));
-      expect(payload, containsPair('space_id', 's1'));
+      expect(payload, containsPair('group_id', 's1'));
       expect(payload.length, 4); // No extra keys
     });
   });

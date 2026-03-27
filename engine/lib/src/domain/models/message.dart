@@ -1,4 +1,4 @@
-import 'package:chat_engine/src/domain/models/media_metadata.dart';
+import 'package:hello_engine/src/domain/models/media_metadata.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'message.freezed.dart';
@@ -59,7 +59,7 @@ class Message with _$Message {
   /// Creates a [Message] instance.
   const factory Message({
     required String id,
-    required String conversationId,
+    required String groupId,
     required String senderId,
     required String senderDeviceId,
     required MessageType type,

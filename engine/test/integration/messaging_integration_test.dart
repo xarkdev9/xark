@@ -4,13 +4,13 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/crypto.dart';
-import 'package:chat_engine/src/domain/domain.dart';
-import 'package:chat_engine/src/persistence/database/app_database.dart';
-import 'package:chat_engine/src/persistence/repositories/decrypted_message_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/message_repository_impl.dart';
-import 'package:chat_engine/src/persistence/repositories/outbox_repository_impl.dart';
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/crypto/crypto.dart';
+import 'package:hello_engine/src/domain/domain.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/message_repository_impl.dart';
+import 'package:hello_engine/src/persistence/repositories/outbox_repository_impl.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -231,7 +231,7 @@ void main() {
         // Create a Message domain object.
         final message = Message(
           id: 'msg-integration-1',
-          conversationId: 'conv-alice-bob',
+          groupId: 'conv-alice-bob',
           senderId: 'alice',
           senderDeviceId: 'device-alice-1',
           type: MessageType.e2ee,
@@ -250,7 +250,7 @@ void main() {
         // Verify all fields.
         expect(loaded, isNotNull);
         expect(loaded!.id, equals('msg-integration-1'));
-        expect(loaded.conversationId, equals('conv-alice-bob'));
+        expect(loaded.groupId, equals('conv-alice-bob'));
         expect(loaded.senderId, equals('alice'));
         expect(loaded.senderDeviceId, equals('device-alice-1'));
         expect(loaded.type, equals(MessageType.e2ee));
@@ -264,7 +264,7 @@ void main() {
       'Scenario 6: MessageEnvelope wire format has correct snake_case fields',
       () async {
         final envelope = MessageEnvelope(
-          spaceId: 'space-123',
+          groupId: 'space-123',
           senderDeviceId: 42,
           ciphertext: base64Encode(Uint8List.fromList([1, 2, 3])),
           recipientId: 'bob-user-id',
@@ -285,7 +285,7 @@ void main() {
         final json = envelope.toJson();
 
         // Verify snake_case field names.
-        expect(json.containsKey('space_id'), isTrue);
+        expect(json.containsKey('group_id'), isTrue);
         expect(json.containsKey('sender_device_id'), isTrue);
         expect(json.containsKey('recipient_id'), isTrue);
         expect(json.containsKey('recipient_device_id'), isTrue);
@@ -294,7 +294,7 @@ void main() {
         expect(json.containsKey('distribution_ciphertexts'), isTrue);
 
         // Verify values.
-        expect(json['space_id'], equals('space-123'));
+        expect(json['group_id'], equals('space-123'));
         expect(json['sender_device_id'], equals(42));
         expect(json['recipient_id'], equals('bob-user-id'));
         expect(json['recipient_device_id'], equals(7));
@@ -312,7 +312,7 @@ void main() {
 
         // Verify round-trip deserialization.
         final restored = MessageEnvelope.fromJson(json);
-        expect(restored.spaceId, equals(envelope.spaceId));
+        expect(restored.groupId, equals(envelope.groupId));
         expect(restored.senderDeviceId, equals(envelope.senderDeviceId));
         expect(restored.recipientId, equals(envelope.recipientId));
         expect(
@@ -680,7 +680,7 @@ void main() {
         final now = DateTime.now();
         final item = OutboxItemRow(
           id: 'outbox-integration-1',
-          conversationId: 'conv-alice-bob',
+          groupId: 'conv-alice-bob',
           encryptedEnvelope:
               Uint8List.fromList(utf8.encode('{"ciphertext":"abc"}')),
           recipientDeviceIds: jsonEncode(['bob:1', 'bob:2']),
@@ -694,7 +694,7 @@ void main() {
         var pending = await outboxRepo.getPending();
         expect(pending, hasLength(1));
         expect(pending.first.id, equals('outbox-integration-1'));
-        expect(pending.first.conversationId, equals('conv-alice-bob'));
+        expect(pending.first.groupId, equals('conv-alice-bob'));
 
         // Verify getPendingCount.
         final count = await outboxRepo.getPendingCount();
@@ -726,7 +726,7 @@ void main() {
           await outboxRepo.enqueue(
             OutboxItemRow(
               id: 'outbox-$i',
-              conversationId: 'conv-1',
+              groupId: 'conv-1',
               encryptedEnvelope: Uint8List.fromList([i]),
               recipientDeviceIds: jsonEncode(['bob:1']),
               retryCount: 0,
@@ -826,7 +826,7 @@ void main() {
 
         // Alice creates a message.
         const messageId = 'msg-e2e-pipeline';
-        const conversationId = 'conv-alice-bob';
+        const groupId = 'conv-alice-bob';
         const originalText = 'End-to-end pipeline test!';
 
         // 1. Create the DecryptedMessage payload.
@@ -840,7 +840,7 @@ void main() {
         // 3. Persist the message metadata to DB.
         final message = Message(
           id: messageId,
-          conversationId: conversationId,
+          groupId: groupId,
           senderId: 'alice',
           senderDeviceId: 'device-1',
           type: MessageType.e2ee,
@@ -851,7 +851,7 @@ void main() {
 
         // 4. Create a wire-format envelope.
         final envelope = MessageEnvelope(
-          spaceId: conversationId,
+          groupId: groupId,
           senderDeviceId: 1,
           ciphertext: base64Encode(enc.ciphertext),
           recipientId: 'bob',
@@ -894,7 +894,7 @@ void main() {
         // 10. Verify the message metadata was persisted.
         final loadedMsg = await msgRepo.getMessageById(messageId);
         expect(loadedMsg, isNotNull);
-        expect(loadedMsg!.conversationId, equals(conversationId));
+        expect(loadedMsg!.groupId, equals(groupId));
       },
     );
 

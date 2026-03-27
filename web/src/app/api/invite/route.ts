@@ -1,5 +1,5 @@
 // XARK OS v2.0 — SUMMON LINK GENERATION
-// POST /api/summon — generates a one-time summon link for authenticated users.
+// POST /api/invite — generates a one-time summon link for authenticated users.
 // Returns { code, url } on success.
 
 import { NextRequest, NextResponse } from "next/server";

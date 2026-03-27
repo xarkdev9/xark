@@ -10,7 +10,7 @@ import { AwarenessStream } from "@/components/os/AwarenessStream";
 import { PeopleDock } from "@/components/os/PeopleDock";
 import { MemoriesTab } from "@/components/os/MemoriesTab";
 import { useAuth } from "@/hooks/useAuth";
-import { createSpace } from "@/lib/spaces";
+import { createGroup } from "@/lib/spaces";
 import { colors, layout, text, surface, ink } from "@/lib/theme";
 import { makeUserId } from "@/lib/user-id";
 import { UserMenu } from "@/components/os/UserMenu";
@@ -19,7 +19,7 @@ import { supabase, getSupabaseToken } from "@/lib/supabase";
 import { InviteSurface, generateAndShareInvite } from "@/components/os/InviteSurface";
 import { useE2EE } from "@/hooks/useE2EE";
 
-type GalaxyTab = "chats" | "groups" | "memories";
+type HomeTab = "chats" | "groups" | "memories";
 
 // ── Invite Another — inline nudge below PeopleDock ──
 function InviteAnother({ userName }: { userName: string }) {
@@ -55,12 +55,12 @@ function SendIcon({ color, size = 24 }: { color: string; size?: number }) {
   );
 }
 
-function GalaxyContent() {
+function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const userName = searchParams.get("name") ?? "";
   const { user } = useAuth(userName || undefined);
-  const [activeTab, setActiveTab] = useState<GalaxyTab>("chats");
+  const [activeTab, setActiveTab] = useState<HomeTab>("chats");
   const [tabDirection, setTabDirection] = useState(0);
 
   const userId = user?.uid ?? makeUserId("name", userName);
@@ -103,7 +103,7 @@ function GalaxyContent() {
     if (!userId) return;
     // Fetch only the total space count (lightning fast head query) to determine UI empty state
     supabase.from('space_members')
-      .select('space_id', { count: 'exact', head: true })
+      .select('group_id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .then(({ count }) => {
         setSpacesCount(count ?? 0);
@@ -113,14 +113,14 @@ function GalaxyContent() {
   // Detect Contact Picker API support (Android Chrome)
   const hasContactPicker = typeof navigator !== "undefined" && "contacts" in navigator && "ContactsManager" in window;
 
-  const handleSpaceTap = (spaceId: string, viewMode?: "decide") => {
+  const handleSpaceTap = (groupId: string, viewMode?: "decide") => {
     const viewParam = viewMode ? `&view=${viewMode}` : "";
-    const playgroundParam = isPlaygroundSpace(spaceId) ? "&playground=true" : "";
-    router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}${viewParam}${playgroundParam}`);
+    const playgroundParam = isPlaygroundSpace(groupId) ? "&playground=true" : "";
+    router.push(`/space/${groupId}?name=${encodeURIComponent(userName)}${viewParam}${playgroundParam}`);
   };
 
-  const handlePersonTap = (spaceId: string) => {
-    router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}`);
+  const handlePersonTap = (groupId: string) => {
+    router.push(`/space/${groupId}?name=${encodeURIComponent(userName)}`);
   };
 
   // Check a phone number against /api/contacts/check and start chat or invite
@@ -152,13 +152,13 @@ function GalaxyContent() {
           body: JSON.stringify({ otherUserId }),
         });
         if (!chatRes.ok) throw new Error(`chat/start error ${chatRes.status}`);
-        const { spaceId } = await chatRes.json();
-        if (!spaceId) throw new Error("No spaceId returned");
+        const { groupId } = await chatRes.json();
+        if (!groupId) throw new Error("No groupId returned");
         setShowNewSheet(false);
         setShowPhoneInput(false);
         setPhoneNumber("");
         setContactCheckStatus("idle");
-        handlePersonTap(spaceId);
+        handlePersonTap(groupId);
       } else {
         // Not registered — offer invite
         setContactCheckStatus("not_found");
@@ -221,12 +221,12 @@ function GalaxyContent() {
 
       if (!res.ok) throw new Error(`API error ${res.status}`);
 
-      const { spaceId } = await res.json();
-      if (!spaceId) throw new Error("No spaceId returned");
+      const { groupId } = await res.json();
+      if (!groupId) throw new Error("No groupId returned");
 
       setShowPhoneInput(false);
       setShowNewSheet(false);
-      handlePersonTap(spaceId);
+      handlePersonTap(groupId);
     } catch (err) {
       console.error("[chat] start failed:", err);
     } finally {
@@ -239,12 +239,12 @@ function GalaxyContent() {
     if (!name) return;
     setIsCreating(true);
     try {
-      const { spaceId } = await createSpace(name, userId);
-      if (!spaceId) throw new Error("No spaceId returned");
+      const { groupId } = await createGroup(name, userId);
+      if (!groupId) throw new Error("No groupId returned");
       setShowGroupInput(false);
       setShowNewSheet(false);
       setGroupName("");
-      handleSpaceTap(spaceId);
+      handleSpaceTap(groupId);
     } catch {
       // Handle error visually if necessary
     } finally {
@@ -253,7 +253,7 @@ function GalaxyContent() {
   }, [groupName, userId, handleSpaceTap]);
 
   // ── Swipe to switch tabs ──
-  const tabs: GalaxyTab[] = ["chats", "groups", "memories"];
+  const tabs: HomeTab[] = ["chats", "groups", "memories"];
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
@@ -300,7 +300,7 @@ function GalaxyContent() {
 
           {/* ── Tabs: People | Plans | Memories — Liquid Fire underline ── */}
           <div className="flex gap-6" style={{ alignItems: "center", paddingBottom: "8px" }}>
-          {(["chats", "groups", "memories"] as GalaxyTab[]).map((tab) => {
+          {(["chats", "groups", "memories"] as HomeTab[]).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <span
@@ -737,10 +737,10 @@ function GalaxyContent() {
   );
 }
 
-export default function GalaxyPage() {
+export default function HomePage() {
   return (
     <Suspense>
-      <GalaxyContent />
+      <HomeContent />
     </Suspense>
   );
 }

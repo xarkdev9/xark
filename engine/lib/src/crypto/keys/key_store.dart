@@ -1,4 +1,4 @@
-import 'package:chat_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/crypto/keys/key_types.dart';
 
 /// Abstract interface for secure key material storage.
 ///

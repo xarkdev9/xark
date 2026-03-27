@@ -27,10 +27,10 @@ interface LockedItem {
 }
 
 interface BlueprintProps {
-  spaceId: string;
+  groupId: string;
 }
 
-export function Blueprint({ spaceId }: BlueprintProps) {
+export function Blueprint({ groupId }: BlueprintProps) {
   const [items, setItems] = useState<LockedItem[]>([]);
   const [settlement, setSettlement] = useState<Settlement | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export function Blueprint({ spaceId }: BlueprintProps) {
         .select(
           "id, title, category, description, state, weighted_score, ownership, commitment_proof, locked_at"
         )
-        .eq("space_id", spaceId)
+        .eq("group_id", groupId)
         .eq("is_locked", true)
         .order("locked_at", { ascending: true });
 
@@ -51,7 +51,7 @@ export function Blueprint({ spaceId }: BlueprintProps) {
       }
 
       // Fetch settlement data
-      const settleData = await fetchSettlement(spaceId);
+      const settleData = await fetchSettlement(groupId);
       if (settleData.entries.length > 0) {
         setSettlement(settleData);
       }
@@ -60,7 +60,7 @@ export function Blueprint({ spaceId }: BlueprintProps) {
     }
 
     fetchLocked();
-  }, [spaceId]);
+  }, [groupId]);
 
   function formatDate(iso: string | null): string {
     if (!iso) return "";

@@ -50,7 +50,7 @@ describe("redactPII", () => {
 describe("sanitizeForIntelligence", () => {
   it("sanitizes message content, preserves other fields", () => {
     const msgs = [
-      { id: "1", space_id: "s1", role: "user" as const, content: "my card 4111111111111111", user_id: "u1", sender_name: "nina", created_at: "2026-01-01" },
+      { id: "1", group_id: "s1", role: "user" as const, content: "my card 4111111111111111", user_id: "u1", sender_name: "nina", created_at: "2026-01-01" },
     ];
     const result = sanitizeForIntelligence(msgs);
     expect(result[0].content).toBe("my card [redacted]");

@@ -53,8 +53,8 @@ export async function POST(req: NextRequest) {
     );
 
     await supabaseAdmin.from("space_members").upsert(
-      { space_id: invite.space_id, user_id: userId },
-      { onConflict: "space_id,user_id" }
+      { group_id: invite.group_id, user_id: userId },
+      { onConflict: "group_id,user_id" }
     );
 
     await supabaseAdmin
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       token: jwt,
       user: { id: userId, displayName: safeName },
-      spaceId: invite.space_id,
+      groupId: invite.group_id,
     });
   } catch (err) {
     console.error("[xark] join error:", err);

@@ -1,5 +1,5 @@
-import 'package:chat_engine/src/persistence/database/app_database.dart';
-import 'package:chat_engine/src/persistence/repositories/processed_distribution_repository.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:hello_engine/src/persistence/repositories/processed_distribution_repository.dart';
 
 /// Drift-backed implementation of [ProcessedDistributionRepository].
 ///

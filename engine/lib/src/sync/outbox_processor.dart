@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/persistence/database/app_database.dart';
-import 'package:chat_engine/src/persistence/repositories/outbox_repository.dart';
-import 'package:chat_engine/src/sync/sync_observer.dart';
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
-import 'package:chat_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:hello_engine/src/persistence/repositories/outbox_repository.dart';
+import 'package:hello_engine/src/sync/sync_observer.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/transport/supabase_client.dart';
 
 /// Drains the offline outbox queue with retry and exponential backoff.
 ///

@@ -14,7 +14,7 @@
  * only handles format/parse — not transport.
  */
 
-import type { BookableItem, SpaceId, UserId } from "../models/types.js";
+import type { BookableItem, GroupId, UserId } from "../models/types.js";
 
 /**
  * An outgoing message to be sent to a chat platform.
@@ -52,7 +52,7 @@ export type EngineCommandType =
 
 export interface EngineCommand {
   type: EngineCommandType;
-  spaceId: SpaceId;
+  groupId: GroupId;
   userId: UserId;
   payload: Record<string, unknown>;
 }

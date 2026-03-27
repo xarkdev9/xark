@@ -10,7 +10,7 @@ const MAX_PER_SPACE = 200;
 
 interface CachedMessage {
   id: string;
-  spaceId: string;
+  groupId: string;
   content: string;
   role: string;
   timestamp: number;
@@ -37,8 +37,8 @@ function openDB(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        store.createIndex('bySpace', 'spaceId', { unique: false });
-        store.createIndex('bySpaceTime', ['spaceId', 'timestamp'], { unique: false });
+        store.createIndex('bySpace', 'groupId', { unique: false });
+        store.createIndex('bySpaceTime', ['groupId', 'timestamp'], { unique: false });
       }
     };
   });
@@ -55,7 +55,7 @@ function getDB(): Promise<IDBDatabase> {
  * Deduplicates by id — safe to call multiple times with overlapping data.
  */
 export async function cacheBatchMessages(
-  spaceId: string,
+  groupId: string,
   messages: Array<{
     id: string;
     content: string;
@@ -81,7 +81,7 @@ export async function cacheBatchMessages(
 
       const entry: CachedMessage = {
         id: msg.id,
-        spaceId,
+        groupId,
         content: msg.content,
         role: msg.role,
         timestamp: msg.timestamp,
@@ -108,7 +108,7 @@ export async function cacheBatchMessages(
  * Get cached messages for a space, sorted by timestamp ascending.
  */
 export async function getCachedMessages(
-  spaceId: string,
+  groupId: string,
   limit: number = 50
 ): Promise<CachedMessage[]> {
   try {
@@ -116,7 +116,7 @@ export async function getCachedMessages(
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
     const index = store.index('bySpace');
-    const range = IDBKeyRange.only(spaceId);
+    const range = IDBKeyRange.only(groupId);
 
     return new Promise((resolve, reject) => {
       const results: CachedMessage[] = [];
@@ -142,13 +142,13 @@ export async function getCachedMessages(
  * Get the newest cached timestamp for a space (for delta sync).
  * Returns null if no cache exists — triggers full fetch.
  */
-export async function getCacheWatermark(spaceId: string): Promise<string | null> {
+export async function getCacheWatermark(groupId: string): Promise<string | null> {
   try {
     const db = await getDB();
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
     const index = store.index('bySpace');
-    const range = IDBKeyRange.only(spaceId);
+    const range = IDBKeyRange.only(groupId);
 
     return new Promise((resolve, reject) => {
       const request = index.openCursor(range, 'prev'); // newest first
@@ -172,13 +172,13 @@ export async function getCacheWatermark(spaceId: string): Promise<string | null>
 /**
  * Evict old messages beyond the cap per space.
  */
-export async function evictOldMessages(spaceId: string, keepCount: number = MAX_PER_SPACE): Promise<void> {
+export async function evictOldMessages(groupId: string, keepCount: number = MAX_PER_SPACE): Promise<void> {
   try {
     const db = await getDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const index = store.index('bySpace');
-    const range = IDBKeyRange.only(spaceId);
+    const range = IDBKeyRange.only(groupId);
 
     const allKeys: IDBValidKey[] = [];
     const request = index.openCursor(range, 'prev'); // newest first
@@ -216,13 +216,13 @@ export async function evictOldMessages(spaceId: string, keepCount: number = MAX_
 /**
  * Clear all cached messages for a space (logout, crypto shred, member leave).
  */
-export async function clearSpaceCache(spaceId: string): Promise<void> {
+export async function clearSpaceCache(groupId: string): Promise<void> {
   try {
     const db = await getDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const index = store.index('bySpace');
-    const range = IDBKeyRange.only(spaceId);
+    const range = IDBKeyRange.only(groupId);
 
     const request = index.openCursor(range);
     await new Promise<void>((resolve, reject) => {

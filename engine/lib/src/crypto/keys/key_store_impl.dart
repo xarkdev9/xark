@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/keys/ed25519_to_curve25519.dart';
-import 'package:chat_engine/src/crypto/keys/key_store.dart';
-import 'package:chat_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/crypto/keys/ed25519_to_curve25519.dart';
+import 'package:hello_engine/src/crypto/keys/key_store.dart';
+import 'package:hello_engine/src/crypto/keys/key_types.dart';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 

@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { tryLocalAgent } from "../local-agent";
-import type { LocalContext } from "../local-agent";
+import { tryLocalAgent } from "../group-actions";
+import type { LocalContext } from "../group-actions";
 
 const mockContext: LocalContext = {
-  spaceId: "space_test",
+  groupId: "space_test",
   userId: "name_ram",
   userName: "ram",
   spaceItems: [],
@@ -11,20 +11,20 @@ const mockContext: LocalContext = {
 };
 
 describe("tryLocalAgent", () => {
-  it("returns null for non-@xark messages", () => {
+  it("returns null for non-@hello messages", () => {
     const result = tryLocalAgent("hello everyone", mockContext);
     expect(result).toBeNull();
   });
 
-  it("returns null for unrecognized @xark commands", () => {
-    const result = tryLocalAgent("@xark find me flights to miami", mockContext);
+  it("returns null for unrecognized @hello commands", () => {
+    const result = tryLocalAgent("@hello find me flights to miami", mockContext);
     expect(result).toBeNull();
   });
 });
 
 describe("date commands", () => {
   it("matches 'set dates to june 1-5'", () => {
-    const result = tryLocalAgent("@xark set dates to june 1-5", mockContext);
+    const result = tryLocalAgent("@hello set dates to june 1-5", mockContext);
     expect(result).not.toBeNull();
     expect(result!.handled).toBe(true);
     expect(result!.ledgerEntry).toBeDefined();
@@ -34,39 +34,39 @@ describe("date commands", () => {
   });
 
   it("matches 'change dates to march 20-25'", () => {
-    const result = tryLocalAgent("@xark change dates to march 20-25", mockContext);
+    const result = tryLocalAgent("@hello change dates to march 20-25", mockContext);
     expect(result).not.toBeNull();
     expect(result!.ledgerEntry!.action).toBe("update_dates");
   });
 
   it("matches 'update trip dates to december 10-15'", () => {
-    const result = tryLocalAgent("@xark update trip dates to december 10-15", mockContext);
+    const result = tryLocalAgent("@hello update trip dates to december 10-15", mockContext);
     expect(result).not.toBeNull();
     expect(result!.ledgerEntry!.action).toBe("update_dates");
   });
 
   it("does NOT match vague date requests", () => {
-    const result = tryLocalAgent("@xark push the dates back a few weeks because nina got delayed", mockContext);
+    const result = tryLocalAgent("@hello push the dates back a few weeks because nina got delayed", mockContext);
     expect(result).toBeNull();
   });
 });
 
 describe("rename commands", () => {
   it("matches 'rename space to Miami 2026'", () => {
-    const result = tryLocalAgent("@xark rename space to Miami 2026", mockContext);
+    const result = tryLocalAgent("@hello rename space to Miami 2026", mockContext);
     expect(result).not.toBeNull();
     expect(result!.ledgerEntry!.action).toBe("rename_space");
     expect(result!.ledgerEntry!.payload).toEqual({ new_title: "Miami 2026" });
   });
 
   it("matches 'rename this to Summer Trip'", () => {
-    const result = tryLocalAgent("@xark rename this to Summer Trip", mockContext);
+    const result = tryLocalAgent("@hello rename this to Summer Trip", mockContext);
     expect(result).not.toBeNull();
     expect(result!.ledgerEntry!.payload).toEqual({ new_title: "Summer Trip" });
   });
 
   it("matches 'rename group to Beach Weekend'", () => {
-    const result = tryLocalAgent("@xark rename group to Beach Weekend", mockContext);
+    const result = tryLocalAgent("@hello rename group to Beach Weekend", mockContext);
     expect(result).not.toBeNull();
   });
 });
@@ -82,24 +82,24 @@ describe("state query commands", () => {
   };
 
   it("matches 'what's the status'", () => {
-    const result = tryLocalAgent("@xark what's the status", ctxWithItems);
+    const result = tryLocalAgent("@hello what's the status", ctxWithItems);
     expect(result).not.toBeNull();
     expect(result!.handled).toBe(true);
     expect(result!.whisper).toContain("3 items");
   });
 
   it("matches 'status'", () => {
-    const result = tryLocalAgent("@xark status", ctxWithItems);
+    const result = tryLocalAgent("@hello status", ctxWithItems);
     expect(result).not.toBeNull();
   });
 
   it("reports empty state", () => {
-    const result = tryLocalAgent("@xark status", mockContext);
+    const result = tryLocalAgent("@hello status", mockContext);
     expect(result!.whisper).toContain("wide open");
   });
 
   it("matches 'who hasn't voted'", () => {
-    const result = tryLocalAgent("@xark who hasn't voted", ctxWithItems);
+    const result = tryLocalAgent("@hello who hasn't voted", ctxWithItems);
     expect(result).not.toBeNull();
     expect(result!.whisper).toContain("2 items");
   });

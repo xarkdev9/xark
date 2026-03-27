@@ -6,7 +6,7 @@ class RealtimeMessageEvent {
   /// Creates a [RealtimeMessageEvent].
   const RealtimeMessageEvent({
     required this.messageId,
-    required this.spaceId,
+    required this.groupId,
     required this.senderId,
     required this.messageType,
     required this.createdAt,
@@ -19,7 +19,7 @@ class RealtimeMessageEvent {
   ) {
     return RealtimeMessageEvent(
       messageId: record['id'] as String,
-      spaceId: record['space_id'] as String,
+      groupId: record['group_id'] as String,
       senderId: record['user_id'] as String,
       senderDeviceId: record['sender_device_id'] as int?,
       messageType: record['message_type'] as String? ?? 'e2ee',
@@ -31,7 +31,7 @@ class RealtimeMessageEvent {
   final String messageId;
 
   /// Conversation (space) this message belongs to.
-  final String spaceId;
+  final String groupId;
 
   /// User ID of the sender.
   final String senderId;
@@ -48,7 +48,7 @@ class RealtimeMessageEvent {
   @override
   String toString() =>
       'RealtimeMessageEvent(messageId: $messageId, '
-      'spaceId: $spaceId, senderId: $senderId, '
+      'groupId: $groupId, senderId: $senderId, '
       'messageType: $messageType)';
 }
 
@@ -59,7 +59,7 @@ class SKRecoveryRequest {
     required this.requesterId,
     required this.requesterDeviceId,
     required this.targetSenderId,
-    required this.spaceId,
+    required this.groupId,
   });
 
   /// Constructs from a Realtime broadcast payload map.
@@ -70,7 +70,7 @@ class SKRecoveryRequest {
       requesterId: payload['requester_id'] as String,
       requesterDeviceId: payload['requester_device_id'] as int,
       targetSenderId: payload['target_sender_id'] as String,
-      spaceId: payload['space_id'] as String,
+      groupId: payload['group_id'] as String,
     );
   }
 
@@ -84,19 +84,19 @@ class SKRecoveryRequest {
   final String targetSenderId;
 
   /// Space (group conversation) the key is for.
-  final String spaceId;
+  final String groupId;
 
   /// Serialises to a broadcast-compatible map.
   Map<String, dynamic> toBroadcastPayload() => <String, dynamic>{
         'requester_id': requesterId,
         'requester_device_id': requesterDeviceId,
         'target_sender_id': targetSenderId,
-        'space_id': spaceId,
+        'group_id': groupId,
       };
 
   @override
   String toString() =>
       'SKRecoveryRequest(requesterId: $requesterId, '
       'requesterDeviceId: $requesterDeviceId, '
-      'targetSenderId: $targetSenderId, spaceId: $spaceId)';
+      'targetSenderId: $targetSenderId, groupId: $groupId)';
 }

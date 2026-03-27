@@ -14,11 +14,11 @@ class $MessagesTable extends Messages
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _spaceIdMeta =
-      const VerificationMeta('spaceId');
+  static const VerificationMeta _groupIdMeta =
+      const VerificationMeta('groupId');
   @override
-  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
-      'space_id', aliasedName, false,
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+      'group_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _senderIdMeta =
       const VerificationMeta('senderId');
@@ -123,7 +123,7 @@ class $MessagesTable extends Messages
   @override
   List<GeneratedColumn> get $columns => [
         id,
-        spaceId,
+        groupId,
         senderId,
         senderDeviceId,
         messageType,
@@ -154,11 +154,11 @@ class $MessagesTable extends Messages
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('space_id')) {
-      context.handle(_spaceIdMeta,
-          spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta));
+    if (data.containsKey('group_id')) {
+      context.handle(_groupIdMeta,
+          groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta));
     } else if (isInserting) {
-      context.missing(_spaceIdMeta);
+      context.missing(_groupIdMeta);
     }
     if (data.containsKey('sender_id')) {
       context.handle(_senderIdMeta,
@@ -245,8 +245,8 @@ class $MessagesTable extends Messages
     return MessageRow(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      spaceId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}space_id'])!,
+      groupId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}group_id'])!,
       senderId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sender_id'])!,
       senderDeviceId: attachedDatabase.typeMapping.read(
@@ -289,7 +289,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
   final String id;
 
   /// Conversation (space) this message belongs to.
-  final String spaceId;
+  final String groupId;
 
   /// User ID of the sender.
   final String senderId;
@@ -335,7 +335,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
   final DateTime createdAt;
   const MessageRow(
       {required this.id,
-      required this.spaceId,
+      required this.groupId,
       required this.senderId,
       this.senderDeviceId,
       required this.messageType,
@@ -354,7 +354,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['space_id'] = Variable<String>(spaceId);
+    map['group_id'] = Variable<String>(groupId);
     map['sender_id'] = Variable<String>(senderId);
     if (!nullToAbsent || senderDeviceId != null) {
       map['sender_device_id'] = Variable<String>(senderDeviceId);
@@ -387,7 +387,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
   MessagesCompanion toCompanion(bool nullToAbsent) {
     return MessagesCompanion(
       id: Value(id),
-      spaceId: Value(spaceId),
+      groupId: Value(groupId),
       senderId: Value(senderId),
       senderDeviceId: senderDeviceId == null && nullToAbsent
           ? const Value.absent()
@@ -422,7 +422,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MessageRow(
       id: serializer.fromJson<String>(json['id']),
-      spaceId: serializer.fromJson<String>(json['spaceId']),
+      groupId: serializer.fromJson<String>(json['groupId']),
       senderId: serializer.fromJson<String>(json['senderId']),
       senderDeviceId: serializer.fromJson<String?>(json['senderDeviceId']),
       messageType: serializer.fromJson<String>(json['messageType']),
@@ -444,7 +444,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'spaceId': serializer.toJson<String>(spaceId),
+      'groupId': serializer.toJson<String>(groupId),
       'senderId': serializer.toJson<String>(senderId),
       'senderDeviceId': serializer.toJson<String?>(senderDeviceId),
       'messageType': serializer.toJson<String>(messageType),
@@ -464,7 +464,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
 
   MessageRow copyWith(
           {String? id,
-          String? spaceId,
+          String? groupId,
           String? senderId,
           Value<String?> senderDeviceId = const Value.absent(),
           String? messageType,
@@ -481,7 +481,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
           DateTime? createdAt}) =>
       MessageRow(
         id: id ?? this.id,
-        spaceId: spaceId ?? this.spaceId,
+        groupId: groupId ?? this.groupId,
         senderId: senderId ?? this.senderId,
         senderDeviceId:
             senderDeviceId.present ? senderDeviceId.value : this.senderDeviceId,
@@ -506,7 +506,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
   MessageRow copyWithCompanion(MessagesCompanion data) {
     return MessageRow(
       id: data.id.present ? data.id.value : this.id,
-      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
       senderId: data.senderId.present ? data.senderId.value : this.senderId,
       senderDeviceId: data.senderDeviceId.present
           ? data.senderDeviceId.value
@@ -540,7 +540,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
   String toString() {
     return (StringBuffer('MessageRow(')
           ..write('id: $id, ')
-          ..write('spaceId: $spaceId, ')
+          ..write('groupId: $groupId, ')
           ..write('senderId: $senderId, ')
           ..write('senderDeviceId: $senderDeviceId, ')
           ..write('messageType: $messageType, ')
@@ -562,7 +562,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
   @override
   int get hashCode => Object.hash(
       id,
-      spaceId,
+      groupId,
       senderId,
       senderDeviceId,
       messageType,
@@ -582,7 +582,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
       identical(this, other) ||
       (other is MessageRow &&
           other.id == this.id &&
-          other.spaceId == this.spaceId &&
+          other.groupId == this.groupId &&
           other.senderId == this.senderId &&
           other.senderDeviceId == this.senderDeviceId &&
           other.messageType == this.messageType &&
@@ -601,7 +601,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
 
 class MessagesCompanion extends UpdateCompanion<MessageRow> {
   final Value<String> id;
-  final Value<String> spaceId;
+  final Value<String> groupId;
   final Value<String> senderId;
   final Value<String?> senderDeviceId;
   final Value<String> messageType;
@@ -619,7 +619,7 @@ class MessagesCompanion extends UpdateCompanion<MessageRow> {
   final Value<int> rowid;
   const MessagesCompanion({
     this.id = const Value.absent(),
-    this.spaceId = const Value.absent(),
+    this.groupId = const Value.absent(),
     this.senderId = const Value.absent(),
     this.senderDeviceId = const Value.absent(),
     this.messageType = const Value.absent(),
@@ -638,7 +638,7 @@ class MessagesCompanion extends UpdateCompanion<MessageRow> {
   });
   MessagesCompanion.insert({
     required String id,
-    required String spaceId,
+    required String groupId,
     required String senderId,
     this.senderDeviceId = const Value.absent(),
     this.messageType = const Value.absent(),
@@ -655,12 +655,12 @@ class MessagesCompanion extends UpdateCompanion<MessageRow> {
     required DateTime createdAt,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        spaceId = Value(spaceId),
+        groupId = Value(groupId),
         senderId = Value(senderId),
         createdAt = Value(createdAt);
   static Insertable<MessageRow> custom({
     Expression<String>? id,
-    Expression<String>? spaceId,
+    Expression<String>? groupId,
     Expression<String>? senderId,
     Expression<String>? senderDeviceId,
     Expression<String>? messageType,
@@ -679,7 +679,7 @@ class MessagesCompanion extends UpdateCompanion<MessageRow> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (spaceId != null) 'space_id': spaceId,
+      if (groupId != null) 'group_id': groupId,
       if (senderId != null) 'sender_id': senderId,
       if (senderDeviceId != null) 'sender_device_id': senderDeviceId,
       if (messageType != null) 'message_type': messageType,
@@ -700,7 +700,7 @@ class MessagesCompanion extends UpdateCompanion<MessageRow> {
 
   MessagesCompanion copyWith(
       {Value<String>? id,
-      Value<String>? spaceId,
+      Value<String>? groupId,
       Value<String>? senderId,
       Value<String?>? senderDeviceId,
       Value<String>? messageType,
@@ -718,7 +718,7 @@ class MessagesCompanion extends UpdateCompanion<MessageRow> {
       Value<int>? rowid}) {
     return MessagesCompanion(
       id: id ?? this.id,
-      spaceId: spaceId ?? this.spaceId,
+      groupId: groupId ?? this.groupId,
       senderId: senderId ?? this.senderId,
       senderDeviceId: senderDeviceId ?? this.senderDeviceId,
       messageType: messageType ?? this.messageType,
@@ -743,8 +743,8 @@ class MessagesCompanion extends UpdateCompanion<MessageRow> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (spaceId.present) {
-      map['space_id'] = Variable<String>(spaceId.value);
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
     }
     if (senderId.present) {
       map['sender_id'] = Variable<String>(senderId.value);
@@ -798,7 +798,7 @@ class MessagesCompanion extends UpdateCompanion<MessageRow> {
   String toString() {
     return (StringBuffer('MessagesCompanion(')
           ..write('id: $id, ')
-          ..write('spaceId: $spaceId, ')
+          ..write('groupId: $groupId, ')
           ..write('senderId: $senderId, ')
           ..write('senderDeviceId: $senderDeviceId, ')
           ..write('messageType: $messageType, ')
@@ -2336,10 +2336,10 @@ class $OutboxItemsTable extends OutboxItems
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _conversationIdMeta =
-      const VerificationMeta('conversationId');
+  static const VerificationMeta _groupIdMeta =
+      const VerificationMeta('groupId');
   @override
-  late final GeneratedColumn<String> conversationId = GeneratedColumn<String>(
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
       'conversation_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _encryptedEnvelopeMeta =
@@ -2377,7 +2377,7 @@ class $OutboxItemsTable extends OutboxItems
   @override
   List<GeneratedColumn> get $columns => [
         id,
-        conversationId,
+        groupId,
         encryptedEnvelope,
         recipientDeviceIds,
         retryCount,
@@ -2401,11 +2401,11 @@ class $OutboxItemsTable extends OutboxItems
     }
     if (data.containsKey('conversation_id')) {
       context.handle(
-          _conversationIdMeta,
-          conversationId.isAcceptableOrUnknown(
-              data['conversation_id']!, _conversationIdMeta));
+          _groupIdMeta,
+          groupId.isAcceptableOrUnknown(
+              data['conversation_id']!, _groupIdMeta));
     } else if (isInserting) {
-      context.missing(_conversationIdMeta);
+      context.missing(_groupIdMeta);
     }
     if (data.containsKey('encrypted_envelope')) {
       context.handle(
@@ -2454,7 +2454,7 @@ class $OutboxItemsTable extends OutboxItems
     return OutboxItemRow(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      conversationId: attachedDatabase.typeMapping.read(
+      groupId: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}conversation_id'])!,
       encryptedEnvelope: attachedDatabase.typeMapping.read(
           DriftSqlType.blob, data['${effectivePrefix}encrypted_envelope'])!,
@@ -2480,7 +2480,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
   final String id;
 
   /// Which conversation this belongs to.
-  final String conversationId;
+  final String groupId;
 
   /// The encrypted envelope blob ready to send.
   final Uint8List encryptedEnvelope;
@@ -2498,7 +2498,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
   final DateTime nextRetryAt;
   const OutboxItemRow(
       {required this.id,
-      required this.conversationId,
+      required this.groupId,
       required this.encryptedEnvelope,
       required this.recipientDeviceIds,
       required this.retryCount,
@@ -2508,7 +2508,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['conversation_id'] = Variable<String>(conversationId);
+    map['conversation_id'] = Variable<String>(groupId);
     map['encrypted_envelope'] = Variable<Uint8List>(encryptedEnvelope);
     map['recipient_device_ids'] = Variable<String>(recipientDeviceIds);
     map['retry_count'] = Variable<int>(retryCount);
@@ -2520,7 +2520,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
   OutboxItemsCompanion toCompanion(bool nullToAbsent) {
     return OutboxItemsCompanion(
       id: Value(id),
-      conversationId: Value(conversationId),
+      groupId: Value(groupId),
       encryptedEnvelope: Value(encryptedEnvelope),
       recipientDeviceIds: Value(recipientDeviceIds),
       retryCount: Value(retryCount),
@@ -2534,7 +2534,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return OutboxItemRow(
       id: serializer.fromJson<String>(json['id']),
-      conversationId: serializer.fromJson<String>(json['conversationId']),
+      groupId: serializer.fromJson<String>(json['groupId']),
       encryptedEnvelope:
           serializer.fromJson<Uint8List>(json['encryptedEnvelope']),
       recipientDeviceIds:
@@ -2549,7 +2549,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'conversationId': serializer.toJson<String>(conversationId),
+      'groupId': serializer.toJson<String>(groupId),
       'encryptedEnvelope': serializer.toJson<Uint8List>(encryptedEnvelope),
       'recipientDeviceIds': serializer.toJson<String>(recipientDeviceIds),
       'retryCount': serializer.toJson<int>(retryCount),
@@ -2560,7 +2560,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
 
   OutboxItemRow copyWith(
           {String? id,
-          String? conversationId,
+          String? groupId,
           Uint8List? encryptedEnvelope,
           String? recipientDeviceIds,
           int? retryCount,
@@ -2568,7 +2568,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
           DateTime? nextRetryAt}) =>
       OutboxItemRow(
         id: id ?? this.id,
-        conversationId: conversationId ?? this.conversationId,
+        groupId: groupId ?? this.groupId,
         encryptedEnvelope: encryptedEnvelope ?? this.encryptedEnvelope,
         recipientDeviceIds: recipientDeviceIds ?? this.recipientDeviceIds,
         retryCount: retryCount ?? this.retryCount,
@@ -2578,9 +2578,9 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
   OutboxItemRow copyWithCompanion(OutboxItemsCompanion data) {
     return OutboxItemRow(
       id: data.id.present ? data.id.value : this.id,
-      conversationId: data.conversationId.present
-          ? data.conversationId.value
-          : this.conversationId,
+      groupId: data.groupId.present
+          ? data.groupId.value
+          : this.groupId,
       encryptedEnvelope: data.encryptedEnvelope.present
           ? data.encryptedEnvelope.value
           : this.encryptedEnvelope,
@@ -2599,7 +2599,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
   String toString() {
     return (StringBuffer('OutboxItemRow(')
           ..write('id: $id, ')
-          ..write('conversationId: $conversationId, ')
+          ..write('groupId: $groupId, ')
           ..write('encryptedEnvelope: $encryptedEnvelope, ')
           ..write('recipientDeviceIds: $recipientDeviceIds, ')
           ..write('retryCount: $retryCount, ')
@@ -2612,7 +2612,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
   @override
   int get hashCode => Object.hash(
       id,
-      conversationId,
+      groupId,
       $driftBlobEquality.hash(encryptedEnvelope),
       recipientDeviceIds,
       retryCount,
@@ -2623,7 +2623,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
       identical(this, other) ||
       (other is OutboxItemRow &&
           other.id == this.id &&
-          other.conversationId == this.conversationId &&
+          other.groupId == this.groupId &&
           $driftBlobEquality.equals(
               other.encryptedEnvelope, this.encryptedEnvelope) &&
           other.recipientDeviceIds == this.recipientDeviceIds &&
@@ -2634,7 +2634,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
 
 class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
   final Value<String> id;
-  final Value<String> conversationId;
+  final Value<String> groupId;
   final Value<Uint8List> encryptedEnvelope;
   final Value<String> recipientDeviceIds;
   final Value<int> retryCount;
@@ -2643,7 +2643,7 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
   final Value<int> rowid;
   const OutboxItemsCompanion({
     this.id = const Value.absent(),
-    this.conversationId = const Value.absent(),
+    this.groupId = const Value.absent(),
     this.encryptedEnvelope = const Value.absent(),
     this.recipientDeviceIds = const Value.absent(),
     this.retryCount = const Value.absent(),
@@ -2653,7 +2653,7 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
   });
   OutboxItemsCompanion.insert({
     required String id,
-    required String conversationId,
+    required String groupId,
     required Uint8List encryptedEnvelope,
     required String recipientDeviceIds,
     this.retryCount = const Value.absent(),
@@ -2661,14 +2661,14 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
     required DateTime nextRetryAt,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        conversationId = Value(conversationId),
+        groupId = Value(groupId),
         encryptedEnvelope = Value(encryptedEnvelope),
         recipientDeviceIds = Value(recipientDeviceIds),
         createdAt = Value(createdAt),
         nextRetryAt = Value(nextRetryAt);
   static Insertable<OutboxItemRow> custom({
     Expression<String>? id,
-    Expression<String>? conversationId,
+    Expression<String>? groupId,
     Expression<Uint8List>? encryptedEnvelope,
     Expression<String>? recipientDeviceIds,
     Expression<int>? retryCount,
@@ -2678,7 +2678,7 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (conversationId != null) 'conversation_id': conversationId,
+      if (groupId != null) 'conversation_id': groupId,
       if (encryptedEnvelope != null) 'encrypted_envelope': encryptedEnvelope,
       if (recipientDeviceIds != null)
         'recipient_device_ids': recipientDeviceIds,
@@ -2691,7 +2691,7 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
 
   OutboxItemsCompanion copyWith(
       {Value<String>? id,
-      Value<String>? conversationId,
+      Value<String>? groupId,
       Value<Uint8List>? encryptedEnvelope,
       Value<String>? recipientDeviceIds,
       Value<int>? retryCount,
@@ -2700,7 +2700,7 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
       Value<int>? rowid}) {
     return OutboxItemsCompanion(
       id: id ?? this.id,
-      conversationId: conversationId ?? this.conversationId,
+      groupId: groupId ?? this.groupId,
       encryptedEnvelope: encryptedEnvelope ?? this.encryptedEnvelope,
       recipientDeviceIds: recipientDeviceIds ?? this.recipientDeviceIds,
       retryCount: retryCount ?? this.retryCount,
@@ -2716,8 +2716,8 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (conversationId.present) {
-      map['conversation_id'] = Variable<String>(conversationId.value);
+    if (groupId.present) {
+      map['conversation_id'] = Variable<String>(groupId.value);
     }
     if (encryptedEnvelope.present) {
       map['encrypted_envelope'] = Variable<Uint8List>(encryptedEnvelope.value);
@@ -2744,7 +2744,7 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
   String toString() {
     return (StringBuffer('OutboxItemsCompanion(')
           ..write('id: $id, ')
-          ..write('conversationId: $conversationId, ')
+          ..write('groupId: $groupId, ')
           ..write('encryptedEnvelope: $encryptedEnvelope, ')
           ..write('recipientDeviceIds: $recipientDeviceIds, ')
           ..write('retryCount: $retryCount, ')
@@ -3016,10 +3016,10 @@ class $MediaItemsTable extends MediaItems
   late final GeneratedColumn<String> mediaId = GeneratedColumn<String>(
       'media_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _conversationIdMeta =
-      const VerificationMeta('conversationId');
+  static const VerificationMeta _groupIdMeta =
+      const VerificationMeta('groupId');
   @override
-  late final GeneratedColumn<String> conversationId = GeneratedColumn<String>(
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
       'conversation_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _messageIdMeta =
@@ -3071,7 +3071,7 @@ class $MediaItemsTable extends MediaItems
   @override
   List<GeneratedColumn> get $columns => [
         mediaId,
-        conversationId,
+        groupId,
         messageId,
         mimeType,
         localPath,
@@ -3098,11 +3098,11 @@ class $MediaItemsTable extends MediaItems
     }
     if (data.containsKey('conversation_id')) {
       context.handle(
-          _conversationIdMeta,
-          conversationId.isAcceptableOrUnknown(
-              data['conversation_id']!, _conversationIdMeta));
+          _groupIdMeta,
+          groupId.isAcceptableOrUnknown(
+              data['conversation_id']!, _groupIdMeta));
     } else if (isInserting) {
-      context.missing(_conversationIdMeta);
+      context.missing(_groupIdMeta);
     }
     if (data.containsKey('message_id')) {
       context.handle(_messageIdMeta,
@@ -3159,7 +3159,7 @@ class $MediaItemsTable extends MediaItems
     return MediaItemRow(
       mediaId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}media_id'])!,
-      conversationId: attachedDatabase.typeMapping.read(
+      groupId: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}conversation_id'])!,
       messageId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}message_id'])!,
@@ -3189,7 +3189,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
   final String mediaId;
 
   /// Conversation the media belongs to.
-  final String conversationId;
+  final String groupId;
 
   /// Message the media is attached to.
   final String messageId;
@@ -3213,7 +3213,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
   final bool isDownloaded;
   const MediaItemRow(
       {required this.mediaId,
-      required this.conversationId,
+      required this.groupId,
       required this.messageId,
       required this.mimeType,
       this.localPath,
@@ -3225,7 +3225,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['media_id'] = Variable<String>(mediaId);
-    map['conversation_id'] = Variable<String>(conversationId);
+    map['conversation_id'] = Variable<String>(groupId);
     map['message_id'] = Variable<String>(messageId);
     map['mime_type'] = Variable<String>(mimeType);
     if (!nullToAbsent || localPath != null) {
@@ -3241,7 +3241,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
   MediaItemsCompanion toCompanion(bool nullToAbsent) {
     return MediaItemsCompanion(
       mediaId: Value(mediaId),
-      conversationId: Value(conversationId),
+      groupId: Value(groupId),
       messageId: Value(messageId),
       mimeType: Value(mimeType),
       localPath: localPath == null && nullToAbsent
@@ -3259,7 +3259,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MediaItemRow(
       mediaId: serializer.fromJson<String>(json['mediaId']),
-      conversationId: serializer.fromJson<String>(json['conversationId']),
+      groupId: serializer.fromJson<String>(json['groupId']),
       messageId: serializer.fromJson<String>(json['messageId']),
       mimeType: serializer.fromJson<String>(json['mimeType']),
       localPath: serializer.fromJson<String?>(json['localPath']),
@@ -3274,7 +3274,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'mediaId': serializer.toJson<String>(mediaId),
-      'conversationId': serializer.toJson<String>(conversationId),
+      'groupId': serializer.toJson<String>(groupId),
       'messageId': serializer.toJson<String>(messageId),
       'mimeType': serializer.toJson<String>(mimeType),
       'localPath': serializer.toJson<String?>(localPath),
@@ -3287,7 +3287,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
 
   MediaItemRow copyWith(
           {String? mediaId,
-          String? conversationId,
+          String? groupId,
           String? messageId,
           String? mimeType,
           Value<String?> localPath = const Value.absent(),
@@ -3297,7 +3297,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
           bool? isDownloaded}) =>
       MediaItemRow(
         mediaId: mediaId ?? this.mediaId,
-        conversationId: conversationId ?? this.conversationId,
+        groupId: groupId ?? this.groupId,
         messageId: messageId ?? this.messageId,
         mimeType: mimeType ?? this.mimeType,
         localPath: localPath.present ? localPath.value : this.localPath,
@@ -3309,9 +3309,9 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
   MediaItemRow copyWithCompanion(MediaItemsCompanion data) {
     return MediaItemRow(
       mediaId: data.mediaId.present ? data.mediaId.value : this.mediaId,
-      conversationId: data.conversationId.present
-          ? data.conversationId.value
-          : this.conversationId,
+      groupId: data.groupId.present
+          ? data.groupId.value
+          : this.groupId,
       messageId: data.messageId.present ? data.messageId.value : this.messageId,
       mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
       localPath: data.localPath.present ? data.localPath.value : this.localPath,
@@ -3331,7 +3331,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
   String toString() {
     return (StringBuffer('MediaItemRow(')
           ..write('mediaId: $mediaId, ')
-          ..write('conversationId: $conversationId, ')
+          ..write('groupId: $groupId, ')
           ..write('messageId: $messageId, ')
           ..write('mimeType: $mimeType, ')
           ..write('localPath: $localPath, ')
@@ -3344,14 +3344,14 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
   }
 
   @override
-  int get hashCode => Object.hash(mediaId, conversationId, messageId, mimeType,
+  int get hashCode => Object.hash(mediaId, groupId, messageId, mimeType,
       localPath, downloadUrl, encryptedKeyJson, sizeBytes, isDownloaded);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is MediaItemRow &&
           other.mediaId == this.mediaId &&
-          other.conversationId == this.conversationId &&
+          other.groupId == this.groupId &&
           other.messageId == this.messageId &&
           other.mimeType == this.mimeType &&
           other.localPath == this.localPath &&
@@ -3363,7 +3363,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
 
 class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
   final Value<String> mediaId;
-  final Value<String> conversationId;
+  final Value<String> groupId;
   final Value<String> messageId;
   final Value<String> mimeType;
   final Value<String?> localPath;
@@ -3374,7 +3374,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
   final Value<int> rowid;
   const MediaItemsCompanion({
     this.mediaId = const Value.absent(),
-    this.conversationId = const Value.absent(),
+    this.groupId = const Value.absent(),
     this.messageId = const Value.absent(),
     this.mimeType = const Value.absent(),
     this.localPath = const Value.absent(),
@@ -3386,7 +3386,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
   });
   MediaItemsCompanion.insert({
     required String mediaId,
-    required String conversationId,
+    required String groupId,
     required String messageId,
     required String mimeType,
     this.localPath = const Value.absent(),
@@ -3396,7 +3396,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
     this.isDownloaded = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : mediaId = Value(mediaId),
-        conversationId = Value(conversationId),
+        groupId = Value(groupId),
         messageId = Value(messageId),
         mimeType = Value(mimeType),
         downloadUrl = Value(downloadUrl),
@@ -3404,7 +3404,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
         sizeBytes = Value(sizeBytes);
   static Insertable<MediaItemRow> custom({
     Expression<String>? mediaId,
-    Expression<String>? conversationId,
+    Expression<String>? groupId,
     Expression<String>? messageId,
     Expression<String>? mimeType,
     Expression<String>? localPath,
@@ -3416,7 +3416,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
   }) {
     return RawValuesInsertable({
       if (mediaId != null) 'media_id': mediaId,
-      if (conversationId != null) 'conversation_id': conversationId,
+      if (groupId != null) 'conversation_id': groupId,
       if (messageId != null) 'message_id': messageId,
       if (mimeType != null) 'mime_type': mimeType,
       if (localPath != null) 'local_path': localPath,
@@ -3430,7 +3430,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
 
   MediaItemsCompanion copyWith(
       {Value<String>? mediaId,
-      Value<String>? conversationId,
+      Value<String>? groupId,
       Value<String>? messageId,
       Value<String>? mimeType,
       Value<String?>? localPath,
@@ -3441,7 +3441,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
       Value<int>? rowid}) {
     return MediaItemsCompanion(
       mediaId: mediaId ?? this.mediaId,
-      conversationId: conversationId ?? this.conversationId,
+      groupId: groupId ?? this.groupId,
       messageId: messageId ?? this.messageId,
       mimeType: mimeType ?? this.mimeType,
       localPath: localPath ?? this.localPath,
@@ -3459,8 +3459,8 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
     if (mediaId.present) {
       map['media_id'] = Variable<String>(mediaId.value);
     }
-    if (conversationId.present) {
-      map['conversation_id'] = Variable<String>(conversationId.value);
+    if (groupId.present) {
+      map['conversation_id'] = Variable<String>(groupId.value);
     }
     if (messageId.present) {
       map['message_id'] = Variable<String>(messageId.value);
@@ -3493,7 +3493,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
   String toString() {
     return (StringBuffer('MediaItemsCompanion(')
           ..write('mediaId: $mediaId, ')
-          ..write('conversationId: $conversationId, ')
+          ..write('groupId: $groupId, ')
           ..write('messageId: $messageId, ')
           ..write('mimeType: $mimeType, ')
           ..write('localPath: $localPath, ')
@@ -4367,7 +4367,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 
 typedef $$MessagesTableCreateCompanionBuilder = MessagesCompanion Function({
   required String id,
-  required String spaceId,
+  required String groupId,
   required String senderId,
   Value<String?> senderDeviceId,
   Value<String> messageType,
@@ -4386,7 +4386,7 @@ typedef $$MessagesTableCreateCompanionBuilder = MessagesCompanion Function({
 });
 typedef $$MessagesTableUpdateCompanionBuilder = MessagesCompanion Function({
   Value<String> id,
-  Value<String> spaceId,
+  Value<String> groupId,
   Value<String> senderId,
   Value<String?> senderDeviceId,
   Value<String> messageType,
@@ -4439,8 +4439,8 @@ class $$MessagesTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get spaceId => $composableBuilder(
-      column: $table.spaceId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get senderId => $composableBuilder(
       column: $table.senderId, builder: (column) => ColumnFilters(column));
@@ -4520,8 +4520,8 @@ class $$MessagesTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get spaceId => $composableBuilder(
-      column: $table.spaceId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get senderId => $composableBuilder(
       column: $table.senderId, builder: (column) => ColumnOrderings(column));
@@ -4583,8 +4583,8 @@ class $$MessagesTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get spaceId =>
-      $composableBuilder(column: $table.spaceId, builder: (column) => column);
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
 
   GeneratedColumn<String> get senderId =>
       $composableBuilder(column: $table.senderId, builder: (column) => column);
@@ -4675,7 +4675,7 @@ class $$MessagesTableTableManager extends RootTableManager<
               $$MessagesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> spaceId = const Value.absent(),
+            Value<String> groupId = const Value.absent(),
             Value<String> senderId = const Value.absent(),
             Value<String?> senderDeviceId = const Value.absent(),
             Value<String> messageType = const Value.absent(),
@@ -4694,7 +4694,7 @@ class $$MessagesTableTableManager extends RootTableManager<
           }) =>
               MessagesCompanion(
             id: id,
-            spaceId: spaceId,
+            groupId: groupId,
             senderId: senderId,
             senderDeviceId: senderDeviceId,
             messageType: messageType,
@@ -4713,7 +4713,7 @@ class $$MessagesTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String id,
-            required String spaceId,
+            required String groupId,
             required String senderId,
             Value<String?> senderDeviceId = const Value.absent(),
             Value<String> messageType = const Value.absent(),
@@ -4732,7 +4732,7 @@ class $$MessagesTableTableManager extends RootTableManager<
           }) =>
               MessagesCompanion.insert(
             id: id,
-            spaceId: spaceId,
+            groupId: groupId,
             senderId: senderId,
             senderDeviceId: senderDeviceId,
             messageType: messageType,
@@ -5591,7 +5591,7 @@ typedef $$ReceiptsTableProcessedTableManager = ProcessedTableManager<
 typedef $$OutboxItemsTableCreateCompanionBuilder = OutboxItemsCompanion
     Function({
   required String id,
-  required String conversationId,
+  required String groupId,
   required Uint8List encryptedEnvelope,
   required String recipientDeviceIds,
   Value<int> retryCount,
@@ -5602,7 +5602,7 @@ typedef $$OutboxItemsTableCreateCompanionBuilder = OutboxItemsCompanion
 typedef $$OutboxItemsTableUpdateCompanionBuilder = OutboxItemsCompanion
     Function({
   Value<String> id,
-  Value<String> conversationId,
+  Value<String> groupId,
   Value<Uint8List> encryptedEnvelope,
   Value<String> recipientDeviceIds,
   Value<int> retryCount,
@@ -5623,8 +5623,8 @@ class $$OutboxItemsTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get conversationId => $composableBuilder(
-      column: $table.conversationId,
+  ColumnFilters<String> get groupId => $composableBuilder(
+      column: $table.groupId,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<Uint8List> get encryptedEnvelope => $composableBuilder(
@@ -5657,8 +5657,8 @@ class $$OutboxItemsTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get conversationId => $composableBuilder(
-      column: $table.conversationId,
+  ColumnOrderings<String> get groupId => $composableBuilder(
+      column: $table.groupId,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<Uint8List> get encryptedEnvelope => $composableBuilder(
@@ -5691,8 +5691,8 @@ class $$OutboxItemsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get conversationId => $composableBuilder(
-      column: $table.conversationId, builder: (column) => column);
+  GeneratedColumn<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => column);
 
   GeneratedColumn<Uint8List> get encryptedEnvelope => $composableBuilder(
       column: $table.encryptedEnvelope, builder: (column) => column);
@@ -5737,7 +5737,7 @@ class $$OutboxItemsTableTableManager extends RootTableManager<
               $$OutboxItemsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> conversationId = const Value.absent(),
+            Value<String> groupId = const Value.absent(),
             Value<Uint8List> encryptedEnvelope = const Value.absent(),
             Value<String> recipientDeviceIds = const Value.absent(),
             Value<int> retryCount = const Value.absent(),
@@ -5747,7 +5747,7 @@ class $$OutboxItemsTableTableManager extends RootTableManager<
           }) =>
               OutboxItemsCompanion(
             id: id,
-            conversationId: conversationId,
+            groupId: groupId,
             encryptedEnvelope: encryptedEnvelope,
             recipientDeviceIds: recipientDeviceIds,
             retryCount: retryCount,
@@ -5757,7 +5757,7 @@ class $$OutboxItemsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String id,
-            required String conversationId,
+            required String groupId,
             required Uint8List encryptedEnvelope,
             required String recipientDeviceIds,
             Value<int> retryCount = const Value.absent(),
@@ -5767,7 +5767,7 @@ class $$OutboxItemsTableTableManager extends RootTableManager<
           }) =>
               OutboxItemsCompanion.insert(
             id: id,
-            conversationId: conversationId,
+            groupId: groupId,
             encryptedEnvelope: encryptedEnvelope,
             recipientDeviceIds: recipientDeviceIds,
             retryCount: retryCount,
@@ -5945,7 +5945,7 @@ typedef $$RatchetSessionsTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function()>;
 typedef $$MediaItemsTableCreateCompanionBuilder = MediaItemsCompanion Function({
   required String mediaId,
-  required String conversationId,
+  required String groupId,
   required String messageId,
   required String mimeType,
   Value<String?> localPath,
@@ -5957,7 +5957,7 @@ typedef $$MediaItemsTableCreateCompanionBuilder = MediaItemsCompanion Function({
 });
 typedef $$MediaItemsTableUpdateCompanionBuilder = MediaItemsCompanion Function({
   Value<String> mediaId,
-  Value<String> conversationId,
+  Value<String> groupId,
   Value<String> messageId,
   Value<String> mimeType,
   Value<String?> localPath,
@@ -5980,8 +5980,8 @@ class $$MediaItemsTableFilterComposer
   ColumnFilters<String> get mediaId => $composableBuilder(
       column: $table.mediaId, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get conversationId => $composableBuilder(
-      column: $table.conversationId,
+  ColumnFilters<String> get groupId => $composableBuilder(
+      column: $table.groupId,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get messageId => $composableBuilder(
@@ -6019,8 +6019,8 @@ class $$MediaItemsTableOrderingComposer
   ColumnOrderings<String> get mediaId => $composableBuilder(
       column: $table.mediaId, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get conversationId => $composableBuilder(
-      column: $table.conversationId,
+  ColumnOrderings<String> get groupId => $composableBuilder(
+      column: $table.groupId,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get messageId => $composableBuilder(
@@ -6059,8 +6059,8 @@ class $$MediaItemsTableAnnotationComposer
   GeneratedColumn<String> get mediaId =>
       $composableBuilder(column: $table.mediaId, builder: (column) => column);
 
-  GeneratedColumn<String> get conversationId => $composableBuilder(
-      column: $table.conversationId, builder: (column) => column);
+  GeneratedColumn<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => column);
 
   GeneratedColumn<String> get messageId =>
       $composableBuilder(column: $table.messageId, builder: (column) => column);
@@ -6111,7 +6111,7 @@ class $$MediaItemsTableTableManager extends RootTableManager<
               $$MediaItemsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> mediaId = const Value.absent(),
-            Value<String> conversationId = const Value.absent(),
+            Value<String> groupId = const Value.absent(),
             Value<String> messageId = const Value.absent(),
             Value<String> mimeType = const Value.absent(),
             Value<String?> localPath = const Value.absent(),
@@ -6123,7 +6123,7 @@ class $$MediaItemsTableTableManager extends RootTableManager<
           }) =>
               MediaItemsCompanion(
             mediaId: mediaId,
-            conversationId: conversationId,
+            groupId: groupId,
             messageId: messageId,
             mimeType: mimeType,
             localPath: localPath,
@@ -6135,7 +6135,7 @@ class $$MediaItemsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String mediaId,
-            required String conversationId,
+            required String groupId,
             required String messageId,
             required String mimeType,
             Value<String?> localPath = const Value.absent(),
@@ -6147,7 +6147,7 @@ class $$MediaItemsTableTableManager extends RootTableManager<
           }) =>
               MediaItemsCompanion.insert(
             mediaId: mediaId,
-            conversationId: conversationId,
+            groupId: groupId,
             messageId: messageId,
             mimeType: mimeType,
             localPath: localPath,

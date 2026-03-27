@@ -1,8 +1,8 @@
-import 'package:chat_engine/src/domain/models/chat_engine_error.dart';
-import 'package:chat_engine/src/domain/models/connection_state.dart';
-import 'package:chat_engine/src/domain/models/contact_match.dart';
-import 'package:chat_engine/src/domain/models/conversation.dart';
-import 'package:chat_engine/src/public_api/chat_session.dart';
+import 'package:hello_engine/src/domain/models/chat_engine_error.dart';
+import 'package:hello_engine/src/domain/models/connection_state.dart';
+import 'package:hello_engine/src/domain/models/contact_match.dart';
+import 'package:hello_engine/src/domain/models/conversation.dart';
+import 'package:hello_engine/src/public_api/chat_session.dart';
 
 /// The top-level handle to the E2EE chat engine.
 ///
@@ -10,11 +10,11 @@ import 'package:chat_engine/src/public_api/chat_session.dart';
 /// All interaction with the engine flows through this class and
 /// [ChatSession] instances obtained via [getSession].
 abstract class ChatEngine {
-  /// Returns a session handle for [conversationId].
+  /// Returns a session handle for [groupId].
   ///
   /// Sessions are cached -- calling twice with the same ID returns
   /// the same instance.
-  ChatSession getSession(String conversationId);
+  ChatSession getSession(String groupId);
 
   /// All conversations, sorted: pinned first, then by updatedAt
   /// descending.

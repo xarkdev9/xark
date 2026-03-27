@@ -9,7 +9,7 @@ part of 'typing_indicator.dart';
 _$TypingIndicatorImpl _$$TypingIndicatorImplFromJson(
         Map<String, dynamic> json) =>
     _$TypingIndicatorImpl(
-      conversationId: json['conversationId'] as String,
+      groupId: json['groupId'] as String,
       userId: json['userId'] as String,
       startedAt: DateTime.parse(json['startedAt'] as String),
     );
@@ -17,7 +17,7 @@ _$TypingIndicatorImpl _$$TypingIndicatorImplFromJson(
 Map<String, dynamic> _$$TypingIndicatorImplToJson(
         _$TypingIndicatorImpl instance) =>
     <String, dynamic>{
-      'conversationId': instance.conversationId,
+      'groupId': instance.groupId,
       'userId': instance.userId,
       'startedAt': instance.startedAt.toIso8601String(),
     };

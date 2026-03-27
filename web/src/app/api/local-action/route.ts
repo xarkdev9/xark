@@ -15,10 +15,10 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { action, spaceId, payload, previous, actorName } = body;
+  const { action, groupId, payload, previous, actorName } = body;
 
-  if (!action || !spaceId) {
-    return NextResponse.json({ error: "missing action or spaceId" }, { status: 400 });
+  if (!action || !groupId) {
+    return NextResponse.json({ error: "missing action or groupId" }, { status: 400 });
   }
 
   // H6 fix: rate limit mutations
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const { data: member } = await supabaseAdmin
       .from("space_members")
       .select("user_id")
-      .eq("space_id", spaceId)
+      .eq("group_id", groupId)
       .eq("user_id", auth.userId)
       .single();
 
@@ -52,12 +52,12 @@ export async function POST(req: Request) {
       const { data: currentDates } = await supabaseAdmin
         .from("space_dates")
         .select("start_date, end_date, label, version")
-        .eq("space_id", spaceId)
+        .eq("group_id", groupId)
         .single();
 
-      // Upsert space_dates (downstream: purge TTL, retention, computeSpaceState)
+      // Upsert space_dates (downstream: purge TTL, retention, computeGroupState)
       await supabaseAdmin.from("space_dates").upsert({
-        space_id: spaceId,
+        group_id: groupId,
         start_date,
         end_date,
         label: label ?? null,
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
       const { data: space } = await supabaseAdmin
         .from("spaces")
         .select("metadata")
-        .eq("id", spaceId)
+        .eq("id", groupId)
         .single();
 
       const metadata = (space?.metadata as Record<string, unknown>) ?? {};
@@ -79,11 +79,11 @@ export async function POST(req: Request) {
         .update({
           metadata: { ...metadata, start_date, end_date, label: label ?? undefined },
         })
-        .eq("id", spaceId);
+        .eq("id", groupId);
 
       // Write ledger entry
       await supabaseAdmin.from("space_ledger").insert({
-        space_id: spaceId,
+        group_id: groupId,
         actor_id: auth.userId,
         actor_name: actorName ?? null,
         action: "update_dates",
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
       const { data: space } = await supabaseAdmin
         .from("spaces")
         .select("title")
-        .eq("id", spaceId)
+        .eq("id", groupId)
         .single();
 
       const previousTitle = space?.title ?? "";
@@ -117,10 +117,10 @@ export async function POST(req: Request) {
       await supabaseAdmin
         .from("spaces")
         .update({ title: new_title.trim() })
-        .eq("id", spaceId);
+        .eq("id", groupId);
 
       await supabaseAdmin.from("space_ledger").insert({
-        space_id: spaceId,
+        group_id: groupId,
         actor_id: auth.userId,
         actor_name: actorName ?? null,
         action: "rename_space",
@@ -142,7 +142,7 @@ export async function POST(req: Request) {
         const prev = revert_previous as { start_date?: string; end_date?: string; label?: string };
         if (prev.start_date && prev.end_date) {
           await supabaseAdmin.from("space_dates").upsert({
-            space_id: spaceId,
+            group_id: groupId,
             start_date: prev.start_date,
             end_date: prev.end_date,
             label: prev.label ?? null,
@@ -150,17 +150,17 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString(),
           });
         } else {
-          await supabaseAdmin.from("space_dates").delete().eq("space_id", spaceId);
+          await supabaseAdmin.from("space_dates").delete().eq("group_id", groupId);
         }
       } else if (revert_action === "rename_space") {
         const prev = revert_previous as { old_title?: string };
         if (prev.old_title) {
-          await supabaseAdmin.from("spaces").update({ title: prev.old_title }).eq("id", spaceId);
+          await supabaseAdmin.from("spaces").update({ title: prev.old_title }).eq("id", groupId);
         }
       }
 
       await supabaseAdmin.from("space_ledger").insert({
-        space_id: spaceId,
+        group_id: groupId,
         actor_id: auth.userId,
         actor_name: actorName ?? null,
         action: `revert_${revert_action}`,
@@ -174,24 +174,24 @@ export async function POST(req: Request) {
 
     // ── create_space — atomic: space + creator member + optional invite + seed message ──
     if (action === "create_space") {
-      const { title, invite_username, atmosphere } = payload ?? {};
+      const { title, invite_username,groupType } = payload ?? {};
       if (!title) return NextResponse.json({ error: "missing title" }, { status: 400 });
       if (String(title).length > 100) {
         return NextResponse.json({ error: "title too long" }, { status: 400 });
       }
-      const VALID_ATMOSPHERES = ["cyan_horizon", "sanctuary", "amber_glow", "gold_warmth", ""];
-      const safeAtmosphere = VALID_ATMOSPHERES.includes(atmosphere ?? "") ? (atmosphere ?? "cyan_horizon") : "cyan_horizon";
+      const VALID_TYPES = ["cyan_horizon", "dm", "amber_glow", "gold_warmth", ""];
+      const safeType = VALID_TYPES.includes(atmosphere ?? "") ? (atmosphere ?? "cyan_horizon") : "cyan_horizon";
 
       const slug = String(title).toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 40);
       // Non-deterministic ID — prevents cross-tenant hijacking via slug guessing
-      const newSpaceId = `space_${slug}_${crypto.randomUUID().slice(0, 8)}`;
+      const newGroupId = `space_${slug}_${crypto.randomUUID().slice(0, 8)}`;
 
       // INSERT only — never upsert. If space exists, fail with conflict.
       const { error: insertError } = await supabaseAdmin.from("spaces").insert({
-        id: newSpaceId,
+        id: newGroupId,
         title: String(title).toLowerCase().trim(),
         owner_id: auth.userId,
-        atmosphere: safeAtmosphere,
+        atmosphere: safeType,
       });
 
       if (insertError) {
@@ -204,7 +204,7 @@ export async function POST(req: Request) {
 
       // Add creator as member (insert, not upsert)
       await supabaseAdmin.from("space_members").insert({
-        space_id: newSpaceId,
+        group_id: newGroupId,
         user_id: auth.userId,
         role: "owner",
       });
@@ -213,7 +213,7 @@ export async function POST(req: Request) {
       const inviteUserId = payload?.invite_user_id;
       if (inviteUserId && String(inviteUserId).length > 0) {
         await supabaseAdmin.from("space_members").insert({
-          space_id: newSpaceId,
+          group_id: newGroupId,
           user_id: String(inviteUserId),
           role: "member",
         });
@@ -225,7 +225,7 @@ export async function POST(req: Request) {
           .limit(1).maybeSingle();
         if (invitedUser) {
           await supabaseAdmin.from("space_members").insert({
-            space_id: newSpaceId,
+            group_id: newGroupId,
             user_id: invitedUser.id,
             role: "member",
           });
@@ -235,14 +235,14 @@ export async function POST(req: Request) {
       // Seed message
       await supabaseAdmin.from("messages").insert({
         id: `msg_${crypto.randomUUID()}`,
-        space_id: newSpaceId,
+        group_id: newGroupId,
         role: "user",
         content: invite_username ? `started a chat` : `started planning ${String(title).toLowerCase()}`,
         user_id: auth.userId,
         sender_name: actorName ?? null,
       });
 
-      return NextResponse.json({ ok: true, spaceId: newSpaceId });
+      return NextResponse.json({ ok: true, groupId: newGroupId });
     }
 
     return NextResponse.json({ error: `unknown action: ${action}` }, { status: 400 });

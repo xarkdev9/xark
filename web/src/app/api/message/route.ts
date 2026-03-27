@@ -1,6 +1,6 @@
 // XARK OS v2.0 — E2EE Message Endpoint
 // Pure encrypted message persistence + Sender Key distribution.
-// No AI orchestration — @xark intelligence lives in the Spotlight layer.
+// No AI orchestration — @hello intelligence lives in the Spotlight layer.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const {
-      space_id,
+      group_id,
       sender_device_id,
       ciphertext,
       ratchet_header,
@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // ── Input validation ──
-    if (!space_id || typeof space_id !== 'string') {
-      return NextResponse.json({ error: 'space_id required' }, { status: 400 });
+    if (!group_id || typeof group_id !== 'string') {
+      return NextResponse.json({ error: 'group_id required' }, { status: 400 });
     }
     if (!ciphertext || typeof ciphertext !== 'string') {
       return NextResponse.json({ error: 'ciphertext required' }, { status: 400 });
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     const { data: membership } = await supabaseAdmin
       .from('space_members')
       .select('user_id')
-      .eq('space_id', space_id)
+      .eq('group_id', group_id)
       .eq('user_id', auth.userId)
       .single();
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     const { error: msgError } = await supabaseAdmin.from('messages').insert({
       id: msgId,
-      space_id,
+      group_id,
       user_id: auth.userId,
       sender_device_id: sender_device_id ?? null,
       message_type: message_type ?? 'e2ee',

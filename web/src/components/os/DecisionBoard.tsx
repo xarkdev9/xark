@@ -59,8 +59,8 @@ interface DecisionCardItem {
   metadata?: any;
 }
 
-interface PossibilityHorizonProps {
-  spaceId: string;
+interface DecisionBoardProps {
+  groupId: string;
   filterCategory?: string;
   userId?: string;
   authLoading?: boolean;
@@ -584,7 +584,7 @@ const CategoryRail = React.memo(function CategoryRail({
 // POSSIBILITY HORIZON — ORCHESTRATOR
 // ══════════════════════════════════════════════
 
-export default function PossibilityHorizon({ spaceId, filterCategory, userId, authLoading, isThinking, playgroundItems, playgroundReactions, onPlaygroundReact }: PossibilityHorizonProps) {
+export default function DecisionBoard({ groupId, filterCategory, userId, authLoading, isThinking, playgroundItems, playgroundReactions, onPlaygroundReact }: DecisionBoardProps) {
   const isPlayground = !!playgroundItems;
   const [items, setItems] = useState<DecisionItem[]>([]);
   const [loading, setLoading] = useState(!isPlayground);
@@ -612,7 +612,7 @@ export default function PossibilityHorizon({ spaceId, filterCategory, userId, au
       const { data } = await supabase
         .from("decision_items")
         .select("id, title, category, weighted_score, agreement_score, is_locked, state, lock_deadline, metadata, created_at")
-        .eq("space_id", spaceId)
+        .eq("group_id", groupId)
         .order("weighted_score", { ascending: false })
         .limit(100);
 
@@ -625,25 +625,25 @@ export default function PossibilityHorizon({ spaceId, filterCategory, userId, au
         }
       } else {
         // Fallback checks for various missing combinations
-        let fallbackMatch = DEMO_ITEMS[spaceId];
+        let fallbackMatch = DEMO_ITEMS[groupId];
         if (!fallbackMatch) {
-          if (spaceId.includes("tokyo")) fallbackMatch = DEMO_ITEMS["space_tokyo-neon-nights"];
-          else if (spaceId.includes("san-diego")) fallbackMatch = DEMO_ITEMS["space_san-diego-trip"];
+          if (groupId.includes("tokyo")) fallbackMatch = DEMO_ITEMS["space_tokyo-neon-nights"];
+          else if (groupId.includes("san-diego")) fallbackMatch = DEMO_ITEMS["space_san-diego-trip"];
         }
         setItems(fallbackMatch ?? []);
       }
       setLoading(false);
     }
     fetchItems();
-  }, [spaceId, userId, batchGetUserReactions, authLoading]);
+  }, [groupId, userId, batchGetUserReactions, authLoading]);
 
   // ── Realtime ──
   useEffect(() => {
     const channel = supabase
-      .channel(`horizon:${spaceId}`)
+      .channel(`horizon:${groupId}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "decision_items", filter: `space_id=eq.${spaceId}` },
+        { event: "UPDATE", schema: "public", table: "decision_items", filter: `group_id=eq.${groupId}` },
         (payload) => {
           const updated = payload.new as DecisionItem;
           setItems((prev) => {
@@ -659,7 +659,7 @@ export default function PossibilityHorizon({ spaceId, filterCategory, userId, au
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "decision_items", filter: `space_id=eq.${spaceId}` },
+        { event: "INSERT", schema: "public", table: "decision_items", filter: `group_id=eq.${groupId}` },
         (payload) => {
           const inserted = payload.new as DecisionItem;
           // Dealer queue: don't slam on the table, put in the deck
@@ -672,7 +672,7 @@ export default function PossibilityHorizon({ spaceId, filterCategory, userId, au
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [spaceId]);
+  }, [groupId]);
 
   // ── Dealer effect: unpacks queue one card at a time ──
   useEffect(() => {
@@ -916,7 +916,7 @@ export default function PossibilityHorizon({ spaceId, filterCategory, userId, au
   return (
     <div ref={scrollRef} style={{ display: "flex", flexDirection: "column", height: "100%" }}>
 
-      {/* ── Scanner: @xark scanning indicator ── */}
+      {/* ── Scanner: @hello scanning indicator ── */}
       <AnimatePresence>
         {isThinking && (
           <motion.div
@@ -1239,7 +1239,7 @@ export default function PossibilityHorizon({ spaceId, filterCategory, userId, au
       <AddItemModal
         open={showAddModal}
         onClose={() => setShowAddModal(false)}
-        spaceId={spaceId}
+        groupId={groupId}
         userId={userId}
         e2eeAvailable={e2ee.available}
         e2eeDeviceId={e2ee.deviceId}

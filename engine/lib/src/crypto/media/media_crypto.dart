@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:chat_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/crypto/keys/key_types.dart';
 import 'package:cryptography/cryptography.dart';
 
 /// AES-256-GCM encryption for media files (images, video, documents).

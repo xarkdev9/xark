@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { text, ink, colors, timing } from "@/lib/theme";
 
 interface SpaceMemory {
-  spaceId: string;
+  groupId: string;
   spaceTitle: string;
   photos: {
     id: string;
@@ -25,7 +25,7 @@ interface MemoriesTabProps {
 function getDemoMemories(): SpaceMemory[] {
   return [
     {
-      spaceId: "space_san-diego-trip",
+      groupId: "space_san-diego-trip",
       spaceTitle: "san diego trip",
       photos: [
         { id: "m1", url: "https://images.unsplash.com/photo-1538097304804-2a1b932466a9?w=400&h=400&fit=crop", caption: "coronado beach sunset", createdAt: "2025-08-20T18:30:00Z" },
@@ -35,7 +35,7 @@ function getDemoMemories(): SpaceMemory[] {
       lastActivityAt: 1724000000000,
     },
     {
-      spaceId: "space_bali-retreat",
+      groupId: "space_bali-retreat",
       spaceTitle: "bali retreat",
       photos: [
         { id: "m4", url: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&h=400&fit=crop", caption: "rice terraces at sunrise", createdAt: "2024-12-15T06:00:00Z" },
@@ -63,7 +63,7 @@ export function MemoriesTab({ userId }: MemoriesTabProps) {
         // Get all spaces the user is a member of
         const { data: memberData } = await supabase
           .from("space_members")
-          .select("space_id")
+          .select("group_id")
           .eq("user_id", userId);
 
         if (!memberData || memberData.length === 0) {
@@ -72,21 +72,21 @@ export function MemoriesTab({ userId }: MemoriesTabProps) {
           return;
         }
 
-        const spaceIds = memberData.map((m) => m.space_id);
+        const groupIds = memberData.map((m) => m.group_id);
 
         // Get space titles
         const { data: spacesData } = await supabase
           .from("spaces")
           .select("id, title")
-          .in("id", spaceIds);
+          .in("id", groupIds);
 
         const titleMap = new Map((spacesData ?? []).map((s) => [s.id, s.title]));
 
         // Get media for all spaces
         const { data: mediaData } = await supabase
           .from("media")
-          .select("id, space_id, storage_url, caption, created_at")
-          .in("space_id", spaceIds)
+          .select("id, group_id, storage_url, caption, created_at")
+          .in("group_id", groupIds)
           .order("created_at", { ascending: false })
           .limit(100);
 
@@ -99,15 +99,15 @@ export function MemoriesTab({ userId }: MemoriesTabProps) {
         // Group by space
         const grouped: Record<string, SpaceMemory> = {};
         for (const item of mediaData) {
-          if (!grouped[item.space_id]) {
-            grouped[item.space_id] = {
-              spaceId: item.space_id,
-              spaceTitle: titleMap.get(item.space_id) ?? item.space_id.replace(/^space_/, "").replace(/-/g, " "),
+          if (!grouped[item.group_id]) {
+            grouped[item.group_id] = {
+              groupId: item.group_id,
+              spaceTitle: titleMap.get(item.group_id) ?? item.group_id.replace(/^space_/, "").replace(/-/g, " "),
               photos: [],
               lastActivityAt: new Date(item.created_at).getTime(),
             };
           }
-          grouped[item.space_id].photos.push({
+          grouped[item.group_id].photos.push({
             id: item.id,
             url: item.storage_url,
             caption: item.caption,
@@ -157,7 +157,7 @@ export function MemoriesTab({ userId }: MemoriesTabProps) {
     <div style={{ paddingBottom: "40px" }}>
       {memories.map((space, sectionIdx) => (
         <motion.div
-          key={space.spaceId}
+          key={space.groupId}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: sectionIdx * 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }}

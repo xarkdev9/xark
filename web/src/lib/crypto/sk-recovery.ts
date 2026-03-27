@@ -6,25 +6,25 @@
 import { supabase, getSupabaseToken } from '../supabase';
 import { keyStore } from './keystore';
 
-/** Pending SK requests — keyed by "spaceId:senderId" to prevent duplicates */
+/** Pending SK requests — keyed by "groupId:senderId" to prevent duplicates */
 const pendingRequests = new Set<string>();
 
-/** Callbacks waiting for SK arrival — keyed by "spaceId:senderId" */
+/** Callbacks waiting for SK arrival — keyed by "groupId:senderId" */
 const waitingCallbacks = new Map<string, Array<() => void>>();
 
 /**
  * Request a missing Sender Key from its owner.
  * Sends a control message via Realtime broadcast with event 'sk_request'.
- * Deduplicates: only one request per spaceId:senderId at a time.
+ * Deduplicates: only one request per groupId:senderId at a time.
  * Fire-and-forget — does not block the decrypt path.
  */
 export async function requestMissingSenderKey(
-  spaceId: string,
+  groupId: string,
   senderId: string,
   myUserId: string,
   myDeviceId: number
 ): Promise<void> {
-  const requestKey = `${spaceId}:${senderId}`;
+  const requestKey = `${groupId}:${senderId}`;
 
   // Deduplicate — don't spam requests
   if (pendingRequests.has(requestKey)) return;
@@ -33,7 +33,7 @@ export async function requestMissingSenderKey(
   // Auto-clear after 30s to allow retry
   setTimeout(() => pendingRequests.delete(requestKey), 30000);
 
-  console.log(`[xark-sk-recovery] Requesting SK from ${senderId} for space ${spaceId}`);
+  console.log(`[xark-sk-recovery] Requesting SK from ${senderId} for space ${groupId}`);
 
   const token = getSupabaseToken();
   if (!token) {
@@ -44,7 +44,7 @@ export async function requestMissingSenderKey(
   try {
     // Send SK request as a broadcast on the space chat channel.
     // The sender's client listens for these and responds with re-distribution.
-    const channel = supabase.channel(`chat:${spaceId}`);
+    const channel = supabase.channel(`chat:${groupId}`);
     await channel.subscribe();
 
     await channel.send({
@@ -54,7 +54,7 @@ export async function requestMissingSenderKey(
         requester_id: myUserId,
         requester_device_id: myDeviceId,
         target_sender_id: senderId,
-        space_id: spaceId,
+        group_id: groupId,
         timestamp: Date.now(),
       },
     });
@@ -73,11 +73,11 @@ export async function requestMissingSenderKey(
  * Used by decryptMessage to give recovery a chance before returning placeholder.
  */
 export function waitForSenderKey(
-  spaceId: string,
+  groupId: string,
   senderId: string,
   timeoutMs: number = 10000
 ): Promise<boolean> {
-  const waitKey = `${spaceId}:${senderId}`;
+  const waitKey = `${groupId}:${senderId}`;
 
   return new Promise(resolve => {
     const timer = setTimeout(() => {
@@ -106,8 +106,8 @@ export function waitForSenderKey(
  * Notify that a Sender Key has arrived (call after processing SK distribution).
  * Resolves any pending waitForSenderKey promises so decrypt can retry.
  */
-export function notifySenderKeyArrived(spaceId: string, senderId: string): void {
-  const waitKey = `${spaceId}:${senderId}`;
+export function notifySenderKeyArrived(groupId: string, senderId: string): void {
+  const waitKey = `${groupId}:${senderId}`;
   const callbacks = waitingCallbacks.get(waitKey);
   if (callbacks) {
     for (const cb of callbacks) cb();
@@ -123,7 +123,7 @@ export function notifySenderKeyArrived(spaceId: string, senderId: string): void 
  * identities from obtaining fresh key material.
  */
 export async function handleSenderKeyRequest(
-  spaceId: string,
+  groupId: string,
   requesterId: string,
   requesterDeviceId: number,
   myUserId: string
@@ -132,7 +132,7 @@ export async function handleSenderKeyRequest(
   const { data: membership } = await supabase
     .from('space_members')
     .select('user_id')
-    .eq('space_id', spaceId)
+    .eq('group_id', groupId)
     .eq('user_id', requesterId)
     .single();
 
@@ -154,7 +154,7 @@ export async function handleSenderKeyRequest(
     return false;
   }
 
-  console.log(`[xark-sk-recovery] Authorized SK request from ${requesterId} for space ${spaceId}`);
+  console.log(`[xark-sk-recovery] Authorized SK request from ${requesterId} for space ${groupId}`);
   return true;
 }
 
@@ -167,17 +167,17 @@ export async function handleSenderKeyRequest(
  * Returns an unsubscribe function — call on space leave / unmount.
  */
 export function subscribeToSKRequests(
-  spaceId: string,
+  groupId: string,
   myUserId: string,
   onRequestApproved: (requesterId: string, requesterDeviceId: number) => Promise<void>
 ): () => void {
   const channel = supabase
-    .channel(`sk-recovery:${spaceId}`)
+    .channel(`sk-recovery:${groupId}`)
     .on('broadcast', { event: 'sk_request' }, async ({ payload }) => {
       if (payload.target_sender_id !== myUserId) return; // Not for me
 
       const approved = await handleSenderKeyRequest(
-        spaceId,
+        groupId,
         payload.requester_id,
         payload.requester_device_id,
         myUserId

@@ -8,7 +8,7 @@ part 'typing_indicator.g.dart';
 class TypingIndicator with _$TypingIndicator {
   /// Creates a [TypingIndicator] instance.
   const factory TypingIndicator({
-    required String conversationId,
+    required String groupId,
     required String userId,
     required DateTime startedAt,
   }) = _TypingIndicator;

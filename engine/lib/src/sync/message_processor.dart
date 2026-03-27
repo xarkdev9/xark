@@ -1,8 +1,8 @@
-import 'package:chat_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:chat_engine/src/sync/deduplication_set.dart';
-import 'package:chat_engine/src/transport/dto/message_envelope.dart';
-import 'package:chat_engine/src/transport/dto/realtime_event.dart';
-import 'package:chat_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:hello_engine/src/sync/deduplication_set.dart';
+import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:hello_engine/src/transport/dto/realtime_event.dart';
+import 'package:hello_engine/src/transport/supabase_client.dart';
 
 /// Result of processing an incoming message notification.
 ///
@@ -57,9 +57,9 @@ class MessageProcessor {
   final Map<String, DeduplicationSet> _dedupSets =
       <String, DeduplicationSet>{};
 
-  /// Returns the deduplication set for [spaceId], creating one if needed.
-  DeduplicationSet _dedupFor(String spaceId) {
-    return _dedupSets.putIfAbsent(spaceId, DeduplicationSet.new);
+  /// Returns the deduplication set for [groupId], creating one if needed.
+  DeduplicationSet _dedupFor(String groupId) {
+    return _dedupSets.putIfAbsent(groupId, DeduplicationSet.new);
   }
 
   /// Processes an incoming message notification from Realtime.
@@ -78,7 +78,7 @@ class MessageProcessor {
     if (event.senderId == _myUserId) return null;
 
     // Dedup check (per-conversation LRU).
-    if (!_dedupFor(event.spaceId).tryAdd(event.messageId)) return null;
+    if (!_dedupFor(event.groupId).tryAdd(event.messageId)) return null;
 
     // Check plaintext cache -- if already decrypted, skip.
     final cached =

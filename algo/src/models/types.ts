@@ -12,7 +12,7 @@
 
 export type UserId = string;
 export type GroupId = string;
-export type SpaceId = string;
+export type GroupId = string;
 export type ItemId = string;
 export type TaskId = string;
 
@@ -75,7 +75,7 @@ export interface OwnershipRecord {
 
 export interface DecisionItem {
   id: ItemId;
-  spaceId: SpaceId;
+  groupId: GroupId;
   title: string;
   description: string;
   category: string; // Open string — "hotel", "sedan", "venue", "daycare", anything
@@ -94,10 +94,10 @@ export interface DecisionItem {
 
 /**
  * @deprecated Use DecisionItem. BookableItem extends DecisionItem with
- * legacy field aliases (groupId for spaceId, bookingProof for commitmentProof).
+ * legacy field aliases (groupId for groupId, bookingProof for commitmentProof).
  */
 export type BookableItem = DecisionItem & {
-  /** @deprecated Use spaceId instead */
+  /** @deprecated Use groupId instead */
   groupId: GroupId;
   /** @deprecated Use commitmentProof instead */
   bookingProof: BookingProof | null;
@@ -148,7 +148,7 @@ export interface SpaceConfig {
 }
 
 export interface DecisionSpace {
-  id: SpaceId;
+  id: GroupId;
   name: string;
   members: GroupMember[];
   config: SpaceConfig;

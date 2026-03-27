@@ -244,28 +244,28 @@ export async function hasRegisteredKeys(): Promise<boolean> {
  * Caller is responsible for distributing the new key to remaining members.
  */
 export async function onMemberLeave(
-  spaceId: string,
+  groupId: string,
   leftUserId: string
 ): Promise<SenderKeyState> {
   await initCrypto();
 
   // 1. Archive current key for historical message decryption
-  const currentKey = await keyStore.getSenderKey(spaceId);
+  const currentKey = await keyStore.getSenderKey(groupId);
   if (currentKey) {
-    await keyStore.saveHistoricalSenderKey(spaceId, currentKey);
-    console.log(`[xark-e2ee] Archived old Sender Key for space ${spaceId}`);
+    await keyStore.saveHistoricalSenderKey(groupId, currentKey);
+    console.log(`[xark-e2ee] Archived old Sender Key for space ${groupId}`);
   }
 
   // 2. Delete active key — departed member had access to this
-  await keyStore.deleteSenderKey(spaceId);
+  await keyStore.deleteSenderKey(groupId);
 
   // 3. Generate fresh key material
   const newKey = rotateSenderKey();
 
   // 4. Save new key locally
-  await keyStore.saveSenderKey(spaceId, serializeSenderKeyForStorage(newKey));
+  await keyStore.saveSenderKey(groupId, serializeSenderKeyForStorage(newKey));
 
-  console.log(`[xark-e2ee] Rotated Sender Key for space ${spaceId} (member ${leftUserId} left)`);
+  console.log(`[xark-e2ee] Rotated Sender Key for space ${groupId} (member ${leftUserId} left)`);
   return newKey;
 }
 
@@ -275,18 +275,18 @@ export async function onMemberLeave(
  * Non-leaders receive the new SK via sender_key_dist message.
  */
 export function subscribeToMemberChanges(
-  spaceId: string,
+  groupId: string,
   myUserId: string,
   currentMembers: string[],
   onRotation: (newKey: SenderKeyState) => Promise<void>
 ): () => void {
   const channel = supabase
-    .channel(`sk-members:${spaceId}`)
+    .channel(`sk-members:${groupId}`)
     .on('postgres_changes', {
       event: 'DELETE',
       schema: 'public',
       table: 'space_members',
-      filter: `space_id=eq.${spaceId}`,
+      filter: `group_id=eq.${groupId}`,
     }, async (payload) => {
       const leftUserId = (payload.old as Record<string, string>)?.user_id;
       if (!leftUserId) return;
@@ -295,7 +295,7 @@ export function subscribeToMemberChanges(
       const { data: currentDbMembers } = await supabase
         .from('space_members')
         .select('user_id')
-        .eq('space_id', spaceId);
+        .eq('group_id', groupId);
       
       const remainingIds = (currentDbMembers || [])
         .map(m => m.user_id)
@@ -305,15 +305,15 @@ export function subscribeToMemberChanges(
       const isLeader = remainingIds.length > 0 && remainingIds[0] === myUserId;
 
       if (isLeader) {
-        console.log(`[xark-e2ee] I am SK rotation leader for ${spaceId}`);
+        console.log(`[xark-e2ee] I am SK rotation leader for ${groupId}`);
         try {
-          const newKey = await onMemberLeave(spaceId, leftUserId);
+          const newKey = await onMemberLeave(groupId, leftUserId);
           await onRotation(newKey);
         } catch (err) {
-          console.error(`[xark-e2ee] SK rotation failed for ${spaceId}:`, err);
+          console.error(`[xark-e2ee] SK rotation failed for ${groupId}:`, err);
         }
       } else {
-        console.log(`[xark-e2ee] Waiting for leader to rotate SK for ${spaceId}`);
+        console.log(`[xark-e2ee] Waiting for leader to rotate SK for ${groupId}`);
         // Non-leaders will receive new SK via sender_key_dist distribution
       }
     })

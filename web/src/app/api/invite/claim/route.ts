@@ -1,7 +1,7 @@
 // XARK OS v2.0 — SUMMON LINK CLAIM
-// POST /api/summon/claim — verifies Firebase token, finds/creates user, claims link, creates space.
+// POST /api/invite/claim — verifies Firebase token, finds/creates user, claims link, creates space.
 // Body: { code: string, firebaseToken: string }
-// Returns { token, user: { id, displayName }, spaceId }
+// Returns { token, user: { id, displayName }, groupId }
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -169,6 +169,6 @@ export async function POST(request: NextRequest) {
       id: userId,
       displayName: resolvedName,
     },
-    spaceId: result?.spaceId ?? null,
+    groupId: result?.groupId ?? null,
   });
 }

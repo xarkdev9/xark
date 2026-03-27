@@ -50,5 +50,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: data.error }, { status: 400 });
   }
 
-  return NextResponse.json({ spaceId: data.spaceId, created: data.created });
+  return NextResponse.json({ groupId: data.groupId, created: data.created });
 }

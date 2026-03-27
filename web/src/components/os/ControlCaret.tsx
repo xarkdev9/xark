@@ -6,19 +6,19 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 import { supabase, getSupabaseToken } from "@/lib/supabase";
 import {
-  fetchSpaceList,
+  fetchGroupList,
   recencyLabel,
   recencyOpacity,
   decisionStateLabel,
   DEMO_SPACES,
 } from "@/lib/space-data";
-import type { SpaceListItem } from "@/lib/space-data";
+import type { GroupListItem } from "@/lib/space-data";
 import { colors, opacity, timing, layout, text, ink, surface } from "@/lib/theme";
 import { useAuth } from "@/hooks/useAuth";
 import { useKeyboard } from "@/hooks/useKeyboard";
 import { Avatar } from "@/components/os/Avatar";
 import { SpotlightSheet } from "@/components/os/SpotlightSheet";
-import { useSpotlight } from "@/hooks/useSpotlight";
+import { useHelloAI } from "@/hooks/useHelloAI";
 import { useWhispers } from "@/hooks/useWhispers";
 
 // ── Search icon ──
@@ -39,7 +39,7 @@ const DEMO_PRESENCE: Record<string, number> = {
 
 export function ControlCaret() {
   const [isOpen, setIsOpen] = useState(false);
-  const [spaces, setSpaces] = useState<SpaceListItem[]>([]);
+  const [spaces, setSpaces] = useState<GroupListItem[]>([]);
   const [presence, setPresence] = useState<Record<string, number>>(DEMO_PRESENCE);
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -49,12 +49,12 @@ export function ControlCaret() {
   const userName = searchParams.get("name") ?? "";
   const { user } = useAuth(userName || undefined);
   const isInsideSpace = pathname.startsWith("/space/");
-  const isGalaxy = pathname === "/galaxy";
+  const isHome = pathname === "/home";
   const { isKeyboardOpen } = useKeyboard();
 
   // ── Spotlight + Whispers ──
   const getTokenFn = useCallback(() => getSupabaseToken(), []);
-  const spotlight = useSpotlight(getTokenFn);
+  const spotlight = useHelloAI(getTokenFn);
   const userId = user?.uid ?? null;
   const { currentWhisper, hasWhispers, consumeWhisper, dismissWhisper } = useWhispers(userId);
 
@@ -77,7 +77,7 @@ export function ControlCaret() {
 
   useEffect(() => {
     const userId = user?.uid;
-    fetchSpaceList(userId).then(setSpaces).catch(() => setSpaces(DEMO_SPACES));
+    fetchGroupList(userId).then(setSpaces).catch(() => setSpaces(DEMO_SPACES));
   }, [user]);
 
   // ── Supabase Realtime Presence — top 5 most-recent spaces only ──
@@ -130,9 +130,9 @@ export function ControlCaret() {
     }
   }, [isOpen]);
 
-  function navigateToSpace(spaceId: string) {
+  function navigateToSpace(groupId: string) {
     setIsOpen(false);
-    router.push(`/space/${spaceId}?name=${encodeURIComponent(userName)}`);
+    router.push(`/space/${groupId}?name=${encodeURIComponent(userName)}`);
   }
 
   return (
@@ -200,8 +200,8 @@ export function ControlCaret() {
                 style={{
                   background: "transparent",
                   WebkitTapHighlightColor: "transparent",
-                  opacity: isOpen || spotlight.isOpen || isInsideSpace || isGalaxy ? 0 : 1,
-                  pointerEvents: isOpen || spotlight.isOpen || isInsideSpace || isGalaxy ? "none" : "auto",
+                  opacity: isOpen || spotlight.isOpen || isInsideSpace || isHome ? 0 : 1,
+                  pointerEvents: isOpen || spotlight.isOpen || isInsideSpace || isHome ? "none" : "auto",
                   transition: "opacity 0.2s ease",
                 }}
               >
@@ -224,7 +224,7 @@ export function ControlCaret() {
             </div>
       </div>
 
-      {/* ── Galaxy Slide-Up ── */}
+      {/* ── Home Slide-Up ── */}
       <AnimatePresence>
         {isOpen && (
           <>
@@ -252,11 +252,11 @@ export function ControlCaret() {
               <div className="flex-1 overflow-y-auto px-6 pt-8 pb-4">
                 <div className="mx-auto" style={{ maxWidth: layout.maxWidth }}>
                   {filteredSpaces.map((space, index) => {
-                    const isSanctuary = space.atmosphere === "sanctuary";
+                    const isDM = space.type === "dm";
                     const hasPresenceEmber = (presence[space.id] ?? 0) > 1;
                     const spaceOpacity = recencyOpacity(space.lastActivityAt);
                     const memberNames = space.members.map((m) => m.displayName).join(", ");
-                    const stateLabel = isSanctuary
+                    const stateLabel = isDM
                       ? space.lastMessage?.content
                       : decisionStateLabel(space.decisionSummary);
 
@@ -282,7 +282,7 @@ export function ControlCaret() {
                         <div className="flex items-center gap-3">
                           {/* ── Avatar ── */}
                           <div className="relative">
-                            {isSanctuary && space.members[0] ? (
+                            {isDM && space.members[0] ? (
                               <Avatar
                                 name={space.members[0].displayName}
                                 photoUrl={space.members[0].photoUrl}
@@ -337,7 +337,7 @@ export function ControlCaret() {
                             {/* Subtitle: member names + decision state */}
                             {(() => {
                               const parts: string[] = [];
-                              if (!isSanctuary && memberNames) parts.push(memberNames);
+                              if (!isDM && memberNames) parts.push(memberNames);
                               if (stateLabel) parts.push(stateLabel);
                               const subtitle = parts.join(" · ");
                               return subtitle ? (
@@ -446,10 +446,10 @@ export function ControlCaret() {
       <SpotlightSheet
         isOpen={spotlight.isOpen}
         morphText={spotlight.morphText}
-        targetSpaceId={spotlight.targetSpaceId}
+        targetGroupId={spotlight.targetGroupId}
         isInsideSpace={spotlight.isInsideSpace}
         ghostText={currentWhisper?.ghostText ?? null}
-        ghostSpaceId={currentWhisper?.spaceId ?? null}
+        ghostGroupId={currentWhisper?.groupId ?? null}
         getToken={getTokenFn}
         onClose={spotlight.close}
         onSend={spotlight.send}

@@ -1,5 +1,5 @@
 // XARK OS v2.0 — Voice Input Hook
-// 2-step: Tap mic = dictation. Slide up = @xark listening.
+// 2-step: Tap mic = dictation. Slide up = @hello listening.
 // Unmissable recording state. Single tap always toggles off.
 // Cleanup on unmount — mic never stays on silently.
 
