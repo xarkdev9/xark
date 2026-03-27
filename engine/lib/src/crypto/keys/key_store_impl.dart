@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:hello_engine/src/crypto/keys/ed25519_to_curve25519.dart';
+import 'package:hello_engine/src/crypto/keys/hardware_key_store.dart';
 import 'package:hello_engine/src/crypto/keys/key_store.dart';
 import 'package:hello_engine/src/crypto/keys/key_types.dart';
 import 'package:cryptography/cryptography.dart';
@@ -11,6 +12,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Concrete [KeyStore] backed by [FlutterSecureStorage].
 ///
 /// Identity keys and pre-keys are persisted in the platform keychain.
+/// When a [HardwareKeyStore] is provided, identity keys are wrapped
+/// (encrypted) with a hardware-backed wrapping key before being written
+/// to storage, and unwrapped after being read. This ensures identity
+/// key material cannot be extracted even if secure storage is compromised.
+///
 /// Ratchet sessions are serialised as JSON and stored under namespaced
 /// keys so they survive app restarts.
 class KeyStoreImpl implements KeyStore {
@@ -18,10 +24,18 @@ class KeyStoreImpl implements KeyStore {
   ///
   /// Accepts an optional [FlutterSecureStorage] for dependency injection
   /// (useful in integration tests with real storage).
-  KeyStoreImpl({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+  ///
+  /// When [hardwareKeyStore] is provided, identity keys are wrapped before
+  /// persisting and unwrapped when loading. The hardware key store must
+  /// be initialized before any key operations.
+  KeyStoreImpl({
+    FlutterSecureStorage? storage,
+    HardwareKeyStore? hardwareKeyStore,
+  })  : _storage = storage ?? const FlutterSecureStorage(),
+        _hardwareKeyStore = hardwareKeyStore;
 
   final FlutterSecureStorage _storage;
+  final HardwareKeyStore? _hardwareKeyStore;
 
   // Key prefixes for namespacing in secure storage.
   static const _identityKeyPrefix = 'e2ee_identity_';
@@ -51,14 +65,14 @@ class KeyStoreImpl implements KeyStore {
       x25519PrivateKey: x25519Priv,
     );
 
-    // Persist.
+    // Persist — wrap private keys with hardware key store if available.
     await _storage.write(
       key: '${_identityKeyPrefix}ed_pub',
       value: base64Encode(pubKey),
     );
     await _storage.write(
       key: '${_identityKeyPrefix}ed_priv',
-      value: base64Encode(seed),
+      value: base64Encode(await _wrapIfAvailable(seed)),
     );
     await _storage.write(
       key: '${_identityKeyPrefix}x_pub',
@@ -66,7 +80,7 @@ class KeyStoreImpl implements KeyStore {
     );
     await _storage.write(
       key: '${_identityKeyPrefix}x_priv',
-      value: base64Encode(x25519Priv),
+      value: base64Encode(await _wrapIfAvailable(x25519Priv)),
     );
 
     return identity;
@@ -170,11 +184,16 @@ class KeyStoreImpl implements KeyStore {
       return null;
     }
 
+    // Unwrap private keys through hardware key store if available.
     return IdentityKeyPair(
       ed25519PublicKey: Uint8List.fromList(base64Decode(edPub)),
-      ed25519PrivateKey: Uint8List.fromList(base64Decode(edPriv)),
+      ed25519PrivateKey: await _unwrapIfAvailable(
+        Uint8List.fromList(base64Decode(edPriv)),
+      ),
       x25519PublicKey: Uint8List.fromList(base64Decode(xPub)),
-      x25519PrivateKey: Uint8List.fromList(base64Decode(xPriv)),
+      x25519PrivateKey: await _unwrapIfAvailable(
+        Uint8List.fromList(base64Decode(xPriv)),
+      ),
     );
   }
 
@@ -257,6 +276,20 @@ class KeyStoreImpl implements KeyStore {
   }
 
   // ---- Helpers ----
+
+  /// Wraps [plaintext] with the hardware key store if available.
+  /// Returns the original bytes unchanged when no hardware store is set.
+  Future<Uint8List> _wrapIfAvailable(Uint8List plaintext) async {
+    if (_hardwareKeyStore == null) return plaintext;
+    return _hardwareKeyStore.wrap(plaintext);
+  }
+
+  /// Unwraps [ciphertext] with the hardware key store if available.
+  /// Returns the original bytes unchanged when no hardware store is set.
+  Future<Uint8List> _unwrapIfAvailable(Uint8List ciphertext) async {
+    if (_hardwareKeyStore == null) return ciphertext;
+    return _hardwareKeyStore.unwrap(ciphertext);
+  }
 
   String _generateOtkId() {
     final bytes = Uint8List(16);
