@@ -158,16 +158,25 @@ These screens do NOT exist yet. Build them.
 
 ### @hello AI Sheet
 **Files:** `views/ai/spotlight_sheet.dart`, `views/ai/ghost_input.dart`
-**Engine APIs:** The AI endpoint is the ONE exception where the Flutter UI calls a web route directly (via HTTP, not Supabase client):
+**Engine APIs:** The AI endpoint follows the SAME security boundary as everything else. The UI does NOT make raw HTTP calls. The engine wraps the `/api/hello` SSE endpoint and exposes a native Dart stream:
 ```dart
-final response = await http.post(
-  Uri.parse('${serverBaseUrl}/api/hello'),
-  headers: {'Authorization': 'Bearer $authToken', 'Content-Type': 'application/json'},
-  body: jsonEncode({'prompt': userPrompt, 'groupId': groupId}),
+// CORRECT — UI passes prompt to engine, engine handles HTTP + auth + SSE parsing
+final aiStream = engine.streamHelloResponse(
+  prompt: userPrompt,
+  groupId: groupId,
 );
-// Parse SSE stream for real-time typing
+
+await for (final chunk in aiStream) {
+  // chunk.text — incremental AI response text
+  // chunk.done — true when stream is complete
+  setState(() => aiResponse += chunk.text);
+}
 ```
-**SECURITY BOUNDARY:** The UI sends ONLY the user's immediate prompt text + groupId. It NEVER sends decrypted message history, local Drift data, or any E2EE content to this endpoint. The server fetches its own grounding context (the state map) from the database — only server_content (non-E2EE) fields.
+**Why no raw http.post:** If the UI calls `http.post` directly, it must manage the JWT (`authToken`), the `serverBaseUrl`, and token refresh. The engine already manages all of this. If the token expires mid-stream, the engine handles `AuthTokenExpired` and routes it to the global error bus. A raw `http.post` would just fail silently or crash.
+
+**SECURITY BOUNDARY:** The UI passes ONLY the user's immediate prompt text + groupId to the engine. The engine forwards it to `/api/hello`. The UI NEVER sends decrypted message history, local Drift data, or any E2EE content. The server fetches its own grounding context (the state map) from `server_content` fields (non-E2EE metadata).
+
+**BACKEND ACTION REQUIRED:** `engine.streamHelloResponse(prompt, groupId)` must be added to the engine's public API. It wraps `POST /api/hello` with SSE parsing and returns a `Stream<HelloResponseChunk>`.
 
 ### Invite Flow
 **Files:** `views/invite/invite_surface.dart`, `views/invite/claim_sheet.dart`
@@ -378,8 +387,11 @@ The engine's public API needs these additions before the UI team can complete in
 | `engine.getLedger(groupId)` | `space_ledger` query | Settlement/audit |
 | `engine.createGroup(title, atmosphere)` | `create_space` local-action | Home screen |
 | `engine.inviteToGroup(groupId, userId)` | Invite flow | Invite surface |
+| `engine.streamHelloResponse(prompt, groupId)` | `POST /api/hello` SSE streaming + auth + token refresh | @hello AI Sheet / Ghost Input |
 
 **These must be added to `engine/lib/src/public_api/chat_engine.dart` before the UI team can wire the corresponding screens.**
+
+**The `streamHelloResponse` API is critical:** It wraps the SSE endpoint, manages the auth token lifecycle, and returns a `Stream<HelloResponseChunk>`. Without this, the UI would need to import `http` and manage tokens directly — violating the security boundary.
 
 ---
 
