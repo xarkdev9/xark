@@ -1,4 +1,4 @@
-// XARK OS v2.0 — PHONE AUTH ENDPOINT
+// hello OS v2.0 — PHONE AUTH ENDPOINT
 // POST /api/phone-auth — exchanges Firebase ID token for Supabase-compatible JWT.
 // Flow: Firebase phone OTP → Firebase ID token → verify → find/create user → sign JWT.
 // The JWT is compatible with Supabase RLS (sub = user.id, role = authenticated).
@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { SignJWT } from "jose";
 import { makeUserId } from "@/lib/user-id";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { requireAppCheck } from "@/lib/appcheck-verify";
 
 // Firebase Admin SDK for token verification (lightweight — just the auth piece)
 import { initializeApp, getApps, cert, type ServiceAccount } from "firebase-admin/app";
@@ -47,6 +47,15 @@ function getFirebaseAdmin() {
 }
 
 export async function POST(request: NextRequest) {
+  // Device attestation: reject requests without valid AppCheck token (production only)
+  const appCheck = await requireAppCheck(request);
+  if (!appCheck.valid) {
+    return NextResponse.json(
+      { error: appCheck.error },
+      { status: 403 }
+    );
+  }
+
   const jwtSecret = process.env.SUPABASE_JWT_SECRET;
   if (!jwtSecret) {
     return NextResponse.json(
@@ -67,11 +76,7 @@ export async function POST(request: NextRequest) {
 
   const { firebaseToken, displayName } = body;
 
-  // H2 fix: rate limit by IP before any expensive Firebase verification
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (!checkRateLimit(`phone-auth:${ip}`, 10)) {
-    return NextResponse.json({ error: "too many attempts" }, { status: 429 });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   if (!firebaseToken) {
     return NextResponse.json(
