@@ -15,15 +15,18 @@ import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
 import 'package:hello_engine/src/domain/use_cases/delete_message_use_case.dart';
 import 'package:hello_engine/src/domain/use_cases/mark_read_use_case.dart';
 import 'package:hello_engine/src/domain/use_cases/send_message_use_case.dart';
+import 'package:hello_engine/src/media/background_uploader.dart';
 import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
 import 'package:hello_engine/src/persistence/repositories/outbox_repository.dart';
 import 'package:hello_engine/src/public_api/chat_engine.dart';
 import 'package:hello_engine/src/public_api/chat_engine_config.dart';
 import 'package:hello_engine/src/public_api/chat_session.dart';
+import 'package:hello_engine/src/sync/conflict_resolver.dart';
 import 'package:hello_engine/src/sync/sync_coordinator.dart';
 import 'package:hello_engine/src/transport/realtime_listener.dart';
 import 'package:hello_engine/src/transport/supabase_client.dart';
 import 'package:hello_engine/src/persistence/database/database_factory.dart';
+import 'package:hello_engine/src/persistence/database/app_database.dart';
 import 'package:hello_engine/src/persistence/repositories/message_repository_impl.dart';
 import 'package:hello_engine/src/persistence/repositories/conversation_repository_impl.dart';
 import 'package:hello_engine/src/persistence/repositories/receipt_repository_impl.dart';
@@ -115,11 +118,28 @@ class ChatEngineImpl implements ChatEngine {
       apiClient: apiClient,
       messageRepo: messageRepo,
     );
+
+    // MOBILE-04: Conflict resolution after sync.
+    final conflictResolver = ConflictResolver(db: db);
+
+    // MOBILE-05: Background media upload queue.
+    final backgroundUploader = BackgroundUploader(db: db);
+
+    // MOBILE-06: Central sync coordinator.
+    //
+    // OutboxWorker (MOBILE-03) and WatermarkSync (MOBILE-02) require a
+    // MessageGateway implementation. They are wired here as null until
+    // SupabaseClientWrapper implements the MessageGateway port interface.
+    // The coordinator degrades gracefully — the legacy OutboxProcessor
+    // and GapDetector continue to handle those responsibilities.
     final syncCoordinator = SyncCoordinator(
       outboxProcessor: outboxProcessor,
       gapDetector: gapDetector,
       realtimeListener: realtimeListener,
       receiptRepo: receiptRepo,
+      conversationRepo: conversationRepo,
+      conflictResolver: conflictResolver,
+      backgroundUploader: backgroundUploader,
     );
 
     // 6. Spawn crypto isolate.
@@ -249,8 +269,10 @@ class ChatEngineImpl implements ChatEngine {
     if (!_connectionController.isClosed) {
       _connectionController.add(EngineConnectionState.suspended);
     }
-  }
 
+    // Stop all background sync workers (outbox, realtime, uploads).
+    await _syncCoordinator.stop();
+  }
 
   @override
   Future<void> resume() async {
@@ -263,9 +285,9 @@ class ChatEngineImpl implements ChatEngine {
       await _cryptoIsolate.spawn();
     }
 
-    final conversations = await _conversationRepo.getAllConversations();
-    final groupIds = conversations.map((c) => c.id).toList();
-    await _syncCoordinator.onConnected(groupIds);
+    // Start all background sync workers (outbox, watermark, conflict
+    // resolution, realtime subscriptions, media uploads).
+    await _syncCoordinator.start();
 
     if (!_connectionController.isClosed) {
       _connectionController.add(EngineConnectionState.connected);

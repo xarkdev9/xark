@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:hello_engine/src/domain/models/message.dart';
 import 'package:hello_engine/src/domain/models/presence_state.dart';
 import 'package:hello_engine/src/domain/models/typing_indicator.dart';
+import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
 import 'package:hello_engine/src/domain/repositories/message_repository.dart';
 import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
 import 'package:hello_engine/src/persistence/database/app_database.dart';
@@ -37,6 +38,9 @@ class MockSupabaseClientWrapper extends Mock
 class MockMessageRepository extends Mock implements MessageRepository {}
 
 class MockReceiptRepository extends Mock implements ReceiptRepository {}
+
+class MockConversationRepository extends Mock
+    implements ConversationRepository {}
 
 class MockDecryptedMessageRepository extends Mock
     implements DecryptedMessageRepository {}
@@ -680,6 +684,7 @@ void main() {
     late GapDetector gapDetector;
     late MockRealtimeListener realtimeListener;
     late MockReceiptRepository receiptRepo;
+    late MockConversationRepository conversationRepo;
     late SyncCoordinator coordinator;
 
     // We need real OutboxProcessor and GapDetector with mocked deps.
@@ -692,6 +697,7 @@ void main() {
       api = MockSupabaseClientWrapper();
       messageRepo = MockMessageRepository();
       receiptRepo = MockReceiptRepository();
+      conversationRepo = MockConversationRepository();
       realtimeListener = MockRealtimeListener();
 
       outboxProcessor = OutboxProcessor(
@@ -708,6 +714,7 @@ void main() {
         gapDetector: gapDetector,
         realtimeListener: realtimeListener,
         receiptRepo: receiptRepo,
+        conversationRepo: conversationRepo,
       );
     });
 
