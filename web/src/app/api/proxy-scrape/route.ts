@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Blind Proxy Scraper
+// hello OS v2.0 — Blind Proxy Scraper
 // Stateless OG metadata extraction for E2EE link previews.
 // Returns title, description, and og:image as Base64 bytes.
 //

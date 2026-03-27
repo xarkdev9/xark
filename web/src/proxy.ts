@@ -1,4 +1,5 @@
-// XARK OS v2.0 — Security Headers Proxy (Next.js 16)
+// hello OS v2.0 — Security Headers Proxy + Edge Rate Limiting (Next.js 16)
+// BACKEND-03: Upstash Redis rate limiting runs BEFORE serverless functions spin up.
 // Nonce-based CSP. E2EE app: CSP is the last defense before key extraction.
 // No unsafe-eval in prod. No unsafe-inline in script-src. Pinned Supabase (no wildcard).
 //
@@ -10,10 +11,77 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { ROUTE_RATE_CONFIG, checkLimit } from "@/lib/rate-limit-edge";
 
 const SUPABASE_PROJECT = "ldnsxwkkxwztqyqkyuqa";
 
-export function proxy(request: NextRequest) {
+// ── JWT userId extraction (lightweight — no verification, just decode) ──
+// The actual JWT verification happens in the API route handler.
+// We only need the sub claim for rate limit keying.
+function extractUserIdFromJwt(authHeader: string | null): string | null {
+  if (!authHeader) return null;
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    // Base64url decode the payload (middle segment)
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = JSON.parse(atob(payload));
+    return typeof decoded.sub === 'string' ? decoded.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ── Edge Rate Limiting (API routes only) ──
+  // Runs BEFORE serverless functions spin up — blocks malicious traffic at the edge.
+  if (pathname.startsWith('/api/') && ROUTE_RATE_CONFIG) {
+    // Match pathname against route config
+    // For sub-routes like /api/hello/webhook, try exact match first, then parent
+    const routeConfig = ROUTE_RATE_CONFIG.get(pathname)
+      ?? ROUTE_RATE_CONFIG.get(pathname.replace(/\/[^/]+$/, ''));
+
+    if (routeConfig) {
+      // Determine rate limit key
+      let key: string;
+      if (routeConfig.keyByIp) {
+        // IP-based keying (phone-auth — no JWT available yet)
+        key = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+          || request.ip
+          || 'unknown';
+      } else {
+        // JWT-based keying (authenticated routes)
+        const userId = extractUserIdFromJwt(request.headers.get('authorization'));
+        key = userId || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+          || request.ip
+          || 'unknown';
+      }
+
+      const result = await checkLimit(routeConfig.limiter, key, routeConfig.failureMode);
+
+      if (!result.allowed) {
+        return NextResponse.json(
+          { error: result.status === 503 ? 'service temporarily unavailable' : 'rate limited' },
+          {
+            status: result.status ?? 429,
+            headers: {
+              'Retry-After': String(result.retryAfter ?? 60),
+              'X-RateLimit-Policy': routeConfig.prefix,
+            },
+          },
+        );
+      }
+    }
+
+    // API routes return JSON — CSP not needed. Pass through after rate limit check.
+    return NextResponse.next();
+  }
+
+  // ── CSP Nonce Injection (non-API routes) ──
+
   // Generate cryptographic nonce for this request
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const isDev = process.env.NODE_ENV === 'development';
@@ -76,10 +144,11 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Apply to all routes except static files, Next.js internals, and prefetches.
-    // API routes excluded (return JSON, not HTML — CSP not needed).
+    // API routes — rate limiting only (no CSP needed for JSON responses)
+    "/api/:path*",
+    // All non-static routes — CSP nonce injection
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico|icons/).*)",
+      source: "/((?!_next/static|_next/image|favicon.ico|icons/).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
