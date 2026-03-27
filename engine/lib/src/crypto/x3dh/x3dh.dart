@@ -50,11 +50,12 @@ class KeyMismatchError extends X3dhException {
 ///
 /// The protocol proceeds, but callers should log this condition.
 class StalePreKeyWarning extends X3dhException {
-  /// Creates a [StalePreKeyWarning].
-  StalePreKeyWarning()
-      : super(
-          'Signed pre-key is older than 7 days — proceeding with warning',
-        );
+  /// Creates a [StalePreKeyWarning] with the age in days.
+  StalePreKeyWarning(this.ageDays)
+      : super('Signed pre-key is $ageDays days old (rotation recommended)');
+
+  /// Age of the signed pre-key in days.
+  final int ageDays;
 }
 
 /// Extended Triple Diffie-Hellman (X3DH) key agreement.
@@ -160,6 +161,8 @@ class X3DH {
   /// Performs the X3DH key agreement as the responder (Bob).
   ///
   /// Mirror of [initiatorKeyAgreement] with swapped roles.
+  /// Validates that the ephemeral key is exactly 32 bytes (X25519 format)
+  /// before processing.
   static Future<X3DHResult> responderKeyAgreement({
     required IdentityKeyPair ourIdentity,
     required SignedPreKey ourSignedPreKey,
@@ -167,6 +170,29 @@ class X3DH {
     required Uint8List theirIdentityKey,
     required Uint8List theirEphemeralKey,
   }) async {
+    // Validate ephemeral key format: must be exactly 32 bytes for X25519.
+    if (theirEphemeralKey.length != 32 ||
+        theirEphemeralKey.every((b) => b == 0)) {
+      throw KeyMismatchError();
+    }
+
+    // Verify our signed pre-key signature against our own identity key
+    // to guard against corrupted local state.
+    final ed = Ed25519();
+    final spkSigValid = await ed.verify(
+      ourSignedPreKey.publicKey,
+      signature: Signature(
+        ourSignedPreKey.signature,
+        publicKey: SimplePublicKey(
+          ourIdentity.ed25519PublicKey,
+          type: KeyPairType.ed25519,
+        ),
+      ),
+    );
+    if (!spkSigValid) {
+      throw SignatureVerificationFailed();
+    }
+
     final theirX25519Pub = Ed25519ToCurve25519.convertPublicKey(
       theirIdentityKey,
     );

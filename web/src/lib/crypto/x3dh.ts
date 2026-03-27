@@ -25,6 +25,15 @@ export class KeyMismatchError extends X3dhError {
   constructor() { super('Key bundle mismatch — cached bundle may be stale'); this.name = 'KeyMismatchError'; }
 }
 
+export class StalePreKeyWarning extends X3dhError {
+  public readonly ageDays: number;
+  constructor(ageDays: number) {
+    super(`Signed pre-key is ${ageDays} days old (rotation recommended)`);
+    this.name = 'StalePreKeyWarning';
+    this.ageDays = ageDays;
+  }
+}
+
 /**
  * Initiator side of X3DH — creates shared secret for session setup.
  * Called by the person sending the first message.
@@ -84,9 +93,10 @@ export function x3dhRespond(
   peerIdentityCurve25519Public: Uint8Array,
   peerEphemeralPublic: Uint8Array
 ): Uint8Array {
-  // BUG 11 hardening: reject missing ephemeral key — cannot compute shared secret without it
-  if (!peerEphemeralPublic || !peerEphemeralPublic.length) {
-    throw new Error('X3DH: Missing peer ephemeral key — cannot compute shared secret');
+  // Validate ephemeral key format: must be exactly 32 bytes for X25519.
+  if (!peerEphemeralPublic || peerEphemeralPublic.length !== 32 ||
+      peerEphemeralPublic.every((b: number) => b === 0)) {
+    throw new KeyMismatchError();
   }
   if (!peerIdentityCurve25519Public || !peerIdentityCurve25519Public.length) {
     throw new Error('X3DH: Missing peer identity key');
