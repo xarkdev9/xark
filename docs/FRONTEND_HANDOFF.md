@@ -1,4 +1,4 @@
-# Frontend Team Handoff — What Was Built, What You Need to Know, What to Build Next
+# Frontend Team Handoff — Phase 2 Integration Guide
 
 **Date:** 2026-03-27
 **Author:** Backend/Infrastructure Team
@@ -8,536 +8,446 @@
 
 ## TL;DR
 
-We built the entire backend infrastructure in one session: 37 commits, 83+ files, covering all 50 items from crypto.md and all 42 items from 4PM_Goal.md. The engine, database, API routes, crypto protocols, and offline-first architecture are production-ready. Your job is to wire the UI to these APIs.
+Phase 1 frontend is BUILT. The screens exist. The engine is integrated. This document tells you what backend infrastructure was added in the hardening sprint, and how to wire the **remaining Phase 2 hooks** into the existing UI. You are NOT building from scratch.
 
 ---
 
-## PART 1: What Was Built (Backend Summary)
+## SECURITY BOUNDARY (READ THIS FIRST)
 
-### Database (Supabase Postgres)
-- 8 new migrations: atomic RPC, group sequences, read watermarks, table partitioning, SK acknowledgments, PQXDH columns, user devices, dropped rate limiter
-- `send_e2ee_message` atomic RPC — single transaction for message + ciphertexts + SK distributions
-- Monthly range partitions on `message_ciphertexts` (handles 100M+ rows)
-- `group_sequences` table for O(1) per-group monotonic sequence assignment
-- `read_watermarks` table replaces `unread_counts` (no more deadlocks)
-- `sk_acknowledgments` table for O(1) sender key distribution
-- `user_devices` table for Sesame multi-device (5 device limit enforced by trigger)
+### The Iron Rule: UI Never Talks to the Backend Directly
 
-### Edge Infrastructure (Next.js + Upstash Redis)
-- Rate limiting moved to `proxy.ts` (middleware-first, blocks before serverless function invocation)
-- Token bucket for `/api/message` (200 burst for outbox sync), sliding window for all others
-- Fail-open for messaging routes, fail-closed for phone-auth + AI (financial protection)
-- Key bundle cache in Redis (SETNX, 5-min TTL, X-Bypass-Cache self-healing)
-- JWT replay protection via jti + Redis SETNX
-- Firebase AppCheck on `/api/phone-auth`
+```
+FORBIDDEN:
+  supabase.from('decision_items').select(...)   // NEVER
+  supabase.from('users').select(...)            // NEVER
+  supabase.from('messages').select(...)         // NEVER
+  supabase.rpc('mark_group_read', ...)          // NEVER (from UI)
 
-### Engine (Flutter/Dart — `engine/`)
-- **Crypto isolate** — dedicated background isolate for all encrypt/decrypt operations, 10s watchdog, 3 max respawns, TransferableTypedData for zero-copy
-- **Web Locks API mutex** — cross-tab E2EE safety with 5s AbortController timeout
-- **O(1) SK distribution** — local ACK cache (IndexedDB + Drift), piggybacked ACKs, NACK recovery protocol
-- **Strangler Fig ports** — MessageGateway, RealtimeGateway, TransientQueue interfaces for future extraction
-- **X3DH hardening** — 3-DH fallback, signature verification, ephemeral key validation
-- **Hardware key storage** — wrapping key pattern (Secure Enclave stub, Keystore stub, WebCrypto)
-- **Streaming AEAD** — 64KB chunked AES-256-GCM for files up to 2GB
-- **PQXDH** — hybrid X25519 + Kyber-1024 post-quantum key exchange
-- **Sesame multi-device** — device registry, QR-based linking, fan-out encryption
-- **Push decryption** — iOS NSE, Android Service, Web SW scaffolding
-- **Local-first feeds** — `LocalFeedRepository` with reactive Drift streams
-- **Watermark sync** — paginated gap fill on reconnect
-- **Outbox worker** — serial per-group drain with exponential backoff
-- **Conflict resolver** — reconciles optimistic vs server-authoritative state
-- **Background uploader** — Drift-persisted upload queue, resumable
-- **Sync coordinator** — orchestrates all background workers
-- **Typing indicators** — 5s auto-clear, Realtime Broadcast (never DB)
-- **Realtime receipts** — ephemeral delivered/read ticks via Broadcast
-- **BlurHash** — placeholder metadata for encrypted images
-- **Link unfurling** — client-side via blind proxy
-- **Message franking** — per-message key extraction for E2EE moderation
-- **E2EE observability** — Sentry integration point, never logs keys/plaintext
-- **Private contact discovery** — truncated SHA-256, batched lookup
-- **On-device SLM** — constraint detection (diet/budget) with regex fallback
+REQUIRED:
+  engine.getSession(groupId).messages           // YES — engine handles sync + crypto
+  engine.conversations                          // YES — engine handles offline cache
+  engine.discoverContacts(phoneHashes)          // YES — engine handles hashing + batching
+  session.sendText(plaintext)                   // YES — engine handles encrypt + outbox
+  session.markRead(messageId)                   // YES — engine handles watermark update
+```
+
+**Why:** The `fe2ee` engine is the ONLY component that may touch the network. It manages the encrypted SQLCipher local cache, the crypto isolate, the outbox queue, and the sync coordinator. If the UI queries Supabase directly:
+1. It bypasses the local cache, breaking offline functionality
+2. It risks exposing plaintext data outside the E2EE trust boundary
+3. It creates race conditions with the sync coordinator's Drift streams
+
+**The engine is the API. Supabase is an implementation detail the UI never sees.**
+
+The ONLY exception is the web React client (`web/src/`), which has its own crypto layer (`web/src/lib/crypto/`) and talks to API routes. The Flutter UI talks exclusively to `package:chat_engine`.
 
 ---
 
-## PART 2: Engine API Reference (What Flutter UI Consumes)
+## PART 1: What Was Built in the Hardening Sprint
 
-### Initialization
+37 commits adding planet-scale infrastructure to the engine. Here's what's new and ready for the UI to consume:
 
-```dart
-final engine = await ChatEngine.initialize(ChatEngineConfig(
-  authToken: 'jwt_from_login',
-  userId: 'name_ram',
-  deviceId: 99,           // unique per device, persisted locally
-  pushToken: fcmToken,    // from Firebase Messaging
-  serverBaseUrl: Uri.parse('https://gethello.ai'),
-  supabaseAnonKey: 'your_anon_key',
-));
-```
+### New Engine Capabilities (Flutter UI can use NOW)
 
-### Top-Level Streams (Home Screen)
+| Capability | Engine API | What Changed |
+|-----------|-----------|-------------|
+| **Offline-first feeds** | `engine.conversations`, `session.messages` | Now backed by `LocalFeedRepository` — zero network in render path. Drift reactive streams. |
+| **Optimistic send** | `session.sendText()`, `session.sendMedia()` | Writes to outbox instantly. `OutboxWorker` drains serially per group in background. |
+| **Gap sync on reconnect** | `engine.resume()` | `WatermarkSync` fetches missed messages, `ConflictResolver` reconciles with server. |
+| **Delivery receipts** | `session.receipts` | Ephemeral via Realtime Broadcast (never DB). `Receipt` model has `deliveredAt` + `readAt`. |
+| **Typing indicators** | `session.typing` | `TypingIndicatorManager` with 5s auto-clear. `session.sendTyping()` debounced. |
+| **Presence** | `session.presence` | `PresenceState` with `isOnline` + `lastSeenAt`. 1:1 conversations only. |
+| **Background uploads** | `session.sendMedia()` | `BackgroundUploader` with Drift-persisted queue. Survives force-quit (WorkManager/BGTask). |
+| **Streaming AEAD** | Transparent to UI | Files >1MB encrypted in 64KB chunks. No OOM on 4K video. |
+| **Crypto isolate** | Transparent to UI | All encrypt/decrypt in dedicated isolate. TransferableTypedData. 10s watchdog. |
+| **Multi-device registry** | `engine.getDevices()` (coming) | `user_devices` table, 5-device limit, fan-out encryption per device. |
+| **Device linking** | `DeviceLinking` interface | QR-based linking with encrypted history transfer. Replace the `Future.delayed(1500ms)` mock. |
+| **Push decryption** | `decryptPushPayload()` | iOS NSE + Android Service scaffolding. Needs native bridge wiring. |
+| **Contact discovery** | `engine.discoverContacts(hashes)` | Truncated SHA-256, batched (100/request), privacy-preserving. |
+| **Post-quantum** | Transparent to UI | PQXDH hybrid X25519 + Kyber-1024. Backward compatible. |
+| **Hardware keys** | Transparent to UI | Identity keys wrapped by Secure Enclave / Keystore wrapping key. |
+| **Connection state** | `engine.connectionState` | `connecting` / `connected` / `disconnected` / `suspended` |
+| **Unread counts** | `engine.totalUnreadCount` | Local calculation via `read_watermarks` (no deadlocks). |
 
-| Stream | Type | Use For |
-|--------|------|---------|
-| `engine.conversations` | `Stream<List<Conversation>>` | Home screen conversation list |
-| `engine.connectionState` | `Stream<EngineConnectionState>` | Connection indicator (banner) |
-| `engine.totalUnreadCount` | `Stream<int>` | App badge count |
-| `engine.errors` | `Stream<ChatEngineError>` | Global error handling |
+### New Web API Routes the Engine Calls (UI doesn't call these directly)
 
-### Per-Conversation Streams (Chat Screen)
+| Route | Purpose | Called By |
+|-------|---------|----------|
+| `POST /api/message` | Atomic E2EE send (UUIDv7 idempotent) | Engine `OutboxWorker` |
+| `POST /api/keys/fetch` | Key bundle + OTK (Redis cached) | Engine key manager |
+| `POST /api/keys/bundle` | Upload key bundle | Engine on init |
+| `POST /api/keys/otk` | Upload OTKs | Engine on init |
+| `GET /api/devices` | List devices | Engine `DeviceRegistry` |
+| `DELETE /api/devices` | Unlink device | Engine `DeviceRegistry` |
+| `POST /api/contacts/check` | Phone discovery | Engine `discoverContacts()` |
 
-```dart
-final session = engine.getSession('group_123');
-```
+### Routes the UI MAY Call Directly (web React only, NOT Flutter)
 
-| Stream | Type | Use For |
-|--------|------|---------|
-| `session.messages` | `Stream<List<Message>>` | Chat message feed |
-| `session.typing` | `Stream<List<TypingIndicator>>` | "Alice is typing..." |
-| `session.receipts` | `Stream<List<Receipt>>` | Delivered/read ticks |
-| `session.presence` | `Stream<PresenceState>` | "Online" / "Last seen" (1:1 only) |
-
-### Actions (User Interactions)
-
-```dart
-// Send message (writes to outbox → UI updates instantly → background syncs)
-await session.sendText('Hello!');
-
-// Send media (encrypts → uploads → sends key via ratchet)
-await session.sendMedia(MediaPayload(
-  bytes: fileBytes,
-  mimeType: 'image/jpeg',
-  fileName: 'photo.jpg',
-));
-
-// Typing indicator (debounced, ephemeral)
-await session.sendTyping();
-
-// Mark as read
-await session.markRead(message.id);
-
-// React
-await session.react(message.id, 'love_it');
-
-// Delete
-await session.deleteForMe(message.id);
-await session.deleteForEveryone(message.id);
-
-// Pagination (load older messages when user scrolls up)
-final older = await session.loadMore(limit: 50);
-
-// Safety number verification
-final fingerprint = await session.getKeyFingerprint();
-```
-
-### Lifecycle (App State)
-
-```dart
-// In WidgetsBindingObserver.didChangeAppLifecycleState:
-switch (state) {
-  case AppLifecycleState.resumed:
-    await engine.resume();  // Reconnects WebSocket, drains outbox, syncs gaps
-    break;
-  case AppLifecycleState.paused:
-  case AppLifecycleState.inactive:
-    await engine.suspend(); // Pauses sync, keeps push alive
-    break;
-  case AppLifecycleState.detached:
-    await engine.dispose(); // Full teardown, secure key wipe
-    break;
-}
-```
-
-### Error Handling (Global)
-
-```dart
-engine.errors.listen((error) {
-  switch (error) {
-    case AuthTokenExpired():
-      // Wipe session, navigate to /login
-      break;
-    case DeviceRevoked(deviceId: final id):
-      // Show "device was unlinked" dialog
-      break;
-    case KeyVerificationFailed(userId: final id):
-      // Show safety number changed warning
-      break;
-    case BiometricUnavailable():
-      // Show PIN entry screen
-      break;
-    case DecryptionFailed(messageId: final id):
-      // Show "message could not be decrypted" placeholder
-      break;
-    case ConnectionLost():
-      // Show "connecting..." banner
-      break;
-    // ... handle all 15 error types
-  }
-});
-```
+| Route | Purpose | Notes |
+|-------|---------|-------|
+| `POST /api/phone-auth` | Login (Firebase OTP → JWT) | Auth flow only |
+| `POST /api/join` | Name-only invite join | Onboarding only |
+| `POST /api/hello` | @hello AI (SSE streaming) | See security boundary in Part 4 |
+| `POST /api/invite` | Generate invite link | Social features |
+| `POST /api/local-action` | Group mutations | Via engine in Flutter |
 
 ---
 
-## PART 3: Data Models (What UI Renders)
+## PART 2: Existing Screens — What's Built, What Needs Wiring
+
+These screens are ALREADY BUILT in Phase 1. Do NOT rebuild them. Wire the Phase 2 hooks.
+
+### Auth Flow (`views/auth/auth_flow_page.dart`)
+**Status:** Built. Single-page state machine with blur transitions.
+**Phase 2 wiring needed:**
+- After successful auth, call `engine.discoverContacts()` with hashed phone contacts
+- Wire Firebase AppCheck token to the auth request header
+
+### Home Screen (`views/home/home_layout.dart` + `chats_tab_view.dart`)
+**Status:** Built. PageController with typographic header animation.
+**Phase 2 wiring needed:**
+- Build `groups_tab_view.dart` — streams from `engine.conversations` filtered by `type == group`
+- Build `memories_tab_view.dart` — streams settled group media from engine
+- Wire `engine.totalUnreadCount` to app badge
+- Wire `engine.connectionState` to a top connection banner (show "Connecting..." on disconnect)
+
+### Chat View (`views/chat/chat_view.dart`)
+**Status:** Built. Reverse message feed with @hello intent boundary.
+**Phase 2 wiring needed:**
+- Wire `session.receipts` → visual ticks on each `ChatBubble` (sending/sent/delivered/read)
+- Wire `session.typing` → "Alice is typing..." indicator below composer
+- Wire `session.presence` → "Online" / "Last seen" in app bar (1:1 only)
+- Wire `VirtualizedChatList.onLoadMore` → `session.loadMore(limit: 50)` on scroll-to-top
+- Wire media send: `session.sendMedia(MediaPayload(...))` → `BackgroundUploader` → progress stream → `EncryptedImageView`
+- Wire media receive: engine delivers `Message.media` with `MediaMetadata` → use `inlineThumbnail` for instant blur → `AnimatedCrossFade(300ms)` to `FileImage(File(localPath))` when download completes
+- **MEMORY RULE:** ALWAYS use `FileImage(File(localPath))`. NEVER use `MemoryImage`. Loading a 50MB video into RAM via MemoryImage will OOM-kill the app.
+
+### Decision Board (`views/action_carousel_page.dart` + `widgets/action_card_widget.dart`)
+**Status:** Built. Netflix-style PageView with SpringSimulation.
+**Phase 2 wiring needed:**
+- Wire decision items and reactions through the engine (NOT direct Supabase queries)
+- Engine needs new methods: `engine.getDecisionItems(groupId)` and `engine.react(itemId, signal)`
+- **BACKEND TEAM ACTION REQUIRED:** Expose `decision_items` and `reactions` through the engine's public API. The UI must not query Supabase directly.
+
+### Device Linking (`views/settings/device_linking_page.dart`)
+**Status:** Built. QR scanner with CustomClipper mask.
+**Phase 2 wiring needed:**
+- Replace `Future.delayed(1500ms)` simulation with real `DeviceLinking` protocol:
+  ```dart
+  // Primary device:
+  final request = await engine.deviceLinking.generateLinkingRequest();
+  displayQrCode(request.toQrPayload());
+  engine.deviceLinking.linkingState.listen((state) { ... });
+
+  // New device:
+  final request = LinkingRequest.fromQrPayload(scannedData);
+  await engine.deviceLinking.processLinkingRequest(request);
+  ```
+
+---
+
+## PART 3: New Screens to Build (Phase 2)
+
+These screens do NOT exist yet. Build them.
+
+### Settings Screen
+**Files:** `views/settings/settings_page.dart`, `views/settings/profile_edit.dart`, `views/settings/device_list.dart`
+**Engine APIs:**
+- Device list: `engine.getDevices()` (needs to be added to public API — wraps `DeviceRegistry.getUserDevices()`)
+- Unlink device: `engine.unlinkDevice(deviceId)` (needs to be added — wraps `DeviceRegistry.unlinkDevice()`)
+- Profile: engine must expose profile read/write (currently not in public API — BACKEND ACTION REQUIRED)
+
+### @hello AI Sheet
+**Files:** `views/ai/spotlight_sheet.dart`, `views/ai/ghost_input.dart`
+**Engine APIs:** The AI endpoint is the ONE exception where the Flutter UI calls a web route directly (via HTTP, not Supabase client):
+```dart
+final response = await http.post(
+  Uri.parse('${serverBaseUrl}/api/hello'),
+  headers: {'Authorization': 'Bearer $authToken', 'Content-Type': 'application/json'},
+  body: jsonEncode({'prompt': userPrompt, 'groupId': groupId}),
+);
+// Parse SSE stream for real-time typing
+```
+**SECURITY BOUNDARY:** The UI sends ONLY the user's immediate prompt text + groupId. It NEVER sends decrypted message history, local Drift data, or any E2EE content to this endpoint. The server fetches its own grounding context (the state map) from the database — only server_content (non-E2EE) fields.
+
+### Invite Flow
+**Files:** `views/invite/invite_surface.dart`, `views/invite/claim_sheet.dart`
+**Engine APIs:** Invite generation/claiming goes through the engine (engine wraps the HTTP calls).
+
+---
+
+## PART 4: Phase 2 Native Work (Heavy Lifting)
+
+### A. Push Notification Decryption (iOS + Android)
+
+The scaffolding is in place. What needs to happen:
+
+**iOS (NotificationServiceExtension):**
+1. `app/ios/NotificationServiceExtension/NotificationService.swift` exists (stub)
+2. Must be wired to the engine's `decryptPushPayload()` via Flutter method channel
+3. NSE and main app share an App Group keychain (`group.com.hello.app`)
+4. NSE loads ratchet state from shared SQLCipher database
+5. 30-second iOS budget — if decryption fails, fall back to "New Message"
+6. `app/ios/Runner/Runner.entitlements` needs App Group entitlement added
+
+**Android (FirebaseMessagingService):**
+1. `app/android/app/src/main/kotlin/.../HelloMessagingService.kt` exists (stub)
+2. Must spawn a headless Dart isolate to run `decryptPushPayload()`
+3. Find the crypto isolate via `IsolateNameServer.lookupPortByName('crypto_isolate')`
+4. If crypto isolate not running (app killed), open Drift DB directly from the headless isolate
+5. Post local notification via `NotificationCompat.Builder`
+
+**The bridge pattern:**
+```
+Silent push arrives
+  → Native code (Swift/Kotlin) receives it
+  → Calls Flutter method channel: `channel.invokeMethod('decryptPush', payload)`
+  → Engine's PushDecryptor runs in headless isolate
+  → Returns PushDecryptResult {senderName, messagePreview}
+  → Native code mutates notification content with plaintext
+```
+
+### B. Biometric Gateway (App Lock)
+
+The document previously said "Show PIN entry screen" on `BiometricUnavailable`. That's incomplete.
+
+**What actually needs to happen:**
+1. Before `runApp()`, before ANY Drift database opens, before the engine initializes — the app must authenticate the user via biometric/PIN
+2. The SQLCipher database encryption key is derived from the biometric/PIN authentication
+3. If biometric fails, the ENTIRE app is locked. No navigation, no home screen, no engine.
+4. Implementation:
+   ```dart
+   void main() async {
+     WidgetsFlutterBinding.ensureInitialized();
+
+     // BLOCK HERE until biometric/PIN verified
+     final authenticated = await BiometricGateway.authenticate();
+     if (!authenticated) {
+       runApp(const LockedApp()); // Shows PIN pad only
+       return;
+     }
+
+     // Only now initialize the engine (which opens the encrypted DB)
+     final engine = await ChatEngine.initialize(config);
+     runApp(HelloApp(engine: engine));
+   }
+   ```
+5. If `engine.errors` emits `BiometricUnavailable` during runtime (e.g., user disabled biometrics while app was open), immediately lock the app and require re-authentication.
+
+### C. @hello AI Security Context
+
+The `/api/hello` endpoint receives the user's prompt and returns AI responses via SSE.
+
+**What the UI MUST do:**
+- Send ONLY: `{ prompt: "user's typed text", groupId: "group_123" }`
+- The server fetches its own grounding context from the state map (locked decisions, active items, member profiles) using `server_content` fields — which are NOT E2EE encrypted
+
+**What the UI MUST NEVER do:**
+- Send decrypted message history from the local Drift database
+- Send the `session.messages` stream content
+- Send any `Message.text` (decrypted plaintext) to any HTTP endpoint
+- Include local user preferences or contacts in the AI request
+
+The @hello AI operates on a strictly scoped context. The server sees ONLY what was explicitly stored in `server_content` (non-E2EE metadata). The UI's job is to forward the user's prompt — nothing else.
+
+---
+
+## PART 5: Engine Data Models (Unchanged from Phase 1)
+
+All models are **freezed** immutable classes from `package:chat_engine`.
 
 ### Message
-
 ```dart
 Message {
-  String id;              // UUIDv7
-  String groupId;         // conversation ID
-  String senderId;        // who sent it
-  String senderDeviceId;  // which device
-  MessageType type;       // e2ee | hello | system | media | sender_key_dist
+  String id;              // UUIDv7, client-generated
+  String groupId;
+  String senderId;
+  String senderDeviceId;
+  MessageType type;       // e2ee | hello | system | media | sender_key_dist | tombstone
   MessageStatus status;   // sending | sent | delivered | read | failed
   DateTime timestamp;
   String role;            // 'user' | 'hello' | 'system'
-  int? serverSeq;         // server-assigned order (null = outbox/pending)
-  String? text;           // plaintext (null for media)
-  MediaMetadata? media;   // attachment info
+  int? serverSeq;         // null = outbox/pending
+  String? text;           // null for media-only
+  MediaMetadata? media;
   String? replyToMessageId;
-  Map<String, List<String>> reactions;  // emoji → [userIds]
+  Map<String, List<String>> reactions;
   bool isStarred;
   bool isViewOnce;
-  int? disappearsAt;      // epoch ms
+  int? disappearsAt;
   bool isDeleted;
 }
 ```
 
 **UI rendering rules:**
-- `status == sending` → show clock icon, grey
-- `status == sent` → single check mark
-- `status == delivered` → double check mark (grey)
-- `status == read` → double check mark (blue/accent)
-- `status == failed` → show red error icon + retry button
-- `serverSeq == null` → outbox message, show at bottom of chat, use `timestamp` for ordering
-- `type == 'tombstone'` → show "This message was deleted" placeholder
-- `type == 'hello'` → AI message, render with accent color, @hello branding
-- `type == 'system'` → centered, no bubble, grey text
-- `isViewOnce == true` → blur after first view, delete from local DB
+| Field | Visual |
+|-------|--------|
+| `status == sending` | Clock icon, grey |
+| `status == sent` | Single check |
+| `status == delivered` | Double check (grey) |
+| `status == read` | Double check (accent) |
+| `status == failed` | Red error + retry button |
+| `serverSeq == null` | Outbox message — show at bottom, sort by `timestamp` |
+| `type == tombstone` | "This message was deleted" |
+| `type == hello` | Accent color bubble, @hello branding, L-corner |
+| `type == system` | Centered, no bubble, caption text |
+| `isViewOnce` | Blur after first view |
 
 ### Conversation
-
 ```dart
 Conversation {
   String id;
   ConversationType type;  // oneToOne | group
   List<String> participantIds;
-  DateTime createdAt;
-  DateTime updatedAt;
-  String? lastMessageText;     // preview
+  String? lastMessageText;
   DateTime? lastMessageTimestamp;
   int unreadCount;
   bool isPinned;
-  bool isArchived;
   bool isMuted;
-  DateTime? muteUntil;
 }
 ```
 
-**UI rendering rules:**
-- Sort: pinned first, then by `lastMessageTimestamp` descending
-- `unreadCount > 0` → show Rose (#D4536B) glow dot (not numbered badge)
-- `isMuted` → show muted icon, suppress push
-- `type == oneToOne` → show peer's avatar + name
-- `type == group` → show group title + member count
-
-### Receipt
-
+### Receipt, TypingIndicator, PresenceState
 ```dart
-Receipt {
-  String messageId;
-  String userId;
-  String deviceId;
-  DateTime? deliveredAt;
-  DateTime? readAt;
-}
+Receipt { String messageId; String userId; DateTime? deliveredAt; DateTime? readAt; }
+TypingIndicator { String groupId; String userId; DateTime startedAt; }
+PresenceState { String userId; bool isOnline; DateTime? lastSeenAt; }
 ```
 
-**UI logic:** Message status = `max(all receipts)`. If ANY receipt has `readAt` → message is "read". If ANY has `deliveredAt` → "delivered". Otherwise → "sent" (server confirmed) or "sending" (outbox).
+### ChatEngineError (All 15 Types)
+The UI MUST handle every error type exhaustively:
 
-### TypingIndicator
-
-```dart
-TypingIndicator {
-  String groupId;
-  String userId;
-  DateTime startedAt;  // auto-clears after 5s
-}
-```
-
-**UI:** Show "Alice is typing..." below chat input. Multiple typers: "Alice and Bob are typing...". Auto-clear after 5 seconds.
-
-### PresenceState
-
-```dart
-PresenceState {
-  String userId;
-  bool isOnline;
-  DateTime? lastSeenAt;
-}
-```
-
-**UI:** In 1:1 chat app bar: "online" (green dot) or "last seen 2:34 PM".
+| Error | UI Response |
+|-------|------------|
+| `AuthTokenExpired` | Wipe session → navigate to /login |
+| `DeviceRevoked(deviceId)` | "This device was unlinked" dialog → /login |
+| `KeyVerificationFailed(userId)` | Safety number changed warning (yellow banner) |
+| `BiometricUnavailable` | **BLOCK ENTIRE APP** → show PIN/biometric re-auth |
+| `DecryptionFailed(messageId)` | "Could not decrypt" placeholder on that message |
+| `ConnectionLost` | "Connecting..." banner at top |
+| `ConnectionTimeout` | "No connection" banner |
+| `ServerError(code, body)` | Transient — show briefly then dismiss |
+| `PreKeyExhausted(userId)` | Engine auto-replenishes — no UI needed |
+| `SessionNotFound(deviceId)` | Engine auto-initiates X3DH — no UI needed |
+| `DatabaseCorrupted` | Fatal — "Data corrupted, please reinstall" |
+| `StorageFull` | "Storage full" toast |
+| `MediaUploadFailed(id)` | Show retry button on that media message |
+| `MediaDownloadFailed(url)` | Show retry button on that media message |
+| `OutboxFull(count)` | "Too many pending messages" warning |
 
 ---
 
-## PART 4: Web API Routes (Complete Reference)
+## PART 6: Database Tables (Engine Manages These — UI Never Queries Directly)
 
-### Authentication
+ALL tables are accessed through the engine. This list is for backend reference only.
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | `/api/phone-auth` | No | Exchange Firebase OTP for JWT |
-| POST | `/api/join` | No | Name-only invite join |
-| POST | `/api/dev-auto-login` | No | Dev login with password (404 in prod) |
-
-### E2EE Keys
-
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | `/api/keys/bundle` | Yes | Upload key bundle (identity + signed pre-key) |
-| POST | `/api/keys/otk` | Yes | Upload one-time pre-keys (batch, max 200) |
-| POST | `/api/keys/fetch` | Yes | Fetch peer's key bundle + consume 1 OTK |
-
-### Messaging
-
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | `/api/message` | Yes | Send E2EE message (atomic, idempotent via UUIDv7) |
-| POST | `/api/chat/start` | Yes | Find-or-create 1:1 DM |
-
-### Contacts & Social
-
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | `/api/contacts/check` | Yes | Privacy-preserving phone lookup (max 500) |
-| POST | `/api/invite` | Yes | Generate invite link (128-bit hex) |
-| GET | `/api/invite/validate` | No | Validate invite code |
-| POST | `/api/invite/claim` | No | Claim invite → join group + get JWT |
-
-### Groups
-
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | `/api/local-action` | Yes | Mutations: create_space, rename, update_dates, revert |
-| POST | `/api/notify` | Yes | FCM push to group members |
-
-### Devices (Multi-Device)
-
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| GET | `/api/devices` | Yes | List user's devices |
-| DELETE | `/api/devices` | Yes | Unlink a device (revoke keys) |
-
-### AI & Intelligence
-
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | `/api/hello` | Yes | @hello AI orchestration (SSE streaming) |
-| POST | `/api/hello/webhook` | No | Apify async callback |
-
-### Utilities
-
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | `/api/proxy-scrape` | No | Blind OG metadata proxy |
-| POST | `/api/og` | Yes | OG extraction with SSRF protection |
-| GET | `/api/cron/consensus` | Cron | Auto-lock expired consensus |
-| GET | `/api/cron/purge` | Cron | Purge expired @hello msgs + invites |
+| Table | Purpose | Accessed Via |
+|-------|---------|-------------|
+| `users` | User profiles | Engine (future `engine.getProfile()`) |
+| `groups` | Conversations | `engine.conversations` stream |
+| `group_members` | Membership | Engine checks internally |
+| `messages` | Message metadata | `session.messages` stream |
+| `message_ciphertexts` | Per-device encrypted payloads | Engine crypto layer |
+| `key_bundles` | E2EE public keys | Engine key manager |
+| `one_time_pre_keys` | OTKs | Engine key manager |
+| `group_sequences` | Monotonic counters | Engine `send_e2ee_message` RPC |
+| `read_watermarks` | Unread tracking | `session.markRead()` |
+| `decision_items` | Heart-Sort items | Engine (needs new API — see Backend Actions) |
+| `reactions` | Votes | Engine (needs new API — see Backend Actions) |
+| `sk_acknowledgments` | Sender key ACKs | Engine SK distribution |
+| `user_devices` | Multi-device registry | Engine `DeviceRegistry` |
+| `space_dates` | Trip dates | Engine (needs new API) |
+| `space_ledger` | Audit trail | Engine (needs new API) |
+| `media` | Media references | Engine media pipeline |
 
 ---
 
-## PART 5: Supabase Tables (Key Tables for Frontend)
+## PART 7: Backend Actions Required (Before UI Can Wire)
 
-### Tables You'll Query Directly (via Supabase client)
+The engine's public API needs these additions before the UI team can complete integration:
 
-| Table | Primary Key | RLS | Notes |
-|-------|------------|-----|-------|
-| `users` | `id` (text) | Yes | Display name, photo, phone |
-| `groups` | `id` (text) | Yes | Title, atmosphere, metadata |
-| `group_members` | `(group_id, user_id)` | Yes | Role (owner/member) |
-| `messages` | `id` (uuid) | Yes | E2EE metadata (server_content NULL for encrypted) |
-| `decision_items` | `id` (text) | Yes | Heart-Sort ranked items |
-| `reactions` | `(item_id, user_id)` | Yes | LoveIt/WorksForMe/NotForMe |
-| `media` | `id` (text) | Yes | Encrypted media references |
-| `read_watermarks` | `(group_id, user_id)` | Yes | Last-read sequence per group |
-| `space_dates` | `group_id` | Yes | Trip dates per group |
-| `space_ledger` | `id` | Yes | Audit trail |
+| Missing Engine API | What It Wraps | Needed By |
+|-------------------|--------------|-----------|
+| `engine.getDecisionItems(groupId)` | `decision_items` + `reactions` query via Drift | Decision Board |
+| `engine.react(itemId, signal)` | Reaction insert via API | Decision Board |
+| `engine.lockItem(itemId, proof)` | Green-Lock commitment | Decision Board |
+| `engine.getProfile(userId)` | `users` table query | Settings, chat headers |
+| `engine.updateProfile(name, photo)` | `users` table update | Settings |
+| `engine.getDevices()` | `user_devices` query | Settings device list |
+| `engine.unlinkDevice(deviceId)` | `unlink_device` RPC | Settings |
+| `engine.getSpaceDates(groupId)` | `space_dates` query | Group detail |
+| `engine.getLedger(groupId)` | `space_ledger` query | Settlement/audit |
+| `engine.createGroup(title, atmosphere)` | `create_space` local-action | Home screen |
+| `engine.inviteToGroup(groupId, userId)` | Invite flow | Invite surface |
 
-### Tables the Engine Manages (Don't Query Directly)
-
-| Table | Purpose |
-|-------|---------|
-| `key_bundles` | E2EE public keys (engine handles via API) |
-| `one_time_pre_keys` | Consumed atomically by `/api/keys/fetch` |
-| `message_ciphertexts` | Per-device encrypted payloads (partitioned monthly) |
-| `group_sequences` | Monotonic sequence counters |
-| `sk_acknowledgments` | Sender key ACK tracking |
-| `user_devices` | Multi-device registry |
-
-### Key RPCs (Called via `supabase.rpc()`)
-
-| RPC | Called By | Purpose |
-|-----|----------|---------|
-| `send_e2ee_message` | `/api/message` route | Atomic message send |
-| `fetch_key_bundle` | `/api/keys/fetch` route | Atomic OTK consumption |
-| `find_or_create_chat` | `/api/chat/start` route | DM routing |
-| `mark_group_read` | Client directly | Update read watermark |
-| `register_device` | Engine on init | Register device in registry |
-| `unlink_device` | Settings screen | Revoke device + cleanup keys |
-| `get_user_devices` | Engine for fan-out | List user's devices |
-| `tombstone_message` | Delete-for-everyone | Redact message + delete ciphertexts |
+**These must be added to `engine/lib/src/public_api/chat_engine.dart` before the UI team can wire the corresponding screens.**
 
 ---
 
-## PART 6: What the Flutter UI Team Needs to Build
+## PART 8: Design System (Unchanged)
 
-### Priority 1: Core Screens (Must Have)
+### Colors
+| Token | Hex | Use |
+|-------|-----|-----|
+| Accent (Rose) | `#D4536B` | Primary actions, @hello bubbles, unread dots |
+| Sent bubble | `#EF7C6E` | Right-aligned sender bubbles |
+| Received bubble | `#E8E3DD` | Left-aligned receiver bubbles |
+| Void | `#1A1A1A` | Dark mode background |
+| White | `#FAFAFA` | Light mode background |
+| Amber | signal color | LoveIt (+5) |
+| Green | signal color | Green-Lock |
+| Orange | signal color | NotForMe (-3) |
+| Gold | signal color | Consensus achieved |
 
-| Screen | Files to Create | Engine API |
-|--------|----------------|------------|
-| **Login / Welcome** | `views/auth/welcome_screen.dart`, `views/auth/phone_input.dart`, `views/auth/otp_input.dart` | POST `/api/phone-auth` |
-| **Home (3 tabs)** | `views/home/tabs/groups_tab_view.dart`, `views/home/tabs/memories_tab_view.dart` | `engine.conversations`, `LocalFeedRepository.watchConversations()` |
-| **Chat View** | Already exists — wire receipts + presence + pagination | `session.messages`, `session.receipts`, `session.presence`, `session.loadMore()` |
-| **Settings** | `views/settings/settings_page.dart`, `views/settings/profile_edit.dart`, `views/settings/device_list.dart` | GET/DELETE `/api/devices`, `supabase.from('users')` |
-
-### Priority 2: Feature Screens
-
-| Screen | Files to Create | Engine API |
-|--------|----------------|------------|
-| **Decision Board** | Already exists (action_card_widget) — wire to `decision_items` + `reactions` | `supabase.from('decision_items')`, `supabase.from('reactions')` |
-| **@hello AI Sheet** | `views/ai/spotlight_sheet.dart`, `views/ai/ghost_input.dart` | POST `/api/hello` (SSE streaming) |
-| **Invite Flow** | `views/invite/invite_surface.dart`, `views/invite/claim_sheet.dart` | POST `/api/invite`, POST `/api/invite/claim` |
-| **Media Viewer** | `views/media/encrypted_media_viewer.dart` | `session.sendMedia()`, engine `BackgroundUploader` |
-| **Contact Discovery** | `views/contacts/contacts_page.dart` | `engine.discoverContacts(phoneHashes)` |
-
-### Priority 3: Polish & Integration
-
-| Feature | What to Wire | Engine API |
-|---------|-------------|------------|
-| **Delivery Receipts** | Map `session.receipts` → visual ticks on bubbles | `Receipt.deliveredAt`, `Receipt.readAt` |
-| **Typing Indicators** | Map `session.typing` → "Alice is typing..." | `TypingIndicator.userId` |
-| **Presence** | Map `session.presence` → "Online" badge | `PresenceState.isOnline` |
-| **Pagination** | Wire `onLoadMore` in VirtualizedChatList | `session.loadMore(limit: 50)` |
-| **Connection Banner** | Map `engine.connectionState` → top banner | `EngineConnectionState.connecting/disconnected` |
-| **Push Notifications** | Wire iOS NSE + Android Service to `PushDecryptor` | `decryptPushPayload()` |
-| **Device Linking** | Replace `Future.delayed(1500ms)` with real Sesame flow | `DeviceLinking.generateLinkingRequest()` |
-| **Media Pipeline** | `engine.downloadMedia(metadata)` → `FileImage(File(localPath))` | `BackgroundUploader.enqueue()`, `watchUpload()` |
-| **BlurHash Placeholders** | Show blur while encrypted image downloads | `BlurHashMetadata.blurHash` in message metadata |
-| **Link Previews** | Show OG card for URLs in messages | `LinkPreview.fromJson()` in message metadata |
+### Rules (Non-Negotiable)
+- **No bold.** Max FontWeight.w400. Hierarchy via size + opacity.
+- **No boxes.** No Container borders, BoxShadow, Card. Use spacing + opacity.
+- **No Material.** No ElevatedButton, InkWell, ripple. Use GestureDetector + SpringSimulation.
+- **Haptics always.** selectionClick() on tap, heavyImpact() on consensus lock.
 
 ---
 
-## PART 7: Design System Reference
+## PART 9: Validation Checklist
 
-### Colors (CSS Variables → Flutter)
+### Existing Screens (Wire Phase 2 Hooks)
+- [ ] Chat receipts: `session.receipts` → visual ticks on `ChatBubble`
+- [ ] Chat typing: `session.typing` → "typing..." indicator
+- [ ] Chat presence: `session.presence` → "Online" in app bar (1:1 only)
+- [ ] Chat pagination: `VirtualizedChatList.onLoadMore` → `session.loadMore(limit: 50)`
+- [ ] Chat media send: `session.sendMedia()` → progress stream → FileImage on disk
+- [ ] Chat media receive: `inlineThumbnail` blur → `AnimatedCrossFade(300ms)` → `FileImage`
+- [ ] Home connection: `engine.connectionState` → "Connecting..." banner
+- [ ] Home badge: `engine.totalUnreadCount` → app badge
+- [ ] Device linking: Replace `Future.delayed(1500ms)` → real `DeviceLinking` protocol
+- [ ] Error handling: All 15 `ChatEngineError` types handled exhaustively
 
-| Token | Hex | Flutter |
-|-------|-----|---------|
-| `--hello-accent` | `#D4536B` | `HelloColors.accent` |
-| `--hello-white` | `#FAFAFA` | `HelloColors.white` |
-| `--hello-void` | `#1A1A1A` | `HelloColors.voidBg` |
-| `--hello-amber` | LoveIt signal | `HelloColors.amber` |
-| `--hello-gold` | Consensus gold | `HelloColors.gold` |
-| `--hello-green` | Green-Lock | `HelloColors.green` |
-| `--hello-orange` | NotForMe signal | `HelloColors.orange` |
-| `--hello-gray` | WorksForMe signal | `HelloColors.gray` |
-| `--hello-bubble-sent` | Sender bubble | `#EF7C6E` (right-aligned) |
-| `--hello-bubble-received` | Receiver bubble | `#E8E3DD` (left-aligned) |
+### New Screens
+- [ ] Groups tab built and streaming from engine
+- [ ] Memories tab built and streaming from engine
+- [ ] Settings screen with device list, profile edit, theme toggle
+- [ ] @hello AI sheet with SSE streaming (security boundary enforced)
+- [ ] Invite flow with QR code generation
 
-### Typography Rules
+### Native Platform Work
+- [ ] iOS NSE wired to `decryptPushPayload()` via method channel
+- [ ] Android Service wired to `decryptPushPayload()` via headless isolate
+- [ ] Biometric gateway blocks `runApp()` until authenticated
+- [ ] App Group keychain shared between main app + NSE
 
-- **Max weight: 400** (FontWeight.w400). Bold is BANNED.
-- Hierarchy via size + opacity only
-- Hero text: 48-64px, opacity 0.9
-- Body: 16px, opacity 0.8
-- Caption: 12px, opacity 0.5
-- Font: Inter (variable weight)
-
-### Animation Rules
-
-- **No** `Curves.easeOut` — use `SpringCurve` from `app/lib/animations/spring_curves.dart`
-- **No** `ElevatedButton` or `InkWell` — use `GestureDetector` + `SpringSimulation`
-- **No** Material ripple effects
-- Haptics: `HapticFeedback.selectionClick()` on tap, `HapticFeedback.heavyImpact()` on consensus lock
-
-### Spacing & Layout
-
-- Zero-Box Doctrine: no `Container` borders, no `BoxShadow`, no `Card`
-- Contrast via mathematical spacing + opacity
-- Edge-to-edge avatars (56x56, no padding)
-- Unread: 8x8 Rose (#D4536B) glow dot (not numbered badge)
+### Security Verification
+- [ ] UI NEVER imports `supabase_flutter` or `@supabase/supabase-js` directly
+- [ ] UI NEVER sends decrypted message text to `/api/hello` or any HTTP endpoint
+- [ ] UI NEVER uses `MemoryImage` for media (OOM risk)
+- [ ] UI NEVER logs Message.text, keys, or any E2EE content to console
 
 ---
 
-## PART 8: Validation Checklist for UI Team
-
-Before shipping each screen, validate against the engine:
-
-- [ ] `engine.conversations` stream populates the home screen list
-- [ ] `session.messages` stream populates the chat feed
-- [ ] `session.sendText()` writes to outbox → UI updates instantly → background syncs
-- [ ] `session.sendMedia()` encrypts via streaming AEAD → uploads → sends key via ratchet
-- [ ] `session.loadMore()` loads older messages on scroll-up
-- [ ] `session.markRead()` updates `read_watermarks` (local + server)
-- [ ] `session.receipts` maps to visual ticks (sending → sent → delivered → read)
-- [ ] `session.typing` shows ephemeral typing indicator (auto-clears 5s)
-- [ ] `session.presence` shows online/last-seen in 1:1 chat bars
-- [ ] `engine.connectionState` drives the connection banner
-- [ ] `engine.errors` is handled exhaustively (all 15 error types)
-- [ ] `engine.resume()` reconnects + syncs gaps + drains outbox
-- [ ] `engine.suspend()` pauses sync gracefully
-- [ ] Push notifications show decrypted plaintext (not "New Message")
-- [ ] Device linking QR flow completes with real Sesame protocol
-- [ ] Contact discovery calls `engine.discoverContacts()` after phone auth
-- [ ] Media renders via `FileImage(File(localPath))` — NEVER `MemoryImage` (OOM risk)
-- [ ] BlurHash placeholder shows instantly while encrypted media downloads
-- [ ] @hello AI responses stream via SSE (real-time typing effect)
-- [ ] Consensus lock at >80% fires gold burst + heavy haptic
-
----
-
-## PART 9: Environment Variables Required
-
-### Web (.env.local)
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-SUPABASE_JWT_SECRET=your-jwt-secret
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-FIREBASE_ADMIN_CLIENT_EMAIL=...
-FIREBASE_ADMIN_PRIVATE_KEY=...
-GEMINI_API_KEY=...
-APIFY_TOKEN=...
-UPSTASH_REDIS_REST_URL=...
-UPSTASH_REDIS_REST_TOKEN=...
-LOGIN_PASSWORD=... (dev only)
-DEV_MODE=true (dev only)
-```
-
-### Flutter (injected at runtime via ChatEngineConfig)
-
-```
-authToken     → from /api/phone-auth or /api/dev-auto-login
-userId        → from auth response
-deviceId      → generated on first launch, persisted in secure storage
-pushToken     → from Firebase Messaging
-serverBaseUrl → https://gethello.ai (prod) or http://localhost:3000 (dev)
-```
-
----
-
-## PART 10: How to Run Locally
+## PART 10: How to Run
 
 ```bash
 # Web
 cd web && npm run dev  # http://localhost:3000
 
-# Flutter (after web is running for API)
+# Flutter
 cd app && flutter run -d chrome    # Web
 cd app && flutter run -d macos     # macOS
 cd app && flutter run               # Connected device
@@ -548,7 +458,7 @@ cd engine && flutter test
 # Algo tests
 cd algo && npm test
 
-# Seed demo data (run once)
+# Seed demo data
 # First: CREATE EXTENSION IF NOT EXISTS pgcrypto; in Supabase SQL editor
 cd web && npx tsx src/lib/seed.ts
 ```
