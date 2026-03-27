@@ -14,3 +14,5 @@ export * from './sk-recovery';
 export * from './dm-routing';
 export * from './pqxdh';
 export * from './kyber';
+export * from './device-registry';
+export * from './device-linking';

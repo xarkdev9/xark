@@ -149,6 +149,19 @@ class SupabaseClientWrapper {
   }
 
   // ---------------------------------------------------------------------------
+  // Devices
+  // ---------------------------------------------------------------------------
+
+  /// Fetch all active devices for a user (for fan-out encryption).
+  Future<List<Map<String, dynamic>>> getUserDevices(String userId) async {
+    final response = await _client
+        .rpc('get_user_devices', params: <String, dynamic>{
+      'p_user_id': userId,
+    });
+    return List<Map<String, dynamic>>.from(response as List<dynamic>);
+  }
+
+  // ---------------------------------------------------------------------------
   // Messages
   // ---------------------------------------------------------------------------
 
