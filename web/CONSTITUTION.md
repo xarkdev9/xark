@@ -1,0 +1,433 @@
+# Xark OS v2.0 — The Human-Centric Constitution
+
+## 0. THE E2EE ABSOLUTE LAW (ABOVE ALL OTHER LAWS)
+- **E2EE is NEVER bypassed, downgraded, or disabled. Not for any reason. Not temporarily. Not for testing. Not for solo spaces. Not for convenience. NEVER.**
+- If encryption fails → message does not send. User sees an error. This is correct behavior.
+- Solo spaces (1 member) → encrypt to self. User's own device key is the recipient.
+- If a feature conflicts with E2EE → the feature does not ship. E2EE is the foundation, not a feature.
+- Plaintext write paths are forbidden in code. Legacy types exist only for reading pre-E2EE history.
+- Any AI agent that suggests bypassing E2EE is in CONSTITUTIONAL CRISIS. Stop. Restart the turn.
+
+## 1. THE NO-BOLD MANDATE
+- Hierarchy is achieved through Scale (24px vs 12px), Spacing, and Opacity (100% vs 30%). Bold is strictly forbidden.
+- Weight 400 (Regular): Primary text, group names, all interactive elements.
+- Weight 300 (Light): Secondary labels, metadata, timestamps.
+- **BANNED**: font-weight 500, 600, 700, 800, 900. Any weight above 400 is a constitutional violation.
+- If you need emphasis, use SIZE or OPACITY — never weight.
+
+## 2. THE THEME SYSTEM (4 Themes)
+- Xark OS ships with FOUR themes across 2 axes — style (flat/depth) and mode (light/dark).
+- `ThemeStyle = "flat" | "depth"`. Components use `isVibe` from ThemeContext, not theme names.
+- All colors are CSS variables (`--xark-white`, `--xark-void`, `--xark-accent`, etc.) set by ThemeProvider.
+- ThemeProvider dynamically updates `<meta name="theme-color">`, input `colorScheme` for iOS keyboard, and `data-style` attribute.
+- **Hearth** (flat light, default): text `#111111`, bg `#F8F7F4`, accent `#FF6B35` (Action Orange).
+- **Hearth Dark** (flat dark): text `#E8E6E1`, bg `#0A0A0F`, accent `#40E0FF` (Cyan).
+- **Vibe** (depth light): text `#0F0F0F`, bg `#FAF9F6`, accent `#E87040` (warm orange). Floating shadows, HD photos, immersive.
+- **Vibe Dark** (depth dark): text `#ECE8E2`, bg `#08080C`, accent `#50E8C0` (warm teal).
+- Text color: `var(--xark-white)` via `colors.white`. Theme-aware ink.
+- Background: `var(--xark-void)` via `colors.void`. Theme-aware canvas.
+- Accent: `var(--xark-accent)` via `colors.cyan`. Theme-aware identity color.
+- `textColor(alpha)` from `theme.ts` returns `rgba(var(--xark-white-rgb), alpha)` — the APPROVED method for applying opacity to text. This bakes opacity into the color for correct antialiasing.
+- `accentColor(alpha)` works the same for accent color.
+- All hierarchy expressed via opacity, never font-weight. `textColor(0.9)` for primary, `textColor(0.4)` for tertiary.
+- **Ink system**: Solid text colors for high-readability contexts. `ink.primary`, `ink.secondary`, `ink.tertiary`, `ink.sender` via CSS variables. Use instead of `textColor(alpha)` for chat lists, People tab, settings. Never opacity-based.
+- Engine signal colors (amber, gold, green, orange, gray) are ALL CSS variables — adjusted per theme for contrast.
+- **Loosely coupled**: Adding a theme = 2 file changes (theme.ts + UserMenu). Components check `style` field, not theme names.
+- **BANNED**: Hardcoded hex colors in components (use `colors.*` or `textColor()`). The exception is `colors.overlay` (#000000) which is always black.
+
+## 3. THE FONT SYSTEM
+- **Inter** (variable): Primary body font, set globally in `globals.css` (`font-family: var(--font-inter), var(--font-syne), sans-serif`). Weight 400 for body, weight 300 for wordmark.
+- **Syne** (variable): Display/fallback font. Weight 400 for display elements.
+- No other fonts permitted.
+
+## 4. THE ZERO-BOX DOCTRINE
+- No `border`, no `bg-white`, no `rounded-lg` cards for feed items.
+- The UI is a **Liquid Feed**: a vertical stream of information floating in atmospheric space.
+- Backgrounds are **Atmospheric Washes** (gradients) driven by Engine State.
+- Separation between elements is achieved through **Vertical Distance**, not lines or boxes.
+- **Focus outlines are globally purged**: `*:focus { outline: none !important; }` in `globals.css`. Browser focus rings are borders — they violate Zero-Box.
+
+## 5. THE ENGINE-TO-PIXEL MAP (SSOT)
+- **Amber (#F5A623)**: Seeking state. Intensity = `weightedScore`.
+- **Gold Bloom (#FFD700)**: Consensus reward. Triggers at `agreementScore > 80%`.
+- **Green Lock (#10B981)**: Finality. Flash green → settle to Cloud Dancer (#F0EEE9).
+
+## 6. THE AI (@xark)
+- COOL FRIEND PERSONA: @xark texts like a real friend in a group chat. brief, lowercase, punchy, max 1-2 short sentences (20 words or less). warm but never corny, never robotic.
+- NO AI CRINGE: never say "OMG", "mission accomplished", "epic", "vibes", "dive in", "delve", "world is our oyster", "let's gooo", "legendary", "bestie", "superpower".
+- EMOJI: never use ✨, 🎉, 🚀, or 🤖. maximum ONE contextual emoji (🌮 for tacos). zero is usually better.
+- PUNCTUATION: avoid exclamation points. a period or no punctuation is better. lowercase encouraged.
+- Intelligence is signaled via accent color (`colors.cyan`) breathing at a 4.5s cycle.
+- SILENT BY DEFAULT: @xark never responds unless the message contains "@xark" (explicit invocation).
+- NEVER: reacts to messages, summarizes unprompted, inserts itself into banter, sends proactive suggestions.
+- ONE EXCEPTION: Handshake whisper at >80% consensus (automated, no user invocation needed).
+- SOCIAL REASONING: Use names when advocating FOR someone ("nina and raj aren't feeling italian"). Use counts for opposition ("3 people aren't feeling this one"). Never assume WHY someone voted. Reports state, asks the question, lets humans fill the gap.
+- If you detect that you have used a border, a font-weight above 400, a bold class, or a hardcoded hex color in a component, you must immediately stop, delete the file, and output the text: 'I HAVE VIOLATED THE CONSTITUTION. RESTARTING TURN.'
+
+## 7. THE UNIVERSAL DECISION ENGINE
+Full technical record: `/Users/ramchitturi/algo/mar10_algo.md` (198 tests, 0 type errors).
+Core philosophy: "No gates. No votes. No clustering. Just signal -> act -> lock."
+
+### 7a. Signal System (Reaction Vocabulary)
+- **"Love it"** (`LoveIt`): weight **+5**. Color: Seeking Amber (`#F5A623`). Strong positive.
+- **"Works for me"** (`WorksForMe`): weight **+1**. Color: Neutral Gray (`#8888a0`). Lukewarm acceptance.
+- **"Not for me"** (`NotForMe`): weight **-3**. Color: Action Orange (`#e8590c`). Meaningful brake, not a veto.
+- One `NotForMe` cancels exactly three `WorksForMe` (-3 + 1 + 1 + 1 = 0).
+- Two `LoveIt` overcome one `NotForMe` (5 + 5 - 3 = 7).
+- Passionate minority wins: 3 `LoveIt` (15) beats 4 `WorksForMe` (4).
+- One reaction per user per item. Last reaction wins.
+- Score can go negative (items sink to bottom).
+- **Social Gold burst**: triggered when ALL members signal `LoveIt` (`isUnanimousLoveIt`).
+- **Lock Green** (`#2ecc40`): rare, only on commitment (the "green lock").
+
+### 7b. Heart-Sort Algorithm (SSOT)
+- Source: `engine/heart-sort.ts` in `/Users/ramchitturi/algo`.
+- `DecisionItem` interface: `id`, `spaceId`, `title`, `description`, `category` (open string), `state` (open string), `proposedBy`, `proposedAt`, `reactions[]`, `weightedScore`, `commitmentProof`, `ownership`, `ownershipHistory[]`, `lockedAt`, `version`, `metadata`.
+- `BookableItem`: backwards-compat type alias = `DecisionItem & { groupId, bookingProof }`. Both field sets always in sync.
+- `heartSort()`: Descending by `weightedScore`. Tie-break by `proposedAt` ascending (first proposed wins). O(n log n).
+- `calculateWeightedScore()`: Sum of deduplicated reaction weights (one per user, last wins).
+- `calculateAgreementScore()`: ALL reactors (including NotForMe) / totalMembers. `isGroupFavorite` = strictly > 80%.
+- `getRankedSummary()`: Returns `reactionBreakdown { loveIt, worksForMe, notForMe, hearts, thumbsUp }`.
+- All computation functions are **pure**: no mutation, no side effects, always return new objects.
+
+### 7c. State Machine (4 Preset Flows)
+- **BOOKING_FLOW** (default, EXTENDED): `proposed` -> [reaction] -> `ranked` -> [consensus] -> `locked` -> [claim] -> `claimed` -> [purchase] -> `purchased`. `locked` = consensus reached, no owner. `claimed` = someone stepped up, owner stamped. `purchased` = proof + amount submitted (terminal). Feeds settlement.
+- **PURCHASE_FLOW**: `researching` -> [reaction] -> `shortlisted` -> [manual] -> `negotiating` -> [commitment] -> `purchased`.
+- **SIMPLE_VOTE_FLOW**: `nominated` -> [reaction] -> `ranked` -> [commitment] -> `chosen`.
+- **SOLO_DECISION_FLOW**: `considering` -> [reaction] -> `leaning` -> [commitment] -> `decided`.
+- All flows allow skipping intermediate states via direct `[commitment]` from initial state.
+- Three trigger types: `"reaction"` (automated), `"commitment"` (intentional with proof), `"manual"` (explicit).
+- `DecisionItemState` is an open string for custom flows ("researching", "shortlisted", "negotiating", etc.).
+- Unknown transitions silently ignored (permissive design, prevents crashes).
+- **Shared module**: `src/lib/state-flows.ts` — `FLOW_TERMINAL_STATES`, `resolveTerminalState(state, flow?)`, `isTerminalState(state)`. Used by handshake.ts and claims.ts.
+
+### 7d. Green-Lock Commitment Protocol
+- Lock = real-world commitment confirmation (booking, purchase, contract), NOT a vote.
+- `CommitmentProof`: `{ type, value, submittedBy, submittedAt }`. Type is open string ("confirmation_number", "screenshot", "receipt", "contract", "verbal").
+- `commitItem()`: State-machine-aware, uses flow to determine locked state name.
+- `lockItem()`: Legacy, hardcoded to `"locked"`. Deprecated but functional.
+- On lock: committer stamped as owner `{ ownerId, assignedAt, reason: "booker" }`.
+- `transferOwnership()`: reason `"transfer"`. Cannot self-transfer. Cannot transfer non-locked item.
+- `ownershipHistory[]`: append-only audit trail.
+- Validation: cannot lock already-locked (`GreenLockError`), cannot lock with empty proof, cannot react to locked item.
+
+### 7e. AI Grounding (@xark Constraints)
+- @xark MUST respect locked decisions. If the group booked the Hilton, @xark must not suggest alternative hotels.
+- `GroundingConstraint` types: `"locked_decision"` (committed items), `"assigned_task"` (claimed tasks).
+- STATE MAP APPROACH: Instead of rigid "forbidden categories," @xark receives a full state map of all items grouped by state (Locked → Voting → Proposed → Empty). Includes reaction counts per item. Lets Gemini reason about scope — "hotel" locked doesn't ban "Airbnb for a different city" if it's a different need.
+- `checkSuggestionConflicts()`: Pre-call guard. Returns locked decisions in same category before AI generates suggestions. Run server-side before Gemini call.
+- No locked decisions = "No locked decisions yet. You may suggest any options freely."
+
+### 7f. Task Assignment
+- Tasks are non-decidable. No consensus needed. `Created` -> `Assigned`.
+- `createTask()`, `assignTask()`, `reassignTask()`, `unassignTask()`.
+- No proof required. No reactions. No ranking. Self-reassignment throws `TaskAssignmentError`.
+- IDs: `crypto.randomUUID()`. Prefix convention: `task_${uuid}`, `item_${uuid}`, `space_${uuid}`.
+
+## 8. THE FIREBASE CLIENT
+- `src/lib/firebase.ts` — Phone OTP authentication + E2EE multimedia storage.
+- **Safe initialization**: When `NEXT_PUBLIC_FIREBASE_API_KEY` is missing or empty, Firebase is NOT initialized. `auth` and `storage` export `null`. Prevents SSR crash (`auth/invalid-api-key`).
+- Singleton initialization: `getApps()` check prevents duplicate apps when API key is present.
+- Exports: `auth` (`Auth | null` — phone OTP), `storage` (`FirebaseStorage | null` — E2EE binary blobs). Consumers must null-check.
+- Environment: `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`.
+- **BANNED**: Firestore, Firebase Realtime Database. Database operations use Supabase Postgres exclusively.
+
+## 9. THE SUPABASE POSTGRES CLIENT
+- `src/lib/supabase.ts` — Database-only client for Supabase Postgres.
+- Package: `@supabase/supabase-js`. NOT `@supabase/auth`.
+- Environment: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Placeholder fallback when env vars are missing (local dev renders without crash; queries fail silently, components use demo data).
+- **BANNED**: Any auth configuration, session persistence, or token refresh via Supabase. Authentication is Firebase Auth exclusively.
+- Used by: `ai-grounding.ts` (fetch locked items, tasks, all items), future decision engine queries.
+
+## 10. THE AI GROUNDING IMPLEMENTATION
+- `src/lib/ai-grounding.ts` — Live implementation of Section 8 of mar10_algo.md.
+- Prevents @xark from suggesting a "Four Seasons" if the group has already locked the "Hilton."
+- `REACTION_WEIGHTS`: `{ love_it: 5, works_for_me: 1, not_for_me: -3 }`. Embedded in all grounding prompts.
+- `SpaceItem` interface: `{ id, title, category, description, state, weightedScore, agreementScore, ownership }`.
+- `buildGroundingContext(spaceId)`: Fetches locked items (ordered by `locked_at` desc) + assigned tasks + all items (including `agreement_score`) from Supabase Postgres. Returns `GroundingContext { spaceId, constraints[], lockedCategories[], currentFavorites[], forbiddenCategories[] (legacy), forbiddenSuggestions[], topIgnitedTitle, recentlyLocked { title, ownerName } }`.
+- `checkSuggestionConflicts(currentItems, proposedCategory)`: Pre-call guard (Section 8 conflict check). Filters "Locked"/"Finalized" items. Returns `ConflictResult { hasConflict, reason?, conflictingItemId? }`. Run server-side before Gemini call.
+- `checkContextConflicts(context, category)`: Convenience wrapper using `GroundingContext`. Returns `GroundingConstraint[]`.
+- `generateGroundingPrompt(context)`: Full state map for @xark system prompt. Groups items by state (Locked → Voting → Proposed → Empty). Includes reaction counts per item. Appends WEIGHTING RULES (-3/+1/+5). Lets Gemini reason about scope rather than imposing rigid category bans.
+  - When empty: "No locked decisions yet. You may suggest any options freely."
+- Supabase tables: `decision_items` (id, title, category, description, state, weighted_score, ownership, space_id, is_locked), `tasks` (id, title, assignee_id, space_id).
+
+## 11. THE @XARK CHAT INTERFACE
+- `src/components/os/XarkChat.tsx` — @xark intelligence conversation surface.
+- **No chat bubbles. No boxes. No containers.** Text floats on atmospheric mesh gradient.
+- MeshGradientBg: Radial ellipse accent glow (`opacity: 0.02`) behind all content. Atmospheric depth layer.
+- All typography uses `theme.ts` text tokens. Hierarchy through **SCALE**, never weight.
+- **FOVEAL OPACITY** (Liquid Stream Protocol): `fovealOpacity(index, total, role)` from `theme.ts`. @xark: `0.9 → 0.7 → 0.5 → 0.35 → 0.25 → floor(0.2)`. User: `0.6 → 0.45 → 0.35 → 0.25 → floor(0.2)`. Role labels capped at `min(0.35, msgOpacity)`. Timestamps inline, capped at `min(0.25, msgOpacity * 0.3)`. CSS `transition: opacity 0.6s ease`.
+- **ENTRANCE ANIMATION**: `AnimatePresence` + `motion.div` (no `layout` prop — eliminated for performance). New messages enter from `{ opacity: 0, y: 8 }`. Entrance uses `[0.22, 1, 0.36, 1]` ease. WhatsApp-dense grouping: same-sender `mt-0.5`, different-sender `mt-3`.
+- @xark responses: `text.body` (0.75rem), `colors.white`, foveal opacity (newest `0.9`), lineHeight 1.5. Left-aligned.
+- User messages: `text.body` (0.75rem), `colors.white`, foveal opacity (newest `0.6`). Own = right-aligned. Others = left-aligned.
+- Timestamps: `text.timestamp` (0.45rem), inline after content, `min(0.25, msgOpacity * 0.3)`.
+- Role labels: `text.label` (0.6rem, uppercase, 0.2em tracking), capped at `min(0.35, msgOpacity)`. @xark = `colors.cyan`. Only on first message in sender group.
+- Thinking state: `colors.cyan` dot breathing at 4.5s + "thinking" `text.hint` at opacity 0.4.
+- **Greeting**: Shows when message stream is empty, anchored near bottom (flex spacer pushes it down). @xark label (`text.label`, `colors.cyan`, 0.4) + actionable hint (`text.hint`, 0.35): `try "@xark find hotels near the beach"`. Uses `getGreeting(context, spaceTitle)` for contextual examples.
+- **Display-only**: XarkChat no longer contains input or send logic. All chat state (messages, input, isThinking, sendMessage) lives in the Space page (`src/app/space/[id]/page.tsx`). XarkChat receives `messages` and `isThinking` as props. Sanctuary bridge loads last 30 messages (paginated).
+- **ChatInput** (`src/components/os/ChatInput.tsx`): Two-zone layout. **Textarea + mic** at 56px from bottom: auto-expanding textarea (`text.body`, max ~6 lines/120px) + mic SVG icon (14px) in input row. Enter sends, Shift+Enter newline. Top ambient accent line (content boundary). **Living ambient line** below text: grows with text length, breathes at 4.5s, fades cyan→transparent. Invisible when empty+unfocused. Solid `colors.void` bg. Mic: tap = dictate, long-press 500ms = @xark mode (breathing dot replaces icon). **Attach icon** (16px paperclip SVG): fixed at `left: 25%` at `layout.caretBottom`. **Camera icon** (16px camera SVG): fixed at `left: 75%` at `layout.caretBottom`. Both at `colors.white` opacity 0.5 → 0.8 hover, thin 1.5px stroke. Void fill 56px.
+- **BANNED in ChatInput**: Buttons with backgrounds, text-label actions at dot level (use icons), full-width action bars, actions that shift position, static full-width underlines.
+- Grounding-aware: Loads `GroundingContext` on mount.
+- Grounding whisper: "grounded: [categories] locked" at opacity 0.2 when locked categories exist.
+- **Handshake integration**: `useHandshake(spaceId)` from `src/hooks/useHandshake.ts`.
+  - Whisper injected into message stream on proposal.
+  - "confirm" (`colors.gold`, 0.9) and "wait" (`colors.white`, 0.4) as floating `text.label`. NO boxes. NO buttons.
+  - **Committing**: Gold dot breathing + "locking" `text.hint`.
+  - **Social Gold burst**: Radial gold gradient, `goldBurstPulse` 3s.
+  - **Post-lock**: "locked. [title] is now committed." On dismiss: "understood. keeping this open for now."
+- **Sender names**: `senderName` on group messages. Other users = name label (left-aligned). "you" = right-aligned. Tapping name with `SANCTUARY_MAP` entry opens Sanctuary Bridge.
+- **Sanctuary Bridge**: Slide-up sheet. `colors.void` bg, 80vh max. Foveal opacity. Close at 0.4. Overlay #000 at 0.8. NO blur.
+- **Demo**: 10 group (san diego), 5 sanctuary (ananya). Fallback when Supabase unreachable.
+- **Message persistence**: `src/lib/messages.ts`. Paginated: `fetchMessages(spaceId, { limit?, before? })` — default 50, DESC reversed client-side. Space page loads 50, /api/xark loads 15, sanctuary bridge loads 30. Realtime sync via INSERT subscription. Deduplication.
+- **BANNED**: Chat bubbles, message containers, borders/backgrounds on messages, robot icons, emojis, font-weight above 400, buttons with borders/backgrounds.
+
+## 12. THE CONSENSUS MARK
+- `src/components/os/ConsensusMark.tsx` — SVG + Framer Motion consensus indicator.
+- **Seeking** (0-30%): Amber (#F5A623) dashed ring. Tween pulse (`cubic-bezier(0.22, 1, 0.36, 1)`, `0.6s`, `repeatDelay: 1.4`). Slow rotation. NOTE: Spring animations require exactly 2 keyframes in Framer Motion — use tween for 3+ keyframe arrays.
+- **Steady** (31-80%): Amber ring + Cyan (#40E0FF) breathing dot at 4.5s cycle.
+- **Ignited** (80%+): Gold (#FFD700) ring + 6 radial flare particles. Gold center dot.
+- No borders. No backgrounds. No containers. SVG floats in atmospheric space.
+
+## 13. THE BLUEPRINT VIEW
+- `src/components/os/Blueprint.tsx` — Vertical timeline of Green-Lock settled decisions.
+- Every displayed item has passed the Commitment Protocol (`is_locked = true`).
+- Data: Fetched from Supabase Postgres `decision_items` where `is_locked = true`, ordered by `locked_at` ascending.
+- **Timeline**: 1px vertical line at `opacity: 0.1` using `colors.white`. Atmospheric anchor, NOT a border.
+- **Category**: `10px`, `uppercase`, `letter-spacing: 0.2em`, `opacity: 0.3`.
+- **Title**: `text.listTitle` (1rem), `opacity: 0.9`, `letterSpacing: -0.01em`.
+- **Description**: `text.subtitle` (0.65rem), `opacity: 0.4`, `letterSpacing: 0.02em`.
+- **Metadata row**: ConsensusMark in `ignited` state (The Mark of Truth) + commitment proof display + `lockedAt` timestamp at `opacity: 0.25`.
+- **Finality wash**: Radial gradient using `currentColor` (#F0EEE9) at `opacity: 0.05`. No `rgba` white variants.
+- **Animation**: Framer Motion staggered entrance (`delay: index * 0.1`, `y: 20 → 0`).
+- **Empty state**: "no locked decisions yet" at `opacity: 0.2`.
+- **Settlement Ledger** (The Subtle Settle): Below the timeline, uses `fetchSettlement(spaceId)` from `src/lib/ledger.ts`. Displays per-user paid totals with item breakdown. Debt deltas: "[name] owes [name] $[amount]". Payment deep links as floating Cyan text: "venmo" (`venmo://`) and "upi" (`upi://`). 1px atmospheric divider. Total committed at bottom at `opacity: 0.2`.
+- **BANNED**: Cards, borders, containers, boxes around timeline items. Items float in atmospheric space.
+
+## 13a. THE CLAIMS ENGINE
+- `src/lib/claims.ts` — Manual item claim, outside the automated handshake flow.
+- `claimItem(itemId, userId, proofValue?)`: Locks an item with ownership. Proof: free-form text ("Link to confirmation or drop receipt.") or verbal fallback.
+- Flow-aware terminal state resolution (mirrors `handshake.ts`). Optimistic concurrency via `version` field.
+- `ClaimProof`: `{ type: "receipt"|"verbal", value, submittedBy, submittedAt }`.
+- On claim: owner stamped with `reason: "booker"`.
+
+## 13b. THE SETTLEMENT LEDGER
+- `src/lib/ledger.ts` — Financial resolution for locked decisions.
+- `fetchSettlement(spaceId)`: Queries locked items, parses `metadata.price` (handles "$450/nt", "$95/person", "Free"). Groups by `ownership.ownerId`. Returns `Settlement { entries[], deltas[], totalSpent, fairShare, memberCount }`.
+- `DebtDelta`: `{ fromUser, fromName, toUser, toName, amount }` — who owes whom.
+- `generateVenmoLink(recipientName, amount, note)`: Returns `venmo://paycharge` deep link.
+- `generateUPILink(upiId, recipientName, amount, note)`: Returns `upi://pay` deep link with INR currency.
+- Rendered in Blueprint.tsx as floating atmospheric text. No boxes. No buttons. Cyan payment links.
+
+## 14. THE NAVIGATION FLOW
+- **Login → Galaxy → Space**: The full state management chain.
+- **Login** (`src/app/login/page.tsx`): Brand identity screen. Wordmark "xark" (Inter 300). Brand line: "People. Plans. Memories." at `opacity: 0.45`. Sub-line: "All private, effortlessly in sync." at `opacity: 0.2`. Staggered fade-in (0.3s, 0.5s). Four phases — `arrive` (1.8s ambient orb), `input` (name entry with cyan underline), `photo` (profile photo upload or skip), `transit` (welcome message, then `router.push('/galaxy')` after 1.2s). Photo phase: "add a photo" (text.hint, 0.35) + "skip" (text.hint, 0.2). Uploads to Firebase Storage `profiles/{userId}/avatar`. Max 2MB.
+- **Galaxy** (`src/app/galaxy/page.tsx`): The Active Mind — awareness stream home. Awareness stream (src/lib/awareness.ts) shows priority-sorted cross-space events. Amber swell on recent activity. Mesh Pulse (15s breath). Empty state: "who are you planning with?". Input at 56px from bottom (`text.body`), top ambient line, living ambient line below text, solid void bg, void fill 56px. Manifestation Loop. ControlCaret global. UserMenu visible on Galaxy only. Spectrum Wash.
+- **Space** (`src/app/space/[id]/page.tsx`): Individual space. View toggle: `discuss` / `decide` / `itinerary` / `memories` + `share` action as floating `text.label`. Active = `colors.cyan` at 0.9, inactive = `colors.white` at 0.4. Chat state (messages, input, isThinking, sendMessage) lifted to Space page — persists across view switches. `ChatInput` always visible. `discuss` → XarkChat (display-only). `decide` → PossibilityHorizon. Fixed header with solid void bg + ambient accent line. ControlCaret global. No UserMenu.
+- **Seed Data** (`src/lib/seed.ts`): Populates Postgres with demo spaces, items, and messages. "san diego trip" (4 items: Hotel Del 92% locked, surf lessons 45%, balboa park 45%, gaslamp 92% locked; 10 group messages), "ananya" (sanctuary, 5 messages — last: "did you see the surf lesson proposal?"), "tokyo neon nights" (2 items), "summer 2026" (empty). Run via `npx tsx src/lib/seed.ts`.
+- **ControlCaret** (`src/components/os/ControlCaret.tsx`): The Living Brand Anchor. "xark" text (18px, weight 300, tracking 0.2em, Action Orange #FF6B35) at bottom center. Zero-box floating typography — no cyan dot. Breathing opacity 0.7→0.9 over 4s. Tap opens SpotlightSheet (short tap) or space panel (long press 500ms). Cyan breathing aura when whispers pending. Onboarding hint ("tap to ask xark anything") for new users (dismisses on first tap, localStorage). SpotlightSheet mounted here with Ghost Prompt, space chips, 800ms morph dismiss. GLOBAL via `GlobalCaret.tsx` in `layout.tsx`. Presence channels limited to top 5. GlobalMesh provides ambient background via `layout.tsx`.
+- **Sanctuary Bridge** (in XarkChat): Tapping a sender name with SANCTUARY_MAP entry opens slide-up sheet. Sheet: `#0A0A0A` bg, slides from bottom, 80vh max. Foveal opacity on messages. Close text at opacity 0.4. Dark overlay `#000` at 0.8 — no blur.
+- **Content Boundaries (THE TWO-LINE RULE)**: All scrollable content lives between two ambient accent lines — the header line (below title/toggle) and the input line (above ChatInput/Galaxy input). Header and input zones use **solid `colors.void` backgrounds** (not gradient fades). Content never bleeds above or below the ambient lines. This is a constitutional invariant across all views (Galaxy, Discuss, Decide, Itinerary, Memories).
+- **BANNED**: Cards, tab bars, bordered navigation, buttons with backgrounds, `backdrop-filter: blur`, gradient fades on header/input backgrounds (use solid void). All navigation is atmospheric floating text. All overlays use opaque `#000` — 60fps on $100 devices.
+
+## 15. THE POSSIBILITY HORIZON (DECIDE VIEW)
+- `src/components/os/PossibilityHorizon.tsx` — Netflix-style vertical scroll of horizontal card bands, one per category.
+- **Category Sections**: Categories pluralized (hotels, activities, flights, dining). Header in `text.label` at `textColor(0.35)`. No conviction strip — clean label only. 28px gap between sections.
+- **Decision Cards**: 170×260px portrait. `borderRadius: 16px`. `boxShadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)` — floating depth, Airbnb/Netflix quality. Image or gradient placeholder. Vignette covers bottom 60% (1.0 → 0.95 at 30% → 0.5 at 55%). Amber wash. **Consensus Hero**: 1.5rem percentage in consensus color + 2px bar. Title (`text.body`, 0.9). Price (`text.recency`, 0.4). **Reactions**: float at card bottom (no container, no strip), `justify-between`, px-4. `text.subtitle` (0.65rem). Inactive: `colors.white` at 0.55 with `text-shadow: 0 1px 3px rgba(0,0,0,0.4)` for depth/readability. Active: signal color at 1.0 with color glow `text-shadow: 0 0 12px color, 0 0 4px color`. NOTE: `borderRadius` and `boxShadow` on Decide cards are an explicit user-approved exception to Zero-Box Doctrine — cards in the decision surface need physical depth to feel tappable and readable in sunlight.
+- **Self-Resolving**: When all items in a category are locked, section collapses to a settled row: 4px `colors.green` breathing dot + category name + locked title at `textColor(0.3)`.
+- **Input**: Shared `ChatInput` from Space page — always visible at bottom, persists draft across view switches. Not duplicated inside PossibilityHorizon.
+- **Data**: Single Supabase query (items ordered by `weighted_score` DESC, limited to 100). Batch reaction fetch. Client-side grouping by `metadata.search_label` when present (search results get own rail, e.g. "coronado island hotel"), else by `category` (memoized). `CategoryRail` wrapped with `React.memo` + custom comparator. Card images lazy-loaded after first 3 per rail (`lazyImage` prop). Single Realtime channel (UPDATE + INSERT).
+- Items ordered by `heartSort()` within each category (weightedScore descending, locked items last).
+- Snap scroll: `scroll-snap-type: x mandatory`, `scroll-snap-align: start`. Hidden scrollbar. 12px gap between cards.
+- **BANNED**: `ConsensusMark` animated SVG on cards, conviction strips, buttons with borders/backgrounds. NOTE: Decision cards use `borderRadius: 16px` + `boxShadow` by explicit user approval — this exception does NOT extend to other components.
+
+## 16. THE HANDSHAKE PROTOCOL
+- `src/lib/handshake.ts` — The automated bridge between Consensus and Commitment.
+- **Consensus Detection**: `subscribeToConsensus(spaceId, onHandshake)` subscribes to Supabase Realtime on `decision_items`. Monitors `agreement_score` field.
+- **Trigger**: When an unlocked item's `agreement_score` exceeds `0.80` (strictly greater than, per Section 7b of mar10_algo.md), a `HandshakeProposal` fires.
+- **Deduplication**: Each item triggers only once per subscription lifecycle. Prevents repeated proposals.
+- **@xark Whisper**: `generateHandshakeWhisper()` returns: *"consensus reached on [Title]. shall i lock this in for the group?"*
+- **Green-Lock Execution**: `confirmHandshake(itemId, confirmerId)` performs the full Commitment Protocol:
+  - Fetches current item state + `version` for optimistic concurrency.
+  - Guards: Cannot lock already-locked items (`GreenLockError`).
+  - `CommitmentProof`: `{ type: "verbal", value: "group consensus confirmed via @xark handshake" }`.
+  - Flow-aware terminal state resolution: `proposed`/`ranked` → `locked`, `nominated` → `chosen`, `researching`/`shortlisted`/`negotiating` → `purchased`, `considering`/`leaning` → `decided`.
+  - Owner stamp: `{ ownerId: confirmerId, assignedAt, reason: "booker" }`.
+  - Optimistic concurrency: `version` field incremented. Stale writes fail (HTTP 409 equivalent).
+- **Visual Reward**: On successful lock, all connected clients trigger Social Gold burst (`goldBloom()` from `theme.ts`). Gold (#FFD700) radial bloom across the UI.
+- **Cleanup**: `unsubscribeFromConsensus(channel)` removes Supabase Realtime channel.
+
+## 17. HEXAGONAL ARCHITECTURE (Ports & Adapters)
+Full source: `/Users/ramchitturi/algo`. Reference adapters are zero-dependency, in-memory.
+
+| Port | Interface | Reference Adapter | Production Target |
+|---|---|---|---|
+| Persistence | `PersistencePort` | `MemoryPersistenceAdapter` | Supabase Postgres |
+| Event Bus | `EventBusPort` | `MemoryEventBusAdapter` | Redis / WebSocket |
+| Auth | `AuthPort` | `NoopAuthAdapter` | Firebase Auth (OTP) |
+| Cache | `CachePort` (optional) | `MemoryCacheAdapter` | Redis |
+| Messaging | `MessagingPort` | `PlaintextMessagingAdapter` | Slack / Discord / Telegram |
+
+- `DecisionService`: Stateless orchestrator. Load from DB -> Compute (pure functions) -> Save -> Broadcast -> Invalidate cache. Horizontally scalable.
+- `ConsensusEngine`: In-memory orchestrator for testing/embedded. Both coexist, neither deprecated.
+- `RequestHandler`: Framework-agnostic HTTP router. `ServiceRequest { method, path, body, token }` -> `ServiceResponse { status, body }`. Works with Express, Fastify, Hono, Lambda, Workers.
+- Optimistic concurrency: `version` field on every item. Incremented on mutation. Stale writes rejected (`VersionConflictError`, HTTP 409).
+- Cache: Key `"ranked:{spaceId}"`, TTL 60s, invalidate-on-write.
+
+### API Route Table
+
+| Method | Path | Action |
+|---|---|---|
+| POST | `/spaces` | Create space |
+| GET | `/spaces/:id` | Get space |
+| POST | `/spaces/:id/items` | Add item |
+| GET | `/spaces/:id/items/ranked` | Ranked summary |
+| GET | `/spaces/:id/items/locked` | Locked items |
+| POST | `/items/:id/react` | React |
+| DELETE | `/items/:id/react` | Unreact |
+| POST | `/items/:id/lock` | Lock/commit |
+| POST | `/items/:id/transfer` | Transfer ownership |
+| GET | `/items/:id/agreement` | Agreement score |
+| GET | `/items/:id/signals` | Signal breakdown |
+| POST | `/spaces/:id/tasks` | Add task |
+| POST | `/tasks/:id/claim` | Claim task |
+| GET | `/spaces/:id/grounding/prompt` | AI grounding prompt |
+| GET | `/spaces/:id/conflicts` | Check conflicts |
+
+## 18. ERROR TAXONOMY
+
+| Error | When | HTTP | Recovery |
+|---|---|---|---|
+| `GreenLockError` | Already locked, empty proof, transfer non-locked, self-transfer | 422 | Fix input |
+| `TaskAssignmentError` | Self-reassign, unassign non-assigned | 400 | Fix input |
+| `VersionConflictError` | Stale version on save | 409 | Reload + retry |
+| `AuthError` | Failed auth/authorization | 403 | Valid token |
+| `NotFoundError` | Entity not in DB | 404 | Check ID |
+
+## 19. THE INFRASTRUCTURE LOCK (HYBRID STACK)
+The Xark OS backend is a locked hybrid of Firebase and Supabase. No substitutions.
+
+| Component | Provider | Why |
+|---|---|---|
+| Phone OTP | Firebase Auth | Flawless SMS delivery and session management |
+| Decision Engine | Supabase (Postgres) | SQL required for heart-sort ranking math |
+| E2EE Key Distribution | Supabase (Postgres) | key_bundles, one_time_pre_keys tables with atomic RPC |
+| Encrypted Message Storage | Supabase (Postgres) | message_ciphertexts table (server stores ciphertext only) |
+| Multimedia (E2EE) | Firebase Storage | High-performance binary delivery with bucket security |
+| Encrypted Key Backups | Firebase Storage | Argon2id-encrypted backup blobs (server cannot decrypt) |
+| Cold Ciphertext Archive | Firebase Storage | Monthly partitions older than 6 months |
+| Push Alerts | Firebase (FCM) | Native integration with iOS and Android |
+| Intelligence | Gemini 2.5 Flash | @xark deep research and agentic planning (Layer 3 only) |
+
+- **BANNED**: Supabase Auth (`supabase/auth`, `@supabase/auth`, `createClient` with auth config for Supabase). All authentication flows use Firebase Auth exclusively.
+- If you detect a Supabase Auth import or scaffold, you must immediately stop and output: 'I HAVE VIOLATED THE CONSTITUTION. RESTARTING TURN.'
+
+## 19a. THE ENCRYPTION CONSTITUTION (E2EE)
+Full architecture documented in SECURITY.md. Key constitutional rules:
+
+- **ZERO-KNOWLEDGE MESSAGING**: Server NEVER sees message plaintext or private keys. All crypto is client-side (`src/lib/crypto/`). Never import crypto modules on the server.
+- **THREE-LAYER SEPARATION**: Layer 1 (key management) → Layer 2 (message encryption, zero-knowledge) → Layer 3 (structured intelligence, @xark reads only this). These layers MUST remain separate. No bridging without explicit user consent.
+- **SIGNAL PROTOCOL**: Double Ratchet for 1:1 sanctuaries (per-message forward secrecy). Sender Keys for groups (per-sender chain forward secrecy). XChaCha20-Poly1305 AEAD (hardware-independent). No AES-GCM (requires AES-NI for constant-time).
+- **@xark IS BLIND TO LAYER 2**: @xark reads Layer 3 data only (decision items, reactions, constraints, space metadata). @xark is DISABLED in sanctuaries. When a user invokes @xark, only the command text is sent to the server — this is an explicit, user-initiated disclosure.
+- **ON-DEVICE CONSTRAINT DETECTION**: Bridges Layer 2 → Layer 3. Runs on sender's device only. Conservative allowlists. Requires explicit user consent (save/dismiss prompt).
+- **NO BACKDOORS**: No master key. No key escrow. No admin decryption. No recovery mechanism that bypasses user password. This is non-negotiable.
+- **MESSAGE TYPE GUARD**: Client MUST use `resolveMessageContent()` — E2EE messages are ONLY rendered from decrypted ciphertext, never from `messages.content` (anti-injection defense).
+- **ANTI-INJECTION**: Even if the server is compromised and sets `content` on an E2EE message, the client ignores it and decrypts from `message_ciphertexts` only.
+- **NO SERVER-SIDE CRYPTO**: All encryption, decryption, key generation, and key derivation happens on the client. The server is a dumb relay for ciphertext and public keys.
+- If you detect server-side decryption, a master key, key escrow, or any mechanism that gives the server access to plaintext, you must immediately stop and output: 'I HAVE VIOLATED THE ENCRYPTION CONSTITUTION. RESTARTING TURN.'
+
+## 20. THE INTELLIGENCE SERVICE
+- `src/lib/intelligence/orchestrator.ts` — Gemini 2.5 Flash orchestrator with **three-tier routing**:
+  - **gemini-local** (FAST, ~7-10s): `geminiLocalSearch()` — direct Gemini knowledge for casual queries (coffee, brunch, sunset spots, bars). No Google Search tool. Returns JSON array of real places with descriptions. Tools: `local_restaurant`, `local_activity`.
+  - **gemini-search** (~40-50s): `geminiSearchGrounded()` — Google Search grounding for knowledge queries (travel tips, weather, what to pack). Tool: `general`.
+  - **apify** (SLOW, 15-50s): Apify actors for booking-specific queries with prices/ratings. Tools: `hotel`, `flight`, `restaurant`, `activity`.
+  - Intent prompt exposes all 8 tools with explicit TIER SELECTION rules: "DEFAULT TO FAST TIER. most queries are casual."
+  - Stateless. Native JSON mode (`responseMimeType: "application/json"`). `_thought_process` chain of thought. Anti-cringe voice rules. Accepts spaceTitle for location context.
+- `src/lib/intelligence/tool-registry.ts` — Tool registry pattern. 8 tools across 2 tiers: apify (hotel, flight, activity, restaurant, general) + gemini-search (local_restaurant, local_activity, local_general). `registerTool(name, { actorId, description, paramMap, tier })`.
+- `src/lib/intelligence/apify-client.ts` — Apify actor runner. `runActor(actorId, input)` → `ApifyResult[]`. Safe: returns empty array when `APIFY_API_TOKEN` missing.
+- Prompt split: `buildStaticPrompt()` (voice rules, boundaries, tools, examples — stable) + `buildDynamicPrompt()` (space title, grounding, messages, request — variable). Composed in `buildIntentPrompt()`. Flash model guard warns if pro model detected.
+- `/api/xark` endpoint: POST. Silent mode (no @xark = null response). Strips prefix, parallelized pre-Gemini fetches via `Promise.all` (space title + grounding context + last 15 messages). Calls orchestrate(). Search results auto-upserted as decision_items in "proposed" state with `search_batch` + `search_label` (user's query text — each search gets its own Decide rail) + `search_tier` metadata. Persists @xark response messages server-side via supabaseAdmin (returns messageId for client deduplication).
+- `/api/message` endpoint: Unified E2EE message endpoint. Async @xark orchestration (fire-and-forget) + server-side broadcast. Same search_label logic via `orchestrateAndUpdate()`.
+- `src/lib/supabase-admin.ts` — Server-side Supabase client with `SUPABASE_SERVICE_ROLE_KEY`. Bypasses RLS. Used by `/api/xark`, `/api/message`, `/api/local-action`, and `/api/notify`.
+
+## 20a. LOCAL INTELLIGENCE (PARKED — needs browser debugging)
+- Three-tier client-side routing in `sendMessage()`: Tier 1 (regex, <1ms) → Tier 2 (lexical search, ~50ms) → Tier 3 (Gemini cloud). First match wins.
+- `src/lib/local-agent.ts` — Tier 1 fast-path router. `tryLocalAgent()` intercepts @xark admin commands. Commands: date management, space rename, state queries. Runs even while `isThinking`.
+- `src/lib/local-recall.ts` — Tier 2 recall detection. `isRecallQuestion()` with tuned patterns. Strict halt on zero results (cloud is E2EE-blind).
+- `src/workers/memory-worker.ts` — Tier 2 Web Worker. MiniSearch lexical search. 1000-message cap, 3s debounced persistence, timestamp watermark.
+- `src/hooks/useLocalMemory.ts` — React hook bridging Worker + IndexedDB blob persistence.
+- `/api/local-action` — Tier 1 mutation endpoint. JWT + membership check. Atomic: mutation + `space_ledger` entry. Actions: update_dates, rename_space, revert.
+- `src/components/os/LedgerPill.tsx` — Interactive system pill (icon + actor + verb + [tappable payload] + undo). Interleaved in XarkChat timeline.
+- `src/components/os/ContextCard.tsx` — Actionable recall card. Jump to Message + Quote to Group.
+- `supabase/migrations/017_hybrid_brain.sql` — `space_ledger` table (Layer 3, unencrypted). RLS + Realtime.
+
+## 20b. UNREAD MESSAGE SYSTEM
+- `space_members.last_read_at` — timestamp per user per space, updated on space open via `mark_space_read()` RPC.
+- `get_unread_counts()` RPC — returns unread count per space. Excludes own messages and system messages.
+- `src/lib/unread.ts` — `fetchUnreadCounts()` + `markSpaceRead()`.
+- Badge: brand orange pill (#FF6B35), 18px, 11px white text. Caps at "99+". Shown on AwarenessStream + PeopleDock.
+- Space page calls `markSpaceRead()` on mount (clears badge when user opens space).
+
+## 20c. SECURITY HARDENING
+- `message_type_override` validated against allowlist (e2ee, e2ee_xark, sender_key_dist). Prevents @xark message spoofing.
+- Rate limiting: phone-auth (by IP), xark (by verified JWT userId, after auth), local-action, notify.
+- `/api/og` requires auth for all requests (SSRF prevention).
+- `dev-auto-login` blocked in `NODE_ENV=production`.
+- `spaceTitle` sanitized before Gemini prompt injection (strips `{}"\\`` + newlines).
+- Invite token entropy: 16 bytes (128-bit, migration 018).
+- E2EE disabled for dev users (name_ prefix) — only phone_ prefix users get E2EE.
+- In-memory rate limiter works for dev; needs Upstash Redis for serverless prod.
+
+## 21. THE CLAIM SHEET
+- `src/components/os/ClaimSheet.tsx` — Slide-up sheet for claiming a locked item.
+- "i'll handle this" (`colors.cyan`, `text.label`, 0.9 opacity) + "not yet" (`textColor(0.4)`, `text.label`).
+- On claim: whisper "[name] is on it", auto-close after 1.5s.
+- Sheet: `colors.void` bg, slides from bottom (Framer Motion tween), max-height 40vh.
+- Overlay: `colors.overlay` (#000) at `opacity.overlay` (0.8). NO blur.
+- **BANNED**: Buttons with borders/backgrounds. Actions are floating text only.
+
+## 22. THE PURCHASE SHEET
+- `src/components/os/PurchaseSheet.tsx` — Slide-up sheet for confirming purchase + entering amount.
+- Amount input: `$` prefix + `text.input` + accent underline. Unit toggle cycles through "total" / "per night" / "per person".
+- Proof input: placeholder "link to confirmation or drop receipt". Ghost opacity when empty.
+- "done" action: `colors.cyan`, `text.label`. Disabled (0.3 opacity) when amount empty.
+- State transition: `claimed` → `purchased` (terminal). Optimistic concurrency via version check.
+- Whisper on success: "[name] booked [title] for $[amount]". Auto-close after 2s.
+- Sheet: `colors.void` bg, max-height 50vh. Same overlay rules as ClaimSheet.
+- **BANNED**: Buttons, dropdowns, select elements. All interactions via floating text and accent underlines.
+
+## 23. THE MEDIA UPLOAD
+- `src/components/os/MediaUpload.tsx` — Floating "add photo" text (`text.hint`, opacity 0.35).
+- Hidden file picker triggered on tap. Optional caption input with accent underline.
+- Upload indicator: `colors.cyan` breathing dot at 4.5s cycle.
+- `src/lib/media.ts`: `uploadMedia(file, spaceId, userId, caption?)` → Firebase Storage blob + Supabase metadata row. `fetchMedia(spaceId)` → ordered list.
+- **BANNED**: File upload buttons with borders/backgrounds. The trigger is floating atmospheric text.
+
+## 24. THE NOTIFICATION SERVICE
+- `src/lib/notifications.ts` — Server-side FCM push via Firebase Admin SDK. Lazy initialization from `FIREBASE_SERVICE_ACCOUNT_JSON` env var. No-op when unconfigured.
+- `sendPush(tokens[], title, body, data?)` — Multicast push. webpush.fcmOptions.link for click-through.
+- `/api/notify` endpoint: POST. Accepts `{ event, spaceId, title, body, excludeUserId }`. Uses `get_push_tokens_for_space` RPC (single query replaces 2-query chain). Returns `{ sent: number }`.
+- `src/components/os/ServiceWorkerRegistration.tsx` — Registers `/firebase-messaging-sw.js`, posts Firebase config via postMessage. Renders null. Only when API key exists.
+- `public/firebase-messaging-sw.js` — Background notification handler for PWA.
+
+## 25. THE VOICE INPUT
+- `src/hooks/useVoiceInput.ts` — On-device `SpeechRecognition` for dictation and @xark invocation.
+- Tap mic: `startListening()` — transcribes speech to text, no network required.
+- Long-press mic: `startXarkListening()` — auto-prefixes `@xark` to transcript for direct intelligence invocation.
+- Visual indicator: `colors.cyan` breathing dot when listening. `colors.amber` breathing dot when @xark listening.
+- Graceful fallback: sets error string when `SpeechRecognition` API unavailable.
+- **BANNED**: Microphone buttons with borders/backgrounds. Mic indicator is a breathing dot only.
+
+## 27. THE SETTINGS SHEET
+- `src/components/os/UserMenu.tsx` — Three-view drill-down navigation, all within a single file.
+- **Main view**: Avatar (28px) + name (`text.body`, `opacity.primary`). "profile" and "system" links (`text.body`, `textColor(0.5)` → `0.8` on hover). "log out" (`text.recency`, `opacity.quaternary`).
+- **Profile view**: "back" link (`text.recency`, `textColor(0.25)` → `0.4` on hover). Avatar preview (48px). "change photo" (`text.hint`, opacity 0.35) — hidden file input, Firebase Storage `profiles/{userId}/avatar`, max 2MB. Upload indicator: cyan breathing dot + "uploading" hint. Name input (`text.input`, bg-transparent, accent underline). On blur/Enter: saves to Supabase `users.display_name`. "saved" whisper (1.5s).
+- **System view**: "back" link (same as profile). Single theme (hearth) — accent dot + label. Active = accent color at 0.8.
+- **Animation**: `AnimatePresence mode="wait"` with horizontal slide variants (x: ±60px, 0.2s tween, `timing.layoutEase`). Direction state tracks drill-in (1) vs back (-1). View resets to "main" on sheet close (300ms delay for exit animation).
+- **Sheet**: Slides from top (`y: -100% → 0`), `colors.void` bg, `overflow: hidden`. Overlay `colors.overlay` at `opacity.overlay`.
+- **BANNED**: Buttons with borders/backgrounds, cards, containers. All actions are floating text.
+
+## 26. EMERGENT SPACE STATE
+- `src/lib/space-state.ts` — `computeSpaceState(items[])` pure function, no DB calls.
+- States: `empty` → `exploring` → `converging` → `ready` → `active` → `settled`.
+- `empty`: no items. `exploring`: all proposed/voting. `converging`: some locked + some open. `ready`: all items settled (v1 heuristic). `active`: dates within range + locked items. `settled`: all terminal + dates passed.
+- UI reacts to computed state for ambient atmosphere adjustments.

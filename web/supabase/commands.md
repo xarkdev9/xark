@@ -1,0 +1,1 @@
+claude --plugin-dir /Users/ramchitturi/lossless-context

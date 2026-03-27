@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xark Green-Lock Engine — Visual Demo</title>
+<style>
+  :root {
+    --xark-green: #2ecc40;
+    --xark-green-bg: #e8fae8;
+    --xark-green-border: #27ae60;
+    --seeking-amber: #f5a623;
+    --action-orange: #e8590c;
+    --neutral-gray: #8888a0;
+    --heart-red: #e74c3c;
+    --thumbs-blue: #3498db;
+    --bg: #f5f6fa;
+    --card-bg: #ffffff;
+    --text: #2c3e50;
+    --text-muted: #7f8c8d;
+    --border: #dcdde1;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  /* --- Layout --- */
+  .app {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  header {
+    text-align: center;
+    padding: 24px 0 16px;
+  }
+
+  header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  header h1 span.green { color: var(--xark-green-border); }
+
+  header p.subtitle {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .flow-banner {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    text-align: center;
+    font-size: 13px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    margin-bottom: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .flow-banner .arrow { color: var(--xark-green); font-weight: 700; }
+
+  /* --- Member Picker --- */
+  .member-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .member-bar label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-right: 4px;
+  }
+
+  .member-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 2px solid var(--border);
+    border-radius: 24px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+
+  .member-btn:hover { border-color: var(--thumbs-blue); }
+
+  .member-btn.active {
+    border-color: var(--xark-green-border);
+    background: var(--xark-green-bg);
+    font-weight: 700;
+  }
+
+  .member-btn .avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #fff;
+    font-weight: 700;
+  }
+
+  /* --- Main Grid --- */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  /* --- Category Tabs --- */
+  .category-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .cat-tab {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 8px;
+    background: var(--card-bg);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    box-shadow: var(--shadow);
+  }
+
+  .cat-tab:hover { color: var(--text); }
+  .cat-tab.active { background: var(--text); color: #fff; }
+
+  /* --- Item Cards --- */
+  .items-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 200px;
+  }
+
+  .item-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .item-card.locked {
+    border-color: var(--xark-green-border);
+    background: var(--xark-green-bg);
+  }
+
+  .item-card.locked::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 5px;
+    height: 100%;
+    background: var(--xark-green);
+  }
+
+  .item-card.sorting {
+    transform: scale(1.02);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .card-rank {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--text);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .item-card.locked .card-rank {
+    background: var(--xark-green-border);
+  }
+
+  .card-rank.fav {
+    background: linear-gradient(135deg, #f39c12, #e74c3c);
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    flex: 1;
+    margin: 0 12px;
+  }
+
+  .card-state {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .card-state.proposed { background: #ffeaa7; color: #856404; }
+  .card-state.ranked { background: #dfe6e9; color: #2d3436; }
+  .card-state.heart_sorted { background: #dfe6e9; color: #2d3436; }
+  .card-state.locked { background: var(--xark-green); color: #fff; }
+
+  .card-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    padding-left: 40px;
+  }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-left: 40px;
+    flex-wrap: wrap;
+  }
+
+  .score-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .score-badge .num {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .score-badge .label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .agreement-bar {
+    flex: 1;
+    min-width: 80px;
+    max-width: 160px;
+  }
+
+  .agreement-bar .bar-bg {
+    height: 6px;
+    background: #ecf0f1;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .agreement-bar .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  .agreement-bar .bar-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .fav-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: #e67e22;
+    background: #fef9e7;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  /* --- Reaction Buttons --- */
+  .reaction-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-left: 40px;
+    flex-wrap: wrap;
+  }
+
+  .react-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+
+  .react-btn:hover { transform: scale(1.08); }
+
+  .react-btn.love-active {
+    border-color: var(--seeking-amber);
+    background: #fef3e0;
+  }
+
+  .react-btn.works-active {
+    border-color: var(--neutral-gray);
+    background: #f0f0f4;
+  }
+
+  .react-btn.notforme-active {
+    border-color: var(--action-orange);
+    background: #fde8e0;
+  }
+
+  /* Deprecated — kept for compat */
+  .react-btn.heart-active {
+    border-color: var(--heart-red);
+    background: #fde8e8;
+  }
+
+  .react-btn.thumb-active {
+    border-color: var(--thumbs-blue);
+    background: #e8f4fd;
+  }
+
+  .react-btn .emoji { font-size: 16px; }
+  .react-btn .count { font-weight: 700; font-size: 12px; }
+  .react-btn .weight { font-size: 10px; color: var(--text-muted); }
+
+  .reaction-faces {
+    display: flex;
+    gap: 2px;
+    margin-left: 4px;
+  }
+
+  .reaction-faces .face {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #fff;
+    font-weight: 700;
+    border: 2px solid #fff;
+    margin-left: -4px;
+  }
+
+  .reaction-faces .face:first-child { margin-left: 0; }
+
+  /* --- Action Buttons --- */
+  .action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-left: 40px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+
+  .action-btn:hover { transform: translateY(-1px); }
+
+  .btn-book {
+    background: var(--xark-green);
+    color: #fff;
+  }
+
+  .btn-transfer {
+    background: var(--thumbs-blue);
+    color: #fff;
+  }
+
+  .btn-transfer:hover { background: #2980b9; }
+
+  /* --- Ownership Stamp --- */
+  .ownership-stamp {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    margin-left: 40px;
+    background: #fff;
+    border: 2px solid var(--xark-green-border);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .ownership-stamp .owner-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .ownership-stamp .owner-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .ownership-stamp .owner-name { font-weight: 700; }
+
+  .lock-icon {
+    font-size: 16px;
+    margin-left: auto;
+  }
+
+  .proof-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: monospace;
+    margin-top: 4px;
+    padding-left: 40px;
+  }
+
+  /* --- Sidebar --- */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sidebar-section {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .sidebar-section h3 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-section h3 .badge {
+    float: right;
+    background: var(--xark-green);
+    color: #fff;
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 10px;
+  }
+
+  /* --- @xark Grounding --- */
+  .grounding-prompt {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    white-space: pre-wrap;
+    color: var(--text);
+    line-height: 1.6;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #fafafa;
+  }
+
+  .grounding-prompt .constraint {
+    color: var(--heart-red);
+    font-weight: 600;
+  }
+
+  /* --- Event Log --- */
+  .event-log {
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .event-item {
+    padding: 6px 16px;
+    font-size: 12px;
+    border-bottom: 1px solid #f1f2f6;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .event-item .event-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .event-item .event-text {
+    flex: 1;
+    color: var(--text-muted);
+  }
+
+  .event-item .event-text strong {
+    color: var(--text);
+  }
+
+  /* --- Tasks Section --- */
+  .tasks-list {
+    padding: 8px 16px;
+  }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f2f6;
+    font-size: 13px;
+  }
+
+  .task-item:last-child { border-bottom: none; }
+
+  .task-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .task-status.created { background: #f39c12; }
+  .task-status.assigned { background: var(--xark-green); }
+
+  .task-title { flex: 1; }
+
+  .task-claim {
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+
+  .task-claim:hover { border-color: var(--xark-green-border); }
+
+  .task-assignee {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--xark-green-border);
+  }
+
+  /* --- Modal --- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+
+  .modal h3 {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .modal label {
+    font-size: 13px;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-muted);
+  }
+
+  .modal select, .modal input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .modal-actions button {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .modal-cancel { background: #ecf0f1; color: var(--text); }
+  .modal-confirm { background: var(--xark-green); color: #fff; }
+
+  /* --- Animations --- */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes lockFlash {
+    0% { box-shadow: 0 0 0 0 rgba(46, 204, 64, 0.6); }
+    70% { box-shadow: 0 0 0 16px rgba(46, 204, 64, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(46, 204, 64, 0); }
+  }
+
+  .item-card.just-locked {
+    animation: lockFlash 0.8s ease;
+  }
+
+  @keyframes popIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .item-card.entering {
+    animation: popIn 0.3s ease;
+  }
+
+  /* --- State Machine Diagram --- */
+  .state-diagram {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-family: monospace;
+    line-height: 1.8;
+    color: var(--text-muted);
+  }
+
+  .state-diagram .active-state {
+    color: var(--xark-green-border);
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1>Xark <span class="green">Green-Lock</span> Engine</h1>
+    <p class="subtitle">Visual Demo — San Diego Bachelor Trip, 5 Friends</p>
+  </header>
+
+  <div class="flow-banner">
+    Propose <span class="arrow">--></span>
+    Signal (Love it / Works / Not for me) <span class="arrow">--></span>
+    Rank <span class="arrow">--></span>
+    Book + Confirm <span class="arrow">--></span>
+    <span style="color:var(--xark-green); font-weight:900;">GREEN-LOCK</span> <span class="arrow">--></span>
+    Owned <span class="arrow">--></span>
+    Transferable
+  </div>
+
+  <!-- Member Picker -->
+  <div class="member-bar" id="memberBar">
+    <label>Act as:</label>
+  </div>
+
+  <div class="main-grid">
+    <!-- Left: Items -->
+    <div class="left-col">
+      <div class="category-tabs" id="categoryTabs"></div>
+      <div class="items-container" id="itemsContainer"></div>
+    </div>
+
+    <!-- Right: Sidebar -->
+    <div class="sidebar">
+      <!-- @xark Grounding -->
+      <div class="sidebar-section">
+        <h3>@xark AI Grounding</h3>
+        <div class="grounding-prompt" id="groundingPrompt">
+          No locked decisions yet. You may suggest any options freely.
+        </div>
+      </div>
+
+      <!-- Tasks -->
+      <div class="sidebar-section">
+        <h3>Tasks (Non-Bookable) <span class="badge" id="taskCount">0</span></h3>
+        <div class="tasks-list" id="tasksList"></div>
+      </div>
+
+      <!-- Event Log -->
+      <div class="sidebar-section">
+        <h3>Event Log <span class="badge" id="eventCount">0</span></h3>
+        <div class="event-log" id="eventLog"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Booking Modal -->
+<div class="modal-overlay" id="bookingModal">
+  <div class="modal">
+    <h3>Confirm Booking</h3>
+    <label>Proof Type</label>
+    <select id="proofType">
+      <option value="confirmation_number">Confirmation Number</option>
+      <option value="screenshot">Screenshot URL</option>
+    </select>
+    <label>Confirmation # or URL</label>
+    <input type="text" id="proofValue" placeholder="e.g. MARRIOTT-SD-78432">
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeBookingModal()">Cancel</button>
+      <button class="modal-confirm" onclick="confirmBooking()">Confirm & Lock</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transfer Modal -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal">
+    <h3>Transfer Ownership</h3>
+    <label>New Owner</label>
+    <select id="transferTo"></select>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeTransferModal()">Cancel</button>
+      <button class="modal-confirm" onclick="confirmTransfer()">I'll Take Care of This</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// ENGINE — Pure JS re-implementation of the TypeScript engine
+// ============================================================
+
+const REACTION_WEIGHTS = { love_it: 5, works_for_me: 1, not_for_me: -3 };
+
+function calculateWeightedScore(reactions) {
+  const userReactions = new Map();
+  for (const r of reactions) userReactions.set(r.userId, r.type);
+  let score = 0;
+  for (const type of userReactions.values()) score += REACTION_WEIGHTS[type];
+  return score;
+}
+
+function heartSort(items) {
+  return [...items].sort((a, b) => {
+    if (b.weightedScore !== a.weightedScore) return b.weightedScore - a.weightedScore;
+    return a.proposedAt - b.proposedAt;
+  });
+}
+
+// ============================================================
+// STATE
+// ============================================================
+
+const MEMBERS = [
+  { userId: 'alex',   name: 'Alex',   color: '#e74c3c', emoji: 'A' },
+  { userId: 'blake',  name: 'Blake',  color: '#3498db', emoji: 'B' },
+  { userId: 'casey',  name: 'Casey',  color: '#9b59b6', emoji: 'C' },
+  { userId: 'drew',   name: 'Drew',   color: '#e67e22', emoji: 'D' },
+  { userId: 'ellis',  name: 'Ellis',  color: '#1abc9c', emoji: 'E' },
+];
+
+let currentUser = MEMBERS[0].userId;
+let itemCounter = 0;
+let activeCategory = 'hotel';
+let events = [];
+let bookingItemId = null;
+let transferItemId = null;
+
+const items = new Map();
+const tasks = new Map();
+let taskCounter = 0;
+
+// ============================================================
+// SEED DATA — San Diego Bachelor Trip
+// ============================================================
+
+function seedData() {
+  // Hotels
+  proposeItem('Marriott Gaslamp Quarter', 'Rooftop bar, walk to nightlife. $250/night', 'hotel');
+  proposeItem('Hilton Bayfront', 'Harbor views, pool, near convention center. $220/night', 'hotel');
+  proposeItem('Hotel del Coronado', 'Iconic beachfront, upscale. $380/night', 'hotel');
+  proposeItem('The Sofia Hotel', 'Boutique downtown, great restaurant. $180/night', 'hotel');
+
+  // Restaurants
+  proposeItem('Nobu San Diego', 'Japanese omakase, upscale, reservation needed', 'restaurant');
+  proposeItem('Puesto at The Headquarters', 'Mexican street food, great tacos, casual', 'restaurant');
+  proposeItem('Born & Raised', 'Steakhouse, old-school glamour, $$$', 'restaurant');
+  proposeItem('Ironside Fish & Oyster', 'Seafood, raw bar, trendy Little Italy spot', 'restaurant');
+
+  // Activities
+  proposeItem('Sunset Sailing — San Diego Bay', '3hr private charter, BYOB, sunset views', 'activity');
+  proposeItem('Topgolf — Mega Entertainment', 'Golf bays, drinks, games — good for group', 'activity');
+  proposeItem('La Jolla Kayaking + Caves', 'Sea cave kayak tour, 2hrs, morning slot', 'activity');
+  proposeItem('Gaslamp Pub Crawl', '5 bars, guided, VIP entry, Sat night', 'activity');
+
+  // Tasks (non-bookable)
+  addTask('Pick airport pickup time', 'Morning or afternoon arrival?');
+  addTask('Bring portable speaker', 'For the boat / hotel hang');
+  addTask('Venmo collect for group gift', 'Everyone owes $40');
+  addTask('Research late-night food spots', 'For post pub crawl');
+}
+
+function proposeItem(title, description, category) {
+  itemCounter++;
+  const item = {
+    id: 'item_' + itemCounter,
+    title,
+    description,
+    category,
+    state: 'proposed',
+    proposedBy: 'apify',
+    proposedAt: Date.now() + itemCounter,
+    reactions: [],
+    weightedScore: 0,
+    bookingProof: null,
+    ownership: null,
+    ownershipHistory: [],
+    lockedAt: null,
+  };
+  items.set(item.id, item);
+  addEvent('propose', null, `"${title}" proposed (${category})`);
+  return item;
+}
+
+function addTask(title, description) {
+  taskCounter++;
+  const task = {
+    id: 'task_' + taskCounter,
+    title,
+    description,
+    state: 'created',
+    assignee: null,
+  };
+  tasks.set(task.id, task);
+}
+
+// ============================================================
+// ENGINE ACTIONS
+// ============================================================
+
+function react(itemId, reactionType) {
+  const item = items.get(itemId);
+  if (!item || item.state === 'locked') return;
+
+  // Remove existing reaction from this user
+  item.reactions = item.reactions.filter(r => r.userId !== currentUser);
+  // Check if this was a toggle (clicking same reaction again)
+  const existingType = null; // already removed
+
+  item.reactions.push({
+    userId: currentUser,
+    itemId,
+    type: reactionType,
+    timestamp: Date.now(),
+  });
+
+  item.weightedScore = calculateWeightedScore(item.reactions);
+  if (item.state === 'proposed' && item.reactions.length > 0) {
+    item.state = 'ranked';
+  }
+
+  const memberName = getMemberName(currentUser);
+  const signalLabel = reactionType === 'love_it' ? 'Love it' : reactionType === 'works_for_me' ? 'Works' : 'Not for me';
+  addEvent('react', currentUser, `${memberName} signaled "${signalLabel}" on "${item.title}" — score now ${item.weightedScore}`);
+
+  render();
+}
+
+function unreact(itemId) {
+  const item = items.get(itemId);
+  if (!item || item.state === 'locked') return;
+
+  item.reactions = item.reactions.filter(r => r.userId !== currentUser);
+  item.weightedScore = calculateWeightedScore(item.reactions);
+
+  const memberName = getMemberName(currentUser);
+  addEvent('unreact', currentUser, `${memberName} removed reaction from "${item.title}"`);
+
+  render();
+}
+
+function openBookingModal(itemId) {
+  bookingItemId = itemId;
+  const item = items.get(itemId);
+  document.getElementById('proofValue').value = '';
+  document.getElementById('proofValue').placeholder = `e.g. ${item.title.split(' ')[0].toUpperCase()}-SD-${Math.floor(Math.random() * 90000) + 10000}`;
+  document.getElementById('bookingModal').classList.add('show');
+}
+
+function closeBookingModal() {
+  bookingItemId = null;
+  document.getElementById('bookingModal').classList.remove('show');
+}
+
+function confirmBooking() {
+  if (!bookingItemId) return;
+  const item = items.get(bookingItemId);
+  if (!item || item.state === 'locked') { closeBookingModal(); return; }
+
+  const proofType = document.getElementById('proofType').value;
+  const proofValue = document.getElementById('proofValue').value.trim();
+  if (!proofValue) { alert('Please enter a confirmation number or URL.'); return; }
+
+  item.state = 'locked';
+  item.bookingProof = { type: proofType, value: proofValue, submittedBy: currentUser, submittedAt: Date.now() };
+  item.ownership = { ownerId: currentUser, assignedAt: Date.now(), reason: 'booker' };
+  item.ownershipHistory.push({ ...item.ownership });
+  item.lockedAt = Date.now();
+
+  const memberName = getMemberName(currentUser);
+  addEvent('lock', currentUser, `${memberName} booked "${item.title}" — GREEN-LOCK activated! Ref: ${proofValue}`);
+
+  closeBookingModal();
+  render();
+
+  // Flash animation
+  setTimeout(() => {
+    const el = document.querySelector(`[data-item-id="${bookingItemId}"]`);
+    if (el) el.classList.add('just-locked');
+  }, 50);
+}
+
+function openTransferModal(itemId) {
+  transferItemId = itemId;
+  const item = items.get(itemId);
+  const select = document.getElementById('transferTo');
+  select.innerHTML = '';
+  for (const m of MEMBERS) {
+    if (m.userId !== item.ownership?.ownerId) {
+      const opt = document.createElement('option');
+      opt.value = m.userId;
+      opt.textContent = m.name;
+      select.appendChild(opt);
+    }
+  }
+  document.getElementById('transferModal').classList.add('show');
+}
+
+function closeTransferModal() {
+  transferItemId = null;
+  document.getElementById('transferModal').classList.remove('show');
+}
+
+function confirmTransfer() {
+  if (!transferItemId) return;
+  const item = items.get(transferItemId);
+  if (!item || item.state !== 'locked') { closeTransferModal(); return; }
+
+  const newOwnerId = document.getElementById('transferTo').value;
+  const prevOwner = getMemberName(item.ownership.ownerId);
+  const newOwner = getMemberName(newOwnerId);
+
+  item.ownership = { ownerId: newOwnerId, assignedAt: Date.now(), reason: 'transfer' };
+  item.ownershipHistory.push({ ...item.ownership });
+
+  addEvent('transfer', newOwnerId, `${newOwner} took over "${item.title}" from ${prevOwner}`);
+
+  closeTransferModal();
+  render();
+}
+
+function claimTask(taskId) {
+  const task = tasks.get(taskId);
+  if (!task) return;
+  const memberName = getMemberName(currentUser);
+
+  if (task.assignee === currentUser) return;
+
+  task.state = 'assigned';
+  task.assignee = currentUser;
+
+  addEvent('task', currentUser, `${memberName} claimed task: "${task.title}"`);
+  render();
+}
+
+// ============================================================
+// EVENTS & HELPERS
+// ============================================================
+
+function addEvent(type, actorId, text) {
+  const icons = {
+    propose: '📋', react: '💬', unreact: '🔕',
+    lock: '🔒', transfer: '🔄', task: '✅',
+  };
+  events.unshift({ icon: icons[type] || '📌', text, time: new Date() });
+}
+
+function getMember(userId) {
+  return MEMBERS.find(m => m.userId === userId);
+}
+
+function getMemberName(userId) {
+  return getMember(userId)?.name || userId;
+}
+
+function getMemberColor(userId) {
+  return getMember(userId)?.color || '#95a5a6';
+}
+
+function getUserReaction(item, userId) {
+  const r = item.reactions.find(r => r.userId === userId);
+  return r ? r.type : null;
+}
+
+function getReactionCount(item, type) {
+  const users = new Map();
+  for (const r of item.reactions) users.set(r.userId, r.type);
+  let count = 0;
+  for (const t of users.values()) if (t === type) count++;
+  return count;
+}
+
+function getReactorsByType(item, type) {
+  const users = new Map();
+  for (const r of item.reactions) users.set(r.userId, r.type);
+  const result = [];
+  for (const [uid, t] of users.entries()) if (t === type) result.push(uid);
+  return result;
+}
+
+function getAgreementScore(item) {
+  const uniqueReactors = new Set(item.reactions.map(r => r.userId));
+  const pct = (uniqueReactors.size / MEMBERS.length) * 100;
+  return { percentage: pct, isGroupFavorite: pct > 80 };
+}
+
+// ============================================================
+// GROUNDING PROMPT
+// ============================================================
+
+function buildGroundingPrompt() {
+  const locked = [];
+  const assigned = [];
+
+  for (const item of items.values()) {
+    if (item.state === 'locked') {
+      locked.push(item);
+    }
+  }
+  for (const task of tasks.values()) {
+    if (task.state === 'assigned') {
+      assigned.push(task);
+    }
+  }
+
+  if (locked.length === 0 && assigned.length === 0) {
+    return 'No locked decisions yet. You may suggest any options freely.';
+  }
+
+  let lines = ['GROUNDING CONSTRAINTS — You MUST respect these confirmed decisions:\n'];
+
+  for (const item of locked) {
+    const owner = getMemberName(item.ownership?.ownerId);
+    lines.push(`🔒 LOCKED BOOKING: "${item.title}" (${item.category})`);
+    lines.push(`   Owner: ${owner} | Ref: ${item.bookingProof?.value}`);
+    lines.push(`   → Do NOT suggest alternatives. Build upon this.\n`);
+  }
+
+  for (const task of assigned) {
+    const assignee = getMemberName(task.assignee);
+    lines.push(`✅ ASSIGNED TASK: "${task.title}"`);
+    lines.push(`   Assigned to: ${assignee}`);
+    lines.push(`   → Do NOT reassign or question this.\n`);
+  }
+
+  lines.push('───────────────────────────────────────');
+  lines.push('You must NOT suggest alternatives to locked bookings');
+  lines.push('or re-open settled decisions. Instead, make');
+  lines.push('suggestions that complement the confirmed choices.');
+
+  return lines.join('\n');
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+
+function render() {
+  renderMembers();
+  renderCategoryTabs();
+  renderItems();
+  renderTasks();
+  renderEvents();
+  renderGrounding();
+}
+
+function renderMembers() {
+  const bar = document.getElementById('memberBar');
+  bar.innerHTML = '<label>Act as:</label>';
+  for (const m of MEMBERS) {
+    const btn = document.createElement('button');
+    btn.className = 'member-btn' + (m.userId === currentUser ? ' active' : '');
+    btn.innerHTML = `<span class="avatar" style="background:${m.color}">${m.emoji}</span> ${m.name}`;
+    btn.onclick = () => { currentUser = m.userId; render(); };
+    bar.appendChild(btn);
+  }
+}
+
+function renderCategoryTabs() {
+  const cats = [
+    { id: 'hotel', label: '🏨 Hotels' },
+    { id: 'restaurant', label: '🍽️ Restaurants' },
+    { id: 'activity', label: '🎯 Activities' },
+    { id: 'all', label: '📋 All' },
+  ];
+  const container = document.getElementById('categoryTabs');
+  container.innerHTML = '';
+  for (const cat of cats) {
+    const btn = document.createElement('button');
+    btn.className = 'cat-tab' + (activeCategory === cat.id ? ' active' : '');
+    btn.textContent = cat.label;
+    btn.onclick = () => { activeCategory = cat.id; render(); };
+    container.appendChild(btn);
+  }
+}
+
+function renderItems() {
+  const container = document.getElementById('itemsContainer');
+  let allItems = Array.from(items.values());
+
+  if (activeCategory !== 'all') {
+    allItems = allItems.filter(i => i.category === activeCategory);
+  }
+
+  // Separate locked and active, sort active by score
+  const locked = allItems.filter(i => i.state === 'locked');
+  const active = heartSort(allItems.filter(i => i.state !== 'locked'));
+  const sorted = [...locked, ...active];
+
+  container.innerHTML = '';
+
+  if (sorted.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px;font-size:14px;">No items in this category</div>';
+    return;
+  }
+
+  let activeRank = 0;
+
+  for (const item of sorted) {
+    const isItemLocked = item.state === 'locked';
+    const agreement = getAgreementScore(item);
+
+    if (!isItemLocked) activeRank++;
+    const rank = isItemLocked ? '🔒' : activeRank;
+
+    const card = document.createElement('div');
+    card.className = 'item-card' + (isItemLocked ? ' locked' : '') + ' entering';
+    card.dataset.itemId = item.id;
+
+    const stateLabel = item.state === 'proposed' ? 'Proposed'
+      : item.state === 'ranked' ? 'Ranked'
+      : item.state === 'heart_sorted' ? 'Ranked'
+      : 'Locked';
+
+    const loveCount = getReactionCount(item, 'love_it');
+    const worksCount = getReactionCount(item, 'works_for_me');
+    const notForMeCount = getReactionCount(item, 'not_for_me');
+    const heartCount = loveCount;
+    const thumbCount = worksCount;
+    const myReaction = getUserReaction(item, currentUser);
+
+    // Agreement bar color
+    const barColor = agreement.percentage > 80 ? '#e67e22'
+      : agreement.percentage > 50 ? 'var(--xark-green)'
+      : 'var(--thumbs-blue)';
+
+    let html = `
+      <div class="card-top">
+        <div class="card-rank${agreement.isGroupFavorite && !isItemLocked ? ' fav' : ''}">${rank}</div>
+        <div class="card-title">${item.title}</div>
+        <span class="card-state ${item.state}">${stateLabel}</span>
+      </div>
+      <div class="card-desc">${item.description}</div>
+      <div class="card-meta">
+        <div class="score-badge">
+          <span class="num">${item.weightedScore}</span>
+          <span class="label">pts</span>
+        </div>
+        <div class="agreement-bar">
+          <div class="bar-bg"><div class="bar-fill" style="width:${agreement.percentage}%;background:${barColor}"></div></div>
+          <div class="bar-label">${Math.round(agreement.percentage)}% agreement</div>
+        </div>
+        ${agreement.isGroupFavorite && !isItemLocked ? '<span class="fav-badge">⭐ Group Favorite</span>' : ''}
+      </div>
+    `;
+
+    if (!isItemLocked) {
+      // Reaction buttons
+      html += `<div class="reaction-row">`;
+
+      // Love it button
+      const loveActive = myReaction === 'love_it' ? ' love-active' : '';
+      html += `<button class="react-btn${loveActive}" onclick="${myReaction === 'love_it' ? `unreact('${item.id}')` : `react('${item.id}','love_it')`}">
+        <span class="emoji">Love it</span>
+        <span class="count">${loveCount}</span>
+        <span class="weight">+5</span>
+      </button>`;
+
+      // Works button
+      const worksActive = myReaction === 'works_for_me' ? ' works-active' : '';
+      html += `<button class="react-btn${worksActive}" onclick="${myReaction === 'works_for_me' ? `unreact('${item.id}')` : `react('${item.id}','works_for_me')`}">
+        <span class="emoji">Works</span>
+        <span class="count">${worksCount}</span>
+        <span class="weight">+1</span>
+      </button>`;
+
+      // Not for me button
+      const notForMeActive = myReaction === 'not_for_me' ? ' notforme-active' : '';
+      html += `<button class="react-btn${notForMeActive}" onclick="${myReaction === 'not_for_me' ? `unreact('${item.id}')` : `react('${item.id}','not_for_me')`}">
+        <span class="emoji">Not for me</span>
+        <span class="count">${notForMeCount}</span>
+        <span class="weight">-3</span>
+      </button>`;
+
+      // Reactor faces
+      const allReactors = [...new Set(item.reactions.map(r => r.userId))];
+      if (allReactors.length > 0) {
+        html += `<div class="reaction-faces">`;
+        for (const uid of allReactors) {
+          const m = getMember(uid);
+          if (m) html += `<span class="face" style="background:${m.color}" title="${m.name}">${m.emoji}</span>`;
+        }
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+
+      // Book button
+      html += `<div class="action-row">
+        <button class="action-btn btn-book" onclick="openBookingModal('${item.id}')">Book & Lock</button>
+      </div>`;
+
+    } else {
+      // Locked card — show ownership stamp
+      const owner = getMember(item.ownership?.ownerId);
+      html += `<div class="ownership-stamp">
+        <span class="owner-avatar" style="background:${owner?.color || '#999'}">${owner?.emoji || '?'}</span>
+        <div>
+          <div class="owner-label">Owner (${item.ownership?.reason})</div>
+          <div class="owner-name">${owner?.name || 'Unknown'}</div>
+        </div>
+        <span class="lock-icon">🔒</span>
+      </div>`;
+      html += `<div class="proof-text">Ref: ${item.bookingProof?.value || 'N/A'}</div>`;
+
+      // Transfer button
+      html += `<div class="action-row">
+        <button class="action-btn btn-transfer" onclick="openTransferModal('${item.id}')">I'll Take Care of This</button>
+      </div>`;
+
+      // Show reaction summary (frozen)
+      html += `<div class="reaction-row" style="opacity:0.6">
+        <span class="react-btn" style="cursor:default"><span class="emoji">Love it</span><span class="count">${loveCount}</span></span>
+        <span class="react-btn" style="cursor:default"><span class="emoji">Works</span><span class="count">${worksCount}</span></span>
+        <span class="react-btn" style="cursor:default"><span class="emoji">Not for me</span><span class="count">${notForMeCount}</span></span>
+        <div class="reaction-faces">`;
+      const allReactors = [...new Set(item.reactions.map(r => r.userId))];
+      for (const uid of allReactors) {
+        const m = getMember(uid);
+        if (m) html += `<span class="face" style="background:${m.color}" title="${m.name}">${m.emoji}</span>`;
+      }
+      html += `</div></div>`;
+    }
+
+    card.innerHTML = html;
+    container.appendChild(card);
+  }
+}
+
+function renderTasks() {
+  const container = document.getElementById('tasksList');
+  const taskArr = Array.from(tasks.values());
+
+  document.getElementById('taskCount').textContent = taskArr.length;
+
+  container.innerHTML = '';
+  for (const task of taskArr) {
+    const div = document.createElement('div');
+    div.className = 'task-item';
+
+    let assigneeHtml = '';
+    if (task.state === 'assigned') {
+      const m = getMember(task.assignee);
+      assigneeHtml = `<span class="task-assignee" style="color:${m?.color}">${m?.name || task.assignee}</span>`;
+    } else {
+      assigneeHtml = `<button class="task-claim" onclick="claimTask('${task.id}')">Claim</button>`;
+    }
+
+    div.innerHTML = `
+      <span class="task-status ${task.state}"></span>
+      <span class="task-title">${task.title}</span>
+      ${assigneeHtml}
+    `;
+    container.appendChild(div);
+  }
+}
+
+function renderEvents() {
+  const container = document.getElementById('eventLog');
+  document.getElementById('eventCount').textContent = events.length;
+
+  container.innerHTML = '';
+  for (const e of events.slice(0, 50)) {
+    const div = document.createElement('div');
+    div.className = 'event-item';
+    div.innerHTML = `<span class="event-icon">${e.icon}</span><span class="event-text">${e.text}</span>`;
+    container.appendChild(div);
+  }
+}
+
+function renderGrounding() {
+  const el = document.getElementById('groundingPrompt');
+  el.textContent = buildGroundingPrompt();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+
+seedData();
+render();
+</script>
+</body>
+</html>

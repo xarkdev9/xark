@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xark Green-Lock Engine — Live API Demo</title>
+<style>
+  :root {
+    --xark-green: #2ecc40;
+    --xark-green-bg: #e8fae8;
+    --xark-green-border: #27ae60;
+    --seeking-amber: #f5a623;
+    --action-orange: #e8590c;
+    --neutral-gray: #8888a0;
+    --heart-red: #e74c3c;
+    --thumbs-blue: #3498db;
+    --bg: #0f0f13;
+    --card-bg: #1a1a24;
+    --card-hover: #22222e;
+    --text: #e8e8ee;
+    --text-muted: #8888a0;
+    --border: #2a2a3a;
+    --shadow: 0 2px 12px rgba(0,0,0,0.3);
+    --radius: 14px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  /* --- Layout --- */
+  .app { max-width: 1360px; margin: 0 auto; padding: 16px 20px; }
+
+  header { text-align: center; padding: 20px 0 12px; }
+  header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  header h1 .green { color: var(--xark-green); }
+  header .subtitle { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+  header .live-badge {
+    display: inline-block; margin-top: 6px; padding: 3px 14px;
+    background: rgba(46,204,64,0.15); border: 1px solid var(--xark-green);
+    border-radius: 20px; font-size: 11px; color: var(--xark-green); font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .flow-banner {
+    background: linear-gradient(135deg, #13131e, #1a1a2e);
+    border: 1px solid var(--border);
+    color: var(--text-muted); border-radius: var(--radius); padding: 10px 20px;
+    text-align: center; font-size: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace; margin-bottom: 16px;
+  }
+  .flow-banner .arrow { color: var(--xark-green); font-weight: 700; }
+
+  /* --- Member Bar --- */
+  .member-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 14px; background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .member-bar label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-right: 4px; }
+  .member-btn {
+    display: flex; align-items: center; gap: 5px; padding: 5px 12px;
+    border: 2px solid var(--border); border-radius: 20px; background: transparent;
+    cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text);
+    transition: all 0.15s;
+  }
+  .member-btn:hover { border-color: var(--thumbs-blue); }
+  .member-btn.active { border-color: var(--xark-green); background: rgba(46,204,64,0.1); font-weight: 700; }
+  .member-btn .av {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #fff; font-weight: 700;
+  }
+
+  /* --- Main Grid --- */
+  .main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+  @media (max-width: 960px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* --- Hotel Cards --- */
+  .items-container { display: flex; flex-direction: column; gap: 10px; }
+
+  .hotel-card {
+    display: grid; grid-template-columns: 160px 1fr; gap: 0;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+  }
+  .hotel-card:hover { border-color: #3a3a4a; }
+
+  .hotel-card.locked {
+    border-color: var(--xark-green-border); border-width: 2px;
+    background: linear-gradient(135deg, #0d2618, #121a14);
+  }
+  .hotel-card.locked::after {
+    content: 'LOCKED'; position: absolute; top: 12px; right: 12px;
+    background: var(--xark-green); color: #000; font-size: 10px;
+    font-weight: 800; padding: 2px 10px; border-radius: 10px;
+    letter-spacing: 1px;
+  }
+
+  .hotel-img {
+    width: 160px; height: 100%; min-height: 180px;
+    object-fit: cover; display: block;
+  }
+
+  .hotel-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+
+  .hotel-header { display: flex; align-items: flex-start; gap: 10px; }
+  .hotel-rank {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #fff;
+    background: #444; margin-top: 2px;
+  }
+  .hotel-rank.r1 { background: linear-gradient(135deg, #f39c12, #e74c3c); }
+  .hotel-rank.r2 { background: #8e44ad; }
+  .hotel-rank.r3 { background: #2980b9; }
+  .hotel-rank.locked { background: var(--xark-green-border); }
+
+  .hotel-name { font-size: 15px; font-weight: 700; line-height: 1.3; flex: 1; }
+  .hotel-name a { color: var(--text); text-decoration: none; }
+  .hotel-name a:hover { text-decoration: underline; }
+
+  .hotel-meta {
+    display: flex; align-items: center; gap: 10px; font-size: 12px;
+    color: var(--text-muted); flex-wrap: wrap;
+  }
+  .rating-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(52,152,219,0.2); border: 1px solid rgba(52,152,219,0.3);
+    padding: 2px 8px; border-radius: 8px; font-weight: 600; color: var(--thumbs-blue);
+  }
+  .rating-pill.high { background: rgba(46,204,64,0.15); border-color: rgba(46,204,64,0.3); color: var(--xark-green); }
+  .rating-pill.low { background: rgba(231,76,60,0.15); border-color: rgba(231,76,60,0.3); color: var(--heart-red); }
+
+  .hotel-addr { font-size: 11px; color: var(--text-muted); }
+
+  .score-row {
+    display: flex; align-items: center; gap: 12px; margin-top: 4px; flex-wrap: wrap;
+  }
+  .score-big { font-size: 22px; font-weight: 800; line-height: 1; color: var(--xark-green); }
+  .score-label { font-size: 10px; color: var(--text-muted); }
+  .agree-bar-wrap { flex: 1; min-width: 80px; max-width: 140px; }
+  .agree-bar-bg { height: 5px; background: #2a2a3a; border-radius: 3px; overflow: hidden; }
+  .agree-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .agree-label { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+  .fav-badge { font-size: 10px; font-weight: 700; color: #f39c12; background: rgba(243,156,18,0.15); padding: 2px 8px; border-radius: 8px; }
+
+  /* --- Reactions --- */
+  .react-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .rbtn {
+    display: flex; align-items: center; gap: 3px; padding: 4px 10px;
+    border: 1px solid var(--border); border-radius: 16px; background: transparent;
+    cursor: pointer; font-size: 12px; color: var(--text); transition: all 0.15s;
+  }
+  .rbtn:hover { transform: scale(1.08); border-color: #555; }
+  .rbtn.love-on { border-color: var(--seeking-amber); background: rgba(245,166,35,0.15); }
+  .rbtn.works-on { border-color: var(--neutral-gray); background: rgba(136,136,160,0.1); }
+  .rbtn.notforme-on { border-color: var(--action-orange); background: rgba(232,89,12,0.15); }
+  .rbtn.heart-on { border-color: var(--heart-red); background: rgba(231,76,60,0.15); }
+  .rbtn.thumb-on { border-color: var(--thumbs-blue); background: rgba(52,152,219,0.15); }
+  .rbtn .em { font-size: 14px; }
+  .rbtn .cnt { font-weight: 700; font-size: 11px; }
+  .rbtn .wt { font-size: 9px; color: var(--text-muted); }
+
+  .faces { display: flex; gap: 0; margin-left: 4px; }
+  .faces .f {
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: #fff; font-weight: 700;
+    border: 2px solid var(--card-bg); margin-left: -5px;
+  }
+  .faces .f:first-child { margin-left: 0; }
+
+  .action-row { display: flex; gap: 6px; margin-top: 6px; }
+  .abtn {
+    padding: 5px 12px; border: none; border-radius: 8px;
+    cursor: pointer; font-size: 11px; font-weight: 700; transition: all 0.15s;
+  }
+  .abtn:hover { transform: translateY(-1px); }
+  .abtn-book { background: var(--xark-green); color: #000; }
+  .abtn-transfer { background: var(--thumbs-blue); color: #fff; }
+
+  /* --- Ownership --- */
+  .owner-stamp {
+    display: flex; align-items: center; gap: 8px; margin-top: 6px;
+    padding: 6px 10px; background: rgba(46,204,64,0.08);
+    border: 1px solid rgba(46,204,64,0.25); border-radius: 8px; font-size: 12px;
+  }
+  .owner-stamp .oa {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #fff; font-weight: 700;
+  }
+  .owner-stamp .ol { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .owner-stamp .on { font-weight: 700; color: var(--xark-green); }
+  .proof-text { font-size: 10px; color: var(--text-muted); font-family: monospace; margin-top: 2px; }
+
+  /* --- Sidebar --- */
+  .sidebar { display: flex; flex-direction: column; gap: 12px; }
+  .side-box {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .side-box h3 {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 10px 14px;
+    background: #15151f; border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .side-box h3 .badge {
+    float: right; background: var(--xark-green); color: #000;
+    font-size: 10px; padding: 1px 8px; border-radius: 10px; font-weight: 800;
+  }
+
+  .grounding {
+    padding: 10px 14px; font-size: 11px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    white-space: pre-wrap; color: var(--text-muted);
+    line-height: 1.6; max-height: 260px; overflow-y: auto;
+  }
+
+  .elog { max-height: 240px; overflow-y: auto; padding: 4px 0; }
+  .ei {
+    padding: 4px 14px; font-size: 11px; border-bottom: 1px solid #1e1e28;
+    display: flex; gap: 6px; animation: fadeIn 0.3s ease;
+  }
+  .ei .icon { flex-shrink: 0; }
+  .ei .etxt { flex: 1; color: var(--text-muted); }
+  .ei .etxt strong { color: var(--text); }
+
+  .tlist { padding: 6px 14px; }
+  .ti {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 0; border-bottom: 1px solid #1e1e28; font-size: 12px;
+  }
+  .ti:last-child { border-bottom: none; }
+  .tdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .tdot.created { background: #f39c12; }
+  .tdot.assigned { background: var(--xark-green); }
+  .ttitle { flex: 1; }
+  .tclaim {
+    padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px;
+    background: transparent; cursor: pointer; font-size: 10px;
+    font-weight: 600; color: var(--text); transition: all 0.15s;
+  }
+  .tclaim:hover { border-color: var(--xark-green); }
+  .tassignee { font-size: 10px; font-weight: 700; }
+
+  /* --- Modal --- */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px; width: 90%; max-width: 400px;
+  }
+  .modal h3 { font-size: 17px; margin-bottom: 14px; }
+  .modal label { font-size: 12px; font-weight: 600; display: block; margin-bottom: 3px; color: var(--text-muted); }
+  .modal select, .modal input {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 13px; margin-bottom: 10px;
+    background: #12121a; color: var(--text);
+  }
+  .mactions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  .mactions button {
+    padding: 7px 18px; border: none; border-radius: 8px;
+    cursor: pointer; font-size: 12px; font-weight: 700;
+  }
+  .mcancel { background: #2a2a3a; color: var(--text); }
+  .mconfirm { background: var(--xark-green); color: #000; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes lockPulse {
+    0% { box-shadow: 0 0 0 0 rgba(46,204,64,0.5); }
+    70% { box-shadow: 0 0 0 14px rgba(46,204,64,0); }
+    100% { box-shadow: 0 0 0 0 rgba(46,204,64,0); }
+  }
+  .hotel-card.just-locked { animation: lockPulse 0.8s ease; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1>Xark <span class="green">Green-Lock</span> Engine</h1>
+    <p class="subtitle">San Diego Bachelor Trip — Real Hotels from Booking.com via Apify</p>
+    <span class="live-badge">LIVE API DATA</span>
+  </header>
+
+  <div class="flow-banner">
+    Apify Scrape <span class="arrow">&rarr;</span>
+    Propose <span class="arrow">&rarr;</span>
+    Signal (Love it / Works / Not for me) <span class="arrow">&rarr;</span>
+    Rank <span class="arrow">&rarr;</span>
+    Book + Confirm <span class="arrow">&rarr;</span>
+    <span style="color:var(--xark-green);font-weight:900">GREEN-LOCK</span> <span class="arrow">&rarr;</span>
+    Owned <span class="arrow">&rarr;</span>
+    Transferable
+  </div>
+
+  <div class="member-bar" id="memberBar"><label>Act as:</label></div>
+
+  <div class="main-grid">
+    <div class="items-container" id="itemsContainer"></div>
+    <div class="sidebar">
+      <div class="side-box">
+        <h3>@xark AI Grounding</h3>
+        <div class="grounding" id="groundingPrompt">No locked decisions yet. You may suggest any options freely.</div>
+      </div>
+      <div class="side-box">
+        <h3>Tasks <span class="badge" id="taskCount">0</span></h3>
+        <div class="tlist" id="tasksList"></div>
+      </div>
+      <div class="side-box">
+        <h3>Event Log <span class="badge" id="eventCount">0</span></h3>
+        <div class="elog" id="eventLog"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Booking Modal -->
+<div class="modal-overlay" id="bookingModal">
+  <div class="modal">
+    <h3>Confirm Booking</h3>
+    <label>Proof Type</label>
+    <select id="proofType">
+      <option value="confirmation_number">Confirmation Number</option>
+      <option value="screenshot">Screenshot URL</option>
+    </select>
+    <label>Confirmation # or URL</label>
+    <input type="text" id="proofValue" placeholder="">
+    <div class="mactions">
+      <button class="mcancel" onclick="closeBookingModal()">Cancel</button>
+      <button class="mconfirm" onclick="confirmBooking()">Confirm &amp; Lock</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transfer Modal -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal">
+    <h3>Transfer Ownership</h3>
+    <label>New Owner</label>
+    <select id="transferTo"></select>
+    <div class="mactions">
+      <button class="mcancel" onclick="closeTransferModal()">Cancel</button>
+      <button class="mconfirm" onclick="confirmTransfer()">I'll Take Care of This</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ======== ENGINE ========
+const W = { love_it: 5, works_for_me: 1, not_for_me: -3 };
+function calcScore(reactions) {
+  const m = new Map(); for (const r of reactions) m.set(r.userId, r.type);
+  let s = 0; for (const t of m.values()) s += (W[t] ?? 0); return s;
+}
+function heartSort(items) {
+  return [...items].sort((a,b) => b.weightedScore !== a.weightedScore ? b.weightedScore - a.weightedScore : a.proposedAt - b.proposedAt);
+}
+
+// ======== STATE ========
+const MEMBERS = [
+  { userId:'alex',  name:'Alex',  color:'#e74c3c', e:'A' },
+  { userId:'blake', name:'Blake', color:'#3498db', e:'B' },
+  { userId:'casey', name:'Casey', color:'#9b59b6', e:'C' },
+  { userId:'drew',  name:'Drew',  color:'#e67e22', e:'D' },
+  { userId:'ellis', name:'Ellis', color:'#1abc9c', e:'E' },
+];
+let curUser = 'alex', bookItemId = null, xferItemId = null;
+const items = new Map(), tasks = new Map();
+let evts = [], itemCtr = 0, taskCtr = 0;
+
+// ======== REAL DATA FROM APIFY ========
+const HOTELS = [
+  {
+    "name": "Walk everywhere heart Gaslamp",
+    "desc": "Prime City Centre Location: Walk everywhere heart Gaslamp is situated in San Diego city centre, offering easy access to …",
+    "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/751015544.jpg?k=59ba3269215be1898505e211f1e0556777eb4f097919dc13fe909eeae9fd2687&o=",
+    "rating": 9.5,
+    "ratingLabel": "Exceptional",
+    "reviews": 2,
+    "address": "760 5th Ave F, San Diego, CA 92101, United States",
+    "url": "https://www.booking.com/hotel/us/walk-everywhere-heart-gaslamp.en-gb.html?lang=en-gb&group_children=0&soz=1&explicit_lang_change=1&selected_currency=USD&group_adults=2&no_rooms=1&lang_changed=1&explicit_curr_change=1",
+    "stars": 0
+  },
+  {
+    "name": "The Historic Penn Hotel",
+    "desc": "Comfortable Accommodation: The Historic Penn Hotel in San Diego offers apartment-style accommodations with free WiFi, ai…",
+    "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/737072265.jpg?k=1a566629ee1bb2050a6746cdfa6d7b5235fd13dc797c3c06d0b15bb79a0b8f30&o=",
+    "rating": 5.4,
+    "ratingLabel": "Passable",
+    "reviews": 5,
+    "address": "511 F Street, San Diego, CA 92101, United States",
+    "url": "https://www.booking.com/hotel/us/the-historic-penn.en-gb.html?lang=en-gb&group_children=0&soz=1&explicit_lang_change=1&selected_currency=USD&group_adults=2&no_rooms=1&lang_changed=1&explicit_curr_change=1",
+    "stars": 0
+  },
+  {
+    "name": "Panoramic Bay and City Views - 2BR, Pool, Gym, Parking",
+    "desc": "Spacious Accommodation: Panoramic Bay and City Views in San Diego offers a spacious holiday home with two bedrooms and t…",
+    "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/697298280.jpg?k=c3c273621db77637831d13d9c57c58a13861431bc9debaa326e15760c6a54c7f&o=",
+    "rating": 0,
+    "ratingLabel": "",
+    "reviews": 0,
+    "address": "700 West E Street #3303, Downtown San Diego, San Diego, 92101, United States",
+    "url": "https://www.booking.com/hotel/us/panoramic-bay-and-city-views-2br-pool-gym-parking.en-gb.html?lang=en-gb&group_children=0&soz=1&explicit_lang_change=1&selected_currency=USD&group_adults=2&no_rooms=1&lang_changed=1&explicit_curr_change=1",
+    "stars": 0
+  },
+  {
+    "name": "La Ventana Hotel",
+    "desc": "Comfortable Accommodation: La Ventana Hotel in San Diego offers apartment-style accommodation with free WiFi, air-condit…",
+    "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/753810110.jpg?k=3ca4cb742e61b6da6545d2d876be9ca0499163937547c92734bdf8377df8009b&o=",
+    "rating": 7,
+    "ratingLabel": "Good",
+    "reviews": 35,
+    "address": "417 Market Street, Downtown San Diego, San Diego, 92101, United States",
+    "url": "https://www.booking.com/hotel/us/la-ventana-studios.en-gb.html?lang=en-gb&group_children=0&soz=1&explicit_lang_change=1&selected_currency=USD&group_adults=2&no_rooms=1&lang_changed=1&explicit_curr_change=1",
+    "stars": 0
+  },
+  {
+    "name": "AC Hotel by Marriott San Diego Downtown Gaslamp Quarter",
+    "desc": "Comfortable Accommodations: Rooms feature balconies, private bathrooms, and modern amenities including free WiFi, flat-s…",
+    "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/476809020.jpg?k=f9dcc3daf6b1ab5079cad510fe3c785c5a42d2128553eb2fd3db3c88671ed6e6&o=",
+    "rating": 8.2,
+    "ratingLabel": "Very good",
+    "reviews": 199,
+    "address": "743 Fifth Avenue, Downtown San Diego, San Diego, 92101, United States",
+    "url": "https://www.booking.com/hotel/us/ac-by-marriott-san-diego-downtown-gaslamp-quarter.en-gb.html?lang=en-gb&group_children=0&soz=1&explicit_lang_change=1&selected_currency=USD&group_adults=2&no_rooms=1&lang_changed=1&explicit_curr_change=1",
+    "stars": 0
+  },
+  {
+    "name": "HI San Diego Downtown Hostel",
+    "desc": "Situated in San Diego’s Gaslamp Quarter, this non-profit hostel has a fully equipped kitchen and offers free coffee, tea…",
+    "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/83688420.jpg?k=9226205cbc8ffab702bf4fb02757ddb76a58c472049e065057c9a703e3127a25&o=",
+    "rating": 8.5,
+    "ratingLabel": "Very good",
+    "reviews": 1639,
+    "address": "521 Market Street, Downtown San Diego, San Diego, CA 92101, United States",
+    "url": "https://www.booking.com/hotel/us/hostelling-international-san-diego.en-gb.html?lang=en-gb&group_children=0&soz=1&explicit_lang_change=1&selected_currency=USD&group_adults=2&no_rooms=1&lang_changed=1&explicit_curr_change=1",
+    "stars": 3
+  },
+  {
+    "name": "Gaslamp Hostel",
+    "desc": "Ideally set in the Downtown San Diego, Gaslamp Hostel features air-conditioned rooms, a shared lounge and free WiFi. The…",
+    "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/614988952.jpg?k=6971acf8efb6bc9fa2846e9667a08a9839450b9ee4c53d4fb9d225026fef8854&o=",
+    "rating": 8.6,
+    "ratingLabel": "Fabulous",
+    "reviews": 1394,
+    "address": "726 5th Avenue, Downtown San Diego, San Diego, CA 92101, United States",
+    "url": "https://www.booking.com/hotel/us/gaslamp-hostel.en-gb.html?lang=en-gb&group_children=0&soz=1&explicit_lang_change=1&selected_currency=USD&group_adults=2&no_rooms=1&lang_changed=1&explicit_curr_change=1",
+    "stars": 3
+  },
+  {
+    "name": "Electra Building 2bed - Views Pool Sauna Spa",
+    "desc": "Spacious Accommodation: Electra Building 2bed - Views Pool Sauna Spa in San Diego offers a spacious holiday home with tw…",
+    "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/817845814.jpg?k=dd8e5a858b5f19e02b66a3113eba5960891fa247a3251e270c10d30590099c1b&o=",
+    "rating": 0,
+    "ratingLabel": "",
+    "reviews": 0,
+    "address": "San Diego, 92101, United States",
+    "url": "https://www.booking.com/hotel/us/electra-building-2bed-views-pool-sauna-spa.en-gb.html?lang=en-gb&group_children=0&soz=1&explicit_lang_change=1&selected_currency=USD&group_adults=2&no_rooms=1&lang_changed=1&explicit_curr_change=1",
+    "stars": 0
+  }
+];
+
+function seedReal() {
+  for (const h of HOTELS) {
+    itemCtr++;
+    items.set('item_'+itemCtr, {
+      id: 'item_'+itemCtr, title: h.name, description: h.desc,
+      category: 'hotel', state: 'proposed', proposedBy: 'apify',
+      proposedAt: Date.now()+itemCtr, reactions: [], weightedScore: 0,
+      bookingProof: null, ownership: null, ownershipHistory: [], lockedAt: null,
+      // extra display fields
+      image: h.image, rating: h.rating, ratingLabel: h.ratingLabel,
+      reviews: h.reviews, address: h.address, url: h.url, stars: h.stars,
+    });
+    addEvt('propose', null, '"'+h.name+'" proposed from Booking.com');
+  }
+
+  // Seed tasks
+  const T = [
+    ['Pick airport pickup time','Morning or afternoon arrival?'],
+    ['Bring portable speaker','For the boat / hotel hang'],
+    ['Venmo collect for group gift','Everyone owes $40'],
+    ['Research late-night food spots','For after the pub crawl'],
+  ];
+  for (const [t,d] of T) { taskCtr++; tasks.set('task_'+taskCtr, { id:'task_'+taskCtr, title:t, description:d, state:'created', assignee:null }); }
+}
+
+// ======== ACTIONS ========
+function react(id, type) {
+  const it = items.get(id); if (!it || it.state==='locked') return;
+  it.reactions = it.reactions.filter(r => r.userId !== curUser);
+  it.reactions.push({ userId: curUser, itemId: id, type, timestamp: Date.now() });
+  it.weightedScore = calcScore(it.reactions);
+  if (it.state==='proposed' && it.reactions.length>0) it.state='ranked';
+  const n = getMemberName(curUser), sl = type==='love_it'?'Love it':type==='works_for_me'?'Works':'Not for me';
+  addEvt('react', curUser, n+' signaled "'+sl+'" on "'+it.title+'" — score '+it.weightedScore);
+  render();
+}
+function unreact(id) {
+  const it = items.get(id); if (!it || it.state==='locked') return;
+  it.reactions = it.reactions.filter(r => r.userId !== curUser);
+  it.weightedScore = calcScore(it.reactions);
+  addEvt('unreact', curUser, getMemberName(curUser)+' removed reaction from "'+it.title+'"');
+  render();
+}
+function openBookingModal(id) {
+  bookItemId = id; const it = items.get(id);
+  document.getElementById('proofValue').value = '';
+  document.getElementById('proofValue').placeholder = it.title.split(' ')[0].toUpperCase()+'-SD-'+Math.floor(Math.random()*90000+10000);
+  document.getElementById('bookingModal').classList.add('show');
+}
+function closeBookingModal() { bookItemId=null; document.getElementById('bookingModal').classList.remove('show'); }
+function confirmBooking() {
+  if (!bookItemId) return; const it = items.get(bookItemId);
+  if (!it || it.state==='locked') { closeBookingModal(); return; }
+  const pv = document.getElementById('proofValue').value.trim();
+  if (!pv) { alert('Enter a confirmation number.'); return; }
+  it.state='locked'; it.lockedAt=Date.now();
+  it.bookingProof = { type: document.getElementById('proofType').value, value: pv, submittedBy: curUser, submittedAt: Date.now() };
+  it.ownership = { ownerId: curUser, assignedAt: Date.now(), reason:'booker' };
+  it.ownershipHistory.push({...it.ownership});
+  addEvt('lock', curUser, getMemberName(curUser)+' booked "'+it.title+'" — GREEN-LOCK! Ref: '+pv);
+  const savedId = bookItemId;
+  closeBookingModal(); render();
+  setTimeout(() => { const el = document.querySelector('[data-id="'+savedId+'"]'); if(el) el.classList.add('just-locked'); }, 50);
+}
+function openTransferModal(id) {
+  xferItemId = id; const it = items.get(id), sel = document.getElementById('transferTo');
+  sel.innerHTML = '';
+  for (const m of MEMBERS) { if (m.userId!==it.ownership?.ownerId) { const o = document.createElement('option'); o.value=m.userId; o.textContent=m.name; sel.appendChild(o); }}
+  document.getElementById('transferModal').classList.add('show');
+}
+function closeTransferModal() { xferItemId=null; document.getElementById('transferModal').classList.remove('show'); }
+function confirmTransfer() {
+  if (!xferItemId) return; const it = items.get(xferItemId);
+  if (!it || it.state!=='locked') { closeTransferModal(); return; }
+  const nid = document.getElementById('transferTo').value;
+  const prev = getMemberName(it.ownership.ownerId), nw = getMemberName(nid);
+  it.ownership = { ownerId: nid, assignedAt: Date.now(), reason:'transfer' };
+  it.ownershipHistory.push({...it.ownership});
+  addEvt('transfer', nid, nw+' took over "'+it.title+'" from '+prev);
+  closeTransferModal(); render();
+}
+function claimTask(id) {
+  const t = tasks.get(id); if (!t || t.assignee===curUser) return;
+  t.state='assigned'; t.assignee=curUser;
+  addEvt('task', curUser, getMemberName(curUser)+' claimed "'+t.title+'"');
+  render();
+}
+
+// ======== HELPERS ========
+function addEvt(type, actor, text) {
+  const icons = { propose:'📋', react:'💬', unreact:'🔕', lock:'🔒', transfer:'🔄', task:'✅' };
+  evts.unshift({ icon: icons[type]||'📌', text });
+}
+function getMember(id) { return MEMBERS.find(m => m.userId===id); }
+function getMemberName(id) { return getMember(id)?.name || id; }
+function getMyReaction(it) { const r = it.reactions.find(r => r.userId===curUser); return r?.type||null; }
+function countType(it,type) { const m = new Map(); for (const r of it.reactions) m.set(r.userId,r.type); let c=0; for(const t of m.values()) if(t===type) c++; return c; }
+function getReactors(it) { return [...new Set(it.reactions.map(r=>r.userId))]; }
+function agreement(it) { const u = new Set(it.reactions.map(r=>r.userId)).size; const p = (u/MEMBERS.length)*100; return { pct: p, fav: p>80 }; }
+
+function buildGrounding() {
+  const locked = [], assigned = [];
+  for (const it of items.values()) if (it.state==='locked') locked.push(it);
+  for (const t of tasks.values()) if (t.state==='assigned') assigned.push(t);
+  if (!locked.length && !assigned.length) return 'No locked decisions yet. You may suggest any options freely.';
+  let lines = ['GROUNDING CONSTRAINTS — You MUST respect these confirmed decisions:\n'];
+  for (const it of locked) {
+    lines.push('🔒 LOCKED BOOKING: "'+it.title+'" (hotel)');
+    lines.push('   Owner: '+getMemberName(it.ownership?.ownerId)+' | Ref: '+it.bookingProof?.value);
+    lines.push('   → Do NOT suggest alternatives. Build upon this.\n');
+  }
+  for (const t of assigned) {
+    lines.push('✅ ASSIGNED TASK: "'+t.title+'"');
+    lines.push('   Assigned to: '+getMemberName(t.assignee));
+    lines.push('   → Do NOT reassign or question this.\n');
+  }
+  lines.push('You must NOT suggest alternatives to locked bookings\nor re-open settled decisions.');
+  return lines.join('\n');
+}
+
+// ======== RENDER ========
+function render() {
+  // Members
+  const bar = document.getElementById('memberBar');
+  bar.innerHTML = '<label>Act as:</label>';
+  for (const m of MEMBERS) {
+    const b = document.createElement('button');
+    b.className = 'member-btn'+(m.userId===curUser?' active':'');
+    b.innerHTML = '<span class="av" style="background:'+m.color+'">'+m.e+'</span> '+m.name;
+    b.onclick = () => { curUser=m.userId; render(); };
+    bar.appendChild(b);
+  }
+
+  // Items
+  const ctr = document.getElementById('itemsContainer');
+  const all = Array.from(items.values());
+  const lockedItems = all.filter(i => i.state==='locked');
+  const active = heartSort(all.filter(i => i.state!=='locked'));
+  const sorted = [...lockedItems, ...active];
+  ctr.innerHTML = '';
+  let rank = 0;
+
+  for (const it of sorted) {
+    const isLocked = it.state==='locked';
+    if (!isLocked) rank++;
+    const ag = agreement(it);
+    const hc = countType(it,'love_it'), tc = countType(it,'works_for_me'), nfc = countType(it,'not_for_me');
+    const my = getMyReaction(it);
+    const ratingClass = it.rating >= 8 ? 'high' : it.rating > 0 && it.rating < 6 ? 'low' : '';
+    const barColor = ag.pct>80?'#f39c12':ag.pct>50?'var(--xark-green)':'var(--thumbs-blue)';
+
+    const card = document.createElement('div');
+    card.className = 'hotel-card'+(isLocked?' locked':'');
+    card.dataset.id = it.id;
+
+    let html = '<img class="hotel-img" src="'+(it.image||'')+'" alt="" onerror="this.style.background=\'#2a2a3a\'">';
+    html += '<div class="hotel-body">';
+
+    // Header
+    html += '<div class="hotel-header">';
+    const rc = isLocked?'locked':rank===1?'r1':rank===2?'r2':rank===3?'r3':'';
+    html += '<div class="hotel-rank '+rc+'">'+(isLocked?'🔒':rank)+'</div>';
+    html += '<div class="hotel-name"><a href="'+it.url+'" target="_blank" rel="noopener">'+it.title+'</a></div>';
+    html += '</div>';
+
+    // Meta
+    html += '<div class="hotel-meta">';
+    if (it.rating) html += '<span class="rating-pill '+ratingClass+'">'+it.rating+'/10'+(it.ratingLabel?' · '+it.ratingLabel:'')+'</span>';
+    if (it.reviews) html += '<span>'+it.reviews+' reviews</span>';
+    if (it.stars) html += '<span>'+'⭐'.repeat(it.stars)+'</span>';
+    html += '</div>';
+    if (it.address) html += '<div class="hotel-addr">'+it.address+'</div>';
+
+    // Score row
+    html += '<div class="score-row">';
+    html += '<div><div class="score-big">'+it.weightedScore+'</div><div class="score-label">pts</div></div>';
+    html += '<div class="agree-bar-wrap"><div class="agree-bar-bg"><div class="agree-bar-fill" style="width:'+ag.pct+'%;background:'+barColor+'"></div></div>';
+    html += '<div class="agree-label">'+Math.round(ag.pct)+'% agreement</div></div>';
+    if (ag.fav && !isLocked) html += '<span class="fav-badge">⭐ Group Favorite</span>';
+    html += '</div>';
+
+    if (!isLocked) {
+      // Reactions
+      html += '<div class="react-row">';
+      const lOn = my==='love_it'?' love-on':'', wOn = my==='works_for_me'?' works-on':'', nOn = my==='not_for_me'?' notforme-on':'';
+      html += '<button class="rbtn'+lOn+'" onclick="'+(my==='love_it'?"unreact('"+it.id+"')":"react('"+it.id+"','love_it')")+'"><span class="em">Love it</span><span class="cnt">'+hc+'</span><span class="wt">+5</span></button>';
+      html += '<button class="rbtn'+wOn+'" onclick="'+(my==='works_for_me'?"unreact('"+it.id+"')":"react('"+it.id+"','works_for_me')")+'"><span class="em">Works</span><span class="cnt">'+tc+'</span><span class="wt">+1</span></button>';
+      html += '<button class="rbtn'+nOn+'" onclick="'+(my==='not_for_me'?"unreact('"+it.id+"')":"react('"+it.id+"','not_for_me')")+'"><span class="em">Not for me</span><span class="cnt">'+nfc+'</span><span class="wt">-3</span></button>';
+      const faces = getReactors(it);
+      if (faces.length) {
+        html += '<div class="faces">';
+        for (const uid of faces) { const m=getMember(uid); if(m) html+='<span class="f" style="background:'+m.color+'" title="'+m.name+'">'+m.e+'</span>'; }
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '<div class="action-row"><button class="abtn abtn-book" onclick="openBookingModal(\''+it.id+'\')">Book & Lock</button></div>';
+    } else {
+      // Owner stamp
+      const ow = getMember(it.ownership?.ownerId);
+      html += '<div class="owner-stamp">';
+      html += '<span class="oa" style="background:'+(ow?.color||'#555')+'">'+(ow?.e||'?')+'</span>';
+      html += '<div><div class="ol">Owner ('+it.ownership?.reason+')</div><div class="on">'+(ow?.name||'?')+'</div></div>';
+      html += '</div>';
+      html += '<div class="proof-text">Ref: '+(it.bookingProof?.value||'N/A')+'</div>';
+      html += '<div class="action-row"><button class="abtn abtn-transfer" onclick="openTransferModal(\''+it.id+'\')">I\'ll Take Care of This</button></div>';
+      // Frozen reactions
+      html += '<div class="react-row" style="opacity:0.5">';
+      html += '<span class="rbtn" style="cursor:default"><span class="em">Love it</span><span class="cnt">'+hc+'</span></span>';
+      html += '<span class="rbtn" style="cursor:default"><span class="em">Works</span><span class="cnt">'+tc+'</span></span>';
+      html += '<span class="rbtn" style="cursor:default"><span class="em">Not for me</span><span class="cnt">'+nfc+'</span></span>';
+      const faces = getReactors(it);
+      if (faces.length) { html += '<div class="faces">'; for (const uid of faces) { const m=getMember(uid); if(m) html+='<span class="f" style="background:'+m.color+'">'+m.e+'</span>'; } html+='</div>'; }
+      html += '</div>';
+    }
+
+    html += '</div>'; // hotel-body
+    card.innerHTML = html;
+    ctr.appendChild(card);
+  }
+
+  // Tasks
+  const tl = document.getElementById('tasksList'), ta = Array.from(tasks.values());
+  document.getElementById('taskCount').textContent = ta.length;
+  tl.innerHTML = '';
+  for (const t of ta) {
+    const d = document.createElement('div'); d.className='ti';
+    let ah = '';
+    if (t.state==='assigned') { const m=getMember(t.assignee); ah='<span class="tassignee" style="color:'+(m?.color||'')+'">'+getMemberName(t.assignee)+'</span>'; }
+    else ah='<button class="tclaim" onclick="claimTask(\''+t.id+'\')">Claim</button>';
+    d.innerHTML='<span class="tdot '+t.state+'"></span><span class="ttitle">'+t.title+'</span>'+ah;
+    tl.appendChild(d);
+  }
+
+  // Events
+  const el = document.getElementById('eventLog');
+  document.getElementById('eventCount').textContent = evts.length;
+  el.innerHTML = '';
+  for (const e of evts.slice(0,40)) {
+    const d = document.createElement('div'); d.className='ei';
+    d.innerHTML='<span class="icon">'+e.icon+'</span><span class="etxt">'+e.text+'</span>';
+    el.appendChild(d);
+  }
+
+  // Grounding
+  document.getElementById('groundingPrompt').textContent = buildGrounding();
+}
+
+// ======== INIT ========
+seedReal();
+render();
+</script>
+</body>
+</html>
