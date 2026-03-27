@@ -1,4 +1,4 @@
-// XARK OS v2.0 — File Encryption (Symmetric-Blob Pattern)
+// hello OS v2.0 — File Encryption (Symmetric-Blob Pattern)
 // AES-256-GCM encrypt/decrypt for media files before Firebase upload.
 // Uses native Web Crypto API (crypto.subtle). Client-side only.
 //
@@ -7,6 +7,14 @@
 //       aesKeyBase64 + ivBase64 -> sent inside DecryptedMessage.mediaUrl via Double Ratchet
 //
 // Decrypt: Firebase download -> decryptFile() -> object URL for <img>/<video>
+//
+// Files > 1MB automatically use streaming AEAD (64KB chunks) via
+// streaming-aead.ts to prevent OOM on large videos.
+
+import { encryptFileStreaming, decryptFileStreaming, type StreamingAeadKey } from './streaming-aead';
+
+/** Size threshold in bytes above which streaming AEAD is used (1MB). */
+const STREAMING_THRESHOLD = 1024 * 1024;
 
 const AES_ALGO = 'AES-GCM';
 const AES_KEY_BITS = 256;
@@ -38,6 +46,8 @@ export interface EncryptedFile {
   aesKeyBase64: string;
   /** Base64-encoded 12-byte IV — send via E2EE channel */
   ivBase64: string;
+  /** Present when streaming AEAD was used (files > 1MB). */
+  streamingKey?: StreamingAeadKey;
 }
 
 /**
@@ -46,8 +56,23 @@ export interface EncryptedFile {
  * Generates a fresh random key and IV for each file. The encrypted blob
  * is safe to upload to untrusted storage (Firebase). The key and IV must
  * be transmitted via the E2EE message channel (Double Ratchet / Sender Key).
+ *
+ * Files larger than 1MB automatically use streaming AEAD (64KB chunks)
+ * to prevent OOM on large videos. The streaming key material is returned
+ * in the `streamingKey` field when streaming is used.
  */
 export async function encryptFile(file: File): Promise<EncryptedFile> {
+  // Files > 1MB use streaming AEAD to avoid OOM.
+  if (file.size > STREAMING_THRESHOLD) {
+    const { encryptedBlob, streamingKey } = await encryptFileStreaming(file);
+    return {
+      encryptedBlob,
+      aesKeyBase64: toB64(streamingKey.key),
+      ivBase64: toB64(streamingKey.baseNonce),
+      streamingKey,
+    };
+  }
+
   // Generate one-time AES key (extractable so we can export the raw bytes)
   const aesKey = await crypto.subtle.generateKey(
     { name: AES_ALGO, length: AES_KEY_BITS },
@@ -120,4 +145,24 @@ export async function decryptFile(
   const decryptedBlob = new Blob([plaintext], { type: mimeType });
 
   return URL.createObjectURL(decryptedBlob);
+}
+
+/**
+ * Decrypt a file that was encrypted with streaming AEAD.
+ *
+ * Use this when the `streamingKey` field is present on the received
+ * key material. Falls back to the in-memory `decryptFile` when
+ * `streamingKey` is not provided.
+ */
+export async function decryptFileAuto(
+  encryptedBlob: Blob,
+  aesKeyBase64: string,
+  ivBase64: string,
+  mimeType: string,
+  streamingKey?: StreamingAeadKey,
+): Promise<string> {
+  if (streamingKey) {
+    return decryptFileStreaming(encryptedBlob, streamingKey, mimeType);
+  }
+  return decryptFile(encryptedBlob, aesKeyBase64, ivBase64, mimeType);
 }

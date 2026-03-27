@@ -2,13 +2,20 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:hello_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/crypto/media/streaming_aead.dart';
 import 'package:cryptography/cryptography.dart';
+
+/// Size threshold in bytes above which streaming AEAD is used (1MB).
+const int _streamingThreshold = 1024 * 1024;
 
 /// AES-256-GCM encryption for media files (images, video, documents).
 ///
 /// Media files are encrypted with a one-time random key, uploaded as
 /// ciphertext, and the key material is sent through the Double Ratchet
 /// as a normal E2EE message. The server never sees the plaintext.
+///
+/// Files larger than 1MB automatically use streaming AEAD (64KB chunks)
+/// to prevent OOM on large videos. Smaller files use in-memory encryption.
 class MediaCrypto {
   MediaCrypto._();
 
@@ -28,6 +35,10 @@ class MediaCrypto {
 
   /// Encrypts [plaintext] with AES-256-GCM using the given [key].
   ///
+  /// For files larger than 1MB, automatically delegates to streaming AEAD
+  /// which processes the file in 64KB chunks. Smaller files use the
+  /// in-memory path.
+  ///
   /// Returns the ciphertext with the GCM authentication tag appended.
   /// The IV is taken from [MediaKey.iv] (12 bytes) and is NOT
   /// prepended -- the caller transmits the IV via the E2EE channel.
@@ -35,6 +46,10 @@ class MediaCrypto {
     Uint8List plaintext,
     MediaKey key,
   ) async {
+    // Files larger than 1MB use streaming AEAD to avoid OOM.
+    if (plaintext.length > _streamingThreshold) {
+      return _encryptStreaming(plaintext, key);
+    }
     final cipher = AesGcm.with256bits();
     final secretBox = await cipher.encrypt(
       plaintext,
@@ -93,5 +108,37 @@ class MediaCrypto {
       result |= actual[i] ^ expectedHash[i];
     }
     return result == 0;
+  }
+
+  /// Streaming AEAD encryption for large files.
+  ///
+  /// Splits [plaintext] into 64KB chunks and encrypts each with a
+  /// per-chunk nonce derived from the [key]'s IV. Returns the
+  /// concatenated wire-format chunks.
+  static Future<Uint8List> _encryptStreaming(
+    Uint8List plaintext,
+    MediaKey key,
+  ) async {
+    // Split plaintext into 64KB chunks.
+    final chunks = <Uint8List>[];
+    for (var i = 0; i < plaintext.length; i += chunkSize) {
+      final end = (i + chunkSize < plaintext.length)
+          ? i + chunkSize
+          : plaintext.length;
+      chunks.add(plaintext.sublist(i, end));
+    }
+
+    final encryptedParts = await encryptStream(
+      Stream.fromIterable(chunks),
+      key.key,
+      key.iv,
+    ).toList();
+
+    // Concatenate all encrypted chunks.
+    final builder = BytesBuilder(copy: false);
+    for (final part in encryptedParts) {
+      builder.add(part);
+    }
+    return builder.toBytes();
   }
 }
