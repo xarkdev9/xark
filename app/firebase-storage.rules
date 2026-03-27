@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // E2EE encrypted media: verify the user is a member of the group
+    match /groups/{groupId}/{allPaths=**} {
+      // Allow read only if the user's JWT sub is a member of the group
+      // The custom claim 'group_ids' is set during JWT creation
+      allow read: if request.auth != null
+        && groupId in request.auth.token.group_ids;
+
+      // Allow write only for authenticated users who are group members
+      allow write: if request.auth != null
+        && groupId in request.auth.token.group_ids
+        && request.resource.size < 2 * 1024 * 1024 * 1024; // 2GB max
+    }
+
+    // Profile photos: user can only write their own
+    match /profiles/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.sub == userId;
+    }
+
+    // Deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
