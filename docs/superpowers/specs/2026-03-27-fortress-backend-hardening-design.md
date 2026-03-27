@@ -65,20 +65,79 @@ LANGUAGE plpgsql SECURITY DEFINER AS $$
 ### Transaction Steps (inside the RPC)
 
 1. **Membership guard:** `SELECT 1 FROM group_members WHERE group_id = p_group_id AND user_id = p_sender_id`. If not found, raise `EXCEPTION 'not_a_member'`.
-2. **Group-scoped sequence:** `SELECT COALESCE(MAX(server_seq), 0) + 1 INTO v_seq FROM messages WHERE group_id = p_group_id FOR UPDATE` (locks only the group's sequence counter, not a global sequence).
-3. **Idempotent message insert:** `INSERT INTO messages (id, group_id, user_id, sender_device_id, message_type, role, server_content, reply_to_message_id, server_seq) VALUES (p_message_id, ..., v_seq) ON CONFLICT (id) DO NOTHING`. If the row already exists (retry), return the existing row's data.
-4. **Ciphertexts insert:** `INSERT INTO message_ciphertexts ... ON CONFLICT (message_id, recipient_id, recipient_device_id, created_at) DO NOTHING` — bulk insert from `p_ciphertexts` JSONB array. Idempotent on retry.
-5. **SK distributions insert:** If `p_distributions` is non-empty, bulk insert into `message_ciphertexts` with `message_type = 'sender_key_dist'`. Also idempotent.
-6. **Return:** `{message_id, server_seq, created_at}` as JSONB. On conflict (retry), return the previously committed values.
+
+2. **Clock skew guard:** Extract the timestamp from the client-generated UUIDv7 and reject if it deviates from server time by more than 5 minutes. This prevents a malicious or misconfigured phone clock from routing inserts into nonexistent future partitions.
+```sql
+DECLARE v_client_time TIMESTAMPTZ := uuidv7_to_timestamptz(p_message_id);
+BEGIN
+  IF abs(extract(epoch FROM v_client_time) - extract(epoch FROM now())) > 300 THEN
+    RAISE EXCEPTION 'invalid_clock_skew';
+  END IF;
+```
+
+3. **Group-scoped sequence (O(1) single-row lock):** Atomic increment on a dedicated `group_sequences` table. **NOT** `MAX(server_seq)` — PostgreSQL prohibits `FOR UPDATE` on aggregate functions, and `MAX()` scans degrade under concurrent load.
+```sql
+-- New table (created in migration):
+CREATE TABLE group_sequences (
+  group_id TEXT PRIMARY KEY,
+  seq BIGINT NOT NULL DEFAULT 0
+);
+
+-- Inside RPC:
+UPDATE group_sequences SET seq = seq + 1
+WHERE group_id = p_group_id
+RETURNING seq INTO v_seq;
+
+-- First message in group (row doesn't exist yet):
+IF v_seq IS NULL THEN
+  INSERT INTO group_sequences (group_id, seq) VALUES (p_group_id, 1)
+  ON CONFLICT (group_id) DO UPDATE SET seq = group_sequences.seq + 1
+  RETURNING seq INTO v_seq;
+END IF;
+```
+
+4. **Idempotent message insert with explicit dedup catch:** `INSERT ... ON CONFLICT (id) DO NOTHING` returns zero rows on conflict (not the existing row). Must explicitly SELECT existing data on conflict so the client gets the same response as the original attempt.
+```sql
+INSERT INTO messages (id, group_id, user_id, sender_device_id, message_type, role,
+  server_content, reply_to_message_id, server_seq)
+VALUES (p_message_id, p_group_id, p_sender_id, p_sender_device_id, p_message_type,
+  p_role, p_server_content, p_reply_to_id, v_seq)
+ON CONFLICT (id) DO NOTHING
+RETURNING server_seq, created_at INTO v_inserted_seq, v_inserted_time;
+
+-- Dedup catch: if NULL, the row already existed (retry scenario)
+IF v_inserted_seq IS NULL THEN
+  SELECT server_seq, created_at INTO v_inserted_seq, v_inserted_time
+  FROM messages WHERE id = p_message_id;
+  -- Return immediately — no need to re-insert ciphertexts
+  RETURN jsonb_build_object(
+    'message_id', p_message_id,
+    'server_seq', v_inserted_seq,
+    'created_at', v_inserted_time,
+    'status', 'deduplicated'
+  );
+END IF;
+```
+
+5. **Ciphertexts insert:** `INSERT INTO message_ciphertexts ... ON CONFLICT (message_id, recipient_id, recipient_device_id, created_at) DO NOTHING` — bulk insert from `p_ciphertexts` JSONB array. Only reached on first insert (dedup catch returns early on retry).
+
+6. **SK distributions insert:** If `p_distributions` is non-empty, bulk insert into `message_ciphertexts` with `message_type = 'sender_key_dist'`. Also idempotent.
+
+7. **Return:** `{message_id, server_seq, created_at, status: 'inserted'}` as JSONB.
 
 ### Cryptographic Tombstoning
 
-When a user deletes a message, the server does not `DELETE` the row. Instead:
+When a user deletes a message, the server does not `DELETE` the message row. Instead:
 ```sql
 UPDATE messages SET message_type = 'tombstone' WHERE id = p_message_id;
-DELETE FROM message_ciphertexts WHERE message_id = p_message_id;
+
+-- CRITICAL: include partition key to avoid full table scan across all partitions
+DELETE FROM message_ciphertexts
+WHERE message_id = p_message_id
+  AND created_at >= date_trunc('month', uuidv7_to_timestamptz(p_message_id))
+  AND created_at < date_trunc('month', uuidv7_to_timestamptz(p_message_id)) + interval '1 month';
 ```
-The tombstone preserves the `server_seq` so offline devices can sync the deletion gap without sequence holes.
+The tombstone preserves the `server_seq` so offline devices can sync the deletion gap without sequence holes. The partition-pruned DELETE ensures sub-millisecond execution even at 100M+ rows.
 
 ### Local Unread Count Calculation
 
@@ -127,11 +186,33 @@ The `last_read_watermark` is stored per-user-per-group in a lightweight `read_wa
 
 The `/api/message` route is the hottest path. The Supabase JS client uses HTTP for RPC calls, adding 30-50ms of overhead per request. For this single route, use `postgres.js` (TCP) to connect directly to Supavisor (port 6543), stripping the HTTP layer entirely.
 
+**CRITICAL: Connection pool singleton.** If you create `postgres(...)` inside the route handler, Vercel creates a brand new TCP connection pool + SSL handshake on every invocation, exhausting Supavisor connections in minutes. The pool must be attached to `globalThis` so warm Vercel containers reuse it.
+
+**CRITICAL: Node.js runtime required.** Vercel Edge Runtime does not support raw TCP sockets. The route must explicitly declare `export const runtime = 'nodejs'`.
+
 ```typescript
+// web/src/lib/postgres-pool.ts — singleton connection pool
 import postgres from 'postgres';
-const sql = postgres(process.env.DATABASE_URL); // Supavisor port 6543
-// Direct TCP call inside /api/message — no HTTP overhead
-const result = await sql`SELECT send_e2ee_message(...)`;
+
+const globalForPostgres = globalThis as unknown as { sql: postgres.Sql };
+
+export const sql = globalForPostgres.sql || postgres(process.env.DATABASE_URL!, {
+  max: 5,                    // small pool — Supavisor handles the real pooling
+  idle_timeout: 20,          // seconds before idle connections close
+  connect_timeout: 10,       // seconds before connection attempt fails
+});
+
+// Preserve across hot reloads in development
+if (process.env.NODE_ENV !== 'production') globalForPostgres.sql = sql;
+```
+
+```typescript
+// web/src/app/api/message/route.ts
+export const runtime = 'nodejs'; // Required for raw TCP — NOT edge
+
+import { sql } from '@/lib/postgres-pool';
+// Direct TCP call — no HTTP overhead
+const [result] = await sql`SELECT send_e2ee_message(${messageId}, ${groupId}, ...)`;
 ```
 
 All other routes continue using the Supabase JS client (HTTP is fine for non-hot paths).
@@ -379,7 +460,7 @@ ALTER TABLE message_ciphertexts
 -- (migration script handles: create new partitioned table, migrate data, swap names)
 CREATE TABLE message_ciphertexts_partitioned (
   id UUID DEFAULT gen_random_uuid(),
-  message_id UUID NOT NULL,  -- no FK on partitioned tables (Postgres limitation)
+  message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,  -- FK supported on partitioned tables since PG 12
   recipient_id TEXT NOT NULL,
   recipient_device_id INTEGER NOT NULL,
   ciphertext TEXT NOT NULL,
@@ -513,33 +594,48 @@ async function acquireSenderKeyLock<T>(
 Architecture: Single dedicated isolate that owns all ratchet state. All other isolates (foreground UI, background sync, push decrypt) send requests via `SendPort` and await responses.
 
 ```dart
+import 'dart:isolate';
+
 abstract class CryptoIsolateMessage {}
+
+/// CRITICAL: All binary payloads use TransferableTypedData for zero-copy
+/// memory transfer between isolates. Standard Uint8List passing physically
+/// copies the bytes — a 50MB 4K video would duplicate 50MB into the crypto
+/// isolate's heap, triggering an immediate OOM kill on iOS/Android.
 
 class EncryptRequest extends CryptoIsolateMessage {
   final String sessionId;
-  final Uint8List plaintext;
+  final TransferableTypedData plaintext;  // zero-copy transfer
   final SendPort replyPort;
 }
 
 class DecryptRequest extends CryptoIsolateMessage {
   final String sessionId;
-  final Uint8List ciphertext;
-  final Uint8List header;
+  final TransferableTypedData ciphertext;  // zero-copy transfer
+  final TransferableTypedData header;      // zero-copy transfer
   final SendPort replyPort;
 }
 
 class GroupEncryptRequest extends CryptoIsolateMessage {
   final String groupId;
-  final Uint8List plaintext;
+  final TransferableTypedData plaintext;  // zero-copy transfer
   final SendPort replyPort;
 }
 
 class GroupDecryptRequest extends CryptoIsolateMessage {
   final String groupId;
   final String senderId;
-  final Uint8List ciphertext;
+  final TransferableTypedData ciphertext;  // zero-copy transfer
   final SendPort replyPort;
 }
+
+// Usage at call site:
+// final request = EncryptRequest(
+//   sessionId: sessionId,
+//   plaintext: TransferableTypedData.fromList([plaintext]),
+//   replyPort: replyPort,
+// );
+// On the isolate side: final bytes = request.plaintext.materialize().asUint8List();
 ```
 
 **Lifecycle:**
@@ -548,6 +644,13 @@ class GroupDecryptRequest extends CryptoIsolateMessage {
 - All encrypt/decrypt calls route through message passing — sequential by design
 - Periodic flush of ratchet state to Drift (every 10 operations or 5 seconds, whichever comes first)
 - `ChatEngineImpl.dispose()` flushes final state and kills the isolate
+
+**Isolate Watchdog & Respawn:**
+- All `SendPort` requests are wrapped in a 10-second timeout
+- If the crypto isolate OOMs or crashes (FFI panic, memory pressure kill), the main thread detects the closed `ReceivePort`
+- On crash: kill the dead isolate, respawn a new one, reload ratchet state from Drift, retry the failed operation
+- Maximum 3 respawn attempts before surfacing a `CryptoError` to the UI
+- Register the crypto isolate via `IsolateNameServer` so headless background push notifications can find it and pass decryption requests without booting the full UI
 
 **Why not OS-level mutexes?** Dart isolates don't share memory. `SendPort`/`ReceivePort` is the idiomatic Dart solution and is actually simpler — no deadlock risk, no mutex poisoning, no priority inversion.
 
@@ -618,24 +721,14 @@ After successfully decrypting a Sender Key message:
 1. Write ACK to LOCAL database (IndexedDB/Drift): `{groupId, senderId, epoch}`
 2. Batch ACKs for server sync: accumulate locally, flush every 5 seconds or on app background
 
-### Implicit ACKs
-
-If Alice sends a group message and Bob replies to the group, Bob's reply mathematically proves he has Alice's Sender Key (he decrypted her message to compose a reply). Alice's device should implicitly mark Bob as "ACKed" locally without requiring an explicit ACK payload:
-
-```
-// On receiving a group message from Bob in a group where Alice has sent messages:
-// Bob successfully sent → he can decrypt → he has our SK
-markImplicitAck(groupId: groupId, senderId: currentUserId, recipientId: bob.id);
-```
-
-This eliminates ACK traffic in active conversations entirely.
-
 ### ACK Delivery
 
-Three mechanisms (all implemented, priority order):
-1. **Implicit ACKs (zero traffic):** Inferred from group message replies — see above.
-2. **Piggyback on next outgoing message:** Add `sk_acks: [{groupId, senderId}]` to the message envelope metadata. Zero extra round trips.
-3. **Dedicated endpoint:** `POST /api/keys/sk-ack` for batch ACK flush when no outgoing messages are pending (e.g., on app background).
+**No implicit ACKs.** When Bob sends a group message, he encrypts with *his own* Sender Key — this proves nothing about whether he has *Alice's* Sender Key. Bob could have been offline when Alice sent her key distribution, opened the app, and sent a message using his own key. If Alice infers an implicit ACK and stops distributing her SK to Bob, he is permanently locked out of her future messages. This is a cryptographic flaw.
+
+ACKs must be explicit and deterministic. Two mechanisms:
+
+1. **Piggyback on next outgoing message (preferred):** Add `sk_acks: [{groupId, senderId}]` to the message envelope metadata. Each ACK is <40 bytes. Zero extra round trips. Only sent after the local device has successfully decrypted a message from that sender.
+2. **Dedicated endpoint:** `POST /api/keys/sk-ack` for batch ACK flush when no outgoing messages are pending (e.g., on app background).
 
 ### Sender Key NACK (Recovery) Protocol
 
@@ -907,7 +1000,8 @@ Each step is independently deployable and rollbackable:
 ## Files Changed / Created
 
 ### New Files
-- `web/supabase/migrations/XXXXXX_atomic_send_message.sql` — idempotent RPC + group-scoped seq + tombstoning
+- `web/supabase/migrations/XXXXXX_group_sequences.sql` — O(1) sequence counter table
+- `web/supabase/migrations/XXXXXX_atomic_send_message.sql` — idempotent RPC + clock skew guard + dedup catch + tombstoning
 - `web/supabase/migrations/XXXXXX_read_watermarks.sql` — replaces unread_counts table
 - `web/supabase/migrations/XXXXXX_partition_ciphertexts.sql` — with correct partition-key-inclusive constraints
 - `web/supabase/migrations/XXXXXX_uuidv7_helpers.sql` — `uuidv7_to_timestamptz()` function
@@ -918,6 +1012,7 @@ Each step is independently deployable and rollbackable:
 - `web/src/lib/key-cache.ts` — SETNX + bypass-cache + 5min TTL
 - `web/src/lib/crypto/mutex.ts` — Web Locks with AbortController timeout
 - `web/src/lib/crypto/uuidv7.ts` — UUIDv7 generation for web client
+- `web/src/lib/postgres-pool.ts` — globalThis singleton TCP pool for hot path
 - `web/src/lib/ports/message-gateway.ts` — cursor-based pagination
 - `web/src/lib/ports/realtime-gateway.ts`
 - `web/src/lib/ports/transient-queue.ts`
