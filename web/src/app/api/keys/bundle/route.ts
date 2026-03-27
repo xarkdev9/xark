@@ -1,18 +1,16 @@
-// XARK OS v2.0 — Key Bundle Upload
+// hello OS v2.0 — Key Bundle Upload
 // Upload or update a device's public key bundle.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { verifyAuth } from '@/lib/auth-verify';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { invalidateBundle } from '@/lib/key-cache';
 
 export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req.headers.get('authorization'));
   if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  if (!checkRateLimit(`keys:${auth.userId}`, 20)) {
-    return NextResponse.json({ error: 'rate limited' }, { status: 429 });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   const body = await req.json();
   const { device_id, identity_key, signed_pre_key, signed_pre_key_id, pre_key_sig } = body;
@@ -42,6 +40,9 @@ export async function POST(req: NextRequest) {
     console.error('[/api/keys/bundle] error:', error.message);
     return NextResponse.json({ error: 'upload failed' }, { status: 500 });
   }
+
+  // BACKEND-04: Invalidate cached bundle so next fetch gets fresh keys
+  await invalidateBundle(auth.userId, device_id);
 
   return NextResponse.json({ ok: true });
 }
