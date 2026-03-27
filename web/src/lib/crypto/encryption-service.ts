@@ -1054,6 +1054,107 @@ export async function decryptMessage(
   }); // End acquireRatchetLock / acquireSenderKeyLock
 }
 
+// ═══════════════════════════════════════════════════════════════
+// SK RECOVERY RESPONSE (crypto.md #19)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Handle incoming SenderKeyRequest (NACK) from a peer who can't decrypt
+ * our Sender Key messages. Re-send the SK distribution via 1:1 Double Ratchet.
+ *
+ * This is the response side of the SK recovery protocol:
+ * 1. Peer broadcasts sk_request on the chat channel
+ * 2. subscribeToSKRequests() validates membership + key bundle
+ * 3. This function does the crypto: encrypt our SK via Double Ratchet to the requester
+ * 4. POST the distribution message via /api/message for durability
+ *
+ * Uses 1:1 encryption (not group SK) so the requester can always decrypt it.
+ */
+export async function respondToSenderKeyRequest(
+  groupId: string,
+  requesterId: string,
+  requesterDeviceId: number,
+): Promise<void> {
+  await initCrypto();
+
+  // 1. Get our current Sender Key for this group
+  const skData = await keyStore.getSenderKey(groupId);
+  if (!skData) {
+    console.log(`[hello-sk-recovery] No SK for group ${groupId} — nothing to re-distribute`);
+    return;
+  }
+
+  const senderKey = deserializeSenderKey(skData);
+  const myDeviceId = await keyStore.getDeviceId();
+
+  // 2. Serialize the SK for distribution (no private signing key — BUG 15 safe)
+  const serializedKey = serializeSenderKeyForDistribution(senderKey);
+
+  // 3. Encrypt via Double Ratchet (1:1) to the requester's device
+  const session = await getOrEstablishSession(requesterId, requesterDeviceId);
+  const { ciphertext, nonce, header } = ratchetEncrypt(session, serializedKey);
+
+  // Persist the advanced session state
+  await keyStore.saveSession(requesterId, requesterDeviceId, serializeSession(session));
+
+  // Pack nonce + ciphertext
+  const packed = new Uint8Array(nonce.length + ciphertext.length);
+  packed.set(nonce, 0);
+  packed.set(ciphertext, nonce.length);
+
+  // Build header envelope with X3DH metadata for first-contact sessions
+  const metaKey = `${requesterId}:${requesterDeviceId}`;
+  const meta = x3dhSessionMeta.get(metaKey);
+  let x3dh: { identityKey: string; ephemeralKey?: string; otkId?: string } | undefined;
+
+  if (meta) {
+    x3dh = {
+      identityKey: meta.identityPub,
+      ephemeralKey: meta.ephemeralPub,
+      otkId: meta.otkId,
+    };
+    x3dhSessionMeta.delete(metaKey);
+  }
+
+  // 4. POST as a sender_key_dist message via the normal message pipeline
+  const token = getSupabaseToken();
+  if (!token) {
+    console.warn('[hello-sk-recovery] No JWT — cannot send SK recovery response');
+    return;
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  };
+
+  try {
+    const res = await fetch('/api/message', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        group_id: groupId,
+        sender_device_id: myDeviceId,
+        message_type: 'sender_key_dist',
+        ciphertext: toBase64(packed),
+        ratchet_header: buildHeaderEnvelope(header, x3dh),
+        recipient_id: requesterId,
+        recipient_device_id: requesterDeviceId,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => 'unknown');
+      console.error(`[hello-sk-recovery] Response POST failed: ${res.status} ${errText}`);
+      return;
+    }
+
+    console.log(`[hello-sk-recovery] Re-distributed SK to ${requesterId}:${requesterDeviceId} for group ${groupId}`);
+  } catch (err) {
+    console.warn('[hello-sk-recovery] Re-distribution POST failed:', err);
+  }
+}
+
 /** Client-side message type guard — anti-injection defense */
 export function resolveMessageContent(
   messageType: MessageType | string,

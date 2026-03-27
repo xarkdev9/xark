@@ -895,48 +895,13 @@ function SpacePageInner() {
     let cleanup: (() => void) | undefined;
     (async () => {
       const { subscribeToSKRequests } = await import("@/lib/crypto/sk-recovery");
+      const { respondToSenderKeyRequest } = await import("@/lib/crypto/encryption-service");
       cleanup = subscribeToSKRequests(
         groupId,
         resolvedUserId,
         async (requesterId, requesterDeviceId) => {
-          // Re-distribute our Sender Key to the requester
-          try {
-            const { keyStore } = await import("@/lib/crypto/keystore");
-            const { prepareSenderKeyDistribution } = await import("@/lib/crypto/encryption-service");
-            const { deserializeSenderKey } = await import("@/lib/crypto/sender-keys");
-
-            const skData = await keyStore.getSenderKey(groupId);
-            if (!skData) return; // We haven't sent any messages in this space yet
-
-            const senderKey = deserializeSenderKey(skData);
-            const distRows = await prepareSenderKeyDistribution(groupId, senderKey);
-
-            // Find the row for the requester and POST it as a sender_key_dist message
-            const requesterRow = distRows.find(
-              (r) => r.recipient_id === requesterId && r.recipient_device_id === requesterDeviceId
-            );
-            if (!requesterRow) return;
-
-            const token = (await import("@/lib/supabase")).getSupabaseToken();
-            if (!token) return;
-
-            await fetch("/api/message", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-              body: JSON.stringify({
-                group_id: groupId,
-                sender_device_id: e2ee.deviceId,
-                message_type: "sender_key_dist",
-                ciphertext: requesterRow.ciphertext,
-                ratchet_header: requesterRow.ratchet_header,
-                recipient_id: requesterRow.recipient_id,
-                recipient_device_id: requesterRow.recipient_device_id,
-              }),
-            });
-            console.log(`[hello-sk-recovery] Re-distributed SK to ${requesterId}`);
-          } catch (err) {
-            console.warn("[hello-sk-recovery] Re-distribution failed:", err);
-          }
+          // crypto.md #19: respond to NACK with SK re-distribution via 1:1 Double Ratchet
+          await respondToSenderKeyRequest(groupId, requesterId, requesterDeviceId);
         }
       );
     })();
