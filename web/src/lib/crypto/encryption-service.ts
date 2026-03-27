@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Encryption Service
+// hello OS v2.0 — Encryption Service
 // High-level API for encrypting/decrypting messages.
 // Bridges Double Ratchet (1:1) and Sender Keys (groups).
 // Handles Sender Key distribution via pairwise sessions.
@@ -17,7 +17,7 @@ import {
   generateSenderKey, senderKeyEncrypt, senderKeyDecrypt,
   serializeSenderKeyForStorage, serializeSenderKeyForDistribution, deserializeSenderKey
 } from './sender-keys';
-import { keyStore } from './keystore';
+import { keyStore, getAckedSenders, markSkAcked } from './keystore';
 // fetchPeerKeyBundle uses supabase.rpc('fetch_key_bundle') directly (not /api/keys/fetch).
 // This is intentional: client-side reads go through RPC (RLS enforced), writes go through API routes.
 import { fetchPeerKeyBundle } from './key-manager';
@@ -126,11 +126,11 @@ async function getIdentityKeyRaw(): Promise<RawKeyPair> {
     // It's a real CryptoKey (non-extractable) — cannot use for libsodium DH.
     // This means WebCrypto key generation is fully wired. Raw bytes are not available.
     throw new Error(
-      '[xark-e2ee] WebCrypto identity key found but raw private key needed for DH. Re-register keys.'
+      '[hello-e2ee] WebCrypto identity key found but raw private key needed for DH. Re-register keys.'
     );
   }
 
-  throw new Error('[xark-e2ee] No identity key found');
+  throw new Error('[hello-e2ee] No identity key found');
 }
 
 /**
@@ -143,14 +143,14 @@ async function getIdentityPublicKeyRaw(): Promise<Uint8Array> {
   const webCrypto = await keyStore.getIdentityKey();
   if (webCrypto) return webCrypto.publicKeyRaw;
 
-  throw new Error('[xark-e2ee] No identity key found');
+  throw new Error('[hello-e2ee] No identity key found');
 }
 
 // ── Helpers ──
 
 async function getCurrentUserId(): Promise<string> {
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('xark_user_id');
+    const stored = localStorage.getItem('hello_user_id');
     if (stored) return stored;
   }
   throw new Error('No authenticated user');
@@ -198,7 +198,7 @@ function parseHeaderEnvelope(ratchetHeaderB64: string): {
   // This was the old unencrypted header format. Cannot be used with new ratchetDecrypt
   // which expects encrypted header bytes. Throw with clear message.
   throw new Error(
-    '[xark-e2ee] Legacy unencrypted ratchet header detected. ' +
+    '[hello-e2ee] Legacy unencrypted ratchet header detected. ' +
     'Cannot decrypt — re-establish session required.'
   );
 }
@@ -256,11 +256,12 @@ async function getOrEstablishSession(
  */
 export async function prepareSenderKeyDistribution(
   groupId: string,
-  senderKey: ReturnType<typeof generateSenderKey>
+  senderKey: ReturnType<typeof generateSenderKey>,
+  ackedSenders?: Set<string>
 ): Promise<DistributionCiphertext[]> {
   // ── JWT GATEKEEPER — fail the send, don't silently skip ──
   if (!getSupabaseToken()) {
-    throw new Error('[xark-sk-dist] No JWT — cannot distribute Sender Key. Aborting send.');
+    throw new Error('[hello-sk-dist] No JWT — cannot distribute Sender Key. Aborting send.');
   }
 
   const myUserId = await getCurrentUserId();
@@ -272,14 +273,25 @@ export async function prepareSenderKeyDistribution(
   });
 
   if (error) {
-    throw new Error(`[xark-sk-dist] Failed to fetch space member devices: ${error.message}`);
+    throw new Error(`[hello-sk-dist] Failed to fetch space member devices: ${error.message}`);
   }
   if (!members || members.length === 0) {
-    console.log('[xark-sk-dist] No peer devices — solo space, skipping distribution');
+    console.log('[hello-sk-dist] No peer devices — solo space, skipping distribution');
     return [];
   }
 
-  console.log(`[xark-sk-dist] Preparing SK distribution for ${members.length} device(s) in space ${groupId}`);
+  // CRYPTO-04: filter out ACKed devices for O(1) distribution
+  const allDevices = members as Array<{ user_id: string; device_id: number }>;
+  const targetDevices = ackedSenders
+    ? allDevices.filter((d) => !ackedSenders.has(`${d.user_id}:${d.device_id}`))
+    : allDevices;
+
+  if (targetDevices.length === 0) {
+    console.log(`[hello-sk-dist] All ${allDevices.length} device(s) already ACKed — skipping distribution`);
+    return [];
+  }
+
+  console.log(`[hello-sk-dist] Preparing SK distribution for ${targetDevices.length}/${allDevices.length} device(s) in space ${groupId}`);
 
   // Serialize the sender key for distribution (BUG 15 fix: no private signing key)
   const serializedKey = serializeSenderKeyForDistribution(senderKey);
@@ -290,8 +302,8 @@ export async function prepareSenderKeyDistribution(
   // Parallelize in chunks of 10 to prevent DOM freeze
   const CHUNK_SIZE = 10;
 
-  for (let i = 0; i < members.length; i += CHUNK_SIZE) {
-    const chunk = (members as Array<{ user_id: string; device_id: number }>).slice(i, i + CHUNK_SIZE);
+  for (let i = 0; i < targetDevices.length; i += CHUNK_SIZE) {
+    const chunk = targetDevices.slice(i, i + CHUNK_SIZE);
 
     const results = await Promise.allSettled(
       chunk.map(async (member) => {
@@ -332,7 +344,7 @@ export async function prepareSenderKeyDistribution(
             ratchet_header: buildHeaderEnvelope(header, x3dh),
           };
         } catch (err) {
-          console.warn(`[xark-sk-dist] Failed to encrypt SK for ${member.user_id}:${member.device_id}:`, err);
+          console.warn(`[hello-sk-dist] Failed to encrypt SK for ${member.user_id}:${member.device_id}:`, err);
           return null;
         }
       })
@@ -346,7 +358,7 @@ export async function prepareSenderKeyDistribution(
     }
 
     // Yield to main thread between chunks (prevents DOM freeze)
-    if (i + CHUNK_SIZE < members.length) {
+    if (i + CHUNK_SIZE < targetDevices.length) {
       await new Promise(r => setTimeout(r, 0));
     }
   }
@@ -377,7 +389,7 @@ export async function distributeSenderKey(
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  console.log(`[xark-sk-dist] POSTing distribution message (${rowsWithMsgId.length} ciphertexts)`);
+  console.log(`[hello-sk-dist] POSTing distribution message (${rowsWithMsgId.length} ciphertexts)`);
 
   let res: Response;
   try {
@@ -395,21 +407,21 @@ export async function distributeSenderKey(
       }),
     });
   } catch (fetchErr) {
-    console.error('[xark-sk-dist] Network error during distribution POST:', fetchErr);
+    console.error('[hello-sk-dist] Network error during distribution POST:', fetchErr);
     return;
   }
 
   // BUG 5 fix: verify DB write succeeded before broadcasting
   if (!res.ok) {
     const errText = await res.text().catch(() => 'unknown');
-    throw new Error(`[xark-sk-dist] Distribution POST failed: ${res.status} ${errText}`);
+    throw new Error(`[hello-sk-dist] Distribution POST failed: ${res.status} ${errText}`);
   }
 
-  console.log('[xark-sk-dist] DB write confirmed, broadcasting...');
+  console.log('[hello-sk-dist] DB write confirmed, broadcasting...');
 
   const data = await res.json();
   if (!data.messageId) {
-    console.warn('[xark-sk-dist] No messageId returned — skipping broadcast');
+    console.warn('[hello-sk-dist] No messageId returned — skipping broadcast');
     return;
   }
 
@@ -440,11 +452,11 @@ export async function distributeSenderKey(
           event: 'message',
           payload: distributionPayload,
         });
-        console.log(`[xark-sk-dist] Broadcast confirmed (attempt ${attempt})`);
+        console.log(`[hello-sk-dist] Broadcast confirmed (attempt ${attempt})`);
         broadcastSuccess = true;
         break;
       } catch (err) {
-        console.warn(`[xark-sk-dist] Broadcast attempt ${attempt} failed:`, err);
+        console.warn(`[hello-sk-dist] Broadcast attempt ${attempt} failed:`, err);
         if (attempt < 3) {
           await new Promise(r => setTimeout(r, 1000 * attempt));
         }
@@ -452,12 +464,12 @@ export async function distributeSenderKey(
     }
 
     if (!broadcastSuccess) {
-      console.error('[xark-sk-dist] Broadcast failed after 3 attempts — recipients will fetch on next load');
+      console.error('[hello-sk-dist] Broadcast failed after 3 attempts — recipients will fetch on next load');
     }
 
     supa.removeChannel(channel);
   } catch (broadcastErr) {
-    console.error('[xark-sk-dist] Broadcast setup failed:', broadcastErr);
+    console.error('[hello-sk-dist] Broadcast setup failed:', broadcastErr);
     // Non-critical — DB row exists, recipients will pick it up on next load
   }
 }
@@ -519,7 +531,7 @@ export async function processSenderKeyDistribution(
         : null;
 
       if (!peerEphemeralPublic) {
-        throw new Error('[xark-e2ee] Missing X3DH ephemeral key in distribution message');
+        throw new Error('[hello-e2ee] Missing X3DH ephemeral key in distribution message');
       }
 
       const otkId = x3dhMeta?.otkId;
@@ -752,13 +764,25 @@ export async function encryptForSpace(
     }
   }
 
-  // ── ALWAYS distribute SK on every send ──
-  // Catches: new keys, late-joining members (registered after first send),
-  // tombstone rotations, and any previous silent distribution failures.
-  // For members who already have the SK, re-distribution is harmless (same key re-installed).
+  // ── O(1) ACK-aware SK distribution (CRYPTO-04) ──
+  // Only distribute to devices that haven't ACKed yet.
+  // New keys always require full distribution. Existing keys skip ACKed devices.
   let distCiphertexts: DistributionCiphertext[] = [];
   try {
-    distCiphertexts = await prepareSenderKeyDistribution(groupId, senderKey);
+    if (isNewKey) {
+      // New key — full distribution to all devices (no ACKs exist yet)
+      distCiphertexts = await prepareSenderKeyDistribution(groupId, senderKey);
+    } else {
+      // Existing key — check local ACKs to skip already-served devices
+      const ackedSenders = await getAckedSenders(groupId);
+      if (ackedSenders.size === 0) {
+        // No ACKs recorded — fall back to full distribution
+        distCiphertexts = await prepareSenderKeyDistribution(groupId, senderKey);
+      } else {
+        // Filter: only distribute to devices NOT yet ACKed
+        distCiphertexts = await prepareSenderKeyDistribution(groupId, senderKey, ackedSenders);
+      }
+    }
   } catch (err) {
     if (isNewKey) {
       // New key with zero distribution = nobody can decrypt. Fail-closed.
@@ -913,6 +937,9 @@ export async function decryptMessage(
 
       // Persist advanced state
       await keyStore.saveSenderKey(`${groupId}:${senderId}`, serializeSenderKeyForStorage(senderKey));
+
+      // CRYPTO-04: mark this sender as ACKed so future encrypts skip distribution to them
+      await markSkAcked(groupId, `${senderId}:${senderDeviceId ?? 0}`);
     } else {
       // 1:1 message — Double Ratchet
       if (!ratchetHeaderB64) throw new Error('Missing ratchet header for 1:1 message');
@@ -927,7 +954,7 @@ export async function decryptMessage(
 
       // BUG 7/8 fix: missing device ID is an explicit error, not a silent 0-sentinel
       if (senderDeviceId == null) {
-        console.error('[xark-e2ee] Missing sender device ID for message', messageId);
+        console.error('[hello-e2ee] Missing sender device ID for message', messageId);
         return { text: '[missing device info]', replyTo: null, mediaUrl: null, type: 'message' as const };
       }
 
@@ -961,7 +988,7 @@ export async function decryptMessage(
             : null;
 
           if (!peerEphemeralPublic) {
-            throw new Error('[xark-e2ee] Missing X3DH ephemeral key — cannot establish session');
+            throw new Error('[hello-e2ee] Missing X3DH ephemeral key — cannot establish session');
           }
 
           const otkId = x3dhMeta?.otkId;
@@ -980,7 +1007,7 @@ export async function decryptMessage(
           // Responder OTK cleanup
           if (otkId && myOneTimePreKey) {
             await keyStore.deleteOneTimePreKey(otkId);
-            console.log(`[xark-e2ee] Receiver cleaned up consumed OTK ${otkId}`);
+            console.log(`[hello-e2ee] Receiver cleaned up consumed OTK ${otkId}`);
           }
 
           session = initSessionAsResponder(sharedSecret, signedPreKey);
@@ -1065,11 +1092,11 @@ export function resolveMessageContent(
   decryptedContent: string | null
 ): string {
   // E2EE message types — NEVER trust server content
-  if (messageType === 'e2ee' || messageType === 'e2ee_xark') {
+  if (messageType === 'e2ee' || messageType === 'e2ee_hello') {
     return decryptedContent ?? '[decryption pending]';
   }
   // Unencrypted types — server content is authoritative
-  if (messageType === 'xark' || messageType === 'system' || messageType === 'legacy') {
+  if (messageType === 'hello' || messageType === 'system' || messageType === 'legacy') {
     return serverContent ?? '';
   }
   return serverContent ?? '';

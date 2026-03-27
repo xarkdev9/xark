@@ -16,7 +16,7 @@ class Messages extends Table {
   /// Device ID of the sender's device, nullable for system messages.
   TextColumn get senderDeviceId => text().nullable()();
 
-  /// Wire-level message type: e2ee, xark, system, legacy, sender_key_dist,
+  /// Wire-level message type: e2ee, hello, system, legacy, sender_key_dist,
   /// message, media.
   TextColumn get messageType =>
       text().withDefault(const Constant('e2ee'))();
@@ -298,4 +298,25 @@ class ProcessedDistributions extends Table {
 
   @override
   Set<Column> get primaryKey => {messageId};
+}
+
+/// Local cache of Sender Key acknowledgments for O(1) distribution (CRYPTO-04).
+/// Tracks which group+sender pairs have been ACKed, so future encrypts
+/// skip redundant SK distribution to already-served devices.
+@DataClassName('SkAckCacheRow')
+class SkAckCache extends Table {
+  /// The group this ACK belongs to.
+  TextColumn get groupId => text()();
+
+  /// The sender whose key was acknowledged.
+  TextColumn get senderId => text()();
+
+  /// Sender Key epoch (rotated on tombstone / member removal).
+  IntColumn get epoch => integer().withDefault(const Constant(1))();
+
+  /// When this ACK was recorded.
+  DateTimeColumn get ackedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {groupId, senderId};
 }

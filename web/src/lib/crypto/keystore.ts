@@ -1,4 +1,4 @@
-// XARK OS v2.0 — KeyStore (IndexedDB)
+// hello OS v2.0 — KeyStore (IndexedDB)
 // Persistent key storage for E2EE. IndexedDB for PWA.
 // Interface is abstract — swap for native Keychain on iOS/Android.
 // At-rest encryption via Argon2id-derived wrapping key (Signal Desktop approach).
@@ -14,7 +14,7 @@ import {
 } from './encrypted-store';
 
 const DB_NAME = 'xark-keystore';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 const STORES = {
   identity: 'identity',
@@ -48,6 +48,11 @@ function openDB(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name);
         }
+      }
+      // v5: Sender Key ACK cache (compound keyPath)
+      if (!db.objectStoreNames.contains('sk_acks')) {
+        const skAckStore = db.createObjectStore('sk_acks', { keyPath: ['groupId', 'senderId'] });
+        skAckStore.createIndex('groupId', 'groupId', { unique: false });
       }
     };
   });
@@ -546,6 +551,45 @@ export class IndexedDBKeyStore {
     const name = await idbGet<string>(store, phone);
     return name ?? null;
   }
+}
+
+// ── Sender Key ACK helpers (O(1) distribution check) ──
+
+export async function getAckedSenders(groupId: string): Promise<Set<string>> {
+  const db = await openDB();
+  const tx = db.transaction('sk_acks', 'readonly');
+  const store = tx.objectStore('sk_acks');
+  const index = store.index('groupId');
+  return new Promise((resolve, reject) => {
+    const req = index.getAll(groupId);
+    req.onsuccess = () => {
+      const entries = (req.result ?? []) as Array<{ groupId: string; senderId: string }>;
+      resolve(new Set(entries.map((e) => e.senderId)));
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function markSkAcked(groupId: string, senderId: string): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction('sk_acks', 'readwrite');
+  const store = tx.objectStore('sk_acks');
+  return new Promise((resolve, reject) => {
+    const req = store.put({ groupId, senderId, ackedAt: Date.now() });
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function clearSkAcks(groupId: string, senderId: string): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction('sk_acks', 'readwrite');
+  const store = tx.objectStore('sk_acks');
+  return new Promise((resolve, reject) => {
+    const req = store.delete([groupId, senderId]);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
 }
 
 /** Singleton keystore instance */
