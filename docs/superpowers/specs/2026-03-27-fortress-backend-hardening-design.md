@@ -66,13 +66,39 @@ LANGUAGE plpgsql SECURITY DEFINER AS $$
 
 1. **Membership guard:** `SELECT 1 FROM group_members WHERE group_id = p_group_id AND user_id = p_sender_id`. If not found, raise `EXCEPTION 'not_a_member'`.
 
-2. **Clock skew guard:** Extract the timestamp from the client-generated UUIDv7 and reject if it deviates from server time by more than 5 minutes. This prevents a malicious or misconfigured phone clock from routing inserts into nonexistent future partitions.
+2. **Clock skew guard (server-side):** Extract the timestamp from the client-generated UUIDv7 and reject if it deviates from server time by more than 5 minutes. This prevents a malicious or misconfigured phone clock from routing inserts into nonexistent future partitions.
 ```sql
 DECLARE v_client_time TIMESTAMPTZ := uuidv7_to_timestamptz(p_message_id);
 BEGIN
   IF abs(extract(epoch FROM v_client_time) - extract(epoch FROM now())) > 300 THEN
     RAISE EXCEPTION 'invalid_clock_skew';
   END IF;
+```
+
+**Client-side clock delta correction:** Millions of normal users have inaccurate phone clocks. If the server just rejects `invalid_clock_skew`, the user is permanently bricked from sending messages. The client must self-correct:
+
+- On app boot (and periodically every hour), fetch server time via a lightweight endpoint or HTTP `Date` response header
+- Calculate `clockDelta = serverTime - deviceTime` (can be negative)
+- Store delta in memory (not persisted — recalculated on each boot)
+- When generating UUIDv7, apply: `uuidv7Timestamp = Date.now() + clockDelta`
+- This guarantees the client's UUIDv7 always aligns with the server's clock, regardless of the device's system time
+
+```dart
+// Flutter (engine)
+class ClockSync {
+  int _deltaMs = 0;
+
+  Future<void> sync(Uri serverBaseUrl) async {
+    final before = DateTime.now().millisecondsSinceEpoch;
+    final response = await http.head(serverBaseUrl.resolve('/api/hello'));
+    final after = DateTime.now().millisecondsSinceEpoch;
+    final serverTime = HttpDate.parse(response.headers['date']!).millisecondsSinceEpoch;
+    final rtt = (after - before) ~/ 2;
+    _deltaMs = serverTime - before - rtt;
+  }
+
+  int get correctedNowMs => DateTime.now().millisecondsSinceEpoch + _deltaMs;
+}
 ```
 
 3. **Group-scoped sequence (O(1) single-row lock):** Atomic increment on a dedicated `group_sequences` table. **NOT** `MAX(server_seq)` — PostgreSQL prohibits `FOR UPDATE` on aggregate functions, and `MAX()` scans degrade under concurrent load.
@@ -198,8 +224,13 @@ const globalForPostgres = globalThis as unknown as { sql: postgres.Sql };
 
 export const sql = globalForPostgres.sql || postgres(process.env.DATABASE_URL!, {
   max: 5,                    // small pool — Supavisor handles the real pooling
-  idle_timeout: 20,          // seconds before idle connections close
-  connect_timeout: 10,       // seconds before connection attempt fails
+  idle_timeout: 10,          // CRITICAL: Vercel freezes container CPU between requests.
+                             // If frozen >10s, the AWS/Vercel NAT gateway may silently
+                             // drop the TCP socket. On unfreeze, postgres.js checks the
+                             // clock, sees idle >10s, and safely discards the dead socket
+                             // before attempting to use it — preventing "Connection
+                             // terminated unexpectedly" errors on the first user request.
+  connect_timeout: 5,        // Fail fast if Supavisor is struggling
 });
 
 // Preserve across hot reloads in development
@@ -297,12 +328,25 @@ Request → proxy.ts (rate limit check, <5ms) → blocked? → 429 (no function 
 
 **Note:** `/api/message` uses Token Bucket specifically because the offline outbox pattern creates legitimate burst traffic. All other routes use Sliding Window.
 
-### Fail-Open Resilience
+### Failure Mode: Fail-Open vs Fail-Closed
 
-If Upstash Redis goes down, the rate limiter must NOT take down core messaging:
+**Not all routes can fail-open.** If an attacker DDoSes your Redis instance, waits for the timeouts, then blasts `/api/phone-auth` and `/api/hello`, you wake up to a $50,000 bill in Twilio SMS fees and Gemini API credits.
+
+Split failure modes by financial risk:
+
+| Failure Mode | Routes | Rationale |
+|-------------|--------|-----------|
+| **Fail-Open** (availability > cost) | `/api/message`, `/api/keys/*`, `/api/chat/start`, `/api/notify`, `/api/local-action` | Core messaging must never go down. Cost per request is negligible. |
+| **Fail-Closed** (cost > availability) | `/api/phone-auth`, `/api/hello`, `/api/contacts/check` | Each request costs real money (SMS, LLM, enumeration risk). Return HTTP 503 if Redis is down. |
 
 ```typescript
-async function checkLimit(limiter: Limiter, key: string): Promise<RateLimitResult> {
+type FailureMode = 'open' | 'closed';
+
+async function checkLimit(
+  limiter: Limiter,
+  key: string,
+  failureMode: FailureMode = 'open'
+): Promise<RateLimitResult> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1000); // 1s hard timeout
@@ -310,10 +354,12 @@ async function checkLimit(limiter: Limiter, key: string): Promise<RateLimitResul
     clearTimeout(timeout);
     return result;
   } catch (err) {
-    // Redis down or timeout — fail open, log to Sentry
-    console.error('[rate-limit] Redis unavailable, failing open:', err);
-    // TODO: Sentry.captureException(err)
-    return { success: true, remaining: -1, reset: 0 };
+    console.error('[rate-limit] Redis unavailable:', err);
+    // Sentry.captureException(err);
+    if (failureMode === 'closed') {
+      return { success: false, remaining: 0, reset: 0 }; // Block request → 503
+    }
+    return { success: true, remaining: -1, reset: 0 }; // Allow request
   }
 }
 ```
@@ -452,9 +498,9 @@ PostgreSQL native range partitioning on `created_at` by month.
 **CRITICAL:** PostgreSQL requires the partition key to be included in all unique constraints on partitioned tables. A `UNIQUE (message_id, recipient_id, recipient_device_id)` without `created_at` will throw a fatal error. The partition key `created_at` must be in every unique constraint.
 
 ```sql
--- Add created_at column (currently missing)
+-- Add created_at column (currently missing) — NO DEFAULT, always set from UUIDv7
 ALTER TABLE message_ciphertexts
-  ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+  ADD COLUMN created_at TIMESTAMPTZ NOT NULL;
 
 -- Convert to partitioned table
 -- (migration script handles: create new partitioned table, migrate data, swap names)
@@ -465,14 +511,30 @@ CREATE TABLE message_ciphertexts_partitioned (
   recipient_device_id INTEGER NOT NULL,
   ciphertext TEXT NOT NULL,
   ratchet_header TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL,  -- NO DEFAULT — always set from UUIDv7 timestamp (see below)
   UNIQUE (message_id, recipient_id, recipient_device_id, created_at)  -- partition key MUST be included
 ) PARTITION BY RANGE (created_at);
 ```
 
+### Deterministic Time: UUIDv7 Drives the Partition
+
+**CRITICAL:** The `created_at` column on `message_ciphertexts` must NOT use `DEFAULT now()`. It must be set explicitly from the UUIDv7 timestamp inside the `send_e2ee_message` RPC:
+
+```sql
+-- Inside the RPC, after clock skew validation:
+-- v_client_time is already extracted from uuidv7_to_timestamptz(p_message_id)
+-- Use v_client_time for ALL inserts — messages AND ciphertexts
+
+INSERT INTO messages (id, ..., created_at) VALUES (p_message_id, ..., v_client_time);
+-- Ciphertext bulk insert also uses v_client_time, NOT now()
+INSERT INTO message_ciphertexts (..., created_at) VALUES (..., v_client_time);
+```
+
+**Why:** If a user sends at March 31 23:59:59.999 and the server processes at April 1 00:00:00.100, `now()` puts the row in the April partition. Six months later, tombstone DELETE searches the March partition (derived from UUIDv7) and silently misses — orphaned ciphertext forever. Using `v_client_time` guarantees the UUID and partition align mathematically, permanently.
+
 ### UUIDv7 Partition Pruning
 
-Since message IDs are now client-generated UUIDv7s (which embed a millisecond timestamp), we can extract the timestamp from the UUID to guarantee single-partition index scans:
+Since message IDs are client-generated UUIDv7s (which embed a millisecond timestamp) and `created_at` is always set from that timestamp, we can extract the timestamp from the UUID to guarantee single-partition index scans:
 
 ```sql
 -- Helper function: extract timestamp from UUIDv7
@@ -767,9 +829,11 @@ Three port interfaces — one per future extraction target. Current implementati
 
 **Web: `web/src/lib/ports/message-gateway.ts`**
 ```typescript
+export type SyncDirection = 'forward' | 'backward';
+
 export interface MessageGateway {
   sendMessage(envelope: MessageEnvelope): Promise<SendResult>;
-  fetchMessages(groupId: string, cursor: string | null, limit?: number): Promise<MessagePage>;
+  fetchMessages(groupId: string, cursor: string | null, direction: SyncDirection, limit?: number): Promise<MessagePage>;
   fetchCiphertexts(messageId: string, recipientId: string, deviceId: number): Promise<Ciphertext[]>;
   acknowledgeDelivery(messageId: string, deviceId: number): Promise<void>;
 }
@@ -786,13 +850,19 @@ export interface MessagePage {
 }
 ```
 
+**Bidirectional sync:** Offline-first messaging requires two fetch directions:
+- **`forward`** (gap recovery): "I was offline. Give me all messages newer than my watermark." → `WHERE server_seq > cursor ORDER BY server_seq ASC`
+- **`backward`** (history scrolling): "User scrolled up. Give me 50 messages older than the top." → `WHERE server_seq < cursor ORDER BY server_seq DESC`
+
 **Cursor-based pagination:** The `cursor` is an opaque string (currently encoding `group_id:server_seq`, but the consumer doesn't know or care). This decouples the API from Postgres sequences, allowing future extraction to DynamoDB, ScyllaDB, or any other backend without changing callers.
 
 **Engine: `engine/lib/src/ports/message_gateway.dart`**
 ```dart
+enum SyncDirection { forward, backward }
+
 abstract class MessageGateway {
   Future<SendResult> sendMessage(MessageEnvelope envelope);
-  Future<MessagePage> fetchMessages(String groupId, {String? cursor, int limit = 50});
+  Future<MessagePage> fetchMessages(String groupId, {String? cursor, SyncDirection direction = SyncDirection.forward, int limit = 50});
   Future<List<Ciphertext>> fetchCiphertexts(String messageId, String recipientId, int deviceId);
   Future<void> acknowledgeDelivery(String messageId, int deviceId);
 }
@@ -1036,11 +1106,11 @@ Each step is independently deployable and rollbackable:
 - `web/src/app/api/notify/route.ts` — remove in-route rate limiter
 - `web/src/app/api/invite/*/route.ts` — remove in-route rate limiter
 - `web/src/lib/supabase-admin.ts` — pooler connection string
-- `web/src/lib/crypto/encryption-service.ts` — mutex locks + local-only SK ACK + implicit ACKs + NACK handler
+- `web/src/lib/crypto/encryption-service.ts` — mutex locks + local-only SK ACK + piggybacked ACKs + NACK handler
 - `web/src/lib/unread.ts` — rewrite to use read_watermarks + local calculation
 - `web/src/components/os/GalaxyLayout.tsx` — unread counts from new source
 - `engine/lib/src/transport/supabase_client.dart` — use atomic RPC with client-generated UUIDv7
-- `engine/lib/src/crypto/sender_keys/group_cipher.dart` — local SK ACK + implicit ACKs + NACK protocol
+- `engine/lib/src/crypto/sender_keys/group_cipher.dart` — local SK ACK + piggybacked ACKs + NACK protocol
 - `engine/lib/src/persistence/database/tables.dart` — add sk_ack_cache + read_watermarks tables
 - `engine/lib/src/chat_engine_impl.dart` — spawn crypto isolate, inject ports
 
