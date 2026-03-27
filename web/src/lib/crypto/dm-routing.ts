@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Deterministic 1:1 Routing
+// hello OS v2.0 — Deterministic 1:1 Routing
 // Both peers compute the identical space ID without network calls.
 // Used for dm (1:1) message routing.
 

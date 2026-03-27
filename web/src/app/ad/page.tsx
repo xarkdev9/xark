@@ -22,10 +22,10 @@ const CARD_GREEN = "#047857";
 const CARD_TEXT = "#E8E8EC";
 const CARD_TEXT_DIM = "rgba(232,232,236,0.5)";
 
-// ── Liquid Fire gradient — matches globals.css .xark-text-led exactly ──
+// ── Liquid Fire gradient — matches globals.css .hello-text-led exactly ──
 // #8B2500 → #FF6B35 → #FF9F43 → #FF6B35 → #8B2500
 const liquidFireCSS = `
-  @keyframes xarkLiquidFire {
+  @keyframes helloLiquidFire {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
@@ -38,7 +38,7 @@ const liquidFire: React.CSSProperties = {
   WebkitBackgroundClip: "text",
   backgroundClip: "text",
   color: "transparent",
-  animation: "xarkLiquidFire 3s linear infinite",
+  animation: "helloLiquidFire 3s linear infinite",
 };
 
 // ═══════════════════════════════════════════════
@@ -136,7 +136,7 @@ function FakeChatList({ rows, visible }: { rows: ChatRow[]; visible: boolean }) 
                   borderRadius: "2px",
                   background: "linear-gradient(90deg, #8B2500 0%, #FF6B35 25%, #FF9F43 50%, #FF6B35 75%, #8B2500 100%)",
                   backgroundSize: "200% auto",
-                  animation: "xarkLiquidFire 3s linear infinite",
+                  animation: "helloLiquidFire 3s linear infinite",
                 }} />
               )}
             </span>
@@ -218,7 +218,7 @@ function FakeChatList({ rows, visible }: { rows: ChatRow[]; visible: boolean }) 
           width: "44px", height: "44px", borderRadius: "50%",
           background: "linear-gradient(90deg, #8B2500 0%, #FF6B35 25%, #FF9F43 50%, #FF6B35 75%, #8B2500 100%)",
           backgroundSize: "200% auto",
-          animation: "xarkLiquidFire 3s linear infinite",
+          animation: "helloLiquidFire 3s linear infinite",
           color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: "24px", fontWeight: 300,
           boxShadow: "0 2px 12px rgba(255, 107, 53, 0.3)",

@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Spatial Category Navigator
+// hello OS v2.0 — Spatial Category Navigator
 // Unified spatial system: categories float in space.
 // < 5 categories: Vision Pro style — static float with ambient drift.
 // 5+ categories: rotatable sphere — drag to explore.
@@ -76,7 +76,7 @@ function CategoryNodeView({
       {/* Photo circle */}
       <div style={{
         width: size, height: size, borderRadius: "50%", overflow: "hidden",
-        border: allLocked ? "2.5px solid var(--xark-green)"
+        border: allLocked ? "2.5px solid var(--hello-green)"
           : pending > 0 ? "2px solid #FF6B35"
           : "2px solid rgba(255,255,255,0.5)",
         boxShadow: opacity > 0.5
@@ -127,7 +127,7 @@ function CategoryNodeView({
         <div style={{
           position: "absolute", top: -2, right: -2,
           width: 16, height: 16, borderRadius: "50%",
-          backgroundColor: "var(--xark-green)", color: "#fff",
+          backgroundColor: "var(--hello-green)", color: "#fff",
           fontSize: "8px", display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           ✓

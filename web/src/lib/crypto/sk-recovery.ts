@@ -1,4 +1,4 @@
-// XARK OS v2.0 — P2P Sender Key Recovery Protocol
+// hello OS v2.0 — P2P Sender Key Recovery Protocol
 // When a recipient misses a SK distribution (offline, broadcast failure),
 // they can request re-distribution from the sender via Realtime broadcast.
 // This is an ephemeral control channel — no DB writes, no stored state.
@@ -33,11 +33,11 @@ export async function requestMissingSenderKey(
   // Auto-clear after 30s to allow retry
   setTimeout(() => pendingRequests.delete(requestKey), 30000);
 
-  console.log(`[xark-sk-recovery] Requesting SK from ${senderId} for space ${groupId}`);
+  console.log(`[hello-sk-recovery] Requesting SK from ${senderId} for space ${groupId}`);
 
   const token = getSupabaseToken();
   if (!token) {
-    console.warn('[xark-sk-recovery] No JWT — cannot send SK request');
+    console.warn('[hello-sk-recovery] No JWT — cannot send SK request');
     return;
   }
 
@@ -59,10 +59,10 @@ export async function requestMissingSenderKey(
       },
     });
 
-    console.log(`[xark-sk-recovery] SK request sent for ${requestKey}`);
+    console.log(`[hello-sk-recovery] SK request sent for ${requestKey}`);
     supabase.removeChannel(channel);
   } catch (err) {
-    console.warn('[xark-sk-recovery] Failed to send SK request:', err);
+    console.warn('[hello-sk-recovery] Failed to send SK request:', err);
     pendingRequests.delete(requestKey);
   }
 }
@@ -137,7 +137,7 @@ export async function handleSenderKeyRequest(
     .single();
 
   if (!membership) {
-    console.warn(`[xark-sk-recovery] Rejected SK request from non-member ${requesterId}`);
+    console.warn(`[hello-sk-recovery] Rejected SK request from non-member ${requesterId}`);
     return false;
   }
 
@@ -150,11 +150,11 @@ export async function handleSenderKeyRequest(
     .single();
 
   if (!keyBundle) {
-    console.warn(`[xark-sk-recovery] Rejected SK request — no key bundle for ${requesterId}:${requesterDeviceId}`);
+    console.warn(`[hello-sk-recovery] Rejected SK request — no key bundle for ${requesterId}:${requesterDeviceId}`);
     return false;
   }
 
-  console.log(`[xark-sk-recovery] Authorized SK request from ${requesterId} for space ${groupId}`);
+  console.log(`[hello-sk-recovery] Authorized SK request from ${requesterId} for space ${groupId}`);
   return true;
 }
 

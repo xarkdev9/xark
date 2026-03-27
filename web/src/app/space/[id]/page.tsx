@@ -34,7 +34,7 @@ import type { GroupStateItem } from "@/lib/space-state";
 import { colors, ink, text, textColor, timing, surface } from "@/lib/theme";
 import type { LedgerEntry } from "@/lib/group-actions";
 import type { LedgerEvent } from "@/components/os/LedgerPill";
-import { markSpaceRead } from "@/lib/unread";
+import { markGroupRead } from "@/lib/unread";
 import { PlaygroundSpace } from "@/components/os/PlaygroundSpace";
 import { isPlaygroundSpace } from "@/lib/playground";
 import { ConsensusBanner } from "@/components/os/ConsensusBanner";
@@ -598,7 +598,7 @@ function SpacePageInner() {
   // ── Mark space as read when user opens it ──
   useEffect(() => {
     if (authLoading || !resolvedUserId) return;
-    markSpaceRead(groupId);
+    markGroupRead(groupId, Number.MAX_SAFE_INTEGER);
   }, [groupId, authLoading, resolvedUserId]);
 
   // ── Broadcast channel — instant message delivery across devices ──
@@ -1337,11 +1337,11 @@ function SpacePageInner() {
           .eq("id", groupId)
           .maybeSingle();
         
-        if (data?.type) {
-          setGroupType(data.type);
+        if ((data as any)?.groupType) {
+          setGroupType((data as any).groupType);
         }
 
-        if (data?.type === "dm" && resolvedUserId) {
+        if ((data as any)?.groupType === "dm" && resolvedUserId) {
           const { data: otherMember } = await supabase
             .from("space_members")
             .select("user_id")
@@ -1675,7 +1675,7 @@ function SpacePageInner() {
                 </>
             </div>
 
-            {type !== "dm" && (
+            {atmosphere !== "dm" && (
               <span
                 role="button"
                 tabIndex={0}

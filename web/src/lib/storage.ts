@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Storage Adapter
+// hello OS v2.0 — Storage Adapter
 // Provider-agnostic storage interface. Firebase implementation is default.
 // To switch providers: implement StorageAdapter, swap the export.
 

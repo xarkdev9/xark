@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Inline Thumbnail Generator
+// hello OS v2.0 — Inline Thumbnail Generator
 // Generates tiny Base64 thumbnails (max 100px, JPEG q=0.4) client-side.
 // Thumbnails travel inside the E2EE payload so recipients see an instant
 // blurry preview while the full encrypted blob downloads and decrypts.

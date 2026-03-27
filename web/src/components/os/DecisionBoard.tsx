@@ -948,7 +948,7 @@ export default function DecisionBoard({ groupId, filterCategory, userId, authLoa
       {!isPlayground && (
         <button
           onClick={() => setShowAddModal(true)}
-          className="xark-bg-led"
+          className="hello-bg-led"
           style={{
             position: "absolute",
             top: "12px",
@@ -1113,7 +1113,7 @@ export default function DecisionBoard({ groupId, filterCategory, userId, authLoa
 
       {/* ═══ BOTTOM DOCK — fixed above ChatInput ═══ */}
       {hasItems && (
-        <div style={{ flexShrink: 0, background: "var(--xark-void)" }}>
+        <div style={{ flexShrink: 0, background: "var(--hello-void)" }}>
           {/* ── Mini Card Strip (hidden in overview mode) ── */}
           {activeCategory !== "all" && <div
             ref={miniStripRef}
@@ -1141,7 +1141,7 @@ export default function DecisionBoard({ groupId, filterCategory, userId, authLoa
                     cursor: "pointer",
                     position: "relative",
                     opacity: isActive ? 1 : isVoted ? 0.6 : 0.4,
-                    border: isActive ? "2px solid var(--xark-accent)" : "2px solid transparent",
+                    border: isActive ? "2px solid var(--hello-accent)" : "2px solid transparent",
                     transform: isActive ? "scale(1.1)" : "scale(1)",
                     transition: "all 0.2s ease",
                     WebkitTapHighlightColor: "transparent",

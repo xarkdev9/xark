@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Share Target Page
+// hello OS v2.0 — Share Target Page
 // Handles two share paths:
 // 1. URL/text share: redirected from /api/share with query params
 // 2. File share: intercepted by SW, file stashed in CacheStorage, read client-side
@@ -42,7 +42,7 @@ function ShareContent() {
 
     (async () => {
       try {
-        const cache = await caches.open("xark-shared-files");
+        const cache = await caches.open("hello-shared-files");
         const res = await cache.match("/shared-image");
         if (!res) return;
 

@@ -1,7 +1,7 @@
 "use client";
 
-// XARK OS v2.0 — The Input Pill
-// iMessage "+" menu. "xark" invoke surface at trailing edge.
+// hello OS v2.0 — The Input Pill
+// iMessage "+" menu. "hello" invoke surface at trailing edge.
 // @hello chip + Liquid Fire gradient border = AI mode consent boundary.
 // Pure E2EE messaging. Privacy-first.
 
@@ -171,7 +171,7 @@ export function ChatInput({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Backspace at position 0 with @hello chip → remove chip
-    if (e.key === "Backspace" && isXarkMode && textareaRef.current?.selectionStart === 0) {
+    if (e.key === "Backspace" && isHelloMode && textareaRef.current?.selectionStart === 0) {
       e.preventDefault();
       onInputChange(input.replace(/^@hello\s*/i, ""));
       return;
@@ -192,10 +192,10 @@ export function ChatInput({
   }, [input]);
 
   const hasText = input.trim().length > 0;
-  const isXarkMode = input.toLowerCase().startsWith("@hello");
+  const isHelloMode = input.toLowerCase().startsWith("@hello");
   // For display: strip the @hello prefix from the textarea when chip is shown
-  const displayInput = isXarkMode ? input.replace(/^@hello\s*/i, "") : input;
-  const hasQuery = isXarkMode ? displayInput.trim().length > 0 : hasText;
+  const displayInput = isHelloMode ? input.replace(/^@hello\s*/i, "") : input;
+  const hasQuery = isHelloMode ? displayInput.trim().length > 0 : hasText;
 
   return (
     <>
@@ -330,9 +330,9 @@ export function ChatInput({
           {/* ═══ THE INPUT PILL — with Liquid Fire gradient border in @hello mode ═══ */}
           <div style={{ position: "relative" }}>
             {/* Gradient border layer — only visible in @hello mode */}
-            {isXarkMode && (
+            {isHelloMode && (
               <div
-                className="xark-bg-led"
+                className="hello-bg-led"
                 style={{
                   position: "absolute",
                   inset: "-2px",
@@ -354,8 +354,8 @@ export function ChatInput({
                 WebkitTransform: "translateZ(0)",
               }}
             >
-              {/* ── "+" button (no text entered, not in xark mode) ── */}
-              {!hasText && !isXarkMode && (
+              {/* ── "+" button (no text entered, not in hello mode) ── */}
+              {!hasText && !isHelloMode && (
                 <div style={{ flexShrink: 0, position: "relative" }}>
                   <span
                     role="button" tabIndex={0}
@@ -374,7 +374,7 @@ export function ChatInput({
               )}
 
               {/* ── @hello chip (visible when in AI mode) ── */}
-              {isXarkMode && (
+              {isHelloMode && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.85 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -417,13 +417,13 @@ export function ChatInput({
               {/* ── Textarea ── */}
               <textarea
                 ref={textareaRef}
-                value={isXarkMode ? input.replace(/^@hello\s*/i, "") : input}
+                value={isHelloMode ? input.replace(/^@hello\s*/i, "") : input}
                 onChange={(e) => {
                   const val = e.target.value;
-                  onInputChange(isXarkMode ? "@hello " + val : val);
+                  onInputChange(isHelloMode ? "@hello " + val : val);
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder={isXarkMode ? "ask hello anything..." : isListening ? "listening..." : "message..."}
+                placeholder={isHelloMode ? "ask hello anything..." : isListening ? "listening..." : "message..."}
                 disabled={isThinking}
                 enterKeyHint="send"
                 spellCheck={false}
@@ -440,8 +440,8 @@ export function ChatInput({
                   fontSize: "16px",
                   fontWeight: 400,
                   letterSpacing: "0.02em",
-                  color: isXarkMode ? "#FF6B35" : colors.white,
-                  caretColor: isXarkMode ? "#FF6B35" : colors.accent,
+                  color: isHelloMode ? "#FF6B35" : colors.white,
+                  caretColor: isHelloMode ? "#FF6B35" : colors.accent,
                   opacity: isThinking ? 0.3 : 1,
                   lineHeight: 1.5,
                   maxHeight: "144px",
@@ -449,9 +449,9 @@ export function ChatInput({
                 }}
               />
 
-              {/* ── Right element: xark (idle) → send (typing) ── */}
+              {/* ── Right element: hello (idle) → send (typing) ── */}
               <AnimatePresence mode="wait">
-                {hasText || isXarkMode ? (
+                {hasText || isHelloMode ? (
                   <motion.span
                     key="send"
                     role="button" tabIndex={0}
@@ -474,7 +474,7 @@ export function ChatInput({
                   </motion.span>
                 ) : (
                   <motion.span
-                    key="xark"
+                    key="hello"
                     role="button" tabIndex={0}
                     onClick={() => {
                       if (onHelloTap) {
@@ -484,7 +484,7 @@ export function ChatInput({
                         textareaRef.current?.focus();
                       }
                     }}
-                    className="xark-text-led outline-none select-none cursor-pointer"
+                    className="hello-text-led outline-none select-none cursor-pointer"
                     style={{
                       flexShrink: 0,
                       fontSize: "18px",
@@ -583,7 +583,7 @@ export function ChatInput({
 
       <style jsx>{`
         textarea::placeholder {
-          color: var(--xark-ink-tertiary);
+          color: var(--hello-ink-tertiary);
           opacity: 1;
           letter-spacing: 0.04em;
         }

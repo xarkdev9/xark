@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Interactive System Pill for space_ledger events
+// hello OS v2.0 — Interactive System Pill for space_ledger events
 // Structure: icon → actor → verb → [tappable payload] → undo
 
 "use client";

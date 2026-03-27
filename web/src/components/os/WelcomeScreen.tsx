@@ -77,9 +77,9 @@ export function WelcomeScreen({ onBegin }: WelcomeScreenProps) {
             }}
           >
             {/* Glowing Text Anchor */}
-            <div className="xark-glow-anchor">
+            <div className="hello-glow-anchor">
               <span
-                className="xark-text-led"
+                className="hello-text-led"
                 style={{
                   fontSize: "clamp(6rem, 20vw, 16rem)",
                   fontWeight: 369,

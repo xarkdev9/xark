@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Playground Space View
+// hello OS v2.0 — Playground Space View
 // Client-side only. Renders playground data using production components.
 // Mock reactions, mock @hello, choreographed whispers + messages.
 // No Supabase, no Realtime, no E2EE. Pure React state.
@@ -8,7 +8,7 @@
 import { useState, useCallback, useRef, type TouchEvent } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { XarkChat } from "@/components/os/XarkChat";
+import { HelloChat } from "@/components/os/HelloChat";
 import DecisionBoard from "@/components/os/DecisionBoard";
 import { ChatInput } from "@/components/os/ChatInput";
 import { PlaygroundWhisper } from "@/components/os/PlaygroundWhisper";
@@ -19,7 +19,7 @@ import {
   getPlaygroundMembers,
   getPlaygroundPhotos,
   PLAYGROUND_SPACE_IDS,
-  PLAYGROUND_XARK_RESTAURANTS,
+  PLAYGROUND_HELLO_RESTAURANTS,
 } from "@/lib/playground";
 import type { PlaygroundItem, PlaygroundMessage } from "@/lib/playground";
 import { colors, ink, text, timing, surface } from "@/lib/theme";
@@ -105,7 +105,7 @@ export function PlaygroundSpace({ groupId, userName }: PlaygroundSpaceProps) {
     if (
       groupId === PLAYGROUND_SPACE_IDS.dinner &&
       signal === "love_it" &&
-      PLAYGROUND_XARK_RESTAURANTS.some((r) => r.id === itemId)
+      PLAYGROUND_HELLO_RESTAURANTS.some((r) => r.id === itemId)
     ) {
       // 600ms: zoe votes — score jumps
       setTimeout(() => {
@@ -162,20 +162,20 @@ export function PlaygroundSpace({ groupId, userName }: PlaygroundSpaceProps) {
         setIsThinking(false);
 
         // @hello response in chat
-        const xarkMsg: ChatMessage = {
-          id: `pg_xark_${Date.now()}`,
-          role: "xark",
+        const helloMsg: ChatMessage = {
+          id: `pg_hello_${Date.now()}`,
+          role: "hello",
           content: "found 3 spots nearby",
           timestamp: Date.now(),
           senderName: "@hello",
         };
-        setInlineCards((prev) => [...prev, xarkMsg]);
+        setInlineCards((prev) => [...prev, helloMsg]);
 
         // Add items to Decide tab
-        setExtraItems(PLAYGROUND_XARK_RESTAURANTS);
+        setExtraItems(PLAYGROUND_HELLO_RESTAURANTS);
 
         // Trigger choreography
-        choreography.triggerPostXark();
+        choreography.triggerPostHello();
 
         // Auto-switch to Decide after 800ms
         setTimeout(() => setView("decide"), 800);
@@ -304,7 +304,7 @@ export function PlaygroundSpace({ groupId, userName }: PlaygroundSpaceProps) {
       {/* ── Content — swipe to switch ── */}
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: "120px" }} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
         {view === "discuss" && (
-          <XarkChat
+          <HelloChat
             groupId={groupId}
             spaceTitle={spaceTitle}
             messages={allMessages}
@@ -346,13 +346,13 @@ export function PlaygroundSpace({ groupId, userName }: PlaygroundSpaceProps) {
         </div>
       )}
 
-      {choreography.whispers.xark_hint?.visible && view === "discuss" && (
+      {choreography.whispers.hello_hint?.visible && view === "discuss" && (
         <div
           className="fixed z-30 px-6"
           style={{ bottom: "90px", left: 0, right: 0 }}
         >
           <div className="mx-auto" style={{ maxWidth: "640px" }}>
-            <PlaygroundWhisper text={choreography.whispers.xark_hint.text} visible={true} />
+            <PlaygroundWhisper text={choreography.whispers.hello_hint.text} visible={true} />
           </div>
         </div>
       )}

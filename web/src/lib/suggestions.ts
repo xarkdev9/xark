@@ -1,4 +1,4 @@
-// XARK OS v2.0 — WHISPER ENGINE
+// hello OS v2.0 — WHISPER ENGINE
 // Proactive suggestions from Layer 3 state (votes, cards, locks, dates).
 // No LLM calls. Pure deterministic Postgres queries.
 // Priority: 0 = highest (P0), 2 = lowest (P2).

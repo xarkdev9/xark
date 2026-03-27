@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Playground Choreography Engine
+// hello OS v2.0 — Playground Choreography Engine
 // Timer-based sequencing for diegetic whispers, queued messages, typing indicators.
 // Each space has its own choreography timeline triggered on mount + user interactions.
 // All timers cleaned up on unmount.
@@ -25,7 +25,7 @@ interface ChoreographyState {
 interface ChoreographyActions {
   dismissWhisper: (key: string) => void;
   triggerPostVote: () => void;
-  triggerPostXark: () => void;
+  triggerPostHello: () => void;
   triggerPostClaim: () => void;
   triggerPostPurchase: () => void;
 }
@@ -73,7 +73,7 @@ export function usePlaygroundChoreography(
     // Space 2: dinner — "try @hello for ideas..."
     if (groupId === PLAYGROUND_SPACE_IDS.dinner) {
       schedule(() => {
-        setWhispers((w) => ({ ...w, xark_hint: { text: "try @hello for ideas...", visible: true } }));
+        setWhispers((w) => ({ ...w, hello_hint: { text: "try @hello for ideas...", visible: true } }));
       }, 2000);
     }
 
@@ -111,8 +111,8 @@ export function usePlaygroundChoreography(
       setQueuedMessages((prev) => [
         ...prev,
         {
-          id: "pg_choreo_xark_lock",
-          role: "xark",
+          id: "pg_choreo_hello_lock",
+          role: "hello",
           content: "everyone agreed. park hyatt is locked.",
           timestamp: Date.now(),
           senderName: "@hello",
@@ -152,8 +152,8 @@ export function usePlaygroundChoreography(
   }, [groupId, dismissWhisper, schedule]);
 
   // ── Space 1 & 2: Post-@hello choreography ──
-  const triggerPostXark = useCallback(() => {
-    dismissWhisper("xark_hint");
+  const triggerPostHello = useCallback(() => {
+    dismissWhisper("hello_hint");
 
     // Show "swipe to decide to vote" whisper
     schedule(() => {
@@ -196,7 +196,7 @@ export function usePlaygroundChoreography(
     placeholderOverride,
     dismissWhisper,
     triggerPostVote,
-    triggerPostXark,
+    triggerPostHello,
     triggerPostClaim,
     triggerPostPurchase,
   };

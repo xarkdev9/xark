@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — AWARENESS STREAM
+// hello OS v2.0 — AWARENESS STREAM
 // Extracted from Home page. Renders space awareness items with opacity, summary, recency.
 // Includes space creation flow (dream input + send icon).
 // Independent data fetching + real-time subscription.
@@ -44,9 +44,11 @@ export function AwarenessStream({ userId, userName, onSpaceTap, playgroundSpaces
     fetchAwareness(userId)
       .then((result) => setSpaces(result))
       .catch(() => setSpaces([]));
-    fetchUnreadCounts()
-      .then(setUnreadCounts)
-      .catch(() => {});
+    if (spaces.length > 0 && userId) {
+      fetchUnreadCounts(spaces.map((s: any) => s.id), userId)
+        .then(setUnreadCounts)
+        .catch(() => {});
+    }
   }, [userId]);
 
   // Real-time: refetch when user is added to a new space
@@ -120,7 +122,7 @@ export function AwarenessStream({ userId, userName, onSpaceTap, playgroundSpaces
                         <div style={{
                           position: "absolute", inset: "-6px",
                           borderRadius: "18px",
-                          background: "radial-gradient(circle, rgba(var(--xark-amber-rgb), 0.06) 0%, transparent 70%)",
+                          background: "radial-gradient(circle, rgba(var(--hello-amber-rgb), 0.06) 0%, transparent 70%)",
                           pointerEvents: "none",
                         }} />
                       )}

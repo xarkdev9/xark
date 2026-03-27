@@ -50,13 +50,13 @@ export async function proxy(request: NextRequest) {
       if (routeConfig.keyByIp) {
         // IP-based keying (phone-auth — no JWT available yet)
         key = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-          || request.ip
+          || request.headers.get('x-real-ip')
           || 'unknown';
       } else {
         // JWT-based keying (authenticated routes)
         const userId = extractUserIdFromJwt(request.headers.get('authorization'));
         key = userId || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-          || request.ip
+          || request.headers.get('x-real-ip')
           || 'unknown';
       }
 

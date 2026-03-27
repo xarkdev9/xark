@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Double Ratchet Algorithm
+// hello OS v2.0 — Double Ratchet Algorithm
 // Per-message forward secrecy for 1:1 dms.
 // Implements the Signal Protocol Double Ratchet specification.
 

@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Push Notification API Route
+// hello OS v2.0 — Push Notification API Route
 // Server-side push trigger. Called by lifecycle event handlers.
 // Uses supabaseAdmin for service-role access to space_members and user_devices.
 // Checks users.preferences.muted_spaces before sending.
@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendPush } from "@/lib/notifications";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { verifyAuth } from "@/lib/auth-verify";
-import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   // ── Auth — prevent unauthenticated push notification delivery ──
@@ -16,10 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // H6 fix: rate limit push notifications
-  if (!checkRateLimit(`notify:${auth.userId}`, 15)) {
-    return NextResponse.json({ error: "too many notifications" }, { status: 429 });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   const { event, groupId, senderName, excludeUserId } = await req.json();
 

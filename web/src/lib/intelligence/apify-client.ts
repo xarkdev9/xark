@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Apify Actor Client
+// hello OS v2.0 — Apify Actor Client
 // Runs Apify actors and returns structured results.
 // startActorAsync() fires an actor with a webhook URL and returns immediately.
 

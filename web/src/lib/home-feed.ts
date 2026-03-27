@@ -1,4 +1,4 @@
-// XARK OS v2.0 — AWARENESS STREAM
+// hello OS v2.0 — AWARENESS STREAM
 // Space-level consensus summaries for the home screen.
 // One entry per space. Aggregates decision state into a single summary.
 // "What do I need to know right now?" — usually nothing. Peace.

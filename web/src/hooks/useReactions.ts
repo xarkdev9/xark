@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Reactions Hook
+// hello OS v2.0 — Reactions Hook
 // Drives DecisionBoard voting surface.
 // One reaction per user per item. Last wins.
 // Uses auth.jwt()->>'sub' inside SECURITY DEFINER RPCs.
@@ -28,7 +28,7 @@ export function useReactions(): UseReactionsResult {
   const react = useCallback(async (itemId: string, reaction: ReactionType): Promise<boolean> => {
     // Guard: JWT must be set for RPC to work
     if (!getSupabaseToken()) {
-      console.warn("[xark-vote] no JWT set — vote will not persist");
+      console.warn("[hello-vote] no JWT set — vote will not persist");
       return false;
     }
 
@@ -39,12 +39,12 @@ export function useReactions(): UseReactionsResult {
         p_signal: reaction,
       });
       if (error) {
-        console.error("[xark-vote] react failed:", error.message);
+        console.error("[hello-vote] react failed:", error.message);
         return false;
       }
       return true;
     } catch (err) {
-      console.error("[xark-vote] react error:", err);
+      console.error("[hello-vote] react error:", err);
       return false;
     } finally {
       setIsReacting(false);
@@ -53,7 +53,7 @@ export function useReactions(): UseReactionsResult {
 
   const unreact = useCallback(async (itemId: string): Promise<boolean> => {
     if (!getSupabaseToken()) {
-      console.warn("[xark-vote] no JWT set — unreact will not persist");
+      console.warn("[hello-vote] no JWT set — unreact will not persist");
       return false;
     }
 
@@ -63,12 +63,12 @@ export function useReactions(): UseReactionsResult {
         p_item_id: itemId,
       });
       if (error) {
-        console.error("[xark-vote] unreact failed:", error.message);
+        console.error("[hello-vote] unreact failed:", error.message);
         return false;
       }
       return true;
     } catch (err) {
-      console.error("[xark-vote] unreact error:", err);
+      console.error("[hello-vote] unreact error:", err);
       return false;
     } finally {
       setIsReacting(false);

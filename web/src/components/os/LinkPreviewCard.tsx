@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — E2EE Link Preview Card
+// hello OS v2.0 — E2EE Link Preview Card
 // Renders OG metadata (title, description, domain) with an optional
 // encrypted preview image via EncryptedMediaRenderer.
 

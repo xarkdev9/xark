@@ -1,4 +1,4 @@
-// XARK OS v2.0 — SUPABASE POSTGRES CLIENT
+// hello OS v2.0 — SUPABASE POSTGRES CLIENT
 // Decision Engine queries ONLY. DB access for heart-sort ranking math.
 // Authentication is handled exclusively by Firebase Auth (see Infrastructure Lock).
 // The JWT (from Firebase or dev_login) is set via setSupabaseToken() for RLS.
@@ -39,7 +39,7 @@ const singleClient = createClient(url, anonKey, {
 export function setSupabaseToken(token: string | null): void {
   if (token === currentToken) return; // No-op if unchanged
   currentToken = token;
-  console.log(token ? "[xark-auth] JWT set on Supabase client" : "[xark-auth] JWT cleared");
+  console.log(token ? "[hello-auth] JWT set on Supabase client" : "[hello-auth] JWT cleared");
 }
 
 // Check if the Supabase client has an authenticated token set.

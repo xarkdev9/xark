@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Add Decision Item Modal
+// hello OS v2.0 — Add Decision Item Modal
 // Screenshot/image → E2EE encrypt → Firebase upload → decision_items insert.
 // Supports file picker, camera capture, and CMD+V paste from clipboard.
 

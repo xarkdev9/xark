@@ -1,5 +1,5 @@
-// XARK OS v2.0 — Daily Purge Cron
-// Runs purge_expired_xark_messages() and purge_expired_summon_links() RPCs in parallel.
+// hello OS v2.0 — Daily Purge Cron
+// Runs purge_expired_hello_messages() and purge_expired_summon_links() RPCs in parallel.
 // Protected by CRON_SECRET to prevent unauthorized invocation.
 // TODO: Set CRON_SECRET environment variable in Vercel dashboard before deploying.
 
@@ -20,12 +20,12 @@ export async function GET(req: NextRequest) {
   }
 
   const [purgeResult, summonResult] = await Promise.all([
-    supabaseAdmin.rpc('purge_expired_xark_messages'),
+    supabaseAdmin.rpc('purge_expired_hello_messages'),
     supabaseAdmin.rpc('purge_expired_summon_links'),
   ]);
 
   if (purgeResult.error) {
-    console.error('[cron/purge] purge_expired_xark_messages error:', purgeResult.error.message);
+    console.error('[cron/purge] purge_expired_hello_messages error:', purgeResult.error.message);
   }
 
   if (summonResult.error) {

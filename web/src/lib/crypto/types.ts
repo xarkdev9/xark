@@ -1,4 +1,4 @@
-// XARK OS v2.0 — E2EE Type Definitions
+// hello OS v2.0 — E2EE Type Definitions
 // Shared types for the crypto module.
 
 /** Raw key pair — Ed25519 or Curve25519 */
@@ -115,7 +115,7 @@ export interface DecryptedMessage {
 }
 
 /** Message types in the database */
-export type MessageType = 'e2ee' | 'xark' | 'system' | 'legacy' | 'sender_key_dist';
+export type MessageType = 'e2ee' | 'hello' | 'system' | 'legacy' | 'sender_key_dist';
 
 /** Key backup blob structure */
 export interface KeyBackupBlob {

@@ -1,4 +1,4 @@
-// XARK OS v2.0 — GHOST PLAYGROUND
+// hello OS v2.0 — GHOST PLAYGROUND
 // Client-side sandbox for first-time users. 5 fake friends, 4 curated spaces.
 // Zero database records. Vanishes when user creates first real space.
 
@@ -34,7 +34,7 @@ export interface PlaygroundItem {
 
 export interface PlaygroundMessage {
   id: string;
-  role: "user" | "xark" | "system";
+  role: "user" | "hello" | "system";
   content: string;
   timestamp: number;
   senderName?: string;
@@ -392,9 +392,9 @@ const HIKE_PHOTOS: string[] = [
 
 // ── Hardcoded @hello restaurant results for playground ──
 
-export const PLAYGROUND_XARK_RESTAURANTS: PlaygroundItem[] = [
+export const PLAYGROUND_HELLO_RESTAURANTS: PlaygroundItem[] = [
   {
-    id: "pg_xark_r1",
+    id: "pg_hello_r1",
     title: "sushi nakazawa",
     category: "restaurant",
     weighted_score: 0,
@@ -410,7 +410,7 @@ export const PLAYGROUND_XARK_RESTAURANTS: PlaygroundItem[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: "pg_xark_r2",
+    id: "pg_hello_r2",
     title: "omakase room",
     category: "restaurant",
     weighted_score: 0,
@@ -426,7 +426,7 @@ export const PLAYGROUND_XARK_RESTAURANTS: PlaygroundItem[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: "pg_xark_r3",
+    id: "pg_hello_r3",
     title: "blue ribbon sushi",
     category: "restaurant",
     weighted_score: 0,

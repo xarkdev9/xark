@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — PEOPLE DOCK
+// hello OS v2.0 — PEOPLE DOCK
 // Extracted from Home page. Renders personal chats (dm spaces).
 // Independent data fetching + real-time subscription for new messages.
 // Includes Contact Picker API for inviting people.
@@ -45,9 +45,11 @@ export function PeopleDock({ userId, userName, onPersonTap }: PeopleDockProps) {
     fetchPersonalChats(userId)
       .then((result) => setPersonalChats(result))
       .catch(() => setPersonalChats([]));
-    fetchUnreadCounts()
-      .then(setUnreadCounts)
-      .catch(() => {});
+    if (personalChats.length > 0 && userId) {
+      fetchUnreadCounts(personalChats.map((c) => c.groupId), userId)
+        .then(setUnreadCounts)
+        .catch(() => {});
+    }
   }, [userId]);
 
   // Real-time: refetch when user is added to a new space (dm might appear)

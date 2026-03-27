@@ -29,43 +29,43 @@ function applyTheme(name: ThemeName) {
   const root = document.documentElement;
 
   // Core identity
-  root.style.setProperty("--xark-accent", t.accent);
-  root.style.setProperty("--xark-accent-rgb", hexToRgb(t.accent));
-  root.style.setProperty("--xark-cyan", t.cyan);
-  root.style.setProperty("--xark-cyan-rgb", hexToRgb(t.cyan));
-  root.style.setProperty("--xark-white", t.text);
-  root.style.setProperty("--xark-white-rgb", hexToRgb(t.text));
-  root.style.setProperty("--xark-void", t.bg);
-  root.style.setProperty("--xark-void-rgb", hexToRgb(t.bg));
+  root.style.setProperty("--hello-accent", t.accent);
+  root.style.setProperty("--hello-accent-rgb", hexToRgb(t.accent));
+  root.style.setProperty("--hello-cyan", t.cyan);
+  root.style.setProperty("--hello-cyan-rgb", hexToRgb(t.cyan));
+  root.style.setProperty("--hello-white", t.text);
+  root.style.setProperty("--hello-white-rgb", hexToRgb(t.text));
+  root.style.setProperty("--hello-void", t.bg);
+  root.style.setProperty("--hello-void-rgb", hexToRgb(t.bg));
 
   // Engine signal colors — adjusted per theme for contrast
-  root.style.setProperty("--xark-amber", t.amber);
-  root.style.setProperty("--xark-amber-rgb", hexToRgb(t.amber));
-  root.style.setProperty("--xark-gold", t.gold);
-  root.style.setProperty("--xark-gold-rgb", hexToRgb(t.gold));
-  root.style.setProperty("--xark-green", t.green);
-  root.style.setProperty("--xark-green-rgb", hexToRgb(t.green));
-  root.style.setProperty("--xark-orange", t.orange);
-  root.style.setProperty("--xark-orange-rgb", hexToRgb(t.orange));
-  root.style.setProperty("--xark-gray", t.gray);
-  root.style.setProperty("--xark-gray-rgb", hexToRgb(t.gray));
+  root.style.setProperty("--hello-amber", t.amber);
+  root.style.setProperty("--hello-amber-rgb", hexToRgb(t.amber));
+  root.style.setProperty("--hello-gold", t.gold);
+  root.style.setProperty("--hello-gold-rgb", hexToRgb(t.gold));
+  root.style.setProperty("--hello-green", t.green);
+  root.style.setProperty("--hello-green-rgb", hexToRgb(t.green));
+  root.style.setProperty("--hello-orange", t.orange);
+  root.style.setProperty("--hello-orange-rgb", hexToRgb(t.orange));
+  root.style.setProperty("--hello-gray", t.gray);
+  root.style.setProperty("--hello-gray-rgb", hexToRgb(t.gray));
 
   // Solid ink colors — for high-readability contexts
-  root.style.setProperty("--xark-ink-primary", t.inkPrimary);
-  root.style.setProperty("--xark-ink-secondary", t.inkSecondary);
-  root.style.setProperty("--xark-ink-tertiary", t.inkTertiary);
-  root.style.setProperty("--xark-ink-sender", t.inkSender);
+  root.style.setProperty("--hello-ink-primary", t.inkPrimary);
+  root.style.setProperty("--hello-ink-secondary", t.inkSecondary);
+  root.style.setProperty("--hello-ink-tertiary", t.inkTertiary);
+  root.style.setProperty("--hello-ink-sender", t.inkSender);
 
   // 3-tone surface system — depth without borders
-  root.style.setProperty("--xark-surface-chrome", t.surfaceChrome);
-  root.style.setProperty("--xark-surface-canvas", t.surfaceCanvas);
-  root.style.setProperty("--xark-surface-recessed", t.surfaceRecessed);
+  root.style.setProperty("--hello-surface-chrome", t.surfaceChrome);
+  root.style.setProperty("--hello-surface-canvas", t.surfaceCanvas);
+  root.style.setProperty("--hello-surface-recessed", t.surfaceRecessed);
 
   // Chat bubble colors
-  root.style.setProperty("--xark-bubble-received", t.bubbleReceived);
-  root.style.setProperty("--xark-bubble-sent", t.bubbleSent);
-  root.style.setProperty("--xark-bubble-text-received", t.bubbleTextReceived);
-  root.style.setProperty("--xark-bubble-text-sent", t.bubbleTextSent);
+  root.style.setProperty("--hello-bubble-received", t.bubbleReceived);
+  root.style.setProperty("--hello-bubble-sent", t.bubbleSent);
+  root.style.setProperty("--hello-bubble-text-received", t.bubbleTextReceived);
+  root.style.setProperty("--hello-bubble-text-sent", t.bubbleTextSent);
 
   // Style class on root — components use [data-style="depth"] for vibe rendering
   root.dataset.style = t.style;
@@ -104,7 +104,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Read from localStorage on mount
   useEffect(() => {
-    localStorage.setItem("xark-theme", DEFAULT_THEME);
+    localStorage.setItem("hello-theme", DEFAULT_THEME);
     setThemeState(DEFAULT_THEME);
     applyTheme(DEFAULT_THEME);
   }, []);
@@ -112,7 +112,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setTheme = useCallback((name: ThemeName) => {
     setThemeState(name);
     applyTheme(name);
-    localStorage.setItem("xark-theme", name);
+    localStorage.setItem("hello-theme", name);
   }, []);
 
   const style = themes[theme].style;

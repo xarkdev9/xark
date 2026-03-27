@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — PURCHASE SHEET
+// hello OS v2.0 — PURCHASE SHEET
 // Slide-up sheet for confirming purchase + entering amount.
 // Appears when user taps a claimed item they own.
 // State: claimed → purchased (terminal). Proof + amount required.

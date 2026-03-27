@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — GALAXY LAYOUT REGISTRY
+// hello OS v2.0 — GALAXY LAYOUT REGISTRY
 // Layout registry. Components know nothing about layout — parent arranges them.
 // Two layouts: stream (vertical stack), split (side-by-side).
 
@@ -39,7 +39,7 @@ function SplitLayout({ awarenessStream, peopleDock }: Omit<HomeLayoutProps, "lay
       <div
         style={{
           width: "1px",
-          background: `linear-gradient(180deg, transparent, rgba(var(--xark-white-rgb), 0.06), transparent)`,
+          background: `linear-gradient(180deg, transparent, rgba(var(--hello-white-rgb), 0.06), transparent)`,
         }}
       />
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: "160px" }}>

@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Apify Tool Registry
+// hello OS v2.0 — Apify Tool Registry
 // Register Apify actors by category. Orchestrator routes @hello requests here.
 
 export interface ToolDefinition {

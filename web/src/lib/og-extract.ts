@@ -56,7 +56,7 @@ export function parseOGTags(html: string): OGMetadata {
 export async function fetchOGMetadata(url: string): Promise<OGMetadata> {
   try {
     const response = await fetch(url, {
-      headers: { "User-Agent": "XarkBot/1.0 (OG Preview)" },
+      headers: { "User-Agent": "HelloBot/1.0 (OG Preview)" },
       signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) return { url };

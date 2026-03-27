@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Key Management Service
+// hello OS v2.0 — Key Management Service
 // Registration, key bundle upload, OTK replenishment, backup/restore.
 // Bridges local KeyStore with server-side key distribution.
 
@@ -41,7 +41,7 @@ export async function registerKeys(): Promise<{
   // (Previously, local save happened first → upload fail → local key exists
   //  but server has no bundle → permanent E2EE breakage.)
   const token = getSupabaseToken();
-  if (!token) throw new Error('[xark-e2ee] No JWT — cannot upload keys');
+  if (!token) throw new Error('[hello-e2ee] No JWT — cannot upload keys');
   const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
   const bundleRes = await fetch('/api/keys/bundle', {
@@ -139,14 +139,14 @@ export async function replenishOTKsIfNeeded(): Promise<void> {
     .eq('device_id', deviceId);
 
   if (countError) {
-    console.warn('[xark-e2ee] Failed to query OTK count:', countError.message);
+    console.warn('[hello-e2ee] Failed to query OTK count:', countError.message);
     return;
   }
 
   const serverCount = count ?? 0;
   if (serverCount >= OTK_REPLENISH_THRESHOLD) return;
 
-  console.log(`[xark-e2ee] OTK count ${serverCount}, replenishing to ${OTK_BATCH_SIZE}...`);
+  console.log(`[hello-e2ee] OTK count ${serverCount}, replenishing to ${OTK_BATCH_SIZE}...`);
   const otks = generateOTKBatch(OTK_BATCH_SIZE);
 
   // Store locally
@@ -167,9 +167,9 @@ export async function replenishOTKsIfNeeded(): Promise<void> {
   });
   if (!otkRes.ok) {
     const err = await otkRes.text().catch(() => 'unknown');
-    console.warn(`[xark-e2ee] OTK upload failed: ${otkRes.status} ${err}`);
+    console.warn(`[hello-e2ee] OTK upload failed: ${otkRes.status} ${err}`);
   } else {
-    console.log(`[xark-e2ee] Replenished ${OTK_BATCH_SIZE} OTKs`);
+    console.log(`[hello-e2ee] Replenished ${OTK_BATCH_SIZE} OTKs`);
   }
 }
 
@@ -253,7 +253,7 @@ export async function onMemberLeave(
   const currentKey = await keyStore.getSenderKey(groupId);
   if (currentKey) {
     await keyStore.saveHistoricalSenderKey(groupId, currentKey);
-    console.log(`[xark-e2ee] Archived old Sender Key for space ${groupId}`);
+    console.log(`[hello-e2ee] Archived old Sender Key for space ${groupId}`);
   }
 
   // 2. Delete active key — departed member had access to this
@@ -265,7 +265,7 @@ export async function onMemberLeave(
   // 4. Save new key locally
   await keyStore.saveSenderKey(groupId, serializeSenderKeyForStorage(newKey));
 
-  console.log(`[xark-e2ee] Rotated Sender Key for space ${groupId} (member ${leftUserId} left)`);
+  console.log(`[hello-e2ee] Rotated Sender Key for space ${groupId} (member ${leftUserId} left)`);
   return newKey;
 }
 
@@ -305,15 +305,15 @@ export function subscribeToMemberChanges(
       const isLeader = remainingIds.length > 0 && remainingIds[0] === myUserId;
 
       if (isLeader) {
-        console.log(`[xark-e2ee] I am SK rotation leader for ${groupId}`);
+        console.log(`[hello-e2ee] I am SK rotation leader for ${groupId}`);
         try {
           const newKey = await onMemberLeave(groupId, leftUserId);
           await onRotation(newKey);
         } catch (err) {
-          console.error(`[xark-e2ee] SK rotation failed for ${groupId}:`, err);
+          console.error(`[hello-e2ee] SK rotation failed for ${groupId}:`, err);
         }
       } else {
-        console.log(`[xark-e2ee] Waiting for leader to rotate SK for ${groupId}`);
+        console.log(`[hello-e2ee] Waiting for leader to rotate SK for ${groupId}`);
         // Non-leaders will receive new SK via sender_key_dist distribution
       }
     })
@@ -339,7 +339,7 @@ function generateOTKBatch(count: number): OneTimePreKey[] {
 async function getCurrentUserId(): Promise<string> {
   // Read from localStorage (set by useAuth hook)
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('xark_user_id');
+    const stored = localStorage.getItem('hello_user_id');
     if (stored) return stored;
   }
   throw new Error('No authenticated user');

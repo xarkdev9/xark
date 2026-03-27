@@ -1,4 +1,4 @@
-// XARK OS v2.0 — FIREBASE CLIENT
+// hello OS v2.0 — FIREBASE CLIENT
 // Phone OTP Authentication + E2EE Multimedia Storage.
 // Database is Supabase Postgres (see supabase.ts). Do NOT use Firebase for DB.
 // Safe initialization: when env vars are missing, exports null for auth/storage.
@@ -27,7 +27,7 @@ const app = isConfigured
     : getApps()[0]
   : null;
 
-// Phone OTP — the only auth provider for Xark OS
+// Phone OTP — the only auth provider for hello OS
 export const auth: Auth | null = app ? getAuth(app) : null;
 
 // E2EE Multimedia — binary blob storage with bucket-level security rules

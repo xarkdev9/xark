@@ -243,7 +243,7 @@ export function MemoriesView({ groupId }: MemoriesViewProps) {
                               className="absolute inset-0"
                               style={{
                                 background:
-                                  "linear-gradient(to top, rgba(var(--xark-void-rgb), 0.85) 0%, rgba(var(--xark-void-rgb), 0.3) 30%, transparent 60%)",
+                                  "linear-gradient(to top, rgba(var(--hello-void-rgb), 0.85) 0%, rgba(var(--hello-void-rgb), 0.3) 30%, transparent 60%)",
                               }}
                             />
 

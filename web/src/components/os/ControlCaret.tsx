@@ -66,7 +66,7 @@ export function ControlCaret() {
   const [showHint, setShowHint] = useState(false);
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const dismissed = localStorage.getItem("xark_spotlight_hint_dismissed");
+      const dismissed = localStorage.getItem("hello_ai_hint_dismissed");
       if (!dismissed && spaces.length === 0) {
         setShowHint(true);
       } else {
@@ -137,7 +137,7 @@ export function ControlCaret() {
 
   return (
     <>
-      {/* ── LIVING BRAND ANCHOR — "xark" Triad (The Thumb Arc) ── */}
+      {/* ── LIVING BRAND ANCHOR — "hello" Triad (The Thumb Arc) ── */}
       <div
         className="fixed inset-x-0 flex items-end justify-between pointer-events-none"
         style={{
@@ -154,11 +154,11 @@ export function ControlCaret() {
           pointerEvents: isKeyboardOpen ? "none" : undefined,
         }}
       >
-            {/* ── LEFT THUMB: (Removed to isolate xark anchor) ── */}
+            {/* ── LEFT THUMB: (Removed to isolate hello anchor) ── */}
             <div className="flex-1 pointer-events-auto flex flex-col justify-end" style={{ paddingBottom: "10px" }}>
             </div>
 
-            {/* ── CENTER: The Anchor (`xark`) ── */}
+            {/* ── CENTER: The Anchor (`hello`) ── */}
             <div className="flex-none pointer-events-auto flex flex-col items-center">
               <div
                 role="button"
@@ -178,7 +178,7 @@ export function ControlCaret() {
                   if (longPressRef.current) clearTimeout(longPressRef.current);
                   if (!isLongPress.current) {
                     if (showHint) {
-                      localStorage.setItem("xark_spotlight_hint_dismissed", "1");
+                      localStorage.setItem("hello_ai_hint_dismissed", "1");
                       setShowHint(false);
                     }
                     spotlight.open();
@@ -190,13 +190,13 @@ export function ControlCaret() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     if (showHint) {
-                      localStorage.setItem("xark_spotlight_hint_dismissed", "1");
+                      localStorage.setItem("hello_ai_hint_dismissed", "1");
                       setShowHint(false);
                     }
                     spotlight.open();
                   }
                 }}
-                className="xark-glow-anchor cursor-pointer outline-none select-none flex items-center justify-center"
+                className="hello-glow-anchor cursor-pointer outline-none select-none flex items-center justify-center"
                 style={{
                   background: "transparent",
                   WebkitTapHighlightColor: "transparent",
@@ -206,7 +206,7 @@ export function ControlCaret() {
                 }}
               >
                 <span
-                  className="xark-text-led"
+                  className="hello-text-led"
                   style={{
                     fontSize: "40px",
                     fontWeight: 369,
@@ -252,7 +252,7 @@ export function ControlCaret() {
               <div className="flex-1 overflow-y-auto px-6 pt-8 pb-4">
                 <div className="mx-auto" style={{ maxWidth: layout.maxWidth }}>
                   {filteredSpaces.map((space, index) => {
-                    const isDM = space.type === "dm";
+                    const isDM = (space as any).type === "dm";
                     const hasPresenceEmber = (presence[space.id] ?? 0) > 1;
                     const spaceOpacity = recencyOpacity(space.lastActivityAt);
                     const memberNames = space.members.map((m) => m.displayName).join(", ");

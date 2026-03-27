@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Diegetic Playground Whisper
+// hello OS v2.0 — Diegetic Playground Whisper
 // Environmental coaching text. NOT a tooltip. Breathes at 30→60% opacity.
 // Fades out on interaction. Feels like a secret, not an instruction.
 

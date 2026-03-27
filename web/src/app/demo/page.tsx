@@ -1,12 +1,12 @@
 "use client";
 
-// XARK OS — Ad Demo Simulation
+// hello OS — Ad Demo Simulation
 // Fully scripted, self-contained. No Supabase, no playground.
 // Flow: chat history → "@hello dinner tonight" → shimmer → cards → love → GOLD BURST
 
 import { useState, useCallback, useRef, useEffect, type TouchEvent } from "react";
 import { motion } from "framer-motion";
-import { XarkChat } from "@/components/os/XarkChat";
+import { HelloChat } from "@/components/os/HelloChat";
 import DecisionBoard from "@/components/os/DecisionBoard";
 import { ChatInput } from "@/components/os/ChatInput";
 import { colors, ink, text, surface } from "@/lib/theme";
@@ -193,8 +193,8 @@ export default function DemoPage() {
         setMessages((prev) => [
           ...prev,
           {
-            id: `xark_${Date.now()}`,
-            role: "xark",
+            id: `hello_${Date.now()}`,
+            role: "hello",
             content: "found 3 spots nearby",
             timestamp: Date.now(),
             senderName: "@hello",
@@ -313,7 +313,7 @@ export default function DemoPage() {
         onTouchEnd={onSwipeEnd}
       >
         {view === "discuss" && (
-          <XarkChat
+          <HelloChat
             groupId="demo_dinner"
             spaceTitle="dinner tonight"
             messages={messages}

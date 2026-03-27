@@ -2,7 +2,7 @@
 @config "../../tailwind.config.ts";
 
 /* ═══════════════════════════════════════════
-   XARK OS v2.0 — CONSTITUTIONAL CSS
+   hello OS v2.0 — CONSTITUTIONAL CSS
    No-Bold Mandate · Zero-Box Doctrine · Atmospheric Space
    Hierarchy = Scale + Spacing + Opacity
    ═══════════════════════════════════════════ */
@@ -10,49 +10,49 @@
 /* ── THEME CSS VARIABLES — Hearth (light) defaults. Overridden by ThemeProvider. ── */
 :root {
   color-scheme: light;
-  --xark-accent: #FF6B35;
-  --xark-accent-rgb: 255, 107, 53;
-  --xark-cyan: #FF6B35;
-  --xark-cyan-rgb: 255, 107, 53;
-  --xark-white: #111111;
-  --xark-white-rgb: 17, 17, 17;
-  --xark-void: #FAFAFA;
-  --xark-void-rgb: 250, 250, 250;
-  --xark-amber: #9E6A06;
-  --xark-amber-rgb: 158, 106, 6;
-  --xark-gold: #8B6914;
-  --xark-gold-rgb: 139, 105, 20;
-  --xark-green: #047857;
-  --xark-green-rgb: 4, 120, 87;
-  --xark-orange: #C43D08;
-  --xark-orange-rgb: 196, 61, 8;
-  --xark-gray: #8A8A94;
-  --xark-gray-rgb: 138, 138, 148;
+  --hello-accent: #FF6B35;
+  --hello-accent-rgb: 255, 107, 53;
+  --hello-cyan: #FF6B35;
+  --hello-cyan-rgb: 255, 107, 53;
+  --hello-white: #111111;
+  --hello-white-rgb: 17, 17, 17;
+  --hello-void: #FAFAFA;
+  --hello-void-rgb: 250, 250, 250;
+  --hello-amber: #9E6A06;
+  --hello-amber-rgb: 158, 106, 6;
+  --hello-gold: #8B6914;
+  --hello-gold-rgb: 139, 105, 20;
+  --hello-green: #047857;
+  --hello-green-rgb: 4, 120, 87;
+  --hello-orange: #C43D08;
+  --hello-orange-rgb: 196, 61, 8;
+  --hello-gray: #8A8A94;
+  --hello-gray-rgb: 138, 138, 148;
   /* Solid ink colors — never use opacity for readable text */
-  --xark-ink-primary: #000000;
-  --xark-ink-secondary: #6B6B78;
-  --xark-ink-tertiary: #8A8A94;
-  --xark-ink-sender: #9E6A06;
+  --hello-ink-primary: #000000;
+  --hello-ink-secondary: #6B6B78;
+  --hello-ink-tertiary: #8A8A94;
+  --hello-ink-sender: #9E6A06;
   
   /* Solid surface colors — prevents transparency issues before JS hydration */
-  --xark-surface-chrome: #FAFAFA;
-  --xark-surface-canvas: #FAFAFA;
-  --xark-surface-recessed: #F0F0F0;
+  --hello-surface-chrome: #FAFAFA;
+  --hello-surface-canvas: #FAFAFA;
+  --hello-surface-recessed: #F0F0F0;
   /* Chat bubble colors — off-white received, gray sent */
-  --xark-bubble-received: #FFFFFF;
-  --xark-bubble-sent: #F0F0F0;
-  --xark-bubble-text-received: #1A1A1A;
-  --xark-bubble-text-sent: #1A1A1A;
+  --hello-bubble-received: #FFFFFF;
+  --hello-bubble-sent: #F0F0F0;
+  --hello-bubble-text-received: #1A1A1A;
+  --hello-bubble-text-sent: #1A1A1A;
 }
 
 @theme inline {
-  --color-background: var(--xark-void);
-  --color-foreground: var(--xark-white);
-  --color-amber: var(--xark-amber);
-  --color-gold: var(--xark-gold);
-  --color-green: var(--xark-green);
-  --color-cyan: var(--xark-accent);
-  --color-cloud-dancer: var(--xark-white);
+  --color-background: var(--hello-void);
+  --color-foreground: var(--hello-white);
+  --color-amber: var(--hello-amber);
+  --color-gold: var(--hello-gold);
+  --color-green: var(--hello-green);
+  --color-cyan: var(--hello-accent);
+  --color-cloud-dancer: var(--hello-white);
   --font-syne: var(--font-syne);
 }
 
@@ -68,7 +68,7 @@
   outline: none !important;
 }
 *:focus-visible {
-  outline: 2px solid var(--xark-accent);
+  outline: 2px solid var(--hello-accent);
   outline-offset: 2px;
 }
 /* Text inputs get focus on every tap — never show ring on them.
@@ -85,8 +85,8 @@ textarea:focus-visible,
 
 /* ── BASE ── */
 body {
-  background: var(--xark-void);
-  color: var(--xark-white);
+  background: var(--hello-void);
+  color: var(--hello-white);
   font-weight: 400;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -96,7 +96,7 @@ body {
 /* Secondary labels: weight 300, opacity baked into color to prevent descender vanishing */
 .text-secondary {
   font-weight: 300 !important;
-  color: rgba(var(--xark-white-rgb), 0.45) !important;
+  color: rgba(var(--hello-white-rgb), 0.45) !important;
   opacity: 1 !important;
   display: inline-block;
   vertical-align: top;
@@ -125,7 +125,7 @@ body {
 
 .caret-breath {
   animation: ambientBreath 4.5s ease-in-out infinite;
-  color: var(--xark-accent);
+  color: var(--hello-accent);
 }
 
 /* ── GOLD RADIAL BLOOM ── */
@@ -136,7 +136,7 @@ body {
 }
 
 .gold-bloom {
-  background: radial-gradient(circle, rgba(var(--xark-gold-rgb), 0.3) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--hello-gold-rgb), 0.3) 0%, transparent 70%);
 }
 
 /* ── TITLE BREATH — The Digital Heartbeat ──
@@ -149,7 +149,7 @@ body {
 /* ── GREEN SETTLE TO CLOUD DANCER ── */
 .settle-locked {
   transition: color 1.2s ease-out, background 1.2s ease-out;
-  color: var(--xark-white);
+  color: var(--hello-white);
 }
 
 /* ── PWA: disable web behaviors for native feel ── */
@@ -203,45 +203,45 @@ input, textarea, [contenteditable] {
 }
 
 /* ── THE SINGULARITY ANCHOR (Liquid Fire LED) ── */
-@keyframes xarkLiquidFire {
+@keyframes helloLiquidFire {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
-@keyframes xarkBreathe {
+@keyframes helloBreathe {
   0%, 100% { transform: scale(0.98) translateY(0); filter: brightness(1); }
   50% { transform: scale(1.02) translateY(-1px); filter: brightness(1.15); }
 }
-@keyframes xarkThinkingDot {
+@keyframes helloThinkingDot {
   0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
   40% { transform: scale(1); opacity: 0.8; }
 }
-.xark-glow-anchor {
+.hello-glow-anchor {
   position: relative;
-  animation: xarkBreathe 5s ease-in-out infinite;
+  animation: helloBreathe 5s ease-in-out infinite;
   transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
   will-change: transform, filter;
 }
-.xark-glow-anchor:active {
+.hello-glow-anchor:active {
   transform: scale(0.85) !important;
 }
-.xark-text-led {
+.hello-text-led {
   background: linear-gradient(90deg, #8B2500 0%, #FF6B35 25%, #FF9F43 50%, #FF6B35 75%, #8B2500 100%);
   background-size: 200% auto;
   color: transparent !important;
   -webkit-background-clip: text;
   background-clip: text;
-  animation: xarkLiquidFire 3s linear infinite;
+  animation: helloLiquidFire 3s linear infinite;
   text-shadow: 0px 1px 3px rgba(139, 37, 0, 0.4);
 }
-.xark-bg-led {
+.hello-bg-led {
   background: linear-gradient(90deg, #8B2500 0%, #FF6B35 25%, #FF9F43 50%, #FF6B35 75%, #8B2500 100%) !important;
   background-size: 200% auto !important;
-  animation: xarkLiquidFire 3s linear infinite !important;
+  animation: helloLiquidFire 3s linear infinite !important;
   color: #FFF !important;
 }
 
-/* ── LIQUID BRAND TEXT — Active @xark invocation state ── */
+/* ── LIQUID BRAND TEXT — Active @hello invocation state ── */
 @keyframes liquidFlow {
   to { background-position: 200% center; }
 }
@@ -263,7 +263,7 @@ input, textarea, [contenteditable] {
   -webkit-text-fill-color: #FF6B35;
 }
 
-/* ── LIQUID FIRE L-CORNER — @xark message bubble accent ── */
+/* ── LIQUID FIRE L-CORNER — @hello message bubble accent ── */
 @keyframes liquidCornerV {
   0% { background-position: 50% 0%; }
   50% { background-position: 50% 100%; }
@@ -274,11 +274,11 @@ input, textarea, [contenteditable] {
   50% { background-position: 100% 0%; }
   100% { background-position: 0% 0%; }
 }
-.xark-bubble-corner {
+.hello-bubble-corner {
   position: relative;
   overflow: hidden;
 }
-.xark-bubble-corner::before {
+.hello-bubble-corner::before {
   content: '';
   position: absolute;
   top: 0; left: 0;
@@ -288,7 +288,7 @@ input, textarea, [contenteditable] {
   background-size: 100% 300%;
   animation: liquidCornerV 2s ease-in-out infinite;
 }
-.xark-bubble-corner::after {
+.hello-bubble-corner::after {
   content: '';
   position: absolute;
   top: 0; left: 0;
@@ -305,24 +305,24 @@ input, textarea, [contenteditable] {
    Liquid Fire freezes to static Deep Rose. Breath stops. Bloom stops.
    Layout and color hierarchy are preserved — only motion is removed. */
 @media (prefers-reduced-motion: reduce) {
-  .xark-glow-anchor,
+  .hello-glow-anchor,
   .caret-breath,
-  .xark-text-led,
-  .xark-bg-led,
+  .hello-text-led,
+  .hello-bg-led,
   .liquid-brand-text,
-  .xark-bubble-corner::before,
-  .xark-bubble-corner::after {
+  .hello-bubble-corner::before,
+  .hello-bubble-corner::after {
     animation: none !important;
     transition: none !important;
   }
-  .xark-text-led {
+  .hello-text-led {
     color: #FF6B35 !important;
     background: none !important;
     -webkit-background-clip: unset;
     background-clip: unset;
     -webkit-text-fill-color: #FF6B35;
   }
-  .xark-bg-led {
+  .hello-bg-led {
     background: #FF6B35 !important;
   }
   .liquid-brand-text {

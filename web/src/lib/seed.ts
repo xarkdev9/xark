@@ -1,4 +1,4 @@
-// XARK OS v2.0 — SEED PROTOCOL
+// hello OS v2.0 — SEED PROTOCOL
 // Populates Supabase Postgres with test users, spaces, members, items, messages.
 // Uses service_role key to bypass RLS.
 // Run via: npx tsx src/lib/seed.ts
@@ -36,7 +36,7 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 export async function seedHelloHome() {
-  console.log("seeding xark galaxy...\n");
+  console.log("seeding hello galaxy...\n");
 
   // ══════════════════════════════════
   // 0. Generate password hashes via pgcrypto
@@ -296,7 +296,7 @@ export async function seedHelloHome() {
   // ══════════════════════════════════
   // 5. MESSAGES
   // sender_name is set by trigger for user messages.
-  // xark messages have no sender_name.
+  // hello messages have no sender_name.
   // ══════════════════════════════════
   const now = Date.now();
   const minute = 60_000;
@@ -322,7 +322,7 @@ export async function seedHelloHome() {
     {
       id: "msg_sd_03",
       group_id: "space_san-diego-trip",
-      role: "xark",
+      role: "hello",
       content:
         "hotel del coronado fits the group's vibe — beachfront, historic, within budget range. coronado island marriott is bayfront, lower price.",
       user_id: null,
@@ -363,7 +363,7 @@ export async function seedHelloHome() {
     {
       id: "msg_sd_08",
       group_id: "space_san-diego-trip",
-      role: "xark",
+      role: "hello",
       content:
         "consensus reached on hotel del coronado. locked with confirmation HDC-29441.",
       user_id: null,

@@ -1,4 +1,4 @@
-// XARK OS v2.0 — CLAIM ENGINE
+// hello OS v2.0 — CLAIM ENGINE
 // Manual item claim: lock an item with proof, outside the automated handshake.
 // Source of truth: mar10_algo.md Section 7d (Green-Lock Commitment Protocol)
 // Two-step BOOKING_FLOW: locked items transition to "claimed" (not terminal).

@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS — Kinetic Welcome (Ad Demo)
+// hello OS — Kinetic Welcome (Ad Demo)
 // Apple-style: spring physics wordmark slam + CSS-only vertical reel.
 // Dark OLED. No particles. No glitch. Pure typography and motion.
 // Route: /demo/welcome
@@ -125,7 +125,7 @@ export default function DemoWelcomePage() {
 
         {/* ── CSS-only vertical marquee ── */}
         <style>{`
-          @keyframes xark-reel {
+          @keyframes hello-reel {
             to { translate: 0 var(--dest); }
           }
         `}</style>
@@ -148,7 +148,7 @@ export default function DemoWelcomePage() {
                   display: "flex",
                   alignItems: "center",
                   translate: `0 calc((${WORD_COUNT} - ${index}) * 100%)`,
-                  animation: `xark-reel ${TOTAL_DURATION}s calc((${TOTAL_DURATION}s / ${WORD_COUNT}) * ${index} - ${TOTAL_DURATION}s) infinite linear`,
+                  animation: `hello-reel ${TOTAL_DURATION}s calc((${TOTAL_DURATION}s / ${WORD_COUNT}) * ${index} - ${TOTAL_DURATION}s) infinite linear`,
                   ["--dest" as string]: `calc((${index} + 1) * -100%)`,
                 }}
               >

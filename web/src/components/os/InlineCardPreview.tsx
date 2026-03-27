@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Inline Card Preview
+// hello OS v2.0 — Inline Card Preview
 // Miniature decision card for rendering @hello results in the chat timeline.
 // Read-only. Tappable to navigate to Decide tab.
 

@@ -1,5 +1,5 @@
-// XARK OS v2.0 — Calendar Integration (Layers 1 & 2)
-// Spec: docs/superpowers/specs/2026-03-13-xark-capabilities-design.md (Section 2)
+// hello OS v2.0 — Calendar Integration (Layers 1 & 2)
+// Spec: docs/superpowers/specs/2026-03-13-hello-capabilities-design.md (Section 2)
 // Pure functions. No DB calls. No side effects.
 
 export interface LockedItemWithDates {

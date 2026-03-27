@@ -1,4 +1,4 @@
-// XARK OS v2.0 — SPACE CREATION ENGINE
+// hello OS v2.0 — SPACE CREATION ENGINE
 // The "Manifestation Loop": Dream → Space → Seed Item → Transit
 // Optimistic: UI navigates immediately, DB write is parallel.
 

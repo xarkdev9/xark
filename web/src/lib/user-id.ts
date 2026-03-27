@@ -1,4 +1,4 @@
-// XARK OS v2.0 — User ID Utilities
+// hello OS v2.0 — User ID Utilities
 // Centralizes user ID format logic. Replaces 14 hardcoded prefix instances.
 
 export type UserIdType = "name" | "phone";

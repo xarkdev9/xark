@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Display Name Resolver (Signal Hybrid Architecture)
+// hello OS v2.0 — Display Name Resolver (Signal Hybrid Architecture)
 // Priority: Local Contact Cache (IndexedDB) → Server display_name → phone fallback.
 // The local cache is progressively built from Contact Picker interactions.
 // Zero server scraping. Privacy-first.

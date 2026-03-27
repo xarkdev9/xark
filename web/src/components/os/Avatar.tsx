@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Shared Avatar Component
+// hello OS v2.0 — Shared Avatar Component
 // First-letter fallback when no photo. No border (Zero-Box).
 // shape="circle" (default, people) or "square" (plans, spaces in vibe mode).
 

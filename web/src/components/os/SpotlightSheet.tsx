@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Spotlight Sheet
+// hello OS v2.0 — Spotlight Sheet
 // Half-sheet overlay: GhostInput + space chips + 800ms morph animation.
 // Constitution: no bold, no borders, theme tokens only, Zero-Box for feed items.
 // Sheet overlay gets 20px top border-radius (system overlay exception).

@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — CLAIM SHEET
+// hello OS v2.0 — CLAIM SHEET
 // Slide-up sheet for claiming a locked item.
 // "i'll handle this" — stamps owner on BOOKING_FLOW locked items.
 // Constitutional: no buttons, no boxes, floating text only.

@@ -1,4 +1,4 @@
-// XARK OS v2.0 — PASSWORD-GATED LOGIN ENDPOINT
+// hello OS v2.0 — PASSWORD-GATED LOGIN ENDPOINT
 // POST /api/dev-auto-login — password-protected login for testing.
 // Generates a JWT via jose (Node.js) for a user verified by shared password.
 // Gate: Returns 401 if password doesn't match LOGIN_PASSWORD env var.

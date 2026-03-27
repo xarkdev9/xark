@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — CONSENSUS BANNER
+// hello OS v2.0 — CONSENSUS BANNER
 // Pinned system banner that appears above chat when a decision item's
 // consensus countdown is active (lock_deadline set, not yet locked).
 // Constitutional: no borders, no bold, theme tokens only, zero-box.

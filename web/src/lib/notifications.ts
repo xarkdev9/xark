@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Notification Service
+// hello OS v2.0 — Notification Service
 // Server-side FCM push via Firebase Admin SDK.
 // Safe: no-op when firebase-admin is not configured.
 

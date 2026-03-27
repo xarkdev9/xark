@@ -46,9 +46,9 @@ export async function encryptChunk(
 ): Promise<Uint8Array> {
   const nonce = deriveChunkNonce(baseNonce, chunkIndex);
   const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: nonce },
+    { name: 'AES-GCM', iv: nonce as unknown as BufferSource },
     key,
-    plaintext,
+    plaintext as unknown as BufferSource,
   );
   // Wire format: [4 bytes index] [ciphertext + tag]
   const indexBytes = new Uint8Array(4);
@@ -75,9 +75,9 @@ export async function decryptChunk(
   const ciphertext = encrypted.slice(4);
   const nonce = deriveChunkNonce(baseNonce, chunkIndex);
   const plaintext = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: nonce },
+    { name: 'AES-GCM', iv: nonce as unknown as BufferSource },
     key,
-    ciphertext,
+    ciphertext as unknown as BufferSource,
   );
   return new Uint8Array(plaintext);
 }
@@ -106,7 +106,7 @@ export async function generateStreamingKey(): Promise<{
 export async function importStreamingKey(rawKey: Uint8Array): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     'raw',
-    rawKey,
+    rawKey.buffer as ArrayBuffer,
     { name: 'AES-GCM', length: 256 },
     false, // non-extractable — decrypt only
     ['encrypt', 'decrypt'],
@@ -156,7 +156,7 @@ export async function encryptFileStreaming(file: File | Blob): Promise<{
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 
-  const encryptedBlob = new Blob(encryptedParts, { type: 'application/octet-stream' });
+  const encryptedBlob = new Blob(encryptedParts as unknown as BlobPart[], { type: 'application/octet-stream' });
 
   return {
     encryptedBlob,
@@ -212,7 +212,7 @@ export async function decryptFileStreaming(
     blobOffset = chunkEnd;
   }
 
-  const decryptedBlob = new Blob(decryptedParts, { type: mimeType });
+  const decryptedBlob = new Blob(decryptedParts as unknown as BlobPart[], { type: mimeType });
   return URL.createObjectURL(decryptedBlob);
 }
 

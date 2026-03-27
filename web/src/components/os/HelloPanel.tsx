@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — HelloPanel (Raycast-style AI Assistant Panel)
+// hello OS v2.0 — HelloPanel (Raycast-style AI Assistant Panel)
 // Input at thumb arc (bottom). Results grow upward. Category results → Decide stream.
 // Conversational answers render as glanceable micro-widgets inline.
 // Drag-to-dismiss. Haptic feedback. Ghost recents. Ambient context.

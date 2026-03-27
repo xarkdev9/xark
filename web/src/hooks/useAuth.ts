@@ -1,4 +1,4 @@
-// XARK OS v2.0 — AUTH HOOK
+// hello OS v2.0 — AUTH HOOK
 // Firebase Auth (production) + password login (testing).
 // Wires the JWT to the Supabase client for RLS enforcement.
 // Caches JWT + user in sessionStorage to survive page refreshes.
@@ -12,19 +12,19 @@ import { auth } from "@/lib/firebase";
 import { setSupabaseToken } from "@/lib/supabase";
 import { makeUserId } from "@/lib/user-id";
 
-export interface XarkUser {
+export interface HelloUser {
   uid: string;
   displayName: string;
 }
 
-const SESSION_KEY = "xark_session";
+const SESSION_KEY = "hello_session";
 
 // Transient password — never persisted to storage. Set by login page, cleared after use.
 let _transientPassword = "";
 
 interface CachedSession {
   token: string;
-  user: XarkUser;
+  user: HelloUser;
   expiresAt: number;
 }
 
@@ -42,7 +42,7 @@ function getCachedSession(): CachedSession | null {
   }
 }
 
-function cacheSession(token: string, user: XarkUser) {
+function cacheSession(token: string, user: HelloUser) {
   if (typeof window === "undefined") return;
   const session: CachedSession = {
     token,
@@ -51,7 +51,7 @@ function cacheSession(token: string, user: XarkUser) {
   };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   // E2EE key-manager reads userId from localStorage
-  localStorage.setItem("xark_user_id", user.uid);
+  localStorage.setItem("hello_user_id", user.uid);
 }
 
 /** Set the transient password for dev login. Called by login page — never persisted. */
@@ -60,7 +60,7 @@ export function setDevPassword(pw: string) { _transientPassword = pw; }
 // Password-gated login: call /api/dev-auto-login with username + password.
 async function devAutoLogin(
   username: string
-): Promise<{ user: XarkUser; token: string } | null> {
+): Promise<{ user: HelloUser; token: string } | null> {
   try {
     const password = _transientPassword;
 
@@ -73,7 +73,7 @@ async function devAutoLogin(
     if (!res.ok) return null;
 
     const data = await res.json();
-    const user: XarkUser = { uid: data.user.id, displayName: data.user.displayName };
+    const user: HelloUser = { uid: data.user.id, displayName: data.user.displayName };
     const token: string = data.token;
 
     // Cache for subsequent page loads
@@ -87,25 +87,25 @@ async function devAutoLogin(
 
 // Restore cached session synchronously — called once at module level.
 // This ensures the Supabase client has the JWT BEFORE any React effects run.
-function restoreCachedToken(): { user: XarkUser; restored: boolean } | null {
+function restoreCachedToken(): { user: HelloUser; restored: boolean } | null {
   const cached = getCachedSession();
   if (cached) {
     setSupabaseToken(cached.token);
-    localStorage.setItem("xark_user_id", cached.user.uid);
+    localStorage.setItem("hello_user_id", cached.user.uid);
     return { user: cached.user, restored: true };
   }
   return null;
 }
 
 export function useAuth(fallbackName?: string): {
-  user: XarkUser | null;
+  user: HelloUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 } {
   // Try to restore cached session synchronously on first render.
   // This sets the JWT on the Supabase client IMMEDIATELY, before any effect.
   const initialSession = useRef(restoreCachedToken());
-  const [user, setUser] = useState<XarkUser | null>(
+  const [user, setUser] = useState<HelloUser | null>(
     initialSession.current?.user ?? null
   );
   const [isLoading, setIsLoading] = useState(
@@ -131,9 +131,9 @@ export function useAuth(fallbackName?: string): {
         setUser(result.user);
       } else {
         // 3. No auth available — use name fallback (no RLS, demo mode)
-        console.warn("[xark-auth] NO JWT — name-only fallback (RLS will block writes)");
+        console.warn("[hello-auth] NO JWT — name-only fallback (RLS will block writes)");
         const fallbackUser = { uid: makeUserId("name", name), displayName: name };
-        localStorage.setItem("xark_user_id", fallbackUser.uid);
+        localStorage.setItem("hello_user_id", fallbackUser.uid);
         setUser(fallbackUser);
       }
       setIsLoading(false);

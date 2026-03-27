@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Encrypted IndexedDB Store
+// hello OS v2.0 — Encrypted IndexedDB Store
 // Encrypts all IndexedDB values with a master wrapping key.
 // Key derived from user PIN via Argon2id. Lives in RAM only.
 // Signal Desktop approach: at-rest encryption for key material.
@@ -87,7 +87,7 @@ export function decryptFromStorage(stored: string): Uint8Array {
   // Encrypted format
   if (stored.startsWith('enc:')) {
     if (!wrappingKey) {
-      throw new Error('[xark-e2ee] Store is locked — call unlockStore() first');
+      throw new Error('[hello-e2ee] Store is locked — call unlockStore() first');
     }
     const packed = fromBase64(stored.slice(4));
     const nonce = packed.slice(0, 24); // XChaCha20 uses 24-byte nonce

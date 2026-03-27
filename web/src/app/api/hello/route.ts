@@ -1,4 +1,4 @@
-// XARK OS v2.0 — @hello Intelligence Endpoint
+// hello OS v2.0 — @hello Intelligence Endpoint
 // Silent unless message contains "@hello". Privacy-first.
 // UPGRADE 4: maxDuration + optimistic "thinking..." UI via Supabase Realtime.
 
@@ -12,7 +12,6 @@ import { sanitizeForIntelligence } from "@/lib/intelligence/sanitize";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { applyLogisticsExtractions, flagStaleLogistics } from "@/lib/member-logistics";
 import { verifyAuth } from "@/lib/auth-verify";
-import { checkRateLimit } from "@/lib/rate-limit";
 import { intersectTasteProfiles, type TasteContext } from "@/lib/taste";
 
 const MAX_MESSAGE_LENGTH = 1000;
@@ -43,7 +42,7 @@ async function fetchPexelsUrl(query: string): Promise<string | null> {
 }
 
 export async function POST(req: NextRequest) {
-  let xarkMsgId: string | null = null;
+  let helloMsgId: string | null = null;
   try {
   if (!supabaseAdmin) {
     return NextResponse.json({ response: "server not configured." }, { status: 500 });
@@ -151,12 +150,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ response: null }, { status: 401 });
   }
 
-  // H4 fix: rate limit keyed on verified JWT userId, not client-supplied
-  if (!checkRateLimit(`xark:${auth.userId}`, 10)) {
-    return NextResponse.json({
-      response: "group is moving too fast. take a breath. try again in a minute.",
-    });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   // Verify caller is a member of the target space
   const { data: membershipCheck } = await supabaseAdmin
@@ -176,29 +170,27 @@ export async function POST(req: NextRequest) {
   const recentMsgs = await fetchMessages(groupId, { limit: 15 });
 
   const msgLower = message?.toLowerCase() ?? "";
-  const hasXarkPrefix = !!(message && msgLower.includes("@hello"));
+  const hasHelloPrefix = !!(message && msgLower.includes("@hello"));
   let isFollowUp = false;
-  let xarkQuestion = "";
+  let helloQuestion = "";
 
-  if (!hasXarkPrefix && recentMsgs.length > 0) {
+  if (!hasHelloPrefix && recentMsgs.length > 0) {
     const lastMsg = recentMsgs[recentMsgs.length - 1];
-    if (lastMsg.role === "xark") {
+    if (lastMsg.role === "hello") {
       const isQuestion = lastMsg.content?.includes("?") ?? false;
       const msgTime = new Date(lastMsg.created_at).getTime();
       const isRecent = (Date.now() - msgTime) < 3 * 60 * 1000;
       if (isQuestion && isRecent) {
         isFollowUp = true;
-        xarkQuestion = lastMsg.content;
+        helloQuestion = lastMsg.content;
       }
     }
   }
 
-  if (isFollowUp && !checkRateLimit(`xark-followup:${groupId}`, 1, 300_000)) {
-    return NextResponse.json({ response: null });
-  }
+  // Follow-up rate limiting moved to edge proxy (BACKEND-03)
 
   // SILENT MODE: no "@hello" prefix and not a valid follow-up = exit early (ZERO heavy DB reads)
-  if (!message || (!hasXarkPrefix && !isFollowUp)) {
+  if (!message || (!hasHelloPrefix && !isFollowUp)) {
     return NextResponse.json({ response: null });
   }
 
@@ -220,9 +212,9 @@ export async function POST(req: NextRequest) {
     try { tasteContext = intersectTasteProfiles(tasteRaw); } catch { /* silent */ }
   }
 
-  let userMessage = hasXarkPrefix ? message.replace(/@(?:xark|hello)\s*/i, "").trim() : message.trim();
+  let userMessage = hasHelloPrefix ? message.replace(/@(?:hello|hello)\s*/i, "").trim() : message.trim();
   if (isFollowUp) {
-    userMessage = `[Answering your question: "${xarkQuestion}"] ${userMessage}`;
+    userMessage = `[Answering your question: "${helloQuestion}"] ${userMessage}`;
   }
 
   const spaceTitle = spaceRow?.title ?? groupId.replace(/^space_/, "").replace(/-/g, " ");
@@ -235,31 +227,31 @@ export async function POST(req: NextRequest) {
   }));
 
   // ── PHANTOM RECEIPT — instant visible feedback (skipped in silent mode) ──
-  const queryText = (message ?? "").replace(/@(?:xark|hello)\s*/i, "").trim();
+  const queryText = (message ?? "").replace(/@(?:hello|hello)\s*/i, "").trim();
   const senderName = senderRow?.display_name ?? auth.userId.replace(/^phone_/, "");
-  xarkMsgId = `msg_${crypto.randomUUID()}`;
+  helloMsgId = `msg_${crypto.randomUUID()}`;
   if (!silent) {
     await supabaseAdmin.from("messages").insert({
-      id: xarkMsgId,
+      id: helloMsgId,
       group_id: groupId,
-      role: "xark",
+      role: "hello",
       content: `${senderName} is scouting ${queryText || "..."}`,
       user_id: auth.userId,
       sender_name: null,
-      message_type: "xark_receipt",
+      message_type: "helloReceipt",
     });
   }
 
   // ── Orchestrate with realtime thinking updates (PRIORITY 9) ──
   const updateReceipt = async (text: string) => {
-    await supabaseAdmin.from("messages").update({ content: text }).eq("id", xarkMsgId);
+    await supabaseAdmin.from("messages").update({ content: text }).eq("id", helloMsgId);
   };
 
   // ── PRIORITY 11: Build base webhook URL for async Apify actors ──
   // The orchestrator appends &tool=<toolName> after Gemini determines the tool.
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gethello.ai";
-  const queryTextForLabel = (message ?? "").replace(/@(?:xark|hello)\s*/i, "").trim().toLowerCase();
-  const webhookUrl = `${baseUrl}/api/hello/webhook?groupId=${encodeURIComponent(groupId)}&msgId=${encodeURIComponent(xarkMsgId)}&label=${encodeURIComponent(queryTextForLabel)}`;
+  const queryTextForLabel = (message ?? "").replace(/@(?:hello|hello)\s*/i, "").trim().toLowerCase();
+  const webhookUrl = `${baseUrl}/api/hello/webhook?groupId=${encodeURIComponent(groupId)}&msgId=${encodeURIComponent(helloMsgId)}&label=${encodeURIComponent(queryTextForLabel)}`;
 
   const result = await orchestrate({
     userMessage,
@@ -277,12 +269,12 @@ export async function POST(req: NextRequest) {
   // The webhook will insert decision_items and update the receipt when the actor finishes.
   if (result.action === "search" && !result.searchResults && result._debug?.asyncRunId) {
     await updateReceipt(`scouting ${queryTextForLabel || "..."}... results incoming.`);
-    return NextResponse.json({ response: result.response, messageId: xarkMsgId, async: true });
+    return NextResponse.json({ response: result.response, messageId: helloMsgId, async: true });
   }
 
   // If pending confirmation, delete the thinking message and return to client
   if (result.pendingConfirmation) {
-    await supabaseAdmin.from("messages").delete().eq("id", xarkMsgId);
+    await supabaseAdmin.from("messages").delete().eq("id", helloMsgId);
     return NextResponse.json({
       response: result.response,
       pendingConfirmation: true,
@@ -298,7 +290,7 @@ export async function POST(req: NextRequest) {
     const options = result.payload.options as string[];
     const replyText = result.response || "Created a poll. tap your pick.";
     const pollTitle = result.payload?.title || "Live Poll";
-    const bgPollMsgId = xarkMsgId;
+    const bgPollMsgId = helloMsgId;
 
     // PRIORITY 13: Background DB writes for poll items + receipt upgrade
     after(async () => {
@@ -322,29 +314,29 @@ export async function POST(req: NextRequest) {
 
         await supabaseAdmin!.from("messages").update({
           content: JSON.stringify({ text: replyText, title: pollTitle, poll_id: pollId }),
-          message_type: "xark_poll",
+          message_type: "hello_poll",
         }).eq("id", bgPollMsgId);
       } catch (bgErr) {
         console.error("[/api/hello] background poll write failed:", bgErr instanceof Error ? bgErr.message : String(bgErr));
       }
     });
 
-    return NextResponse.json({ response: replyText, messageId: xarkMsgId });
+    return NextResponse.json({ response: replyText, messageId: helloMsgId });
   }
 
   // ── Final sanity check — never persist garbage to DB ──
   if (isGarbageResponse(result.response)) {
     // Garbage cleanup must be synchronous — client gets error response
-    await supabaseAdmin.from("messages").delete().eq("id", xarkMsgId);
+    await supabaseAdmin.from("messages").delete().eq("id", helloMsgId);
     return NextResponse.json({
       response: "couldn't process that. try rephrasing.",
-      messageId: xarkMsgId,
+      messageId: helloMsgId,
     });
   }
 
   // ── Compute response text synchronously (needed for HTTP response) ──
   const resultCount = result.searchResults?.length ?? 0;
-  const queryLabel = (message ?? "").replace(/@(?:xark|hello)\s*/i, "").trim().toLowerCase();
+  const queryLabel = (message ?? "").replace(/@(?:hello|hello)\s*/i, "").trim().toLowerCase();
   const completionText = resultCount > 0
     ? `found ${resultCount} spots for ${queryLabel || "your search"}. decide →`
     : result.response;
@@ -353,13 +345,13 @@ export async function POST(req: NextRequest) {
   // Return HTTP response BEFORE final Supabase writes complete.
   // The phantom receipt's "scouting..." text is already visible via Realtime.
   // These writes update decision_items + receipt content for persistence.
-  const bgXarkMsgId = xarkMsgId;
+  const bgHelloMsgId = helloMsgId;
   after(async () => {
     try {
       // If search results exist, insert as decision_items with photos
       if (result.searchResults && result.searchResults.length > 0) {
         const searchBatch = `batch_${crypto.randomUUID().slice(0, 8)}`;
-        const queryTextLower = (message ?? "").replace(/@(?:xark|hello)\s*/i, "").trim().toLowerCase();
+        const queryTextLower = (message ?? "").replace(/@(?:hello|hello)\s*/i, "").trim().toLowerCase();
         const searchLabel = queryTextLower || `${spaceTitle} ${result.tool ?? "general"}`.trim();
         const category = result.tool ?? "general";
         const fallbackImg = CATEGORY_FALLBACKS[category] ?? CATEGORY_FALLBACKS.general;
@@ -404,7 +396,7 @@ export async function POST(req: NextRequest) {
       if (!silent) {
         await supabaseAdmin!.from("messages").update({
           content: completionText,
-        }).eq("id", bgXarkMsgId);
+        }).eq("id", bgHelloMsgId);
       }
     } catch (bgErr) {
       console.error("[/api/hello] background write failed:", bgErr instanceof Error ? bgErr.message : String(bgErr));
@@ -425,16 +417,16 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ response: completionText, messageId: xarkMsgId });
+  return NextResponse.json({ response: completionText, messageId: helloMsgId });
 
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error("[/api/hello] error:", errMsg);
 
-    if (xarkMsgId && supabaseAdmin) {
+    if (helloMsgId && supabaseAdmin) {
       await supabaseAdmin.from("messages").update({
         content: errMsg.includes("timeout") ? "took too long. try again." : "something went wrong. try again.",
-      }).eq("id", xarkMsgId);
+      }).eq("id", helloMsgId);
     }
 
     return NextResponse.json(

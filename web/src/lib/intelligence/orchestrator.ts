@@ -1,4 +1,4 @@
-// XARK OS v2.0 — @hello Intelligence Orchestrator
+// hello OS v2.0 — @hello Intelligence Orchestrator
 // Gemini parses intent → routes to Apify tool → synthesizes response.
 // Stateless. No state stored. Reads grounding context + last 15 messages.
 // Native JSON mode (responseMimeType), chain-of-thought (_thought_process),
@@ -239,7 +239,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
   const conversationHistory = input.recentMessages
     .filter((m) => m.content && m.content.trim().length > 0)
     .map((m) => ({
-      role: m.role === "xark" ? "model" as const : "user" as const,
+      role: m.role === "hello" ? "model" as const : "user" as const,
       parts: [{ text: `${m.sender_name ? m.sender_name + ": " : ""}${m.content}` }],
     }));
 

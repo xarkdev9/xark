@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Physics Engine (Framer Motion Tokens)
+// hello OS v2.0 — Physics Engine (Framer Motion Tokens)
 // ALL transitions in the app must use these spring configs.
 // CSS ease/linear transitions are BANNED. Everything is physical.
 //
@@ -9,7 +9,7 @@
 import type { Transition } from "framer-motion";
 
 // ── Spring Configs ─────────────────────────────────────────────────────────
-// Every UI motion in Xark uses one of these. No exceptions.
+// Every UI motion in hello uses one of these. No exceptions.
 
 export const spring = {
   /** Button taps, micro-interactions, instant responses. Heavy feel. */

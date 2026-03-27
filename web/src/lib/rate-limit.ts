@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Centralized Rate Limiter
+// hello OS v2.0 — Centralized Rate Limiter
 // Supabase Postgres-backed sliding window. Works across all serverless instances.
 // Synchronous signature preserved for backward compat with existing callers.
 // Fire-and-forget Postgres RPC builds centralized state across Lambda instances.
@@ -72,13 +72,13 @@ async function checkRateLimitPostgres(
     });
 
     if (error) {
-      console.warn('[xark-rate-limit] RPC failed, using fallback:', error.message);
+      console.warn('[hello-rate-limit] RPC failed, using fallback:', error.message);
       return null;
     }
 
     return data === true;
   } catch (err) {
-    console.warn('[xark-rate-limit] RPC unreachable, using fallback:', err);
+    console.warn('[hello-rate-limit] RPC unreachable, using fallback:', err);
     return null;
   }
 }

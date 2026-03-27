@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SignJWT } from "jose";
 import { makeUserId } from "@/lib/user-id";
-import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limit by IP — prevent invite token brute-force
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    if (!checkRateLimit(`join:${ip}`, 10)) {
-      return NextResponse.json({ error: "too many attempts" }, { status: 429 });
-    }
+    // Rate limiting moved to edge proxy (BACKEND-03)
 
     const { token, displayName } = await req.json();
     if (!token || !displayName) {
@@ -85,7 +80,7 @@ export async function POST(req: NextRequest) {
       groupId: invite.group_id,
     });
   } catch (err) {
-    console.error("[xark] join error:", err);
+    console.error("[hello] join error:", err);
     return NextResponse.json({ error: "join failed" }, { status: 500 });
   }
 }

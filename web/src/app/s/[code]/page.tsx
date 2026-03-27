@@ -215,7 +215,7 @@ export default function SummonPage() {
         await claimLink(firebaseToken, displayName);
       } else {
         // New user — ask for name
-        (window as unknown as Record<string, unknown>)["__xark_summon_token"] = firebaseToken;
+        (window as unknown as Record<string, unknown>)["__hello_invite_token"] = firebaseToken;
         setPhoneAction("idle");
         setAuthStep("name");
       }
@@ -256,7 +256,7 @@ export default function SummonPage() {
         setSupabaseToken(token);
         if (typeof window !== "undefined") {
           sessionStorage.setItem(
-            "xark_session",
+            "hello_session",
             JSON.stringify({
               token,
               user: { uid: user.id, displayName: user.displayName },
@@ -285,7 +285,7 @@ export default function SummonPage() {
   // ── Name submit: claim with stored token ──
   const submitName = useCallback(async () => {
     if (!nameInput.trim()) return;
-    const storedToken = (window as unknown as Record<string, unknown>)["__xark_summon_token"] as
+    const storedToken = (window as unknown as Record<string, unknown>)["__hello_invite_token"] as
       | string
       | undefined;
     if (!storedToken) {
@@ -460,7 +460,7 @@ export default function SummonPage() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {/* xark wordmark */}
+            {/* hello wordmark */}
             <div style={{ marginBottom: "32px" }}>
               <span
                 style={{
@@ -955,7 +955,7 @@ export default function SummonPage() {
 
       <style jsx>{`
         input::placeholder {
-          color: var(--xark-ink-tertiary);
+          color: var(--hello-ink-tertiary);
           opacity: 1;
           letter-spacing: 0.08em;
         }

@@ -1,10 +1,10 @@
 "use client";
 
-// XARK OS v2.0 — Ghost Input
+// hello OS v2.0 — Ghost Input
 // Pre-fills with whisper text at opacity 0.4 (ghost layer).
 // Type = ghost shatters (AnimatePresence exit). Send = accept ghost as-is.
-// No ghost = clean input with placeholder "ask xark anything..."
-// Zero borders, zero boxes, zero bold. Pure Xark constitution.
+// No ghost = clean input with placeholder "ask hello anything..."
+// Zero borders, zero boxes, zero bold. Pure hello constitution.
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -174,7 +174,7 @@ export function GhostInput({
 
       <style jsx>{`
         textarea::placeholder {
-          color: var(--xark-ink-tertiary);
+          color: var(--hello-ink-tertiary);
           opacity: 0.6;
           letter-spacing: 0.04em;
         }

@@ -32,7 +32,7 @@ export default function JoinPage() {
       }
 
       setSupabaseToken(data.token);
-      localStorage.setItem("xark-user", JSON.stringify(data.user));
+      localStorage.setItem("hello-user", JSON.stringify(data.user));
       router.push(`/space/${data.groupId}`);
     } catch {
       setError("something went wrong");

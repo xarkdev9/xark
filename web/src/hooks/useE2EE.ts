@@ -1,4 +1,4 @@
-// XARK OS v2.0 — E2EE Hook
+// hello OS v2.0 — E2EE Hook
 // Manages E2EE lifecycle: init, key registration, encrypt/decrypt.
 // Gracefully degrades to legacy mode if migration 014 not applied.
 
@@ -28,7 +28,7 @@ async function recoverUnackedRatchets(): Promise<void> {
     const unacked = await keyStore.getUnackedRatchets();
     if (unacked.length === 0) return;
 
-    console.log(`[xark-e2ee] Found ${unacked.length} unacked ratchet(s) — recovering`);
+    console.log(`[hello-e2ee] Found ${unacked.length} unacked ratchet(s) — recovering`);
 
     const { getPendingMessages } = await import("@/lib/crypto/outbox");
     const outboxEntries = await getPendingMessages();
@@ -43,7 +43,7 @@ async function recoverUnackedRatchets(): Promise<void> {
       if (age > STALE_THRESHOLD_MS) {
         // Old entry — message definitely failed to send. Chain index consumed (gap).
         console.log(
-          `[xark-e2ee] Cleaning stale unacked ratchet ${entry.messageId} ` +
+          `[hello-e2ee] Cleaning stale unacked ratchet ${entry.messageId} ` +
           `(age: ${Math.round(age / 1000)}s, type: ${entry.sessionType})`
         );
         await keyStore.ackRatchet(entry.messageId);
@@ -57,12 +57,12 @@ async function recoverUnackedRatchets(): Promise<void> {
         if (isInOutbox) {
           // Outbox retry will handle the send — leave the unacked entry alone.
           console.log(
-            `[xark-e2ee] Unacked ratchet ${entry.messageId} found in outbox — leaving for retry`
+            `[hello-e2ee] Unacked ratchet ${entry.messageId} found in outbox — leaving for retry`
           );
         } else {
           // Not in outbox, send was abandoned mid-flight. Clean up.
           console.log(
-            `[xark-e2ee] Cleaning recent orphaned ratchet ${entry.messageId} ` +
+            `[hello-e2ee] Cleaning recent orphaned ratchet ${entry.messageId} ` +
             `(age: ${Math.round(age / 1000)}s, not in outbox)`
           );
           await keyStore.ackRatchet(entry.messageId);
@@ -71,7 +71,7 @@ async function recoverUnackedRatchets(): Promise<void> {
     }
   } catch (err) {
     // Non-fatal — recovery is best-effort
-    console.warn("[xark-e2ee] Unacked ratchet recovery failed:", err);
+    console.warn("[hello-e2ee] Unacked ratchet recovery failed:", err);
   }
 }
 
@@ -96,7 +96,7 @@ async function requestSKsFromAllSpaces(userId: string, deviceId: number): Promis
     if (!memberships || memberships.length === 0) return;
 
     const groupIds = memberships.map((m) => m.group_id);
-    console.log(`[xark-e2ee] Proactive SK recovery: ${groupIds.length} spaces`);
+    console.log(`[hello-e2ee] Proactive SK recovery: ${groupIds.length} spaces`);
 
     // For each space, find other members who have registered keys
     for (const groupId of groupIds) {
@@ -112,10 +112,10 @@ async function requestSKsFromAllSpaces(userId: string, deviceId: number): Promis
         requestMissingSenderKey(groupId, dev.user_id, userId, deviceId).catch(() => {});
       }
 
-      console.log(`[xark-e2ee] Requested SK from ${devices.length} member(s) in ${groupId.slice(0, 12)}...`);
+      console.log(`[hello-e2ee] Requested SK from ${devices.length} member(s) in ${groupId.slice(0, 12)}...`);
     }
   } catch (err) {
-    console.warn("[xark-e2ee] Proactive SK recovery failed:", err);
+    console.warn("[hello-e2ee] Proactive SK recovery failed:", err);
   }
 }
 
@@ -156,7 +156,7 @@ export function useE2EE(userId: string | null): E2EEState & {
     if (userId !== prevUserIdRef.current) {
       prevUserIdRef.current = userId;
       if (initRef.current) {
-        console.log('[xark-e2ee] userId changed — resetting init guard for re-initialization');
+        console.log('[hello-e2ee] userId changed — resetting init guard for re-initialization');
         initRef.current = false;
         setState({ ready: false, available: false, deviceId: null });
       }
@@ -179,12 +179,12 @@ export function useE2EE(userId: string | null): E2EEState & {
           retries++;
         }
         if (!getSupabaseToken()) {
-          console.error("[xark-e2ee] No JWT after retries — E2EE unavailable");
+          console.error("[hello-e2ee] No JWT after retries — E2EE unavailable");
           setState({ ready: true, available: false, deviceId: null });
           return;
         }
         if (retries > 0) {
-          console.log(`[xark-e2ee] JWT ready after ${retries} retries`);
+          console.log(`[hello-e2ee] JWT ready after ${retries} retries`);
         }
 
         // Dynamic imports — avoid SSR issues with WASM (libsodium)
@@ -210,7 +210,7 @@ export function useE2EE(userId: string | null): E2EEState & {
             return;
           } catch (err) {
             // Migration 014 not applied — E2EE tables don't exist yet
-            console.warn("[xark-e2ee] Key registration failed:", err);
+            console.warn("[hello-e2ee] Key registration failed:", err);
             setState({ ready: true, available: false, deviceId: null });
             return;
           }
@@ -227,7 +227,7 @@ export function useE2EE(userId: string | null): E2EEState & {
             .eq("user_id", userId)
             .eq("device_id", deviceId);
           if (count === 0) {
-            console.warn("[xark-e2ee] Local keys exist but server bundle missing — re-registering");
+            console.warn("[hello-e2ee] Local keys exist but server bundle missing — re-registering");
             await keyStore.clear();
             const result = await registerKeys();
             setState({ ready: true, available: true, deviceId: result.deviceId });
@@ -239,7 +239,7 @@ export function useE2EE(userId: string | null): E2EEState & {
           }
         } catch (verifyErr) {
           // Verification query failed — proceed optimistically
-          console.warn("[xark-e2ee] Server bundle check failed:", verifyErr);
+          console.warn("[hello-e2ee] Server bundle check failed:", verifyErr);
         }
 
         // E2EE fully wired — local + server in sync
@@ -251,7 +251,7 @@ export function useE2EE(userId: string | null): E2EEState & {
         // Replenish OTKs in background (fire-and-forget)
         replenishOTKsIfNeeded().catch(() => {});
       } catch (err) {
-        console.warn("[xark-e2ee] Init failed:", err);
+        console.warn("[hello-e2ee] Init failed:", err);
         setState({ ready: true, available: false, deviceId: null });
       }
     }
@@ -273,7 +273,7 @@ export function useE2EE(userId: string | null): E2EEState & {
         );
         return await encryptForSpace(text, groupId, media, linkPreview);
       } catch (err) {
-        console.warn("[xark-e2ee] Encrypt failed:", err);
+        console.warn("[hello-e2ee] Encrypt failed:", err);
         return null;
       }
     },
@@ -305,7 +305,7 @@ export function useE2EE(userId: string | null): E2EEState & {
           groupId
         );
       } catch (err) {
-        console.warn("[xark-e2ee] Decrypt failed:", err);
+        console.warn("[hello-e2ee] Decrypt failed:", err);
         throw err;
       }
     },

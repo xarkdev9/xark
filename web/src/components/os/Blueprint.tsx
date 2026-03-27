@@ -342,7 +342,7 @@ export function Blueprint({ groupId }: BlueprintProps) {
                 href={generateVenmoLink(
                   delta.toName,
                   delta.amount,
-                  `xark settle — group trip`
+                  `hello settle — group trip`
                 )}
                 style={{
                   fontSize: "0.6rem",
@@ -368,7 +368,7 @@ export function Blueprint({ groupId }: BlueprintProps) {
                   `${delta.toName}@upi`,
                   delta.toName,
                   delta.amount,
-                  `xark settle — group trip`
+                  `hello settle — group trip`
                 )}
                 style={{
                   fontSize: "0.6rem",

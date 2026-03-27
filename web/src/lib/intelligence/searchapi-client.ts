@@ -1,4 +1,4 @@
-// XARK OS v2.0 — SearchApi Client
+// hello OS v2.0 — SearchApi Client
 // Replaces Apify for Google Hotels, Flights, Local, and Search.
 // ~2-5s per query vs Apify's 15-40s. Real Google data with images.
 

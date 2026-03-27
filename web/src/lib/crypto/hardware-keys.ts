@@ -19,7 +19,7 @@ export async function wrapKey(plaintext: Uint8Array): Promise<Uint8Array> {
   const ciphertext = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     wrappingKey,
-    plaintext,
+    plaintext.buffer as ArrayBuffer,
   );
   // Format: iv(12) + ciphertext + tag
   const result = new Uint8Array(12 + ciphertext.byteLength);

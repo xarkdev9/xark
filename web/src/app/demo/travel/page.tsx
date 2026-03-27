@@ -1,13 +1,13 @@
 "use client";
 
-// XARK OS — Travel Ad Demo
+// hello OS — Travel Ad Demo
 // Full Netflix vertical scroll: flights, hotels, rental cars.
 // Friends vote in real-time → user tips consensus → GOLD BURST.
 // Self-contained. No Supabase.
 
 import { useState, useCallback, useRef, useEffect, type TouchEvent } from "react";
 import { motion } from "framer-motion";
-import { XarkChat } from "@/components/os/XarkChat";
+import { HelloChat } from "@/components/os/HelloChat";
 import DecisionBoard from "@/components/os/DecisionBoard";
 import { ChatInput } from "@/components/os/ChatInput";
 import { colors, ink, text, surface } from "@/lib/theme";
@@ -298,8 +298,8 @@ export default function TravelDemoPage() {
         setMessages((prev) => [
           ...prev,
           {
-            id: `xark_${Date.now()}`,
-            role: "xark",
+            id: `hello_${Date.now()}`,
+            role: "hello",
             content: "found flights, hotels, and cars for tokyo",
             timestamp: Date.now(),
             senderName: "@hello",
@@ -413,7 +413,7 @@ export default function TravelDemoPage() {
         onTouchEnd={onSwipeEnd}
       >
         {view === "discuss" && (
-          <XarkChat
+          <HelloChat
             groupId="demo_travel"
             spaceTitle="tokyo april 2026"
             messages={messages}

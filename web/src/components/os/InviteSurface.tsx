@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — INVITE SURFACE
+// hello OS v2.0 — INVITE SURFACE
 // Empty state for the People tab when the user has 0 contacts.
 // Tappable surface: generates an invite link and shares/copies it.
 
@@ -84,7 +84,7 @@ export function InviteSurface({ userName }: InviteSurfaceProps) {
       <motion.div
         className="pointer-events-none absolute inset-0"
         style={{
-          background: `radial-gradient(ellipse 80% 60% at 50% 50%, rgba(var(--xark-accent-rgb), 1) 0%, transparent 70%)`,
+          background: `radial-gradient(ellipse 80% 60% at 50% 50%, rgba(var(--hello-accent-rgb), 1) 0%, transparent 70%)`,
         }}
         animate={{ opacity: [0.02, 0.05, 0.02] }}
         transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}

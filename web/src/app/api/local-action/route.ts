@@ -1,11 +1,10 @@
-// XARK OS v2.0 — Tier 1 Mutation Endpoint
+// hello OS v2.0 — Tier 1 Mutation Endpoint
 // JWT-validated, supabaseAdmin writes. Atomic: mutation + ledger entry.
 // Upserts space_dates for date commands.
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { verifyAuth } from "@/lib/auth-verify";
-import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   // ── Auth ──
@@ -21,10 +20,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "missing action or groupId" }, { status: 400 });
   }
 
-  // H6 fix: rate limit mutations
-  if (!checkRateLimit(`local-action:${auth.userId}`, 20)) {
-    return NextResponse.json({ error: "too many actions" }, { status: 429 });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   // ── Membership check (skip for create_space — space doesn't exist yet) ──
   if (action !== "create_space") {
@@ -174,7 +170,7 @@ export async function POST(req: Request) {
 
     // ── create_space — atomic: space + creator member + optional invite + seed message ──
     if (action === "create_space") {
-      const { title, invite_username,groupType } = payload ?? {};
+      const { title, invite_username, groupType, atmosphere } = payload ?? {} as any;
       if (!title) return NextResponse.json({ error: "missing title" }, { status: 400 });
       if (String(title).length > 100) {
         return NextResponse.json({ error: "title too long" }, { status: 400 });

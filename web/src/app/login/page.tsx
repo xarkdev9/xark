@@ -191,7 +191,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       setSupabaseToken(data.token);
-      sessionStorage.setItem("xark_session", JSON.stringify({
+      sessionStorage.setItem("hello_session", JSON.stringify({
         token: data.token, user: { uid: data.user.id, displayName: data.user.displayName },
         expiresAt: Date.now() + 23 * 60 * 60 * 1000,
       }));
@@ -225,13 +225,13 @@ export default function LoginPage() {
   // ── Save Name ──
   const saveName = useCallback(async () => {
     if (!name.trim()) return;
-    const cached = sessionStorage.getItem("xark_session");
+    const cached = sessionStorage.getItem("hello_session");
     if (cached) {
       try {
         const session = JSON.parse(cached);
         await supabase.from("users").update({ display_name: name.trim().toLowerCase() }).eq("id", session.user.uid);
         session.user.displayName = name.trim().toLowerCase();
-        sessionStorage.setItem("xark_session", JSON.stringify(session));
+        sessionStorage.setItem("hello_session", JSON.stringify(session));
       } catch {}
     }
     setFieldStep("photo");
@@ -267,7 +267,7 @@ export default function LoginPage() {
   const isBusy = phoneAction !== "idle";
 
   return (
-    <div className="relative flex min-h-svh flex-col overflow-hidden bg-[var(--xark-void)]">
+    <div className="relative flex min-h-svh flex-col overflow-hidden bg-[var(--hello-void)]">
       <GlobalMesh />
       <div id="recaptcha-container" />
 

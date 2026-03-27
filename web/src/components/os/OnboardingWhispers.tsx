@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Onboarding Whispers
+// hello OS v2.0 — Onboarding Whispers
 // Atmospheric floating hints for first 3 days.
 // Disappear after user performs the action or 3 days pass.
 
@@ -18,21 +18,21 @@ type WhisperKey =
 
 function getFirstSeen(): number {
   if (typeof window === "undefined") return Date.now();
-  const stored = localStorage.getItem("xark_first_seen");
+  const stored = localStorage.getItem("hello_first_seen");
   if (stored) return parseInt(stored, 10);
   const now = Date.now();
-  localStorage.setItem("xark_first_seen", String(now));
+  localStorage.setItem("hello_first_seen", String(now));
   return now;
 }
 
 function isDismissed(key: WhisperKey): boolean {
   if (typeof window === "undefined") return false;
-  return localStorage.getItem(`xark_whisper_${key}`) === "done";
+  return localStorage.getItem(`hello_suggestion_${key}`) === "done";
 }
 
 function dismissWhisper(key: WhisperKey) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(`xark_whisper_${key}`, "done");
+  localStorage.setItem(`hello_suggestion_${key}`, "done");
 }
 
 function isWithinOnboarding(): boolean {

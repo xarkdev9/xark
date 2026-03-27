@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — USER MENU
+// hello OS v2.0 — USER MENU
 // 4-view drill-in sheet: main → profile, notifications, about.
 // Props-based (userName, userId) — no longer reads from searchParams.
 // Theme toggles inline on main (flat/vibe + light/dark).
@@ -112,7 +112,7 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
           setMutedSpaces(prefs.muted_spaces as string[]);
         }
         // Cross-device theme sync: if localStorage is empty, use DB value
-        const localTheme = localStorage.getItem("xark-theme");
+        const localTheme = localStorage.getItem("hello-theme");
         if (!localTheme && prefs?.theme) {
           setTheme(prefs.theme as ThemeName);
         }
@@ -194,7 +194,7 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
 
       // 3. Delete the outbox database (may contain encrypted message envelopes)
       await new Promise<void>((resolve) => {
-        const req = indexedDB.deleteDatabase('xark-outbox');
+        const req = indexedDB.deleteDatabase('hello-outbox');
         req.onsuccess = () => resolve();
         req.onerror = () => resolve();
         req.onblocked = () => resolve();
@@ -208,11 +208,11 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
 
       // 5. Clear localStorage crypto artifacts
       localStorage.removeItem('xark_store_salt');
-      localStorage.removeItem('xark_user_id');
+      localStorage.removeItem('hello_user_id');
 
-      console.log('[xark-privacy] Local cryptographic state shredded');
+      console.log('[hello-privacy] Local cryptographic state shredded');
     } catch (err) {
-      console.error('[xark-privacy] IDB shred failed:', err);
+      console.error('[hello-privacy] IDB shred failed:', err);
       // Continue with logout even if shredding fails — don't trap the user
     }
 
@@ -265,11 +265,11 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
   };
 
   const handleInvite = async () => {
-    const shareData = { title: "xark", text: "decide together, effortlessly.", url: "https://getxark.com" };
+    const shareData = { title: "hello", text: "decide together, effortlessly.", url: "https://gethello.com" };
     if (typeof navigator !== "undefined" && navigator.share) {
       try { await navigator.share(shareData); } catch {}
     } else if (typeof navigator !== "undefined" && navigator.clipboard) {
-      await navigator.clipboard.writeText("https://getxark.com");
+      await navigator.clipboard.writeText("https://gethello.com");
       setInviteCopied(true);
       setTimeout(() => setInviteCopied(false), 1500);
     }
@@ -339,7 +339,7 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: photoUrl ? "transparent" : "rgba(var(--xark-white-rgb), 0.06)",
+        backgroundColor: photoUrl ? "transparent" : "rgba(var(--hello-white-rgb), 0.06)",
         flexShrink: 0,
       }}
     >
@@ -882,7 +882,7 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
 
       <div style={{ marginTop: "14px", display: "flex", flexDirection: "column", gap: "4px" }}>
         <span style={{ ...text.body, color: ink.primary }}>
-          xark os
+          hello os
         </span>
         <span style={{ ...text.recency, color: ink.tertiary }}>
           v2.0
@@ -935,7 +935,7 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
             position: "absolute",
             inset: "-6px",
             borderRadius: "50%",
-            background: `radial-gradient(circle, rgba(var(--xark-accent-rgb), 0.15) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, rgba(var(--hello-accent-rgb), 0.15) 0%, transparent 70%)`,
             animation: `ambientBreath ${timing.breath} ease-in-out infinite`,
           }}
         />

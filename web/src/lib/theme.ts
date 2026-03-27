@@ -1,4 +1,4 @@
-// XARK OS v2.0 — SINGLE SOURCE OF TRUTH FOR ALL VISUAL TOKENS
+// hello OS v2.0 — SINGLE SOURCE OF TRUTH FOR ALL VISUAL TOKENS
 // Every component imports from here. No local color/timing/opacity constants.
 // ALL colors are CSS variables — changed by ThemeProvider per theme.
 // Font: Inter globally. No per-theme fonts. Consistency = quality.
@@ -165,26 +165,26 @@ export function hexToRgb(hex: string): string {
 // ── COLORS ──────────────────────────────────────────────────────────────────
 // ALL colors are CSS variables — theme-aware across light and dark.
 export const colors = {
-  white: "var(--xark-white)",       // text/foreground
-  cyan: "var(--xark-cyan)",         // separate AI color from accent
-  accent: "var(--xark-accent)",     // primary brand action color
-  void: "var(--xark-void)",         // background/canvas
+  white: "var(--hello-white)",       // text/foreground
+  cyan: "var(--hello-cyan)",         // separate AI color from accent
+  accent: "var(--hello-accent)",     // primary brand action color
+  void: "var(--hello-void)",         // background/canvas
   overlay: "#000000",               // always black (dimming scrim)
   // Engine signals — now CSS variables for light/dark contrast
-  amber: "var(--xark-amber)",
-  gold: "var(--xark-gold)",
-  green: "var(--xark-green)",
-  orange: "var(--xark-orange)",
-  gray: "var(--xark-gray)",
+  amber: "var(--hello-amber)",
+  gold: "var(--hello-gold)",
+  green: "var(--hello-green)",
+  orange: "var(--hello-orange)",
+  gray: "var(--hello-gray)",
 } as const;
 
 // ── SURFACE TONES ────────────────────────────────────────────────────────────
 // 3-tone depth system: chrome (elevated), canvas (content), recessed (wells).
 // Replaces flat single-bg with warm surface hierarchy. No borders needed.
 export const surface = {
-  chrome: "var(--xark-surface-chrome)",     // header, input area, elevated panels
-  canvas: "var(--xark-surface-canvas)",     // content area, chat list, feed
-  recessed: "var(--xark-surface-recessed)", // avatars, input wells, recessed zones
+  chrome: "var(--hello-surface-chrome)",     // header, input area, elevated panels
+  canvas: "var(--hello-surface-canvas)",     // content area, chat list, feed
+  recessed: "var(--hello-surface-recessed)", // avatars, input wells, recessed zones
 } as const;
 
 // ── SOLID TEXT COLORS ─────────────────────────────────────────────────────────
@@ -193,10 +193,10 @@ export const surface = {
 // high-readability contexts (People tab, Plans tab, list items).
 // CSS variables — set by ThemeProvider per theme.
 export const ink = {
-  primary: "var(--xark-ink-primary)",       // names, titles — pure black/white
-  secondary: "var(--xark-ink-secondary)",   // preview text, subtitles
-  tertiary: "var(--xark-ink-tertiary)",     // timestamps, metadata
-  sender: "var(--xark-ink-sender)",         // group message sender name
+  primary: "var(--hello-ink-primary)",       // names, titles — pure black/white
+  secondary: "var(--hello-ink-secondary)",   // preview text, subtitles
+  tertiary: "var(--hello-ink-tertiary)",     // timestamps, metadata
+  sender: "var(--hello-ink-sender)",         // group message sender name
 } as const;
 
 // ── OPACITY HIERARCHY ───────────────────────────────────────────────────────
@@ -308,7 +308,7 @@ export const layout = {
 
 // ── FOVEAL OPACITY ──────────────────────────────────────────────────────────
 export const foveal = {
-  xark: [0.95, 0.90, 0.85, 0.80, 0.75] as readonly number[],
+  hello: [0.95, 0.90, 0.85, 0.80, 0.75] as readonly number[],
   user: [0.95, 0.90, 0.85, 0.78] as readonly number[],
   floor: 0.70,
   roleCap: 0.4,
@@ -335,34 +335,34 @@ export const reactions = {
 
 export function amberWash(weightedScore: number): string {
   const clamped = Math.max(0, Math.min(1, weightedScore));
-  return `rgba(var(--xark-amber-rgb), ${(clamped * 0.6 + 0.1).toFixed(2)})`;
+  return `rgba(var(--hello-amber-rgb), ${(clamped * 0.6 + 0.1).toFixed(2)})`;
 }
 
 export function goldBloom(agreementScore: number): string | undefined {
   if (agreementScore > neuro.gold.bloomThreshold) {
     const intensity = (agreementScore - neuro.gold.bloomThreshold) / (1 - neuro.gold.bloomThreshold);
-    return `radial-gradient(circle, rgba(var(--xark-gold-rgb), ${(intensity * 0.5).toFixed(2)}) 0%, transparent 70%)`;
+    return `radial-gradient(circle, rgba(var(--hello-gold-rgb), ${(intensity * 0.5).toFixed(2)}) 0%, transparent 70%)`;
   }
   return undefined;
 }
 
-export function fovealOpacity(index: number, total: number, role: "user" | "xark"): number {
+export function fovealOpacity(index: number, total: number, role: "user" | "hello"): number {
   const distanceFromEnd = total - 1 - index;
-  const steps = role === "xark" ? foveal.xark : foveal.user;
+  const steps = role === "hello" ? foveal.hello : foveal.user;
   return steps[Math.min(distanceFromEnd, steps.length - 1)] ?? foveal.floor;
 }
 
 // ── TEXT COLOR WITH BAKED OPACITY ─────────────────────────────────────────────
 export function textColor(alpha: number): string {
-  return `rgba(var(--xark-white-rgb), ${alpha})`;
+  return `rgba(var(--hello-white-rgb), ${alpha})`;
 }
 
 export function accentColor(alpha: number): string {
-  return `rgba(var(--xark-accent-rgb), ${alpha})`;
+  return `rgba(var(--hello-accent-rgb), ${alpha})`;
 }
 
 export function cyanColor(alpha: number): string {
-  return `rgba(var(--xark-cyan-rgb), ${alpha})`;
+  return `rgba(var(--hello-cyan-rgb), ${alpha})`;
 }
 
 // Backwards compatibility

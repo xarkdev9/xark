@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Spotlight Hook
+// hello OS v2.0 — Spotlight Hook
 // State management for SpotlightSheet: open/close, morph animation, routing.
 // send() fires @hello query, runs 800ms morph, then auto-navigates if from Home.
 
@@ -65,7 +65,7 @@ export function useHelloAI(getToken: () => string | null) {
       }));
 
       // Signal to Space page that @hello is processing — instant feedback
-      window.dispatchEvent(new CustomEvent("xark-thinking", { detail: { groupId } }));
+      window.dispatchEvent(new CustomEvent("hello-thinking", { detail: { groupId } }));
 
       // Fire-and-forget fetch to /api/hello
       if (token) {
@@ -93,7 +93,7 @@ export function useHelloAI(getToken: () => string | null) {
 
         // Auto-navigate to space if NOT already inside one
         if (!isInsideSpace) {
-          router.push(`/space/${groupId}?xark=thinking`);
+          router.push(`/space/${groupId}?hello=thinking`);
         }
 
         morphTimerRef.current = null;

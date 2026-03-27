@@ -1,4 +1,4 @@
-// XARK OS v2.0 — DEV AUTH ENDPOINT
+// hello OS v2.0 — DEV AUTH ENDPOINT
 // POST /api/dev-auth — dev-mode login with password verification
 // Calls dev_verify_password() Postgres RPC for bcrypt check,
 // then signs JWT in Node.js via jose.

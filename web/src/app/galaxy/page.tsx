@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — GALAXY PAGE
+// hello OS v2.0 — GALAXY PAGE
 // Tab toggle: People | Plans. Dream input fixed above ControlCaret.
 
 import { Suspense, useState, useCallback, useRef, useEffect, type TouchEvent } from "react";
@@ -84,8 +84,8 @@ function HomeContent() {
   useEffect(() => {
     const handleCompose = () => setShowNewSheet(true);
     if (typeof window !== "undefined") {
-      window.addEventListener("xark-compose", handleCompose);
-      return () => window.removeEventListener("xark-compose", handleCompose);
+      window.addEventListener("hello-compose", handleCompose);
+      return () => window.removeEventListener("hello-compose", handleCompose);
     }
   }, []);
   const [showPhoneInput, setShowPhoneInput] = useState(false);
@@ -286,9 +286,9 @@ function HomeContent() {
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)", flexShrink: 0 }}
       >
         <div className="mx-auto" style={{ maxWidth: layout.maxWidth }}>
-          {/* ── Title Row: xark brand + UserMenu ── */}
+          {/* ── Title Row: hello brand + UserMenu ── */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "12px" }}>
-            <span className="xark-text-led" style={{
+            <span className="hello-text-led" style={{
               fontSize: "28px",
               fontWeight: 400,
               letterSpacing: "-0.03em",
@@ -324,7 +324,7 @@ function HomeContent() {
               >
                 {tab}
                 <span
-                  className={isActive ? "xark-bg-led" : ""}
+                  className={isActive ? "hello-bg-led" : ""}
                   style={{
                     position: "absolute",
                     bottom: 0,
@@ -492,8 +492,8 @@ function HomeContent() {
             />
           </div>
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent("xark-compose"))}
-            className="xark-bg-led outline-none cursor-pointer flex items-center justify-center"
+            onClick={() => window.dispatchEvent(new CustomEvent("hello-compose"))}
+            className="hello-bg-led outline-none cursor-pointer flex items-center justify-center"
             style={{
               flexShrink: 0,
               width: "44px",

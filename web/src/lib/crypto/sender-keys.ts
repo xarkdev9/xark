@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Sender Keys (Group Encryption)
+// hello OS v2.0 — Sender Keys (Group Encryption)
 // One encrypt, all members decrypt. O(1) vs O(N) Double Ratchet.
 // Key rotation on member leave for forward secrecy.
 

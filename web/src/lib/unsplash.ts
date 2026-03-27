@@ -1,4 +1,4 @@
-// XARK OS v2.0 — DESTINATION PHOTO FETCHER
+// hello OS v2.0 — DESTINATION PHOTO FETCHER
 // Priority: Pexels (free, 200/hr) → Unsplash (needs paid key) → null
 // Returns image URL + blob for Firebase Storage upload.
 

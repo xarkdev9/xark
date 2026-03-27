@@ -1,19 +1,19 @@
-// XARK OS v2.0 — Voice Input Hook
+// hello OS v2.0 — Voice Input Hook
 // 2-step: Tap mic = dictation. Slide up = @hello listening.
 // Unmissable recording state. Single tap always toggles off.
 // Cleanup on unmount — mic never stays on silently.
 
 import { useState, useRef, useCallback, useEffect } from "react";
 
-type VoiceMode = "off" | "dictation" | "xark";
+type VoiceMode = "off" | "dictation" | "hello";
 
 interface VoiceInputResult {
   isListening: boolean;
-  isXarkListening: boolean;
+  isHelloListening: boolean;
   mode: VoiceMode;
   transcript: string;
   toggleDictation: () => void;
-  startXarkMode: () => void;
+  startHelloMode: () => void;
   stop: () => void;
   error: string | null;
 }
@@ -75,7 +75,7 @@ export function useVoiceInput(): VoiceInputResult {
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       clearSafetyTimeout();
       const result = event.results[0][0].transcript;
-      setTranscript(targetMode === "xark" ? `@hello ${result}` : result);
+      setTranscript(targetMode === "hello" ? `@hello ${result}` : result);
     };
 
     recognition.onerror = () => {
@@ -115,21 +115,21 @@ export function useVoiceInput(): VoiceInputResult {
     }
   }, [mode, stop, startRecognition]);
 
-  const startXarkMode = useCallback(() => {
+  const startHelloMode = useCallback(() => {
     if (mode !== "off") {
       stop();
     } else {
-      startRecognition("xark");
+      startRecognition("hello");
     }
   }, [mode, stop, startRecognition]);
 
   return {
     isListening: mode === "dictation",
-    isXarkListening: mode === "xark",
+    isHelloListening: mode === "hello",
     mode,
     transcript,
     toggleDictation,
-    startXarkMode,
+    startHelloMode,
     stop,
     error,
   };

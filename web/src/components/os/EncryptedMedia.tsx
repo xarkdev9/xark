@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Encrypted Media Renderer
+// hello OS v2.0 — Encrypted Media Renderer
 // Downloads encrypted blob from Firebase, decrypts with AES-GCM key from E2EE channel,
 // renders as <img> or <video>. Revokes object URL on unmount to prevent memory leaks.
 // Phase 4: Shows blurry inline thumbnail while full blob downloads + decrypts.
@@ -126,7 +126,7 @@ export function EncryptedMediaRenderer({
           justifyContent: "center",
         }}
       >
-        <span style={{ fontSize: "12px", fontWeight: 300, color: "var(--xark-ink-tertiary)", letterSpacing: "0.02em" }}>
+        <span style={{ fontSize: "12px", fontWeight: 300, color: "var(--hello-ink-tertiary)", letterSpacing: "0.02em" }}>
           decrypting media...
         </span>
       </div>
@@ -148,7 +148,7 @@ export function EncryptedMediaRenderer({
           <rect x="1" y="5" width="10" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1" />
           <path d="M3.5 5V3.5C3.5 2.12 4.4 1 5.9 1C7.4 1 8.5 2.12 8.5 3.5V5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
         </svg>
-        <span style={{ fontSize: "12px", fontWeight: 300, color: "var(--xark-ink-tertiary)" }}>
+        <span style={{ fontSize: "12px", fontWeight: 300, color: "var(--hello-ink-tertiary)" }}>
           media unavailable
         </span>
       </div>

@@ -1,4 +1,4 @@
-// XARK OS v2.0 — HANDSHAKE HOOK
+// hello OS v2.0 — HANDSHAKE HOOK
 // React hook that listens to the group's heartbeat via Supabase Realtime.
 // Silent until agreementScore crosses 80% (ignited) — then triggers a Handshake Proposal.
 // Uses the full Green-Lock Commitment Protocol from handshake.ts.

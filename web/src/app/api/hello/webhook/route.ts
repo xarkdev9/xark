@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Apify Async Webhook Receiver
+// hello OS v2.0 — Apify Async Webhook Receiver
 // Receives completion callbacks from Apify actors started asynchronously.
 // Inserts search results as decision_items and updates the phantom receipt.
 
@@ -6,7 +6,6 @@ export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { checkRateLimitAsync } from "@/lib/rate-limit";
 import type { ApifyResult } from "@/lib/intelligence/apify-client";
 import { normalizeApifyDataset } from "@/lib/intelligence/apify-client";
 
@@ -16,12 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "server not configured" }, { status: 500 });
     }
 
-    // ── Rate limit by IP ──
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const allowed = await checkRateLimitAsync(`webhook:${ip}`, 30, 60);
-    if (!allowed) {
-      return NextResponse.json({ error: "rate limited" }, { status: 429 });
-    }
+    // Rate limiting moved to edge proxy (BACKEND-03)
 
     // ── Extract groupId and msgId from query params ──
     const { searchParams } = new URL(req.url);

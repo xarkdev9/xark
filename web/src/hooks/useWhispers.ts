@@ -1,4 +1,4 @@
-// XARK OS v2.0 — WHISPER HOOK
+// hello OS v2.0 — WHISPER HOOK
 // Fetches proactive whispers on mount and every 60 seconds.
 // Manages a priority queue: consumeWhisper pops the top,
 // dismissWhisper moves current to the back.

@@ -1,18 +1,15 @@
-// XARK OS v2.0 — One-Time Pre-Key Upload
+// hello OS v2.0 — One-Time Pre-Key Upload
 // Upload a batch of OTK public keys for key exchange.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { verifyAuth } from '@/lib/auth-verify';
-import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req.headers.get('authorization'));
   if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  if (!checkRateLimit(`keys:${auth.userId}`, 20)) {
-    return NextResponse.json({ error: 'rate limited' }, { status: 429 });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   const body = await req.json();
   const { device_id, keys } = body;

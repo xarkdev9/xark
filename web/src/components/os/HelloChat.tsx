@@ -1,6 +1,6 @@
 "use client";
 
-// XARK OS v2.0 — Chat Display (Display-Only)
+// hello OS v2.0 — Chat Display (Display-Only)
 // Message stream with avatars + visual hierarchy (name vs message).
 // No input, no fetch, no send — state lives in Space page.
 
@@ -41,7 +41,7 @@ interface InlineCard {
   onTap?: () => void;
 }
 
-interface XarkChatProps {
+interface HelloChatProps {
   groupId: string;
   spaceTitle?: string;
   messages: ChatMessage[];
@@ -64,7 +64,7 @@ const SANCTUARY_MAP: Record<string, string> = {
   ananya: "space_ananya",
 };
 
-export function XarkChat({
+export function HelloChat({
   groupId,
   spaceTitle,
   messages,
@@ -80,7 +80,7 @@ export function XarkChat({
   currentUserId,
   currentUserName,
   currentDeviceId,
-}: XarkChatProps) {
+}: HelloChatProps) {
   const [groundingContext, setGroundingContext] =
     useState<GroundingContext | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -113,7 +113,7 @@ export function XarkChat({
     if (!allMessages.some((m) => m.id === handshakeId)) {
       allMessages.push({
         id: handshakeId,
-        role: "xark",
+        role: "hello",
         content: whisper,
         timestamp: proposal.timestamp,
       });
@@ -167,7 +167,7 @@ export function XarkChat({
   }
 
   function senderLabel(msg: ChatMessage): string {
-    if (msg.role === "xark") return "@hello";
+    if (msg.role === "hello") return "@hello";
     if (msg.senderName) return msg.senderName;
     return "you";
   }
@@ -191,13 +191,13 @@ export function XarkChat({
         <div
           className="pointer-events-none fixed inset-0"
           style={{
-            background: `radial-gradient(circle at 50% 50%, rgba(var(--xark-gold-rgb), 0.15) 0%, rgba(var(--xark-gold-rgb), 0.05) 40%, transparent 70%)`,
+            background: `radial-gradient(circle at 50% 50%, rgba(var(--hello-gold-rgb), 0.15) 0%, rgba(var(--hello-gold-rgb), 0.05) 40%, transparent 70%)`,
             animation: "goldBurstPulse 3s ease-out forwards",
           }}
         />
       )}
 
-      {/* E2EE indicator removed — trust signal is the xark anchor + Liquid Fire */}
+      {/* E2EE indicator removed — trust signal is the hello anchor + Liquid Fire */}
 
       {/* ── Message Stream ── */}
       <div
@@ -282,7 +282,7 @@ export function XarkChat({
             const msgOpacity = fovealOpacity(
               index,
               msgOnlyList.length,
-              msg.role as "user" | "xark"
+              msg.role as "user" | "hello"
             );
             const label = senderLabel(msg);
             const isOtherUser = msg.role === "user" && !!msg.senderName;
@@ -292,10 +292,10 @@ export function XarkChat({
             const prevMsg = index > 0 ? msgOnlyList[index - 1] : null;
             const sameSender = prevMsg && senderLabel(prevMsg) === label;
 
-            // Avatar: show only on first message of a group, and only in 3+ member rooms or for xark
+            // Avatar: show only on first message of a group, and only in 3+ member rooms or for hello
             const isGroupChat = (memberCount ?? 0) > 2;
-            const showAvatar = !sameSender && (isGroupChat || msg.role === "xark");
-            const avatarName = msg.role === "xark" ? "xark" : (msg.senderName ?? "you");
+            const showAvatar = !sameSender && (isGroupChat || msg.role === "hello");
+            const avatarName = msg.role === "hello" ? "hello" : (msg.senderName ?? "you");
 
             const isSentByMe = Boolean(
               msg.role === "user" &&
@@ -303,12 +303,12 @@ export function XarkChat({
                  (currentDeviceId && msg.senderDeviceId === currentDeviceId))
             );
 
-            const isXark = msg.role === "xark" || msg.messageType === "xark_receipt";
-            const isXarkQuery = msg.messageType === "xark_query" ||
+            const isHello = msg.role === "hello" || msg.messageType === "helloReceipt";
+            const isHelloQuery = msg.messageType === "helloQuery" ||
               (msg.role === "user" && msg.content?.toLowerCase().startsWith("@hello"));
 
             // ── User's @hello query: centered compact rose text (no bubble) ──
-            if (isXarkQuery) {
+            if (isHelloQuery) {
               return (
                 <motion.div
                   key={msg.id}
@@ -343,10 +343,10 @@ export function XarkChat({
             }
 
             // ── @hello responses: left-aligned rose whisper (no bubble, timestamp size) ──
-            if (isXark) {
+            if (isHello) {
               const msgType = msg.messageType ?? 'legacy';
               // Polls still get full treatment
-              if (msgType === "xark_poll") {
+              if (msgType === "hello_poll") {
                 let pollPayload: { text?: string; poll_id?: string; title?: string } = {};
                 try { pollPayload = JSON.parse(msg.content || "{}"); } catch { /* */ }
                 return (
@@ -359,12 +359,12 @@ export function XarkChat({
                     style={{ marginTop: index === 0 ? "0px" : "8px", maxWidth: "80%" }}
                   >
                     <div style={{
-                      backgroundColor: "var(--xark-bubble-received)",
+                      backgroundColor: "var(--hello-bubble-received)",
                       borderRadius: "16px",
                       padding: "8px 12px 6px 12px",
                     }}>
                       <div style={{ fontSize: "10px", fontWeight: 400, letterSpacing: "0.06em", color: "#FF6B35", marginBottom: "2px" }}>@hello</div>
-                      <div style={{ fontSize: "15px", fontWeight: 400, color: "var(--xark-bubble-text-received)", lineHeight: "20px" }}>
+                      <div style={{ fontSize: "15px", fontWeight: 400, color: "var(--hello-bubble-text-received)", lineHeight: "20px" }}>
                         <span>{pollPayload.text || "Created a live poll."}</span>
                         {pollPayload.poll_id && (
                           <div className="mt-2 w-full" onClick={(e) => e.stopPropagation()}>
@@ -434,7 +434,7 @@ export function XarkChat({
                       style={{
                         fontSize: "13px",
                         fontWeight: 400,
-                        color: "var(--xark-accent)",
+                        color: "var(--hello-accent)",
                         cursor: canOpenSanctuary ? "pointer" : "default",
                       }}
                       onClick={canOpenSanctuary ? () => openSanctuary(msg.senderName!) : undefined}
@@ -447,7 +447,7 @@ export function XarkChat({
                 {/* ── Directional bubble tails — shape tells you who sent it ── */}
                 <div
                   style={{
-                    backgroundColor: isSentByMe ? "var(--xark-bubble-sent)" : "var(--xark-bubble-received)",
+                    backgroundColor: isSentByMe ? "var(--hello-bubble-sent)" : "var(--hello-bubble-received)",
                     opacity: isSentByMe ? Math.max(0.75, msgOpacity) : 1,
                     borderRadius: isSentByMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                     border: "0.5px solid rgba(0,0,0,0.08)",
@@ -459,7 +459,7 @@ export function XarkChat({
                     style={{
                       fontSize: "15px",
                       fontWeight: 400,
-                      color: isSentByMe ? "var(--xark-bubble-text-sent)" : "var(--xark-bubble-text-received)",
+                      color: isSentByMe ? "var(--hello-bubble-text-sent)" : "var(--hello-bubble-text-received)",
                       lineHeight: "20px",
                       margin: 0,
                       wordBreak: "break-word",
@@ -467,13 +467,13 @@ export function XarkChat({
                   >
                     {(() => {
                       const msgType = msg.messageType ?? 'legacy';
-                      const isE2EE = msgType === 'e2ee' || msgType === 'e2ee_xark';
+                      const isE2EE = msgType === 'e2ee' || msgType === 'e2ee_hello';
                       if (isE2EE && (!msg.content || msg.content === '[decryption pending]')) {
-                        return <span style={{ color: "var(--xark-ink-tertiary)", fontStyle: "italic" }}>decrypting...</span>;
+                        return <span style={{ color: "var(--hello-ink-tertiary)", fontStyle: "italic" }}>decrypting...</span>;
                       }
                       if (isE2EE && msg.content === '[Error: Decryption Failed]') {
                         return (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: "var(--xark-ink-tertiary)" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: "var(--hello-ink-tertiary)" }}>
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, opacity: 0.5 }}>
                               <rect x="1" y="5" width="10" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1" />
                               <path d="M3.5 5V3.5C3.5 2.12 4.4 1 5.9 1C7.4 1 8.5 2.12 8.5 3.5V5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
@@ -518,7 +518,7 @@ export function XarkChat({
                       style={{
                         fontSize: "9px",
                         fontWeight: 300,
-                        color: "var(--xark-ink-tertiary)",
+                        color: "var(--hello-ink-tertiary)",
                         marginLeft: "8px",
                         float: "right",
                         marginTop: "4px",
@@ -681,7 +681,7 @@ export function XarkChat({
           </div>
         )}
 
-        {/* ── Typing state extracted — no fake xark block ── */}
+        {/* ── Typing state extracted — no fake hello block ── */}
         {/* ── Greeting — near input, guiding first action ── */}
         {allMessages.length === 0 && (
           <div style={{ maxWidth: "640px", marginBottom: "16px" }}>
@@ -694,7 +694,7 @@ export function XarkChat({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "rgba(var(--xark-accent-rgb), 0.08)",
+                  backgroundColor: "rgba(var(--hello-accent-rgb), 0.08)",
                   flexShrink: 0,
                 }}
               >
@@ -801,7 +801,7 @@ export function XarkChat({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: "rgba(var(--xark-accent-rgb), 0.08)",
+              backgroundColor: "rgba(var(--hello-accent-rgb), 0.08)",
               flexShrink: 0,
               marginTop: "2px",
             }}>
@@ -809,7 +809,7 @@ export function XarkChat({
             </div>
             {/* Thinking bubble */}
             <div style={{
-              backgroundColor: "var(--xark-bubble-received)",
+              backgroundColor: "var(--hello-bubble-received)",
               borderRadius: "16px 16px 16px 4px",
               padding: "10px 16px",
               display: "flex",
@@ -827,7 +827,7 @@ export function XarkChat({
                       borderRadius: "50%",
                       backgroundColor: "#FF6B35",
                       opacity: 0.6,
-                      animation: `xarkThinkingDot 1.4s ease-in-out ${i * 0.2}s infinite`,
+                      animation: `helloThinkingDot 1.4s ease-in-out ${i * 0.2}s infinite`,
                     }}
                   />
                 ))}
@@ -888,12 +888,12 @@ export function XarkChat({
                 <div className="mt-4">
                   {dmMessages.map((msg, i) => {
                     const label =
-                      msg.role === "xark"
+                      msg.role === "hello"
                         ? "@hello"
                         : msg.senderName ?? "you";
                     const prev = i > 0 ? dmMessages[i - 1] : null;
                     const prevLabel = prev
-                      ? prev.role === "xark"
+                      ? prev.role === "hello"
                         ? "@hello"
                         : prev.senderName ?? "you"
                       : null;
@@ -913,10 +913,10 @@ export function XarkChat({
                                 fontWeight: 400,
                                 lineHeight: 1.4,
                                 color:
-                                  msg.role === "xark"
+                                  msg.role === "hello"
                                     ? colors.cyan
                                     : colors.amber,
-                                opacity: msg.role === "xark" ? 0.7 : 0.85,
+                                opacity: msg.role === "hello" ? 0.7 : 0.85,
                               }}
                             >
                               {label}
@@ -956,16 +956,16 @@ export function XarkChat({
       </AnimatePresence>
 
       <style jsx>{`
-        @keyframes xarkFloat {
+        @keyframes helloFloat {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-3px); }
         }
-        @keyframes xarkShimmer {
+        @keyframes helloShimmer {
           0% { background-position: -200% center; }
           100% { background-position: 200% center; }
         }
-        .xark-shimmer-text {
-          animation: xarkShimmer 2s ease-in-out infinite;
+        .hello-shimmer-text {
+          animation: helloShimmer 2s ease-in-out infinite;
         }
         @keyframes goldBurstPulse {
           0% { opacity: 0; }

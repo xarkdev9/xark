@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Shared state flow definitions
+// hello OS v2.0 — Shared state flow definitions
 // Single source of truth for flow terminal states.
 // Imported by handshake.ts, claims.ts, and future commitment modules.
 
