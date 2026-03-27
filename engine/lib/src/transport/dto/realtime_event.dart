@@ -39,7 +39,7 @@ class RealtimeMessageEvent {
   /// Device ID of the sender, nullable for system messages.
   final int? senderDeviceId;
 
-  /// Wire-level message type (`e2ee`, `xark`, `system`, etc.).
+  /// Wire-level message type (`e2ee`, `hello`, `system`, etc.).
   final String messageType;
 
   /// Server-side creation timestamp.

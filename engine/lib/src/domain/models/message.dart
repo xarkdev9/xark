@@ -29,8 +29,8 @@ enum MessageType {
   e2ee,
 
   /// X3DH key agreement message.
-  @JsonValue('xark')
-  xark,
+  @JsonValue('hello')
+  hello,
 
   /// System-generated message (e.g., user joined).
   @JsonValue('system')

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:isolate';
 import 'dart:typed_data';
+import 'dart:ui' show IsolateNameServer;
 
 /// Base class for all messages sent to the crypto isolate.
 abstract class CryptoIsolateMessage {

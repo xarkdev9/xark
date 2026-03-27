@@ -128,9 +128,7 @@ class __$$TypingIndicatorImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$TypingIndicatorImpl implements _TypingIndicator {
   const _$TypingIndicatorImpl(
-      {required this.groupId,
-      required this.userId,
-      required this.startedAt});
+      {required this.groupId, required this.userId, required this.startedAt});
 
   factory _$TypingIndicatorImpl.fromJson(Map<String, dynamic> json) =>
       _$$TypingIndicatorImplFromJson(json);
@@ -152,8 +150,7 @@ class _$TypingIndicatorImpl implements _TypingIndicator {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$TypingIndicatorImpl &&
-            (identical(other.groupId, groupId) ||
-                other.groupId == groupId) &&
+            (identical(other.groupId, groupId) || other.groupId == groupId) &&
             (identical(other.userId, userId) || other.userId == userId) &&
             (identical(other.startedAt, startedAt) ||
                 other.startedAt == startedAt));
@@ -161,8 +158,7 @@ class _$TypingIndicatorImpl implements _TypingIndicator {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, groupId, userId, startedAt);
+  int get hashCode => Object.hash(runtimeType, groupId, userId, startedAt);
 
   /// Create a copy of TypingIndicator
   /// with the given fields replaced by the non-null parameter values.

@@ -64,7 +64,7 @@ class MessageRepositoryImpl implements MessageRepository {
   static String _messageTypeToString(MessageType type) {
     return switch (type) {
       MessageType.e2ee => 'e2ee',
-      MessageType.xark => 'xark',
+      MessageType.hello => 'hello',
       MessageType.system => 'system',
       MessageType.legacy => 'legacy',
       MessageType.senderKeyDist => 'sender_key_dist',
@@ -76,7 +76,7 @@ class MessageRepositoryImpl implements MessageRepository {
   static MessageType _messageTypeFromString(String s) {
     return switch (s) {
       'e2ee' => MessageType.e2ee,
-      'xark' => MessageType.xark,
+      'hello' => MessageType.hello,
       'system' => MessageType.system,
       'legacy' => MessageType.legacy,
       'sender_key_dist' => MessageType.senderKeyDist,

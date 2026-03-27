@@ -64,7 +64,7 @@ void main() {
     test('JSON values match backend protocol strings', () {
       final testCases = <MessageType, String>{
         MessageType.e2ee: 'e2ee',
-        MessageType.xark: 'xark',
+        MessageType.hello: 'hello',
         MessageType.system: 'system',
         MessageType.legacy: 'legacy',
         MessageType.senderKeyDist: 'sender_key_dist',

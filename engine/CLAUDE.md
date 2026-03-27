@@ -30,7 +30,7 @@ flutter pub get                      # Install dependencies
 
 ## Project Mission
 
-Production-grade, end-to-end encrypted chat **engine** in Flutter. This is a headless library package (`chat_engine`) — it owns crypto, transport, persistence, and sync. It does **not** own UI. The UI is developed separately in `~/chatF/`.
+Production-grade, end-to-end encrypted chat **engine** in Flutter. This is a headless library package (`hello_engine`) — it owns crypto, transport, persistence, and sync. It does **not** own UI. The UI is developed separately in `~/hello/app/`.
 
 Portable (embeddable as a package into any Flutter app), scalable (millions of concurrent users), secure by default (no plaintext fallback, ever). Target feature set: WhatsApp parity on the protocol/data side (see FEATURES.md for engine vs UI responsibility split).
 
@@ -39,7 +39,7 @@ Portable (embeddable as a package into any Flutter app), scalable (millions of c
 ## Architectural Principles
 
 ### 1. Engine, Not an App
-The chat system is a **headless Flutter package** (`chat_engine`). It has zero UI code — no widgets, no themes, no animations. The UI lives in a separate repo (`~/chatF/`).
+The chat system is a **headless Flutter package** (`hello_engine`). It has zero UI code — no widgets, no themes, no animations. The UI lives in `~/hello/app/`.
 
 - Exposes a clean public API surface: `ChatEngine.initialize()`, `ChatSession`, `ChatController` (see Public API Contract below)
 - Host apps inject auth tokens, user identity, device ID, and push token — nothing else
@@ -58,12 +58,12 @@ The engine must function fully offline and sync when connectivity is restored.
 ### 3. Layered Separation (Strict)
 
 ```
-  ~/chatF/ (EXTERNAL — not this repo)
+  ~/hello/app/ (EXTERNAL — not this repo)
   ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
   UI Layer — widgets, themes, animations
   Consumes ChatEngine via pub dependency
   ═══════════════════════════════════════════
-  THIS REPO (chat_engine package):
+  THIS REPO (hello_engine package):
 ┌───────────────────────────────────────────┐
 │         Public API (barrel file)          │  ← The only thing external code imports.
 ├───────────────────────────────────────────┤
@@ -194,9 +194,9 @@ These are benchmarks, not aspirations. Measure against them.
 ## Package & Module Structure
 
 ```
-chat_engine/
+hello_engine/
 ├── lib/
-│   ├── chat_engine.dart          # Public API barrel file (ONLY export point)
+│   ├── hello_engine.dart         # Public API barrel file (ONLY export point)
 │   ├── src/
 │   │   ├── crypto/               # Signal protocol, key management, ratchet, profile keys
 │   │   ├── transport/            # WebSocket client, HTTP client, reconnect logic
@@ -222,7 +222,7 @@ chat_engine/
 └── CLAUDE.md                     # This file
 ```
 
-**No `src/ui/` directory. No `src/controllers/` directory.** This package has zero Flutter widget code. UI lives in `~/chatF/`.
+**No `src/ui/` directory. No `src/controllers/` directory.** This package has zero Flutter widget code. UI lives in `~/hello/app/`.
 
 **The `crypto/` directory is sacred.** Every function in it has a unit test. No exceptions.
 
@@ -243,7 +243,7 @@ The server is treated as an **untrusted relay**. All security assumptions are bu
 
 ## Public API Contract
 
-Everything external code touches is exported from `chat_engine.dart`. Nothing else is public.
+Everything external code touches is exported from `hello_engine.dart`. Nothing else is public.
 
 ### Initialization
 
@@ -332,7 +332,7 @@ The engine does **not** give back:
 
 ## Engine-to-UI Event Contract
 
-These are the streams the UI subscribes to. This is the primary interface between `chat_engine` and `~/chatF/`.
+These are the streams the UI subscribes to. This is the primary interface between `hello_engine` and `~/hello/app/`.
 
 | Stream | Type | Description |
 |---|---|---|
@@ -479,7 +479,7 @@ abstract class ChatEngineObserver {
 
 This package follows **semver** strictly.
 
-- **Public API** = everything exported from `chat_engine.dart`
+- **Public API** = everything exported from `hello_engine.dart`
 - Breaking changes (removed methods, changed signatures, renamed models) = **major** version bump
 - New methods/streams/models = **minor** version bump
 - Bug fixes, crypto patches, internal refactors = **patch** version bump
@@ -523,7 +523,7 @@ Do not introduce new dependencies without justification. Every dependency is an 
 3. **Never expose internal implementation details in the public API.** Hide everything behind the barrel file.
 4. **Never assume network availability.** Every operation has an offline path.
 5. **Never write a crypto function without a test.** Security-critical code with no tests is a liability.
-6. **Never create widgets, screens, or any visual code.** This is a headless engine. UI lives in `~/chatF/`.
+6. **Never create widgets, screens, or any visual code.** This is a headless engine. UI lives in `~/hello/app/`.
 
 ---
 

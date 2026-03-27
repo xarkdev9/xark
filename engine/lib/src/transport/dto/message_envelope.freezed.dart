@@ -330,7 +330,7 @@ mixin _$MessageEnvelope {
   List<DistributionCiphertext> get distributionCiphertexts =>
       throw _privateConstructorUsedError;
 
-  /// Wire-level message type (`e2ee`, `xark`, `sender_key_dist`, etc.).
+  /// Wire-level message type (`e2ee`, `hello`, `sender_key_dist`, etc.).
   @JsonKey(name: 'message_type')
   String get messageType => throw _privateConstructorUsedError;
 
@@ -578,7 +578,7 @@ class _$MessageEnvelopeImpl implements _MessageEnvelope {
     return EqualUnmodifiableListView(_distributionCiphertexts);
   }
 
-  /// Wire-level message type (`e2ee`, `xark`, `sender_key_dist`, etc.).
+  /// Wire-level message type (`e2ee`, `hello`, `sender_key_dist`, etc.).
   @override
   @JsonKey(name: 'message_type')
   final String messageType;
@@ -697,7 +697,7 @@ abstract class _MessageEnvelope implements MessageEnvelope {
   @JsonKey(name: 'distribution_ciphertexts')
   List<DistributionCiphertext> get distributionCiphertexts;
 
-  /// Wire-level message type (`e2ee`, `xark`, `sender_key_dist`, etc.).
+  /// Wire-level message type (`e2ee`, `hello`, `sender_key_dist`, etc.).
   @override
   @JsonKey(name: 'message_type')
   String get messageType;

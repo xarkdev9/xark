@@ -86,20 +86,20 @@ void main() {
       expect(event.messageType, 'e2ee');
     });
 
-    test('parses xark AI assistant messages', () {
+    test('parses hello AI assistant messages', () {
       final record = <String, dynamic>{
-        'id': 'xark-msg-1',
+        'id': 'hello-msg-1',
         'group_id': 'space-trip',
-        'user_id': 'name_xark',
+        'user_id': 'name_hello',
         'sender_device_id': null,
-        'message_type': 'xark',
+        'message_type': 'hello',
         'created_at': '2026-03-26T15:00:00.000Z',
       };
 
       final event = RealtimeMessageEvent.fromPostgresPayload(record);
 
-      expect(event.messageType, 'xark');
-      expect(event.senderId, 'name_xark');
+      expect(event.messageType, 'hello');
+      expect(event.senderId, 'name_hello');
       expect(event.senderDeviceId, isNull);
     });
   });

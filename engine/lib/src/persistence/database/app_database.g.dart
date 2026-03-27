@@ -297,7 +297,7 @@ class MessageRow extends DataClass implements Insertable<MessageRow> {
   /// Device ID of the sender's device, nullable for system messages.
   final String? senderDeviceId;
 
-  /// Wire-level message type: e2ee, xark, system, legacy, sender_key_dist,
+  /// Wire-level message type: e2ee, hello, system, legacy, sender_key_dist,
   /// message, media.
   final String messageType;
 
@@ -2340,7 +2340,7 @@ class $OutboxItemsTable extends OutboxItems
       const VerificationMeta('groupId');
   @override
   late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
-      'conversation_id', aliasedName, false,
+      'group_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _encryptedEnvelopeMeta =
       const VerificationMeta('encryptedEnvelope');
@@ -2399,11 +2399,9 @@ class $OutboxItemsTable extends OutboxItems
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('conversation_id')) {
-      context.handle(
-          _groupIdMeta,
-          groupId.isAcceptableOrUnknown(
-              data['conversation_id']!, _groupIdMeta));
+    if (data.containsKey('group_id')) {
+      context.handle(_groupIdMeta,
+          groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta));
     } else if (isInserting) {
       context.missing(_groupIdMeta);
     }
@@ -2454,8 +2452,8 @@ class $OutboxItemsTable extends OutboxItems
     return OutboxItemRow(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      groupId: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}conversation_id'])!,
+      groupId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}group_id'])!,
       encryptedEnvelope: attachedDatabase.typeMapping.read(
           DriftSqlType.blob, data['${effectivePrefix}encrypted_envelope'])!,
       recipientDeviceIds: attachedDatabase.typeMapping.read(
@@ -2508,7 +2506,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['conversation_id'] = Variable<String>(groupId);
+    map['group_id'] = Variable<String>(groupId);
     map['encrypted_envelope'] = Variable<Uint8List>(encryptedEnvelope);
     map['recipient_device_ids'] = Variable<String>(recipientDeviceIds);
     map['retry_count'] = Variable<int>(retryCount);
@@ -2578,9 +2576,7 @@ class OutboxItemRow extends DataClass implements Insertable<OutboxItemRow> {
   OutboxItemRow copyWithCompanion(OutboxItemsCompanion data) {
     return OutboxItemRow(
       id: data.id.present ? data.id.value : this.id,
-      groupId: data.groupId.present
-          ? data.groupId.value
-          : this.groupId,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
       encryptedEnvelope: data.encryptedEnvelope.present
           ? data.encryptedEnvelope.value
           : this.encryptedEnvelope,
@@ -2678,7 +2674,7 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (groupId != null) 'conversation_id': groupId,
+      if (groupId != null) 'group_id': groupId,
       if (encryptedEnvelope != null) 'encrypted_envelope': encryptedEnvelope,
       if (recipientDeviceIds != null)
         'recipient_device_ids': recipientDeviceIds,
@@ -2717,7 +2713,7 @@ class OutboxItemsCompanion extends UpdateCompanion<OutboxItemRow> {
       map['id'] = Variable<String>(id.value);
     }
     if (groupId.present) {
-      map['conversation_id'] = Variable<String>(groupId.value);
+      map['group_id'] = Variable<String>(groupId.value);
     }
     if (encryptedEnvelope.present) {
       map['encrypted_envelope'] = Variable<Uint8List>(encryptedEnvelope.value);
@@ -3020,7 +3016,7 @@ class $MediaItemsTable extends MediaItems
       const VerificationMeta('groupId');
   @override
   late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
-      'conversation_id', aliasedName, false,
+      'group_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _messageIdMeta =
       const VerificationMeta('messageId');
@@ -3096,11 +3092,9 @@ class $MediaItemsTable extends MediaItems
     } else if (isInserting) {
       context.missing(_mediaIdMeta);
     }
-    if (data.containsKey('conversation_id')) {
-      context.handle(
-          _groupIdMeta,
-          groupId.isAcceptableOrUnknown(
-              data['conversation_id']!, _groupIdMeta));
+    if (data.containsKey('group_id')) {
+      context.handle(_groupIdMeta,
+          groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta));
     } else if (isInserting) {
       context.missing(_groupIdMeta);
     }
@@ -3159,8 +3153,8 @@ class $MediaItemsTable extends MediaItems
     return MediaItemRow(
       mediaId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}media_id'])!,
-      groupId: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}conversation_id'])!,
+      groupId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}group_id'])!,
       messageId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}message_id'])!,
       mimeType: attachedDatabase.typeMapping
@@ -3225,7 +3219,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['media_id'] = Variable<String>(mediaId);
-    map['conversation_id'] = Variable<String>(groupId);
+    map['group_id'] = Variable<String>(groupId);
     map['message_id'] = Variable<String>(messageId);
     map['mime_type'] = Variable<String>(mimeType);
     if (!nullToAbsent || localPath != null) {
@@ -3309,9 +3303,7 @@ class MediaItemRow extends DataClass implements Insertable<MediaItemRow> {
   MediaItemRow copyWithCompanion(MediaItemsCompanion data) {
     return MediaItemRow(
       mediaId: data.mediaId.present ? data.mediaId.value : this.mediaId,
-      groupId: data.groupId.present
-          ? data.groupId.value
-          : this.groupId,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
       messageId: data.messageId.present ? data.messageId.value : this.messageId,
       mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
       localPath: data.localPath.present ? data.localPath.value : this.localPath,
@@ -3416,7 +3408,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
   }) {
     return RawValuesInsertable({
       if (mediaId != null) 'media_id': mediaId,
-      if (groupId != null) 'conversation_id': groupId,
+      if (groupId != null) 'group_id': groupId,
       if (messageId != null) 'message_id': messageId,
       if (mimeType != null) 'mime_type': mimeType,
       if (localPath != null) 'local_path': localPath,
@@ -3460,7 +3452,7 @@ class MediaItemsCompanion extends UpdateCompanion<MediaItemRow> {
       map['media_id'] = Variable<String>(mediaId.value);
     }
     if (groupId.present) {
-      map['conversation_id'] = Variable<String>(groupId.value);
+      map['group_id'] = Variable<String>(groupId.value);
     }
     if (messageId.present) {
       map['message_id'] = Variable<String>(messageId.value);
@@ -4329,6 +4321,803 @@ class ProcessedDistributionsCompanion
   }
 }
 
+class $SyncWatermarksTable extends SyncWatermarks
+    with TableInfo<$SyncWatermarksTable, SyncWatermarkRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncWatermarksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _groupIdMeta =
+      const VerificationMeta('groupId');
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+      'group_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _lastReceivedSeqMeta =
+      const VerificationMeta('lastReceivedSeq');
+  @override
+  late final GeneratedColumn<int> lastReceivedSeq = GeneratedColumn<int>(
+      'last_received_seq', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _lastSyncAtMeta =
+      const VerificationMeta('lastSyncAt');
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAt = GeneratedColumn<DateTime>(
+      'last_sync_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [groupId, lastReceivedSeq, lastSyncAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_watermarks';
+  @override
+  VerificationContext validateIntegrity(Insertable<SyncWatermarkRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('group_id')) {
+      context.handle(_groupIdMeta,
+          groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta));
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('last_received_seq')) {
+      context.handle(
+          _lastReceivedSeqMeta,
+          lastReceivedSeq.isAcceptableOrUnknown(
+              data['last_received_seq']!, _lastReceivedSeqMeta));
+    }
+    if (data.containsKey('last_sync_at')) {
+      context.handle(
+          _lastSyncAtMeta,
+          lastSyncAt.isAcceptableOrUnknown(
+              data['last_sync_at']!, _lastSyncAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {groupId};
+  @override
+  SyncWatermarkRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncWatermarkRow(
+      groupId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}group_id'])!,
+      lastReceivedSeq: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}last_received_seq'])!,
+      lastSyncAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}last_sync_at']),
+    );
+  }
+
+  @override
+  $SyncWatermarksTable createAlias(String alias) {
+    return $SyncWatermarksTable(attachedDatabase, alias);
+  }
+}
+
+class SyncWatermarkRow extends DataClass
+    implements Insertable<SyncWatermarkRow> {
+  /// Conversation (group) ID.
+  final String groupId;
+
+  /// Highest server sequence number received for this group.
+  final int lastReceivedSeq;
+
+  /// When we last successfully synced this group.
+  final DateTime? lastSyncAt;
+  const SyncWatermarkRow(
+      {required this.groupId, required this.lastReceivedSeq, this.lastSyncAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['group_id'] = Variable<String>(groupId);
+    map['last_received_seq'] = Variable<int>(lastReceivedSeq);
+    if (!nullToAbsent || lastSyncAt != null) {
+      map['last_sync_at'] = Variable<DateTime>(lastSyncAt);
+    }
+    return map;
+  }
+
+  SyncWatermarksCompanion toCompanion(bool nullToAbsent) {
+    return SyncWatermarksCompanion(
+      groupId: Value(groupId),
+      lastReceivedSeq: Value(lastReceivedSeq),
+      lastSyncAt: lastSyncAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAt),
+    );
+  }
+
+  factory SyncWatermarkRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncWatermarkRow(
+      groupId: serializer.fromJson<String>(json['groupId']),
+      lastReceivedSeq: serializer.fromJson<int>(json['lastReceivedSeq']),
+      lastSyncAt: serializer.fromJson<DateTime?>(json['lastSyncAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'groupId': serializer.toJson<String>(groupId),
+      'lastReceivedSeq': serializer.toJson<int>(lastReceivedSeq),
+      'lastSyncAt': serializer.toJson<DateTime?>(lastSyncAt),
+    };
+  }
+
+  SyncWatermarkRow copyWith(
+          {String? groupId,
+          int? lastReceivedSeq,
+          Value<DateTime?> lastSyncAt = const Value.absent()}) =>
+      SyncWatermarkRow(
+        groupId: groupId ?? this.groupId,
+        lastReceivedSeq: lastReceivedSeq ?? this.lastReceivedSeq,
+        lastSyncAt: lastSyncAt.present ? lastSyncAt.value : this.lastSyncAt,
+      );
+  SyncWatermarkRow copyWithCompanion(SyncWatermarksCompanion data) {
+    return SyncWatermarkRow(
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      lastReceivedSeq: data.lastReceivedSeq.present
+          ? data.lastReceivedSeq.value
+          : this.lastReceivedSeq,
+      lastSyncAt:
+          data.lastSyncAt.present ? data.lastSyncAt.value : this.lastSyncAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncWatermarkRow(')
+          ..write('groupId: $groupId, ')
+          ..write('lastReceivedSeq: $lastReceivedSeq, ')
+          ..write('lastSyncAt: $lastSyncAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(groupId, lastReceivedSeq, lastSyncAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncWatermarkRow &&
+          other.groupId == this.groupId &&
+          other.lastReceivedSeq == this.lastReceivedSeq &&
+          other.lastSyncAt == this.lastSyncAt);
+}
+
+class SyncWatermarksCompanion extends UpdateCompanion<SyncWatermarkRow> {
+  final Value<String> groupId;
+  final Value<int> lastReceivedSeq;
+  final Value<DateTime?> lastSyncAt;
+  final Value<int> rowid;
+  const SyncWatermarksCompanion({
+    this.groupId = const Value.absent(),
+    this.lastReceivedSeq = const Value.absent(),
+    this.lastSyncAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncWatermarksCompanion.insert({
+    required String groupId,
+    this.lastReceivedSeq = const Value.absent(),
+    this.lastSyncAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : groupId = Value(groupId);
+  static Insertable<SyncWatermarkRow> custom({
+    Expression<String>? groupId,
+    Expression<int>? lastReceivedSeq,
+    Expression<DateTime>? lastSyncAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (groupId != null) 'group_id': groupId,
+      if (lastReceivedSeq != null) 'last_received_seq': lastReceivedSeq,
+      if (lastSyncAt != null) 'last_sync_at': lastSyncAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncWatermarksCompanion copyWith(
+      {Value<String>? groupId,
+      Value<int>? lastReceivedSeq,
+      Value<DateTime?>? lastSyncAt,
+      Value<int>? rowid}) {
+    return SyncWatermarksCompanion(
+      groupId: groupId ?? this.groupId,
+      lastReceivedSeq: lastReceivedSeq ?? this.lastReceivedSeq,
+      lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (lastReceivedSeq.present) {
+      map['last_received_seq'] = Variable<int>(lastReceivedSeq.value);
+    }
+    if (lastSyncAt.present) {
+      map['last_sync_at'] = Variable<DateTime>(lastSyncAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncWatermarksCompanion(')
+          ..write('groupId: $groupId, ')
+          ..write('lastReceivedSeq: $lastReceivedSeq, ')
+          ..write('lastSyncAt: $lastSyncAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $UploadTasksTable extends UploadTasks
+    with TableInfo<$UploadTasksTable, UploadTaskRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UploadTasksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _mediaIdMeta =
+      const VerificationMeta('mediaId');
+  @override
+  late final GeneratedColumn<String> mediaId = GeneratedColumn<String>(
+      'media_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _groupIdMeta =
+      const VerificationMeta('groupId');
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+      'group_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _localPathMeta =
+      const VerificationMeta('localPath');
+  @override
+  late final GeneratedColumn<String> localPath = GeneratedColumn<String>(
+      'local_path', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _mimeTypeMeta =
+      const VerificationMeta('mimeType');
+  @override
+  late final GeneratedColumn<String> mimeType = GeneratedColumn<String>(
+      'mime_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _totalBytesMeta =
+      const VerificationMeta('totalBytes');
+  @override
+  late final GeneratedColumn<int> totalBytes = GeneratedColumn<int>(
+      'total_bytes', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _uploadedBytesMeta =
+      const VerificationMeta('uploadedBytes');
+  @override
+  late final GeneratedColumn<int> uploadedBytes = GeneratedColumn<int>(
+      'uploaded_bytes', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _downloadUrlMeta =
+      const VerificationMeta('downloadUrl');
+  @override
+  late final GeneratedColumn<String> downloadUrl = GeneratedColumn<String>(
+      'download_url', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('pending'));
+  static const VerificationMeta _encryptionKeyJsonMeta =
+      const VerificationMeta('encryptionKeyJson');
+  @override
+  late final GeneratedColumn<String> encryptionKeyJson =
+      GeneratedColumn<String>('encryption_key_json', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        mediaId,
+        groupId,
+        localPath,
+        mimeType,
+        totalBytes,
+        uploadedBytes,
+        downloadUrl,
+        status,
+        encryptionKeyJson,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'upload_tasks';
+  @override
+  VerificationContext validateIntegrity(Insertable<UploadTaskRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('media_id')) {
+      context.handle(_mediaIdMeta,
+          mediaId.isAcceptableOrUnknown(data['media_id']!, _mediaIdMeta));
+    } else if (isInserting) {
+      context.missing(_mediaIdMeta);
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(_groupIdMeta,
+          groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta));
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('local_path')) {
+      context.handle(_localPathMeta,
+          localPath.isAcceptableOrUnknown(data['local_path']!, _localPathMeta));
+    } else if (isInserting) {
+      context.missing(_localPathMeta);
+    }
+    if (data.containsKey('mime_type')) {
+      context.handle(_mimeTypeMeta,
+          mimeType.isAcceptableOrUnknown(data['mime_type']!, _mimeTypeMeta));
+    } else if (isInserting) {
+      context.missing(_mimeTypeMeta);
+    }
+    if (data.containsKey('total_bytes')) {
+      context.handle(
+          _totalBytesMeta,
+          totalBytes.isAcceptableOrUnknown(
+              data['total_bytes']!, _totalBytesMeta));
+    } else if (isInserting) {
+      context.missing(_totalBytesMeta);
+    }
+    if (data.containsKey('uploaded_bytes')) {
+      context.handle(
+          _uploadedBytesMeta,
+          uploadedBytes.isAcceptableOrUnknown(
+              data['uploaded_bytes']!, _uploadedBytesMeta));
+    }
+    if (data.containsKey('download_url')) {
+      context.handle(
+          _downloadUrlMeta,
+          downloadUrl.isAcceptableOrUnknown(
+              data['download_url']!, _downloadUrlMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('encryption_key_json')) {
+      context.handle(
+          _encryptionKeyJsonMeta,
+          encryptionKeyJson.isAcceptableOrUnknown(
+              data['encryption_key_json']!, _encryptionKeyJsonMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {mediaId};
+  @override
+  UploadTaskRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UploadTaskRow(
+      mediaId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}media_id'])!,
+      groupId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}group_id'])!,
+      localPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}local_path'])!,
+      mimeType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}mime_type'])!,
+      totalBytes: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}total_bytes'])!,
+      uploadedBytes: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}uploaded_bytes'])!,
+      downloadUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}download_url']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      encryptionKeyJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}encryption_key_json']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $UploadTasksTable createAlias(String alias) {
+    return $UploadTasksTable(attachedDatabase, alias);
+  }
+}
+
+class UploadTaskRow extends DataClass implements Insertable<UploadTaskRow> {
+  /// Media ID (UUID).
+  final String mediaId;
+
+  /// Conversation the media belongs to.
+  final String groupId;
+
+  /// Local file path of the encrypted blob.
+  final String localPath;
+
+  /// MIME type (e.g., image/jpeg).
+  final String mimeType;
+
+  /// Total file size in bytes.
+  final int totalBytes;
+
+  /// Bytes uploaded so far (for progress tracking).
+  final int uploadedBytes;
+
+  /// Remote download URL, populated after successful upload.
+  final String? downloadUrl;
+
+  /// Upload status: pending, uploading, completed, failed.
+  final String status;
+
+  /// JSON-encoded AES key + IV used to encrypt the file.
+  final String? encryptionKeyJson;
+
+  /// When this task was created.
+  final DateTime createdAt;
+  const UploadTaskRow(
+      {required this.mediaId,
+      required this.groupId,
+      required this.localPath,
+      required this.mimeType,
+      required this.totalBytes,
+      required this.uploadedBytes,
+      this.downloadUrl,
+      required this.status,
+      this.encryptionKeyJson,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['media_id'] = Variable<String>(mediaId);
+    map['group_id'] = Variable<String>(groupId);
+    map['local_path'] = Variable<String>(localPath);
+    map['mime_type'] = Variable<String>(mimeType);
+    map['total_bytes'] = Variable<int>(totalBytes);
+    map['uploaded_bytes'] = Variable<int>(uploadedBytes);
+    if (!nullToAbsent || downloadUrl != null) {
+      map['download_url'] = Variable<String>(downloadUrl);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || encryptionKeyJson != null) {
+      map['encryption_key_json'] = Variable<String>(encryptionKeyJson);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  UploadTasksCompanion toCompanion(bool nullToAbsent) {
+    return UploadTasksCompanion(
+      mediaId: Value(mediaId),
+      groupId: Value(groupId),
+      localPath: Value(localPath),
+      mimeType: Value(mimeType),
+      totalBytes: Value(totalBytes),
+      uploadedBytes: Value(uploadedBytes),
+      downloadUrl: downloadUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(downloadUrl),
+      status: Value(status),
+      encryptionKeyJson: encryptionKeyJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(encryptionKeyJson),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory UploadTaskRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UploadTaskRow(
+      mediaId: serializer.fromJson<String>(json['mediaId']),
+      groupId: serializer.fromJson<String>(json['groupId']),
+      localPath: serializer.fromJson<String>(json['localPath']),
+      mimeType: serializer.fromJson<String>(json['mimeType']),
+      totalBytes: serializer.fromJson<int>(json['totalBytes']),
+      uploadedBytes: serializer.fromJson<int>(json['uploadedBytes']),
+      downloadUrl: serializer.fromJson<String?>(json['downloadUrl']),
+      status: serializer.fromJson<String>(json['status']),
+      encryptionKeyJson:
+          serializer.fromJson<String?>(json['encryptionKeyJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'mediaId': serializer.toJson<String>(mediaId),
+      'groupId': serializer.toJson<String>(groupId),
+      'localPath': serializer.toJson<String>(localPath),
+      'mimeType': serializer.toJson<String>(mimeType),
+      'totalBytes': serializer.toJson<int>(totalBytes),
+      'uploadedBytes': serializer.toJson<int>(uploadedBytes),
+      'downloadUrl': serializer.toJson<String?>(downloadUrl),
+      'status': serializer.toJson<String>(status),
+      'encryptionKeyJson': serializer.toJson<String?>(encryptionKeyJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  UploadTaskRow copyWith(
+          {String? mediaId,
+          String? groupId,
+          String? localPath,
+          String? mimeType,
+          int? totalBytes,
+          int? uploadedBytes,
+          Value<String?> downloadUrl = const Value.absent(),
+          String? status,
+          Value<String?> encryptionKeyJson = const Value.absent(),
+          DateTime? createdAt}) =>
+      UploadTaskRow(
+        mediaId: mediaId ?? this.mediaId,
+        groupId: groupId ?? this.groupId,
+        localPath: localPath ?? this.localPath,
+        mimeType: mimeType ?? this.mimeType,
+        totalBytes: totalBytes ?? this.totalBytes,
+        uploadedBytes: uploadedBytes ?? this.uploadedBytes,
+        downloadUrl: downloadUrl.present ? downloadUrl.value : this.downloadUrl,
+        status: status ?? this.status,
+        encryptionKeyJson: encryptionKeyJson.present
+            ? encryptionKeyJson.value
+            : this.encryptionKeyJson,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  UploadTaskRow copyWithCompanion(UploadTasksCompanion data) {
+    return UploadTaskRow(
+      mediaId: data.mediaId.present ? data.mediaId.value : this.mediaId,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      localPath: data.localPath.present ? data.localPath.value : this.localPath,
+      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
+      totalBytes:
+          data.totalBytes.present ? data.totalBytes.value : this.totalBytes,
+      uploadedBytes: data.uploadedBytes.present
+          ? data.uploadedBytes.value
+          : this.uploadedBytes,
+      downloadUrl:
+          data.downloadUrl.present ? data.downloadUrl.value : this.downloadUrl,
+      status: data.status.present ? data.status.value : this.status,
+      encryptionKeyJson: data.encryptionKeyJson.present
+          ? data.encryptionKeyJson.value
+          : this.encryptionKeyJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UploadTaskRow(')
+          ..write('mediaId: $mediaId, ')
+          ..write('groupId: $groupId, ')
+          ..write('localPath: $localPath, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('totalBytes: $totalBytes, ')
+          ..write('uploadedBytes: $uploadedBytes, ')
+          ..write('downloadUrl: $downloadUrl, ')
+          ..write('status: $status, ')
+          ..write('encryptionKeyJson: $encryptionKeyJson, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      mediaId,
+      groupId,
+      localPath,
+      mimeType,
+      totalBytes,
+      uploadedBytes,
+      downloadUrl,
+      status,
+      encryptionKeyJson,
+      createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UploadTaskRow &&
+          other.mediaId == this.mediaId &&
+          other.groupId == this.groupId &&
+          other.localPath == this.localPath &&
+          other.mimeType == this.mimeType &&
+          other.totalBytes == this.totalBytes &&
+          other.uploadedBytes == this.uploadedBytes &&
+          other.downloadUrl == this.downloadUrl &&
+          other.status == this.status &&
+          other.encryptionKeyJson == this.encryptionKeyJson &&
+          other.createdAt == this.createdAt);
+}
+
+class UploadTasksCompanion extends UpdateCompanion<UploadTaskRow> {
+  final Value<String> mediaId;
+  final Value<String> groupId;
+  final Value<String> localPath;
+  final Value<String> mimeType;
+  final Value<int> totalBytes;
+  final Value<int> uploadedBytes;
+  final Value<String?> downloadUrl;
+  final Value<String> status;
+  final Value<String?> encryptionKeyJson;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const UploadTasksCompanion({
+    this.mediaId = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.localPath = const Value.absent(),
+    this.mimeType = const Value.absent(),
+    this.totalBytes = const Value.absent(),
+    this.uploadedBytes = const Value.absent(),
+    this.downloadUrl = const Value.absent(),
+    this.status = const Value.absent(),
+    this.encryptionKeyJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UploadTasksCompanion.insert({
+    required String mediaId,
+    required String groupId,
+    required String localPath,
+    required String mimeType,
+    required int totalBytes,
+    this.uploadedBytes = const Value.absent(),
+    this.downloadUrl = const Value.absent(),
+    this.status = const Value.absent(),
+    this.encryptionKeyJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : mediaId = Value(mediaId),
+        groupId = Value(groupId),
+        localPath = Value(localPath),
+        mimeType = Value(mimeType),
+        totalBytes = Value(totalBytes);
+  static Insertable<UploadTaskRow> custom({
+    Expression<String>? mediaId,
+    Expression<String>? groupId,
+    Expression<String>? localPath,
+    Expression<String>? mimeType,
+    Expression<int>? totalBytes,
+    Expression<int>? uploadedBytes,
+    Expression<String>? downloadUrl,
+    Expression<String>? status,
+    Expression<String>? encryptionKeyJson,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (mediaId != null) 'media_id': mediaId,
+      if (groupId != null) 'group_id': groupId,
+      if (localPath != null) 'local_path': localPath,
+      if (mimeType != null) 'mime_type': mimeType,
+      if (totalBytes != null) 'total_bytes': totalBytes,
+      if (uploadedBytes != null) 'uploaded_bytes': uploadedBytes,
+      if (downloadUrl != null) 'download_url': downloadUrl,
+      if (status != null) 'status': status,
+      if (encryptionKeyJson != null) 'encryption_key_json': encryptionKeyJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UploadTasksCompanion copyWith(
+      {Value<String>? mediaId,
+      Value<String>? groupId,
+      Value<String>? localPath,
+      Value<String>? mimeType,
+      Value<int>? totalBytes,
+      Value<int>? uploadedBytes,
+      Value<String?>? downloadUrl,
+      Value<String>? status,
+      Value<String?>? encryptionKeyJson,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return UploadTasksCompanion(
+      mediaId: mediaId ?? this.mediaId,
+      groupId: groupId ?? this.groupId,
+      localPath: localPath ?? this.localPath,
+      mimeType: mimeType ?? this.mimeType,
+      totalBytes: totalBytes ?? this.totalBytes,
+      uploadedBytes: uploadedBytes ?? this.uploadedBytes,
+      downloadUrl: downloadUrl ?? this.downloadUrl,
+      status: status ?? this.status,
+      encryptionKeyJson: encryptionKeyJson ?? this.encryptionKeyJson,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (mediaId.present) {
+      map['media_id'] = Variable<String>(mediaId.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (localPath.present) {
+      map['local_path'] = Variable<String>(localPath.value);
+    }
+    if (mimeType.present) {
+      map['mime_type'] = Variable<String>(mimeType.value);
+    }
+    if (totalBytes.present) {
+      map['total_bytes'] = Variable<int>(totalBytes.value);
+    }
+    if (uploadedBytes.present) {
+      map['uploaded_bytes'] = Variable<int>(uploadedBytes.value);
+    }
+    if (downloadUrl.present) {
+      map['download_url'] = Variable<String>(downloadUrl.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (encryptionKeyJson.present) {
+      map['encryption_key_json'] = Variable<String>(encryptionKeyJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UploadTasksCompanion(')
+          ..write('mediaId: $mediaId, ')
+          ..write('groupId: $groupId, ')
+          ..write('localPath: $localPath, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('totalBytes: $totalBytes, ')
+          ..write('uploadedBytes: $uploadedBytes, ')
+          ..write('downloadUrl: $downloadUrl, ')
+          ..write('status: $status, ')
+          ..write('encryptionKeyJson: $encryptionKeyJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4347,6 +5136,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $DecryptedMessagesTable(this);
   late final $ProcessedDistributionsTable processedDistributions =
       $ProcessedDistributionsTable(this);
+  late final $SyncWatermarksTable syncWatermarks = $SyncWatermarksTable(this);
+  late final $UploadTasksTable uploadTasks = $UploadTasksTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4361,7 +5152,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         mediaItems,
         unackedRatchets,
         decryptedMessages,
-        processedDistributions
+        processedDistributions,
+        syncWatermarks,
+        uploadTasks
       ];
 }
 
@@ -5624,8 +6417,7 @@ class $$OutboxItemsTableFilterComposer
       column: $table.id, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get groupId => $composableBuilder(
-      column: $table.groupId,
-      builder: (column) => ColumnFilters(column));
+      column: $table.groupId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<Uint8List> get encryptedEnvelope => $composableBuilder(
       column: $table.encryptedEnvelope,
@@ -5658,8 +6450,7 @@ class $$OutboxItemsTableOrderingComposer
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get groupId => $composableBuilder(
-      column: $table.groupId,
-      builder: (column) => ColumnOrderings(column));
+      column: $table.groupId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<Uint8List> get encryptedEnvelope => $composableBuilder(
       column: $table.encryptedEnvelope,
@@ -5691,8 +6482,8 @@ class $$OutboxItemsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get groupId => $composableBuilder(
-      column: $table.groupId, builder: (column) => column);
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
 
   GeneratedColumn<Uint8List> get encryptedEnvelope => $composableBuilder(
       column: $table.encryptedEnvelope, builder: (column) => column);
@@ -5981,8 +6772,7 @@ class $$MediaItemsTableFilterComposer
       column: $table.mediaId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get groupId => $composableBuilder(
-      column: $table.groupId,
-      builder: (column) => ColumnFilters(column));
+      column: $table.groupId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get messageId => $composableBuilder(
       column: $table.messageId, builder: (column) => ColumnFilters(column));
@@ -6020,8 +6810,7 @@ class $$MediaItemsTableOrderingComposer
       column: $table.mediaId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get groupId => $composableBuilder(
-      column: $table.groupId,
-      builder: (column) => ColumnOrderings(column));
+      column: $table.groupId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get messageId => $composableBuilder(
       column: $table.messageId, builder: (column) => ColumnOrderings(column));
@@ -6059,8 +6848,8 @@ class $$MediaItemsTableAnnotationComposer
   GeneratedColumn<String> get mediaId =>
       $composableBuilder(column: $table.mediaId, builder: (column) => column);
 
-  GeneratedColumn<String> get groupId => $composableBuilder(
-      column: $table.groupId, builder: (column) => column);
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
 
   GeneratedColumn<String> get messageId =>
       $composableBuilder(column: $table.messageId, builder: (column) => column);
@@ -6652,6 +7441,403 @@ typedef $$ProcessedDistributionsTableProcessedTableManager
         ),
         ProcessedDistributionRow,
         PrefetchHooks Function()>;
+typedef $$SyncWatermarksTableCreateCompanionBuilder = SyncWatermarksCompanion
+    Function({
+  required String groupId,
+  Value<int> lastReceivedSeq,
+  Value<DateTime?> lastSyncAt,
+  Value<int> rowid,
+});
+typedef $$SyncWatermarksTableUpdateCompanionBuilder = SyncWatermarksCompanion
+    Function({
+  Value<String> groupId,
+  Value<int> lastReceivedSeq,
+  Value<DateTime?> lastSyncAt,
+  Value<int> rowid,
+});
+
+class $$SyncWatermarksTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncWatermarksTable> {
+  $$SyncWatermarksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastReceivedSeq => $composableBuilder(
+      column: $table.lastReceivedSeq,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastSyncAt => $composableBuilder(
+      column: $table.lastSyncAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$SyncWatermarksTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncWatermarksTable> {
+  $$SyncWatermarksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastReceivedSeq => $composableBuilder(
+      column: $table.lastReceivedSeq,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastSyncAt => $composableBuilder(
+      column: $table.lastSyncAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$SyncWatermarksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncWatermarksTable> {
+  $$SyncWatermarksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<int> get lastReceivedSeq => $composableBuilder(
+      column: $table.lastReceivedSeq, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncAt => $composableBuilder(
+      column: $table.lastSyncAt, builder: (column) => column);
+}
+
+class $$SyncWatermarksTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SyncWatermarksTable,
+    SyncWatermarkRow,
+    $$SyncWatermarksTableFilterComposer,
+    $$SyncWatermarksTableOrderingComposer,
+    $$SyncWatermarksTableAnnotationComposer,
+    $$SyncWatermarksTableCreateCompanionBuilder,
+    $$SyncWatermarksTableUpdateCompanionBuilder,
+    (
+      SyncWatermarkRow,
+      BaseReferences<_$AppDatabase, $SyncWatermarksTable, SyncWatermarkRow>
+    ),
+    SyncWatermarkRow,
+    PrefetchHooks Function()> {
+  $$SyncWatermarksTableTableManager(
+      _$AppDatabase db, $SyncWatermarksTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncWatermarksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncWatermarksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncWatermarksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> groupId = const Value.absent(),
+            Value<int> lastReceivedSeq = const Value.absent(),
+            Value<DateTime?> lastSyncAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SyncWatermarksCompanion(
+            groupId: groupId,
+            lastReceivedSeq: lastReceivedSeq,
+            lastSyncAt: lastSyncAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String groupId,
+            Value<int> lastReceivedSeq = const Value.absent(),
+            Value<DateTime?> lastSyncAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SyncWatermarksCompanion.insert(
+            groupId: groupId,
+            lastReceivedSeq: lastReceivedSeq,
+            lastSyncAt: lastSyncAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$SyncWatermarksTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SyncWatermarksTable,
+    SyncWatermarkRow,
+    $$SyncWatermarksTableFilterComposer,
+    $$SyncWatermarksTableOrderingComposer,
+    $$SyncWatermarksTableAnnotationComposer,
+    $$SyncWatermarksTableCreateCompanionBuilder,
+    $$SyncWatermarksTableUpdateCompanionBuilder,
+    (
+      SyncWatermarkRow,
+      BaseReferences<_$AppDatabase, $SyncWatermarksTable, SyncWatermarkRow>
+    ),
+    SyncWatermarkRow,
+    PrefetchHooks Function()>;
+typedef $$UploadTasksTableCreateCompanionBuilder = UploadTasksCompanion
+    Function({
+  required String mediaId,
+  required String groupId,
+  required String localPath,
+  required String mimeType,
+  required int totalBytes,
+  Value<int> uploadedBytes,
+  Value<String?> downloadUrl,
+  Value<String> status,
+  Value<String?> encryptionKeyJson,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$UploadTasksTableUpdateCompanionBuilder = UploadTasksCompanion
+    Function({
+  Value<String> mediaId,
+  Value<String> groupId,
+  Value<String> localPath,
+  Value<String> mimeType,
+  Value<int> totalBytes,
+  Value<int> uploadedBytes,
+  Value<String?> downloadUrl,
+  Value<String> status,
+  Value<String?> encryptionKeyJson,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$UploadTasksTableFilterComposer
+    extends Composer<_$AppDatabase, $UploadTasksTable> {
+  $$UploadTasksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get mediaId => $composableBuilder(
+      column: $table.mediaId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get localPath => $composableBuilder(
+      column: $table.localPath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get mimeType => $composableBuilder(
+      column: $table.mimeType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get totalBytes => $composableBuilder(
+      column: $table.totalBytes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get uploadedBytes => $composableBuilder(
+      column: $table.uploadedBytes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get downloadUrl => $composableBuilder(
+      column: $table.downloadUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get encryptionKeyJson => $composableBuilder(
+      column: $table.encryptionKeyJson,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$UploadTasksTableOrderingComposer
+    extends Composer<_$AppDatabase, $UploadTasksTable> {
+  $$UploadTasksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get mediaId => $composableBuilder(
+      column: $table.mediaId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get localPath => $composableBuilder(
+      column: $table.localPath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get mimeType => $composableBuilder(
+      column: $table.mimeType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get totalBytes => $composableBuilder(
+      column: $table.totalBytes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get uploadedBytes => $composableBuilder(
+      column: $table.uploadedBytes,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get downloadUrl => $composableBuilder(
+      column: $table.downloadUrl, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get encryptionKeyJson => $composableBuilder(
+      column: $table.encryptionKeyJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$UploadTasksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UploadTasksTable> {
+  $$UploadTasksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get mediaId =>
+      $composableBuilder(column: $table.mediaId, builder: (column) => column);
+
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<String> get localPath =>
+      $composableBuilder(column: $table.localPath, builder: (column) => column);
+
+  GeneratedColumn<String> get mimeType =>
+      $composableBuilder(column: $table.mimeType, builder: (column) => column);
+
+  GeneratedColumn<int> get totalBytes => $composableBuilder(
+      column: $table.totalBytes, builder: (column) => column);
+
+  GeneratedColumn<int> get uploadedBytes => $composableBuilder(
+      column: $table.uploadedBytes, builder: (column) => column);
+
+  GeneratedColumn<String> get downloadUrl => $composableBuilder(
+      column: $table.downloadUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get encryptionKeyJson => $composableBuilder(
+      column: $table.encryptionKeyJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$UploadTasksTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $UploadTasksTable,
+    UploadTaskRow,
+    $$UploadTasksTableFilterComposer,
+    $$UploadTasksTableOrderingComposer,
+    $$UploadTasksTableAnnotationComposer,
+    $$UploadTasksTableCreateCompanionBuilder,
+    $$UploadTasksTableUpdateCompanionBuilder,
+    (
+      UploadTaskRow,
+      BaseReferences<_$AppDatabase, $UploadTasksTable, UploadTaskRow>
+    ),
+    UploadTaskRow,
+    PrefetchHooks Function()> {
+  $$UploadTasksTableTableManager(_$AppDatabase db, $UploadTasksTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UploadTasksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UploadTasksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UploadTasksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> mediaId = const Value.absent(),
+            Value<String> groupId = const Value.absent(),
+            Value<String> localPath = const Value.absent(),
+            Value<String> mimeType = const Value.absent(),
+            Value<int> totalBytes = const Value.absent(),
+            Value<int> uploadedBytes = const Value.absent(),
+            Value<String?> downloadUrl = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> encryptionKeyJson = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              UploadTasksCompanion(
+            mediaId: mediaId,
+            groupId: groupId,
+            localPath: localPath,
+            mimeType: mimeType,
+            totalBytes: totalBytes,
+            uploadedBytes: uploadedBytes,
+            downloadUrl: downloadUrl,
+            status: status,
+            encryptionKeyJson: encryptionKeyJson,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String mediaId,
+            required String groupId,
+            required String localPath,
+            required String mimeType,
+            required int totalBytes,
+            Value<int> uploadedBytes = const Value.absent(),
+            Value<String?> downloadUrl = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> encryptionKeyJson = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              UploadTasksCompanion.insert(
+            mediaId: mediaId,
+            groupId: groupId,
+            localPath: localPath,
+            mimeType: mimeType,
+            totalBytes: totalBytes,
+            uploadedBytes: uploadedBytes,
+            downloadUrl: downloadUrl,
+            status: status,
+            encryptionKeyJson: encryptionKeyJson,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$UploadTasksTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $UploadTasksTable,
+    UploadTaskRow,
+    $$UploadTasksTableFilterComposer,
+    $$UploadTasksTableOrderingComposer,
+    $$UploadTasksTableAnnotationComposer,
+    $$UploadTasksTableCreateCompanionBuilder,
+    $$UploadTasksTableUpdateCompanionBuilder,
+    (
+      UploadTaskRow,
+      BaseReferences<_$AppDatabase, $UploadTasksTable, UploadTaskRow>
+    ),
+    UploadTaskRow,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6677,4 +7863,8 @@ class $AppDatabaseManager {
   $$ProcessedDistributionsTableTableManager get processedDistributions =>
       $$ProcessedDistributionsTableTableManager(
           _db, _db.processedDistributions);
+  $$SyncWatermarksTableTableManager get syncWatermarks =>
+      $$SyncWatermarksTableTableManager(_db, _db.syncWatermarks);
+  $$UploadTasksTableTableManager get uploadTasks =>
+      $$UploadTasksTableTableManager(_db, _db.uploadTasks);
 }
