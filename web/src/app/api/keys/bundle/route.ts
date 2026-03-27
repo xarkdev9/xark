@@ -5,10 +5,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { verifyAuth } from '@/lib/auth-verify';
 import { invalidateBundle } from '@/lib/key-cache';
+import { checkJtiReplay, extractJti } from '@/lib/jwt-replay';
 
 export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req.headers.get('authorization'));
   if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  // ── JWT Replay Protection (crypto.md #15) ──
+  const authHeader = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (authHeader) {
+    const jti = extractJti(authHeader);
+    const { fresh } = await checkJtiReplay(jti);
+    if (!fresh) {
+      return NextResponse.json({ error: 'jwt_replay_detected' }, { status: 403 });
+    }
+  }
 
   // Rate limiting moved to edge proxy (BACKEND-03)
 

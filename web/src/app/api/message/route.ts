@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/postgres-pool';
 import { verifyAuth } from '@/lib/auth-verify';
+import { checkJtiReplay, extractJti } from '@/lib/jwt-replay';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,6 +16,16 @@ export async function POST(req: NextRequest) {
     const auth = await verifyAuth(req.headers.get('authorization'));
     if (!auth) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+
+    // ── JWT Replay Protection (crypto.md #15) ──
+    const authHeader = req.headers.get('authorization')?.replace('Bearer ', '');
+    if (authHeader) {
+      const jti = extractJti(authHeader);
+      const { fresh } = await checkJtiReplay(jti);
+      if (!fresh) {
+        return NextResponse.json({ error: 'jwt_replay_detected' }, { status: 403 });
+      }
     }
 
     const body = await req.json();
