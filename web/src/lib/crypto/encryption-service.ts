@@ -24,6 +24,7 @@ import { fetchPeerKeyBundle } from './key-manager';
 import { supabase, getSupabaseToken } from '../supabase';
 import type { DecryptedMessage, MessageType, RawKeyPair } from './types';
 import { requestMissingSenderKey, waitForSenderKey, notifySenderKeyArrived } from './sk-recovery';
+import { acquireRatchetLock, acquireSenderKeyLock } from './mutex';
 
 /** Distribution ciphertext row — piggybacked on the message POST */
 export interface DistributionCiphertext {
@@ -57,43 +58,10 @@ const x3dhSessionMeta = new Map<string, {
   otkId?: string;        // The OTK ID consumed by the initiator
 }>();
 
-// ── Concurrency Mutex (Double-send mitigation) ──
-const encryptLocks = new Map<string, Promise<void>>();
-async function withEncryptLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
-  let unlock: () => void;
-  const waitPromise = new Promise<void>(resolve => { unlock = resolve; });
-  const previous = encryptLocks.get(key) ?? Promise.resolve();
-
-  encryptLocks.set(key, previous.then(() => waitPromise).catch(() => waitPromise));
-  await previous.catch(() => {});
-
-  try {
-    return await fn();
-  } finally {
-    unlock!(); // Non-null assertion is safe because promise exec runs synchronously
-  }
-}
-
-// ── Decrypt Mutex (prevents parallel decryption race on same sender key) ──
-// Without this, N simultaneous Realtime decrypts for the same sender all read
-// the same chain state from IndexedDB, advance independently in memory, and
-// last-write-wins — permanently losing N-1 intermediate chain states.
-// Keyed by groupId:senderId (group) or senderId:deviceId (1:1).
-const decryptLocks = new Map<string, Promise<void>>();
-async function withDecryptLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
-  let unlock: () => void;
-  const waitPromise = new Promise<void>(resolve => { unlock = resolve; });
-  const previous = decryptLocks.get(key) ?? Promise.resolve();
-
-  decryptLocks.set(key, previous.then(() => waitPromise).catch(() => waitPromise));
-  await previous.catch(() => {});
-
-  try {
-    return await fn();
-  } finally {
-    unlock!();
-  }
-}
+// ── Concurrency Mutex (CRYPTO-05: Web Locks API) ──
+// Cross-tab exclusive locks via navigator.locks (with in-tab fallback).
+// Replaces the old in-process Map-based mutexes with cross-tab safety.
+// See ./mutex.ts for implementation.
 
 // ── Identity Key Compatibility Layer ──
 
@@ -620,7 +588,7 @@ export async function encryptForSanctuary(
   media?: MediaPayload,
   linkPreview?: LinkPreviewPayload
 ): Promise<EncryptedEnvelope> {
-  return withEncryptLock(`sanc:${peerId}:${peerDeviceId}`, async () => {
+  return acquireRatchetLock(`${peerId}:${peerDeviceId}`, async () => {
     await initCrypto();
 
   const payload: DecryptedMessage = {
@@ -703,7 +671,7 @@ export async function encryptForSanctuary(
     recipientDeviceId: peerDeviceId,
     commit: commitSession,
   };
-  }); // End withEncryptLock
+  }); // End acquireRatchetLock
 }
 
 /** Encrypt a message for a group space (Sender Key) */
@@ -713,7 +681,7 @@ export async function encryptForSpace(
   media?: MediaPayload,
   linkPreview?: LinkPreviewPayload
 ): Promise<EncryptedEnvelope> {
-  return withEncryptLock(`space:${groupId}`, async () => {
+  return acquireSenderKeyLock(groupId, async () => {
     await initCrypto();
 
   const payload: DecryptedMessage = {
@@ -795,7 +763,7 @@ export async function encryptForSpace(
   const { ciphertext, nonce, signature, iteration } = senderKeyEncrypt(senderKey, plaintext);
 
   // EAGER PERSIST: save advanced chain state to MAIN store immediately.
-  // This ensures the next queued encrypt (within withEncryptLock) reads the
+  // This ensures the next queued encrypt (within acquireSenderKeyLock) reads the
   // correct chain index — prevents rapid-fire chain index collisions.
   // Trade-off: if network fails, this chain index is "consumed" (wasted).
   // Signal Protocol handles gaps via the skipped key dictionary (BUG 16 fix).
@@ -832,7 +800,7 @@ export async function encryptForSpace(
     commit: commitSK,
     distributionCiphertexts: distCiphertexts.length > 0 ? distCiphertexts : undefined,
   };
-  }); // End withEncryptLock
+  }); // End acquireSenderKeyLock
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -849,12 +817,13 @@ export async function decryptMessage(
   recipientId: string,
   groupId: string
 ): Promise<DecryptedMessage> {
-  // Lock key: group messages by groupId:senderId, 1:1 by senderId:deviceId
-  const lockKey = recipientId === '_group_'
-    ? `dec:${groupId}:${senderId}`
-    : `dec:${senderId}:${senderDeviceId}`;
+  // CRYPTO-05: Cross-tab exclusive lock per ratchet session / sender key group.
+  // Group messages lock by groupId, 1:1 messages lock by senderId:deviceId.
+  const lockFn = recipientId === '_group_'
+    ? <T>(fn: () => Promise<T>) => acquireSenderKeyLock(`${groupId}:${senderId}`, fn)
+    : <T>(fn: () => Promise<T>) => acquireRatchetLock(`${senderId}:${senderDeviceId}`, fn);
 
-  return withDecryptLock(lockKey, async () => {
+  return lockFn(async () => {
     // FIX 2: The Plaintext Cache (Idempotent Decrypt Guard)
     // Check media cache first (has full metadata), then text-only cache
     const cachedMedia = await keyStore.getDecryptedMedia(messageId);
@@ -1082,7 +1051,7 @@ export async function decryptMessage(
     }
 
     return validated;
-  }); // End withDecryptLock
+  }); // End acquireRatchetLock / acquireSenderKeyLock
 }
 
 /** Client-side message type guard — anti-injection defense */

@@ -1,14 +1,14 @@
 "use client";
 
-// XARK OS v2.0 — Space View
+// hello OS v2.0 — Space View
 // Discuss (chat) + Decide (visual stream) toggle.
 // Chat state (messages, draft input) lives HERE — persists across view switches.
-// ChatInput is always visible. XarkChat is display-only.
+// ChatInput is always visible. HelloChat is display-only.
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { XarkChat } from "@/components/os/XarkChat";
+import { HelloChat } from "@/components/os/HelloChat";
 import { Avatar } from "@/components/os/Avatar";
 import DecisionBoard from "@/components/os/DecisionBoard";
 import { ItineraryView } from "@/components/os/ItineraryView";
@@ -60,13 +60,13 @@ function generateId(): string {
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "xark" | "system";
+  role: "user" | "hello" | "system";
   content: string;
   timestamp: number;
   senderName?: string;
   userId?: string;
   senderDeviceId?: number;
-  messageType?: string;  // 'e2ee' | 'xark' | 'system' | 'legacy'
+  messageType?: string;  // 'e2ee' | 'hello' | 'system' | 'legacy'
   deliveryStatus?: 'queued' | 'sent' | 'delivered' | 'read';
   /** E2EE media: Firebase download URL of encrypted blob */
   mediaUrl?: string;
@@ -142,8 +142,8 @@ function SpacePageInner() {
     (async () => {
       const { startOutboxSync } = await import("@/lib/crypto/outbox");
       cleanup = startOutboxSync(
-        (id) => console.log(`[xark-outbox] Sent queued message ${id}`),
-        (id, err) => console.warn(`[xark-outbox] Permanently failed: ${id} — ${err}`)
+        (id) => console.log(`[hello-outbox] Sent queued message ${id}`),
+        (id, err) => console.warn(`[hello-outbox] Permanently failed: ${id} — ${err}`)
       );
     })();
     return () => cleanup?.();
@@ -181,7 +181,7 @@ function SpacePageInner() {
     title: string | null; description: string | null; imageBase64: string | null; url: string;
   } | null>(null);
   const [isThinking, setIsThinking] = useState(
-    searchParams.get("xark") === "thinking"
+    searchParams.get("hello") === "thinking"
   );
   const messagesLoaded = useRef(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -198,16 +198,16 @@ function SpacePageInner() {
         thinkingTimerRef.current = setTimeout(() => setIsThinking(false), 30_000);
       }
     };
-    window.addEventListener("xark-thinking", handler);
+    window.addEventListener("hello-thinking", handler);
     return () => {
-      window.removeEventListener("xark-thinking", handler);
+      window.removeEventListener("hello-thinking", handler);
       if (thinkingTimerRef.current) clearTimeout(thinkingTimerRef.current);
     };
   }, [groupId]);
 
   // Safety timeout for URL-param triggered thinking (Home → Space navigation)
   useEffect(() => {
-    if (searchParams.get("xark") === "thinking") {
+    if (searchParams.get("hello") === "thinking") {
       const t = setTimeout(() => setIsThinking(false), 30_000);
       return () => clearTimeout(t);
     }
@@ -223,7 +223,7 @@ function SpacePageInner() {
         if (cached.length > 0) {
           setMessages(cached.map((m) => ({
             id: m.id,
-            role: m.role as "user" | "xark" | "system",
+            role: m.role as "user" | "hello" | "system",
             content: m.content,
             timestamp: m.timestamp,
             senderName: m.senderName,
@@ -466,7 +466,7 @@ function SpacePageInner() {
     );
     if (undecrypted.length === 0) return;
 
-    console.log(`[xark-catchup] Re-decrypting ${undecrypted.length} stale message(s)`);
+    console.log(`[hello-catchup] Re-decrypting ${undecrypted.length} stale message(s)`);
 
     (async () => {
       const ids = undecrypted.map((m) => m.id);
@@ -504,12 +504,12 @@ function SpacePageInner() {
             if (result) fixes.set(m.id, result.text);
           }
         } catch (err) {
-          console.warn('[xark-catchup] Re-decrypt failed for', m.id, err);
+          console.warn('[hello-catchup] Re-decrypt failed for', m.id, err);
         }
       }
 
       if (fixes.size > 0) {
-        console.log(`[xark-catchup] Recovered ${fixes.size} message(s)`);
+        console.log(`[hello-catchup] Recovered ${fixes.size} message(s)`);
         setMessages((prev) =>
           prev.map((m) => {
             const fixed = fixes.get(m.id);
@@ -549,7 +549,7 @@ function SpacePageInner() {
       );
       if (failed.length === 0) return;
 
-      console.log(`[xark-sk-arrived] SK arrived for ${senderId}, re-decrypting ${failed.length} message(s)`);
+      console.log(`[hello-sk-arrived] SK arrived for ${senderId}, re-decrypting ${failed.length} message(s)`);
 
       const ids = failed.map((m) => m.id);
       const ciphertexts = await fetchCiphertexts(ids);
@@ -568,12 +568,12 @@ function SpacePageInner() {
             if (result) fixes.set(m.id, result.text);
           }
         } catch (err) {
-          console.warn('[xark-sk-arrived] Re-decrypt still failed for', m.id, err);
+          console.warn('[hello-sk-arrived] Re-decrypt still failed for', m.id, err);
         }
       }
 
       if (fixes.size > 0) {
-        console.log(`[xark-sk-arrived] Recovered ${fixes.size} message(s) after SK arrival`);
+        console.log(`[hello-sk-arrived] Recovered ${fixes.size} message(s) after SK arrival`);
         setMessages((prev) =>
           prev.map((m) => {
             const fixed = fixes.get(m.id);
@@ -743,7 +743,7 @@ function SpacePageInner() {
 
       const newMsg: ChatMessage = {
         id: incoming.id,
-        role: incoming.role as "user" | "xark" | "system",
+        role: incoming.role as "user" | "hello" | "system",
         content,
         timestamp: new Date(incoming.created_at).getTime(),
         senderName: incoming.sender_name ?? undefined,
@@ -754,7 +754,7 @@ function SpacePageInner() {
       };
 
       // Clear thinking indicator when @hello responds (phantom receipt or final response)
-      if (incoming.role === "xark") {
+      if (incoming.role === "hello") {
         setIsThinking(false);
         if (thinkingTimerRef.current) { clearTimeout(thinkingTimerRef.current); thinkingTimerRef.current = null; }
       }
@@ -801,7 +801,7 @@ function SpacePageInner() {
 
         // If the latest server message is newer than our last seen, we missed something
         if (latestTs > lastSeenRef.current) {
-          console.log('[xark-reconcile] Gap detected, fetching missing messages');
+          console.log('[hello-reconcile] Gap detected, fetching missing messages');
           const missing = await fetchMessages(groupId, { limit: 20 });
           // Merge missing messages — decrypt E2EE before adding
           const existingIds = new Set(messages.map(m => m.id));
@@ -810,7 +810,7 @@ function SpacePageInner() {
             .filter(m => !failedMsgIds.has(m.id))  // Don't retry messages that already failed decrypt
             .filter(m => m.message_type !== 'sender_key_dist');
           if (newRaw.length === 0) return;
-          console.log(`[xark-reconcile] Found ${newRaw.length} missed messages`);
+          console.log(`[hello-reconcile] Found ${newRaw.length} missed messages`);
 
           // Decrypt E2EE messages before merging
           const decrypted: ChatMessage[] = [];
@@ -841,7 +841,7 @@ function SpacePageInner() {
                     if (result) content = result.text;
                   }
                 } catch (err) {
-                  console.warn('[xark-reconcile] decrypt failed:', err);
+                  console.warn('[hello-reconcile] decrypt failed:', err);
                   content = '[decryption pending]';
                   failedMsgIds.add(m.id); // Don't retry this message in future reconciliation cycles
                 }
@@ -849,7 +849,7 @@ function SpacePageInner() {
             }
             decrypted.push({
               id: m.id,
-              role: m.role as "user" | "xark" | "system",
+              role: m.role as "user" | "hello" | "system",
               content,
               timestamp: new Date(m.created_at).getTime(),
               senderName: m.sender_name ?? undefined,
@@ -933,9 +933,9 @@ function SpacePageInner() {
                 recipient_device_id: requesterRow.recipient_device_id,
               }),
             });
-            console.log(`[xark-sk-recovery] Re-distributed SK to ${requesterId}`);
+            console.log(`[hello-sk-recovery] Re-distributed SK to ${requesterId}`);
           } catch (err) {
-            console.warn("[xark-sk-recovery] Re-distribution failed:", err);
+            console.warn("[hello-sk-recovery] Re-distribution failed:", err);
           }
         }
       );
@@ -1083,22 +1083,22 @@ function SpacePageInner() {
 
     const token = getSupabaseToken();
 
-    // ── @XARK INTERCEPT — Phantom Receipt Architecture ──
+    // ── @hello INTERCEPT — Phantom Receipt Architecture ──
     // @hello commands are NOT encrypted. They route directly to /api/hello.
     // The server drops a phantom receipt into the timeline. AI results go to DecisionBoard.
     // This preserves E2EE purity: human messages never touch the AI endpoint.
     if (txt.toLowerCase().startsWith("@hello")) {
       // Show user's query in the chat timeline (optimistic — same as normal messages)
-      const xarkQueryMsg: ChatMessage = {
+      const helloQueryMsg: ChatMessage = {
         id: generateId(),
         role: "user",
         content: txt,
         timestamp: Date.now(),
         senderName: user?.displayName ?? userName,
         userId: resolvedUserId,
-        messageType: "xark_query",
+        messageType: "helloQuery",
       };
-      setMessages((prev) => [...prev, xarkQueryMsg]);
+      setMessages((prev) => [...prev, helloQueryMsg]);
       setInput("");
       setIsThinking(true);
 
@@ -1120,7 +1120,7 @@ function SpacePageInner() {
           }),
         })
           .catch((err) => {
-            console.warn("[xark] AI invocation failed:", err);
+            console.warn("[hello] AI invocation failed:", err);
             setIsThinking(false);
             if (thinkingTimerRef.current) { clearTimeout(thinkingTimerRef.current); thinkingTimerRef.current = null; }
           });
@@ -1260,7 +1260,7 @@ function SpacePageInner() {
             const data = await res.json();
 
             if (!res.ok) {
-              console.error("[xark-e2ee] /api/message failed:", data.error);
+              console.error("[hello-e2ee] /api/message failed:", data.error);
               // Queue for automatic retry instead of just showing error
               const { enqueueMessage } = await import("@/lib/crypto/outbox");
               await enqueueMessage({
@@ -1293,7 +1293,7 @@ function SpacePageInner() {
               // PRIORITY 3: Server confirmed all DB writes (message + ciphertexts +
               // distribution rows) are committed before returning 200. Safe to broadcast.
               if (data.distribution_written) {
-                console.log('[xark-e2ee] Distribution confirmed written before broadcast');
+                console.log('[hello-e2ee] Distribution confirmed written before broadcast');
               }
 
               // Broadcast for instant delivery (after DB write)
@@ -1323,7 +1323,7 @@ function SpacePageInner() {
             }
           }
         } catch (err) {
-          console.error("[xark-e2ee] Encrypt failed — message NOT sent (fail-closed):", err);
+          console.error("[hello-e2ee] Encrypt failed — message NOT sent (fail-closed):", err);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === userMsg.id ? { ...m, content: "[encryption failed — tap to retry]" } : m
@@ -1338,7 +1338,7 @@ function SpacePageInner() {
       // FAIL-CLOSED: E2EE not available — refuse to send plaintext
       // ══════════════════════════════════════════════
       if (!e2ee.available) {
-        console.error("[xark-e2ee] E2EE not available — refusing to send plaintext");
+        console.error("[hello-e2ee] E2EE not available — refusing to send plaintext");
         setMessages((prev) =>
           prev.map((m) =>
             m.id === userMsg.id
@@ -1510,7 +1510,7 @@ function SpacePageInner() {
 
   // Fallback share text for WhatsApp/SMS options (when native share was cancelled)
   const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/space/${groupId}`;
-  const shareText = `join ${spaceTitle || "this space"} on xark: ${shareUrl}`;
+  const shareText = `join ${spaceTitle || "this space"} on hello: ${shareUrl}`;
 
   // ── Joining whisper ──
   if (joining) {
@@ -1746,7 +1746,7 @@ function SpacePageInner() {
       <div onTouchStart={handleSwipeStart} onTouchEnd={handleSwipeEnd}>
       {view === "discuss" && <ConsensusBanner groupId={groupId} />}
       {view === "discuss" && (
-        <XarkChat
+        <HelloChat
           groupId={groupId}
           spaceTitle={spaceTitle}
           messages={messages}
@@ -1896,7 +1896,7 @@ function SpacePageInner() {
           <div
             className="flex items-center justify-between py-2 px-3"
             style={{
-              background: "rgba(var(--xark-accent-rgb), 0.08)",
+              background: "rgba(var(--hello-accent-rgb), 0.08)",
               borderRadius: "8px",
             }}
           >
@@ -2005,7 +2005,7 @@ function SpacePageInner() {
             };
             setMessages((prev) => [...prev, mediaMsg]);
 
-            // Encrypt with media metadata — withEncryptLock serializes per-space
+            // Encrypt with media metadata — acquireSenderKeyLock serializes per-space
             // so concurrent uploads queue here correctly for SK chain integrity
             const envelope = await e2ee.encrypt(
               mediaMsg.content,
