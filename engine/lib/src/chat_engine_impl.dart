@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:hello_engine/src/chat_session_impl.dart';
+import 'package:hello_engine/src/crypto/crypto_isolate.dart';
 import 'package:hello_engine/src/crypto/keys/key_store.dart';
 import 'package:hello_engine/src/crypto/sender_keys/group_cipher.dart';
 import 'package:hello_engine/src/crypto/sender_keys/sender_key_store.dart';
@@ -52,6 +53,7 @@ class ChatEngineImpl implements ChatEngine {
     required SenderKeyStore senderKeyStore,
     required GroupCipher groupCipher,
     required SyncCoordinator syncCoordinator,
+    required CryptoIsolateManager cryptoIsolate,
   })  : _keyStore = keyStore,
         _apiClient = apiClient,
         _messageRepo = messageRepo,
@@ -61,7 +63,8 @@ class ChatEngineImpl implements ChatEngine {
         _decryptedCache = decryptedCache,
         _senderKeyStore = senderKeyStore,
         _groupCipher = groupCipher,
-        _syncCoordinator = syncCoordinator;
+        _syncCoordinator = syncCoordinator,
+        _cryptoIsolate = cryptoIsolate;
 
   /// Creates and returns a fully initialized [ChatEngine].
   ///
@@ -119,7 +122,11 @@ class ChatEngineImpl implements ChatEngine {
       receiptRepo: receiptRepo,
     );
 
-    // 6. Assemble engine.
+    // 6. Spawn crypto isolate.
+    final cryptoIsolate = CryptoIsolateManager();
+    await cryptoIsolate.spawn();
+
+    // 7. Assemble engine.
     return ChatEngineImpl._(
       config: config,
       keyStore: keyStore,
@@ -132,6 +139,7 @@ class ChatEngineImpl implements ChatEngine {
       senderKeyStore: senderKeyStoreImpl,
       groupCipher: groupCipher,
       syncCoordinator: syncCoordinator,
+      cryptoIsolate: cryptoIsolate,
     );
   }
 
@@ -148,6 +156,7 @@ class ChatEngineImpl implements ChatEngine {
   final SenderKeyStore _senderKeyStore;
   final GroupCipher _groupCipher;
   final SyncCoordinator _syncCoordinator;
+  final CryptoIsolateManager _cryptoIsolate;
 
   final Map<String, ChatSessionImpl> _sessions = <String, ChatSessionImpl>{};
 
@@ -249,6 +258,11 @@ class ChatEngineImpl implements ChatEngine {
       _connectionController.add(EngineConnectionState.connecting);
     }
 
+    // Respawn crypto isolate if it died while suspended.
+    if (!_cryptoIsolate.isRunning) {
+      await _cryptoIsolate.spawn();
+    }
+
     final conversations = await _conversationRepo.getAllConversations();
     final groupIds = conversations.map((c) => c.id).toList();
     await _syncCoordinator.onConnected(groupIds);
@@ -261,6 +275,7 @@ class ChatEngineImpl implements ChatEngine {
   @override
   Future<void> dispose() async {
     _sessions.clear();
+    await _cryptoIsolate.shutdown();
     await _syncCoordinator.dispose();
     _apiClient.dispose();
     await _errorController.close();
