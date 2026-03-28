@@ -44,13 +44,13 @@ class NotificationService: UNNotificationServiceExtension {
 
             // For now, show generic message (decryption wiring in next iteration)
             content.title = "New Message"
-            content.body = "You have a new encrypted message"
+            content.body = "You may have new messages"
             content.userInfo["decrypted"] = false
             contentHandler(content)
         } catch {
             // Decryption failed — fall back to generic
             content.title = "New Message"
-            content.body = "You have a new encrypted message"
+            content.body = "You may have new messages"
             content.userInfo["decryptionError"] = error.localizedDescription
             contentHandler(content)
         }
@@ -60,7 +60,7 @@ class NotificationService: UNNotificationServiceExtension {
         // iOS is killing us (30s budget exceeded) — deliver what we have
         if let contentHandler = contentHandler, let content = bestAttemptContent {
             content.title = "New Message"
-            content.body = "You have a new encrypted message"
+            content.body = "You may have new messages"
             contentHandler(content)
         }
     }

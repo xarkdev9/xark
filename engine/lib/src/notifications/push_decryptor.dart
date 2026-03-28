@@ -28,7 +28,7 @@ class PushDecryptResult {
   }) =>
       PushDecryptResult(
         senderName: 'hello',
-        messagePreview: 'You have a new encrypted message',
+        messagePreview: 'You may have new messages',
         groupId: groupId,
         messageId: messageId,
         decrypted: false,

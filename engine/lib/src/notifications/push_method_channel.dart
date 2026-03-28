@@ -59,7 +59,7 @@ class PushMethodChannel {
     } catch (e) {
       return {
         'senderName': 'hello',
-        'messagePreview': 'You have a new encrypted message',
+        'messagePreview': 'You may have new messages',
         'groupId': '',
         'messageId': '',
         'decrypted': false,

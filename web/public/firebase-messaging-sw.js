@@ -18,7 +18,7 @@ self.addEventListener('push', function(event) {
       decryptAndNotify(data).catch(() => {
         // Decryption failed — show generic notification
         return self.registration.showNotification('New Message', {
-          body: 'You have a new encrypted message',
+          body: 'You may have new messages',
           icon: '/icons/icon-192.png',
           badge: '/icons/icon-192.png',
           data: { groupId: data.groupId, messageId: data.messageId },
@@ -37,7 +37,7 @@ async function decryptAndNotify(data) {
 
   // For now, show generic (decryption wiring in next iteration)
   return self.registration.showNotification('New Message', {
-    body: 'You have a new encrypted message',
+    body: 'You may have new messages',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     tag: `hello-${data.groupId}`,

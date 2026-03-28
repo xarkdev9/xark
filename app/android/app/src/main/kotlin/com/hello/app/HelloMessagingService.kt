@@ -46,7 +46,7 @@ class HelloMessagingService : FirebaseMessagingService() {
             // Phase 3: Wire FlutterEngine.getDartExecutor() -> MethodChannel
             showNotification(
                 title = "New Message",
-                body = "You have a new encrypted message",
+                body = "You may have new messages",
                 groupId = groupId,
                 messageId = messageId
             )
@@ -54,7 +54,7 @@ class HelloMessagingService : FirebaseMessagingService() {
             // Fallback
             showNotification(
                 title = "New Message",
-                body = "You have a new encrypted message",
+                body = "You may have new messages",
                 groupId = groupId,
                 messageId = messageId
             )
