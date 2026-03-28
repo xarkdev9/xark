@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:hello_engine/src/chat_session_impl.dart';
 import 'package:hello_engine/src/domain/models/commitment_proof.dart';
 import 'package:hello_engine/src/domain/models/decision_item.dart';
+import 'package:hello_engine/src/extensions/chat_engine_decisions.dart';
 import 'package:hello_engine/src/domain/models/hello_response_chunk.dart';
 import 'package:hello_engine/src/domain/models/invite_link.dart';
 import 'package:hello_engine/src/domain/models/join_result.dart';
@@ -54,7 +55,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Owns all repositories, use cases, and the sync coordinator.
 /// External code interacts via [getSession], stream properties,
 /// and lifecycle methods ([suspend], [resume], [dispose]).
-class ChatEngineImpl implements ChatEngine {
+class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
   ChatEngineImpl._({
     required this.config,
     required KeyStore keyStore,

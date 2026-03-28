@@ -1,10 +1,8 @@
 import 'package:hello_engine/src/devices/device_registry.dart';
 import 'package:hello_engine/src/domain/models/chat_engine_error.dart';
-import 'package:hello_engine/src/domain/models/commitment_proof.dart';
 import 'package:hello_engine/src/domain/models/connection_state.dart';
 import 'package:hello_engine/src/domain/models/contact_match.dart';
 import 'package:hello_engine/src/domain/models/conversation.dart';
-import 'package:hello_engine/src/domain/models/decision_item.dart';
 import 'package:hello_engine/src/domain/models/hello_response_chunk.dart';
 import 'package:hello_engine/src/domain/models/invite_link.dart';
 import 'package:hello_engine/src/domain/models/join_result.dart';
@@ -77,15 +75,6 @@ abstract class ChatEngine {
     required String prompt,
     required String groupId,
   });
-
-  /// Get decision items for a group.
-  Future<List<DecisionItem>> getDecisionItems(String groupId);
-
-  /// React to a decision item (LoveIt / WorksForMe / NotForMe).
-  Future<void> reactToItem(String itemId, String signal);
-
-  /// Lock a decision item with commitment proof.
-  Future<void> lockItem(String itemId, CommitmentProof proof);
 
   /// Generate a cryptographic invite link.
   Future<InviteLink> generateInvite();

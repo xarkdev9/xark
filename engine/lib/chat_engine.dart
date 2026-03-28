@@ -24,6 +24,7 @@ export 'src/domain/models/join_result.dart';
 export 'src/media/upload_progress.dart';
 export 'src/observer/chat_engine_observer.dart';
 export 'src/chat_engine_impl.dart' show ChatEngineImpl;
+export 'src/extensions/chat_engine_decisions.dart';
 export 'src/public_api/chat_engine.dart';
 export 'src/auth/auth_service.dart';
 export 'src/public_api/chat_engine_config.dart';
