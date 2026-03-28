@@ -44,6 +44,7 @@ import 'package:hello_engine/src/crypto/keys/key_store_impl.dart';
 import 'package:hello_engine/src/crypto/keys/key_types.dart';
 import 'package:hello_engine/src/devices/device_registry.dart';
 import 'package:hello_engine/src/domain/models/user_profile.dart';
+import 'package:hello_engine/src/notifications/push_method_channel.dart';
 import 'package:hello_engine/src/sync/outbox_processor.dart';
 import 'package:hello_engine/src/sync/gap_detector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -157,6 +158,9 @@ class ChatEngineImpl implements ChatEngine {
     // 6. Spawn crypto isolate.
     final cryptoIsolate = CryptoIsolateManager();
     await cryptoIsolate.spawn();
+
+    // 6b. Register push decryption method channel (native bridge).
+    PushMethodChannel.initialize();
 
     // 7. Assemble engine.
     return ChatEngineImpl._(
@@ -524,6 +528,7 @@ class ChatEngineImpl implements ChatEngine {
   @override
   Future<void> dispose() async {
     _sessions.clear();
+    PushMethodChannel.dispose();
     await _cryptoIsolate.shutdown();
     await _syncCoordinator.dispose();
     _apiClient.dispose();

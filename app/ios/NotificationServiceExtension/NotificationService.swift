@@ -29,10 +29,18 @@ class NotificationService: UNNotificationServiceExtension {
 
         // Attempt decryption
         do {
-            // TODO: Access shared Drift DB via App Group
-            // TODO: Load ratchet session for this sender
-            // TODO: Decrypt encryptedPayload using ratchet
-            // TODO: Update notification with plaintext
+            // Call Flutter engine via shared method channel
+            // NOTE: In NSE, we cannot use Flutter's MethodChannel directly.
+            // Instead, we use the shared App Group to read the encrypted DB
+            // and perform decryption natively, OR we use a shared framework.
+            //
+            // For now, the decryption flow is:
+            // 1. NSE reads the push payload
+            // 2. NSE calls a shared Dart-based decryption library (future)
+            // 3. OR NSE shows the fallback "New Message" notification
+            //
+            // The full native bridge requires a shared Flutter engine or
+            // a compiled Dart-to-native bridge (dart:ffi). This is Phase 3.
 
             // For now, show generic message (decryption wiring in next iteration)
             content.title = "New Message"

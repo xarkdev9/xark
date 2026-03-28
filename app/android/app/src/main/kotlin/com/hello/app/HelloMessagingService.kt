@@ -35,14 +35,15 @@ class HelloMessagingService : FirebaseMessagingService() {
         val groupId = data["groupId"] ?: return
         val messageId = data["messageId"] ?: return
 
-        // Attempt decryption
+        // Attempt to call Flutter engine for decryption
         try {
-            // TODO: Access Drift DB (shared SQLite)
-            // TODO: Load ratchet session for this sender
-            // TODO: Decrypt encryptedPayload
-            // TODO: Show notification with plaintext
-
-            // For now, show generic notification (decryption wiring in next iteration)
+            // The FlutterEngine must be pre-initialized for background execution
+            // This requires FlutterEngineGroup or a cached engine in Application class
+            //
+            // For now, show generic notification (decryption wiring requires
+            // FlutterEngineGroup setup in the Application class)
+            //
+            // Phase 3: Wire FlutterEngine.getDartExecutor() -> MethodChannel
             showNotification(
                 title = "New Message",
                 body = "You have a new encrypted message",
@@ -50,7 +51,7 @@ class HelloMessagingService : FirebaseMessagingService() {
                 messageId = messageId
             )
         } catch (e: Exception) {
-            // Decryption failed — fall back to generic
+            // Fallback
             showNotification(
                 title = "New Message",
                 body = "You have a new encrypted message",
