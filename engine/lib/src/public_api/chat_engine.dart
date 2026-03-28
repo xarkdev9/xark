@@ -1,7 +1,14 @@
+import 'package:hello_engine/src/devices/device_registry.dart';
 import 'package:hello_engine/src/domain/models/chat_engine_error.dart';
+import 'package:hello_engine/src/domain/models/commitment_proof.dart';
 import 'package:hello_engine/src/domain/models/connection_state.dart';
 import 'package:hello_engine/src/domain/models/contact_match.dart';
 import 'package:hello_engine/src/domain/models/conversation.dart';
+import 'package:hello_engine/src/domain/models/decision_item.dart';
+import 'package:hello_engine/src/domain/models/hello_response_chunk.dart';
+import 'package:hello_engine/src/domain/models/invite_link.dart';
+import 'package:hello_engine/src/domain/models/join_result.dart';
+import 'package:hello_engine/src/domain/models/user_profile.dart';
 import 'package:hello_engine/src/public_api/chat_session.dart';
 
 /// The top-level handle to the E2EE chat engine.
@@ -43,4 +50,46 @@ abstract class ChatEngine {
 
   /// Full teardown. Zeroes key material in memory.
   Future<void> dispose();
+
+  /// Get a user's profile.
+  Future<UserProfile> getProfile(String userId);
+
+  /// Update the current user's profile.
+  Future<void> updateProfile({String? displayName, String? photoUrl});
+
+  /// Get all devices for the current user.
+  Future<List<DeviceInfo>> getDevices();
+
+  /// Unlink (revoke) a device.
+  Future<void> unlinkDevice(int deviceId);
+
+  /// Get a cached display name for a user.
+  Future<String> getDisplayName(String userId);
+
+  /// Create a new group conversation.
+  Future<Conversation> createGroup({required String title, String? atmosphere});
+
+  /// Stream AI responses from @hello (SSE).
+  ///
+  /// The engine handles auth tokens and SSE parsing.
+  /// UI passes ONLY the prompt -- NEVER decrypted message history.
+  Stream<HelloResponseChunk> streamHelloResponse({
+    required String prompt,
+    required String groupId,
+  });
+
+  /// Get decision items for a group.
+  Future<List<DecisionItem>> getDecisionItems(String groupId);
+
+  /// React to a decision item (LoveIt / WorksForMe / NotForMe).
+  Future<void> reactToItem(String itemId, String signal);
+
+  /// Lock a decision item with commitment proof.
+  Future<void> lockItem(String itemId, CommitmentProof proof);
+
+  /// Generate a cryptographic invite link.
+  Future<InviteLink> generateInvite();
+
+  /// Claim an invite link and join the group.
+  Future<JoinResult> claimInvite(String code);
 }

@@ -35,6 +35,8 @@ import 'package:hello_engine/src/persistence/repositories/outbox_repository_impl
 import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository_impl.dart';
 import 'package:hello_engine/src/crypto/keys/key_store_impl.dart';
 import 'package:hello_engine/src/crypto/keys/key_types.dart';
+import 'package:hello_engine/src/devices/device_registry.dart';
+import 'package:hello_engine/src/domain/models/user_profile.dart';
 import 'package:hello_engine/src/sync/outbox_processor.dart';
 import 'package:hello_engine/src/sync/gap_detector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -183,6 +185,9 @@ class ChatEngineImpl implements ChatEngine {
 
   final Map<String, ChatSessionImpl> _sessions = <String, ChatSessionImpl>{};
 
+  /// In-memory display name cache to avoid repeated profile lookups.
+  final Map<String, String> _displayNameCache = <String, String>{};
+
   final StreamController<EngineConnectionState> _connectionController =
       StreamController<EngineConnectionState>.broadcast();
 
@@ -295,6 +300,82 @@ class ChatEngineImpl implements ChatEngine {
     if (!_connectionController.isClosed) {
       _connectionController.add(EngineConnectionState.connected);
     }
+  }
+
+  @override
+  Future<UserProfile> getProfile(String userId) async {
+    final response = await _apiClient.supabaseClient
+        .from('users')
+        .select('id, display_name, photo_url, phone')
+        .eq('id', userId)
+        .single();
+    return UserProfile(
+      userId: response['id'] as String,
+      displayName: response['display_name'] as String? ?? userId,
+      photoUrl: response['photo_url'] as String?,
+      phone: response['phone'] as String?,
+    );
+  }
+
+  @override
+  Future<void> updateProfile({String? displayName, String? photoUrl}) async {
+    final updates = <String, dynamic>{};
+    if (displayName != null) updates['display_name'] = displayName;
+    if (photoUrl != null) updates['photo_url'] = photoUrl;
+    if (updates.isNotEmpty) {
+      await _apiClient.supabaseClient
+          .from('users')
+          .update(updates)
+          .eq('id', config.userId);
+    }
+  }
+
+  @override
+  Future<List<DeviceInfo>> getDevices() async {
+    final data = await _apiClient.getUserDevices(config.userId);
+    return data.map(DeviceInfo.fromJson).toList();
+  }
+
+  @override
+  Future<void> unlinkDevice(int deviceId) async {
+    await _apiClient.supabaseClient
+        .rpc('unlink_device', params: {'p_device_id': deviceId});
+  }
+
+  @override
+  Future<String> getDisplayName(String userId) async {
+    if (_displayNameCache.containsKey(userId)) {
+      return _displayNameCache[userId]!;
+    }
+    try {
+      final profile = await getProfile(userId);
+      _displayNameCache[userId] = profile.displayName;
+      return profile.displayName;
+    } catch (_) {
+      return userId; // Fallback to user ID.
+    }
+  }
+
+  @override
+  Future<Conversation> createGroup({
+    required String title,
+    String? atmosphere,
+  }) async {
+    final response = await _apiClient.supabaseClient
+        .rpc('create_space_rpc', params: {
+      'p_title': title,
+      'p_atmosphere': atmosphere ?? 'cyan_horizon',
+      'p_owner_id': config.userId,
+    });
+    // Return the newly created conversation.
+    // The conversations stream will update reactively.
+    return Conversation(
+      id: response['group_id'] as String,
+      type: ConversationType.group,
+      participantIds: [config.userId],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
   }
 
   @override
