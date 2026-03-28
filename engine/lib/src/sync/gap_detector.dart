@@ -1,6 +1,6 @@
-import 'package:hello_engine/src/domain/repositories/message_repository.dart';
-import 'package:hello_engine/src/sync/sync_observer.dart';
-import 'package:hello_engine/src/transport/supabase_client.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/message_repository.dart';
+import 'package:e2ee_chat_sdk/src/sync/sync_observer.dart';
+import 'package:e2ee_chat_sdk/src/transport/supabase_client.dart';
 
 /// Fills message gaps after a reconnect or cold start.
 ///

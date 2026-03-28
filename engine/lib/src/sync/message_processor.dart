@@ -1,8 +1,8 @@
-import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:hello_engine/src/sync/deduplication_set.dart';
-import 'package:hello_engine/src/transport/dto/message_envelope.dart';
-import 'package:hello_engine/src/transport/dto/realtime_event.dart';
-import 'package:hello_engine/src/transport/supabase_client.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:e2ee_chat_sdk/src/sync/deduplication_set.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/message_envelope.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/realtime_event.dart';
+import 'package:e2ee_chat_sdk/src/transport/supabase_client.dart';
 
 /// Result of processing an incoming message notification.
 ///

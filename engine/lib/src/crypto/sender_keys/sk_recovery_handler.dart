@@ -1,5 +1,5 @@
-import 'package:hello_engine/src/crypto/keys/key_types.dart';
-import 'package:hello_engine/src/crypto/sender_keys/sender_key_store.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/sender_keys/sender_key_store.dart';
 
 /// Handles incoming SenderKeyRequest NACKs (crypto.md #19).
 ///

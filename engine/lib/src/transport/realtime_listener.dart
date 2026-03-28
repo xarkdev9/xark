@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:hello_engine/src/domain/models/connection_state.dart';
-import 'package:hello_engine/src/transport/dto/realtime_event.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/connection_state.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/realtime_event.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Manages Supabase Realtime subscriptions for incoming message

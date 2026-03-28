@@ -1,23 +1,23 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/keys/key_store.dart';
-import 'package:hello_engine/src/crypto/keys/key_types.dart';
-import 'package:hello_engine/src/crypto/ratchet/double_ratchet.dart';
-import 'package:hello_engine/src/crypto/sender_keys/group_cipher.dart';
-import 'package:hello_engine/src/crypto/sender_keys/sender_key_store.dart';
-import 'package:hello_engine/src/crypto/x3dh/x3dh.dart';
-import 'package:hello_engine/src/domain/models/conversation.dart';
-import 'package:hello_engine/src/domain/models/decrypted_message.dart';
-import 'package:hello_engine/src/domain/models/media_payload.dart';
-import 'package:hello_engine/src/domain/models/message.dart';
-import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:hello_engine/src/domain/repositories/message_repository.dart';
-import 'package:hello_engine/src/observer/chat_engine_observer.dart';
-import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:hello_engine/src/persistence/repositories/outbox_repository.dart';
-import 'package:hello_engine/src/transport/dto/message_envelope.dart';
-import 'package:hello_engine/src/transport/supabase_client.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_store.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/ratchet/double_ratchet.dart';
+import 'package:e2ee_chat_sdk/src/crypto/sender_keys/group_cipher.dart';
+import 'package:e2ee_chat_sdk/src/crypto/sender_keys/sender_key_store.dart';
+import 'package:e2ee_chat_sdk/src/crypto/x3dh/x3dh.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/conversation.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/decrypted_message.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/media_payload.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/message.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/conversation_repository.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/message_repository.dart';
+import 'package:e2ee_chat_sdk/src/observer/chat_engine_observer.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/outbox_repository.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/message_envelope.dart';
+import 'package:e2ee_chat_sdk/src/transport/supabase_client.dart';
 import 'package:uuid/uuid.dart';
 
 /// Complete send pipeline for 1:1 and group text messages.

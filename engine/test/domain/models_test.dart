@@ -2,7 +2,7 @@
 
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/domain/domain.dart';
+import 'package:e2ee_chat_sdk/src/domain/domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -64,7 +64,7 @@ void main() {
     test('JSON values match backend protocol strings', () {
       final testCases = <MessageType, String>{
         MessageType.e2ee: 'e2ee',
-        MessageType.hello: 'hello',
+        MessageType.ai: 'ai',
         MessageType.system: 'system',
         MessageType.legacy: 'legacy',
         MessageType.senderKeyDist: 'sender_key_dist',

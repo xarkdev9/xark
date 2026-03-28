@@ -1,18 +1,18 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/keys/key_store.dart';
-import 'package:hello_engine/src/crypto/keys/key_types.dart';
-import 'package:hello_engine/src/crypto/ratchet/double_ratchet.dart';
-import 'package:hello_engine/src/crypto/sender_keys/group_cipher.dart';
-import 'package:hello_engine/src/domain/models/decrypted_message.dart';
-import 'package:hello_engine/src/domain/models/message.dart';
-import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:hello_engine/src/domain/repositories/message_repository.dart';
-import 'package:hello_engine/src/observer/chat_engine_observer.dart';
-import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:hello_engine/src/persistence/repositories/processed_distribution_repository.dart';
-import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_store.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/ratchet/double_ratchet.dart';
+import 'package:e2ee_chat_sdk/src/crypto/sender_keys/group_cipher.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/decrypted_message.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/message.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/conversation_repository.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/message_repository.dart';
+import 'package:e2ee_chat_sdk/src/observer/chat_engine_observer.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/processed_distribution_repository.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/message_envelope.dart';
 
 /// Decrypts and processes incoming messages.
 ///

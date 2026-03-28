@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart';
-import 'package:hello_engine/src/persistence/database/app_database.dart';
-import 'package:hello_engine/src/ports/message_gateway.dart';
-import 'package:hello_engine/src/sync/sync_observer.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/ports/message_gateway.dart';
+import 'package:e2ee_chat_sdk/src/sync/sync_observer.dart';
 
 /// Background worker that drains the outbox queue to the server with
 /// exponential backoff.

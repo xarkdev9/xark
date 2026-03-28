@@ -1,4 +1,5 @@
-import 'package:hello_engine/src/observer/chat_engine_observer.dart';
+import 'package:e2ee_chat_sdk/src/config/brand_config.dart';
+import 'package:e2ee_chat_sdk/src/observer/chat_engine_observer.dart';
 
 /// Configuration for initializing the chat engine.
 ///
@@ -19,6 +20,7 @@ class ChatEngineConfig {
     required this.serverBaseUrl,
     this.supabaseAnonKey = '',
     this.observer,
+    this.brand = const BrandConfig(),
   });
 
   /// Opaque auth token from the host's authentication system.
@@ -41,4 +43,7 @@ class ChatEngineConfig {
 
   /// Optional diagnostics observer.
   final ChatEngineObserver? observer;
+
+  /// White-label brand configuration.
+  final BrandConfig brand;
 }

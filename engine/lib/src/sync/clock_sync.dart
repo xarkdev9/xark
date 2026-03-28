@@ -18,7 +18,7 @@ class ClockSync {
   Future<void> sync() async {
     try {
       final before = DateTime.now().millisecondsSinceEpoch;
-      final response = await http.head(_serverBaseUrl.resolve('/api/hello'));
+      final response = await http.head(_serverBaseUrl.resolve('/api/health'));
       final after = DateTime.now().millisecondsSinceEpoch;
 
       final dateHeader = response.headers['date'];

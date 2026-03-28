@@ -1,4 +1,4 @@
-import 'package:hello_engine/src/domain/models/media_metadata.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/media_metadata.dart';
 
 /// The current phase of a media upload operation.
 enum UploadPhase {

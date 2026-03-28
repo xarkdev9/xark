@@ -1,16 +1,16 @@
-import 'package:hello_engine/src/domain/models/key_fingerprint.dart';
-import 'package:hello_engine/src/domain/models/media_payload.dart';
-import 'package:hello_engine/src/domain/models/message.dart';
-import 'package:hello_engine/src/domain/models/presence_state.dart';
-import 'package:hello_engine/src/domain/models/receipt.dart';
-import 'package:hello_engine/src/domain/models/typing_indicator.dart';
-import 'package:hello_engine/src/domain/repositories/message_repository.dart';
-import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
-import 'package:hello_engine/src/domain/use_cases/delete_message_use_case.dart';
-import 'package:hello_engine/src/domain/use_cases/mark_read_use_case.dart';
-import 'package:hello_engine/src/domain/use_cases/send_message_use_case.dart';
-import 'package:hello_engine/src/public_api/chat_session.dart';
-import 'package:hello_engine/src/sync/sync_coordinator.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/key_fingerprint.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/media_payload.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/message.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/presence_state.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/receipt.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/typing_indicator.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/message_repository.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/receipt_repository.dart';
+import 'package:e2ee_chat_sdk/src/domain/use_cases/delete_message_use_case.dart';
+import 'package:e2ee_chat_sdk/src/domain/use_cases/mark_read_use_case.dart';
+import 'package:e2ee_chat_sdk/src/domain/use_cases/send_message_use_case.dart';
+import 'package:e2ee_chat_sdk/src/public_api/chat_session.dart';
+import 'package:e2ee_chat_sdk/src/sync/sync_coordinator.dart';
 
 /// Internal implementation of a per-conversation session handle.
 ///

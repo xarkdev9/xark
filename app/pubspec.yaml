@@ -35,7 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.3.1
-  hello_engine:
+  e2ee_chat_sdk:
     path: ../engine
 
 dev_dependencies:

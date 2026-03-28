@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/keys/ed25519_to_curve25519.dart';
-import 'package:hello_engine/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/ed25519_to_curve25519.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
 import 'package:cryptography/cryptography.dart';
 
 /// Base exception for X3DH protocol errors.

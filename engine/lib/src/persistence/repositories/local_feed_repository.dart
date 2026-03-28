@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
 
 /// Pure local-first repository that provides reactive Drift streams for
 /// all main screens.

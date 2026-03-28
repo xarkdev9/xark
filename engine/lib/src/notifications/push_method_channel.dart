@@ -7,14 +7,14 @@ import 'push_decryptor.dart';
 /// E2EE push payloads. The engine handles the crypto; native code handles
 /// the notification display.
 ///
-/// Channel name: 'com.hello.push_decrypt'
+/// Channel name: 'com.e2ee_chat.push_decrypt'
 ///
 /// Methods:
 ///   'decryptPush' -> accepts Map payload -> returns Map result
 ///   'getDecryptionReady' -> returns bool (crypto isolate available?)
 
 class PushMethodChannel {
-  static const _channel = MethodChannel('com.hello.push_decrypt');
+  static const _channel = MethodChannel('com.e2ee_chat.push_decrypt');
   static bool _initialized = false;
 
   /// Initialize the method channel handler.
@@ -58,7 +58,7 @@ class PushMethodChannel {
       };
     } catch (e) {
       return {
-        'senderName': 'hello',
+        'senderName': 'Chat',
         'messagePreview': 'You may have new messages',
         'groupId': '',
         'messageId': '',

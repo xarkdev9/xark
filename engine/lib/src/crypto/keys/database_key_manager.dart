@@ -10,7 +10,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// lock is a separate UI-layer concern.
 
 class DatabaseKeyManager {
-  static const _keyAlias = 'hello_db_encryption_key';
+  static const _keyAlias = 'e2ee_chat_db_key';
   static const _storage = FlutterSecureStorage();
 
   /// Get or generate the database encryption key.

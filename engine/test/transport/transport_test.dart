@@ -2,9 +2,9 @@
 
 import 'dart:convert';
 
-import 'package:hello_engine/src/transport/dto/message_envelope.dart';
-import 'package:hello_engine/src/transport/dto/realtime_event.dart';
-import 'package:hello_engine/src/transport/supabase_client.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/message_envelope.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/realtime_event.dart';
+import 'package:e2ee_chat_sdk/src/transport/supabase_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

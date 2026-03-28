@@ -21,7 +21,7 @@ class AppLockManager {
 
   /// Prompt for biometric authentication.
   /// Returns true if authenticated, false if denied/unavailable.
-  static Future<bool> authenticate({String reason = 'Unlock hello'}) async {
+  static Future<bool> authenticate({String reason = 'Unlock app'}) async {
     try {
       // Placeholder — requires local_auth package
       // final auth = LocalAuthentication();

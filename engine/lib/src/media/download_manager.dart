@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/keys/key_types.dart';
-import 'package:hello_engine/src/crypto/media/media_crypto.dart';
-import 'package:hello_engine/src/domain/models/chat_engine_error.dart';
-import 'package:hello_engine/src/domain/models/media_metadata.dart';
-import 'package:hello_engine/src/media/media_cache.dart';
-import 'package:hello_engine/src/media/upload_progress.dart';
-import 'package:hello_engine/src/observer/chat_engine_observer.dart';
-import 'package:hello_engine/src/transport/media_upload_client.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/media/media_crypto.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/chat_engine_error.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/media_metadata.dart';
+import 'package:e2ee_chat_sdk/src/media/media_cache.dart';
+import 'package:e2ee_chat_sdk/src/media/upload_progress.dart';
+import 'package:e2ee_chat_sdk/src/observer/chat_engine_observer.dart';
+import 'package:e2ee_chat_sdk/src/transport/media_upload_client.dart';
 
 /// Manages the download-verify-decrypt pipeline for media attachments.
 ///

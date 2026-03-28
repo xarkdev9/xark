@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:hello_engine/src/domain/models/conversation.dart';
-import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/conversation.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/conversation_repository.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
 import 'package:drift/drift.dart';
 
 /// Drift-backed implementation of [ConversationRepository].

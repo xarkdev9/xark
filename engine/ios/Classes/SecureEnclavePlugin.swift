@@ -7,7 +7,7 @@ import Security
 public class SecureEnclavePlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
-            name: "com.hello.secure_enclave",
+            name: "com.e2ee_chat.secure_enclave",
             binaryMessenger: registrar.messenger()
         )
         let instance = SecureEnclavePlugin()

@@ -27,7 +27,7 @@ class PushDecryptResult {
     String? error,
   }) =>
       PushDecryptResult(
-        senderName: 'hello',
+        senderName: 'Chat',
         messagePreview: 'You may have new messages',
         groupId: groupId,
         messageId: messageId,

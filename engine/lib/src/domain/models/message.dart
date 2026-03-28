@@ -1,4 +1,4 @@
-import 'package:hello_engine/src/domain/models/media_metadata.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/media_metadata.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'message.freezed.dart';
@@ -28,9 +28,9 @@ enum MessageType {
   @JsonValue('e2ee')
   e2ee,
 
-  /// X3DH key agreement message.
-  @JsonValue('hello')
-  hello,
+  /// AI assistant message.
+  @JsonValue('ai')
+  ai,
 
   /// System-generated message (e.g., user joined).
   @JsonValue('system')

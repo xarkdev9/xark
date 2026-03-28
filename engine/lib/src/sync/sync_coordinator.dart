@@ -1,18 +1,18 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/domain/models/presence_state.dart';
-import 'package:hello_engine/src/domain/models/typing_indicator.dart';
-import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
-import 'package:hello_engine/src/media/background_uploader.dart';
-import 'package:hello_engine/src/sync/conflict_resolver.dart';
-import 'package:hello_engine/src/sync/gap_detector.dart';
-import 'package:hello_engine/src/sync/outbox_processor.dart';
-import 'package:hello_engine/src/sync/outbox_worker.dart';
-import 'package:hello_engine/src/sync/watermark_sync.dart';
-import 'package:hello_engine/src/transport/dto/realtime_event.dart';
-import 'package:hello_engine/src/transport/realtime_listener.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/presence_state.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/typing_indicator.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/conversation_repository.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/receipt_repository.dart';
+import 'package:e2ee_chat_sdk/src/media/background_uploader.dart';
+import 'package:e2ee_chat_sdk/src/sync/conflict_resolver.dart';
+import 'package:e2ee_chat_sdk/src/sync/gap_detector.dart';
+import 'package:e2ee_chat_sdk/src/sync/outbox_processor.dart';
+import 'package:e2ee_chat_sdk/src/sync/outbox_worker.dart';
+import 'package:e2ee_chat_sdk/src/sync/watermark_sync.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/realtime_event.dart';
+import 'package:e2ee_chat_sdk/src/transport/realtime_listener.dart';
 
 // ---------------------------------------------------------------------------
 // SyncState — exposed to consumers via [SyncCoordinator.stateStream].

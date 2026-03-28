@@ -13,7 +13,7 @@ class HardwareKeyStorePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private val keyAlias = "com.hello.identity_wrapping_key"
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel = MethodChannel(binding.binaryMessenger, "com.hello.hardware_keystore")
+        channel = MethodChannel(binding.binaryMessenger, "com.e2ee_chat.hardware_keystore")
         channel.setMethodCallHandler(this)
     }
 

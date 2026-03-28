@@ -1,33 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hello_engine/chat_engine.dart';
-import 'screens/conversation_screen.dart';
-import 'providers/consensus_listener.dart';
+import 'package:e2ee_chat_sdk/e2ee_chat.dart';
+import 'views/chat/chat_view.dart';
 import 'providers/engine_error_listener.dart';
+import 'views/home/home_layout.dart';
+import 'engine_simulator/mock_chat_engine.dart';
 
 final engineProvider = Provider<ChatEngine>((ref) => throw UnimplementedError());
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize the E2EE engine with real Supabase credentials.
-  // These connect to the same backend as the React xark9 app.
-  final engine = await ChatEngineImpl.initialize(
-    ChatEngineConfig(
-      authToken: const String.fromEnvironment('AUTH_TOKEN', defaultValue: ''),
-      userId: const String.fromEnvironment('USER_ID', defaultValue: 'name_ram'),
-      deviceId: 99, // Flutter device — distinct from React's device_id=1
-      pushToken: '',
-      serverBaseUrl: Uri.parse(
-        const String.fromEnvironment(
-          'SERVER_URL',
-          defaultValue: 'https://ldnsxwkkxwztqyqkyuqa.supabase.co',
-        ),
-      ),
-      supabaseAnonKey: const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: ''),
-    ),
-  );
+  // The Bootloader is hijacked to run the local Phase 2 Matrix Simulation
+  // instead of connecting to the literal Supabase backend. This enforces
+  // strict local 120fps testing bounds for UI rendering physics.
+  final engine = MockChatEngine();
 
   // Moving the Riverpod nervous system external to the Widget Tree
   final container = ProviderContainer(
@@ -36,19 +23,7 @@ void main() async {
     ],
   );
 
-  container.listen(
-    consensusListenerProvider('default_space'),
-    (previous, next) {
-      if (next == true) {
-        // Target 13: The "Gold Burst" Trigger (Social Physics)
-        HapticFeedback.heavyImpact();
-        
-        // Target 14: The Global Lock State updated immediately
-        container.read(globalLockProvider.notifier).lock();
-      }
-    },
-    fireImmediately: true,
-  );
+  // Legacy consensus listener removed. The ActionCardWidget now handles this directly.
 
   setupHeadlessErrorBus(container);
 
@@ -97,7 +72,10 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
         scaffoldBackgroundColor: const Color(0xFFFAFAFA),
         fontFamily: 'Inter', 
       ),
-      home: const ConversationScreen(),
+      routes: {
+        '/chat': (context) => const ChatView(),
+      },
+      home: const HomeLayout(),
     );
   }
 }

@@ -1,168 +1,270 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import '../theme.dart';
-import '../widgets/encrypted_image_view.dart';
 import '../providers/consensus_listener.dart';
 
-import 'package:hello_engine/chat_engine.dart';
-
 class ActionCardWidget extends ConsumerStatefulWidget {
-  final Message message;
-  final String? inlineThumbnail; // Pass this if E2EE EncryptedMedia applies
+  final DecisionItem item;
+  final VoidCallback onReact;
+  final VoidCallback onPinCommit;
 
   const ActionCardWidget({
     super.key,
-    required this.message,
-    this.inlineThumbnail,
+    required this.item,
+    required this.onReact,
+    required this.onPinCommit,
   });
 
   @override
   ConsumerState<ActionCardWidget> createState() => _ActionCardWidgetState();
 }
 
-class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
-  late Animation<double> _scaleAnimation;
-
+class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
+  double _agreementScore = 0.0;
+  bool _isLocallyLocked = false;
+  
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(_animController);
+    _agreementScore = widget.item.agreementScore;
+    _checkConsensus();
   }
 
-  void _runSpringRelease() {
-    // Target 11: Apple-Scale physical mass and depth
-    final spring = const SpringDescription(mass: 1.0, stiffness: 500.0, damping: 24.0);
-    final simulation = SpringSimulation(spring, _animController.value, 0.0, _animController.velocity);
-    _animController.animateWith(simulation);
+  void _checkConsensus() {
+    if (_agreementScore >= 0.8 && !_isLocallyLocked) {
+      _isLocallyLocked = true;
+      Future.microtask(() {
+        if (ref.read(globalLockProvider) == null && mounted) {
+          ref.read(globalLockProvider.notifier).lock(widget.item.id);
+        }
+      });
+    }
   }
 
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
+  Color _getScoreColor(double score) {
+    if (score >= 0.80) return HelloColors.gold;
+    if (score >= 0.50) return Colors.cyan;
+    return Colors.amber;
   }
 
-  double get _agreementScore => 0.85; // Fixed mock threshold
-  bool get _isLocked => false;
-  String get _title => widget.message.text ?? "Unknown Action";
-
-  Color get _consensusColor {
-    if (_agreementScore >= 0.8) return HelloColors.gold;
-    if (_agreementScore >= 0.3) return HelloColors.accent;
-    return HelloColors.seekingAmber;
+  void _handleReaction(String reaction) {
+    setState(() {
+      if (reaction == 'love') {
+        _agreementScore += 0.8;
+      } else if (reaction == 'okay') {
+        _agreementScore += 0.5;
+      }
+      _checkConsensus();
+    });
+    widget.onReact();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Target 14: Global Lock
-    final isGloballyLocked = ref.watch(globalLockProvider) || _isLocked;
+    final bool isIgnited = _agreementScore >= 0.8 || _isLocallyLocked;
+
+    final photoUrl = widget.item.photoUrl;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: HelloColors.chrome,
+        borderRadius: BorderRadius.circular(26.0),
+        boxShadow: isIgnited
+            ? [
+                BoxShadow(
+                  color: HelloColors.gold.withValues(alpha: 0.2),
+                  blurRadius: 30.0,
+                  offset: const Offset(0, 10),
+                )
+              ]
+            : [],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(26.0),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Image Background
+            if (photoUrl != null && photoUrl.isNotEmpty) // Use Image.network for external Unsplash URL
+              Image.network(photoUrl, fit: BoxFit.cover)
+            else
+              Container(color: Colors.black12),
+
+            // 2. The Dark Wash
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: const Alignment(0.0, -0.2), // Fades out at 60% mark
+                    colors: [
+                      Colors.black.withValues(alpha: 0.85),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // 3. Typography & Metadata (Bottom Left)
+            Positioned(
+              left: 24.0,
+              bottom: 24.0,
+              right: 140.0, // Leave room for signals
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   Text(
+                     (_agreementScore * 100).toInt().toString(),
+                     style: HelloTypography.hero.copyWith(
+                       fontSize: 48,
+                       color: _getScoreColor(_agreementScore),
+                       height: 1.0,
+                     ),
+                   ),
+                   const SizedBox(height: 8),
+                   Text(
+                     widget.item.title,
+                     style: HelloTypography.spaceTitle.copyWith(
+                       color: Colors.white,
+                       fontWeight: FontWeight.w400,
+                     ),
+                     maxLines: 2,
+                     overflow: TextOverflow.ellipsis,
+                   ),
+                ],
+              ),
+            ),
+
+            // 4. The 3-Signal Physics Matrix (Bottom Right)
+            Positioned(
+              right: 24.0,
+              bottom: 24.0,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   _PhysicsSignalButton(
+                     label: "Pass",
+                     onTap: () {
+                       HapticFeedback.lightImpact();
+                       _handleReaction('pass');
+                     },
+                   ),
+                   const SizedBox(width: 8),
+                   _PhysicsSignalButton(
+                     label: "Okay",
+                     onTap: () {
+                       HapticFeedback.lightImpact();
+                       _handleReaction('okay');
+                     },
+                   ),
+                   const SizedBox(width: 8),
+                   _PhysicsSignalButton(
+                     label: "Love",
+                     isRose: true,
+                     onTap: () {
+                       HapticFeedback.heavyImpact();
+                       _handleReaction('love');
+                     },
+                   ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PhysicsSignalButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool isRose;
+
+  const _PhysicsSignalButton({
+    required this.label,
+    required this.onTap,
+    this.isRose = false,
+  });
+
+  @override
+  State<_PhysicsSignalButton> createState() => _PhysicsSignalButtonState();
+}
+
+class _PhysicsSignalButtonState extends State<_PhysicsSignalButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      value: 1.0,
+      duration: const Duration(milliseconds: 150),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails details) {
+    _controller.value = 0.85; // Instantly shrink
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    widget.onTap();
+    _runSpringRelease();
+  }
+
+  void _onTapCancel() {
+    _runSpringRelease();
+  }
+
+  void _runSpringRelease() {
+    final spring = const SpringDescription(mass: 1.0, stiffness: 500.0, damping: 24.0);
+    final simulation = SpringSimulation(spring, _controller.value, 1.0, 0.0);
+    _controller.animateWith(simulation);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = widget.isRose ? const Color(0xFFD4536B) : Colors.white;
 
     return GestureDetector(
-      onTapDown: isGloballyLocked ? null : (_) {
-        _animController.duration = const Duration(milliseconds: 100);
-        _animController.forward();
-      },
-      onTapUp: isGloballyLocked ? null : (_) => _runSpringRelease(),
-      onTapCancel: isGloballyLocked ? null : () => _runSpringRelease(),
+      behavior: HitTestBehavior.opaque,
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
       child: AnimatedBuilder(
-        animation: _animController,
+        animation: _controller,
         builder: (context, child) {
-          // Dim opacity smoothly if globally locked
-          return AnimatedOpacity(
-            duration: const Duration(milliseconds: 400),
-            opacity: isGloballyLocked ? 0.6 : 1.0,
-            child: Transform.scale(
-              scale: _scaleAnimation.value,
-              child: Container(
-                width: 260,
-                height: 380, // clamp approx
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16.0), // Zero-Box doctrine exception: exactly 16px
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF2A2A3A), Color(0xFF0A0A14)],
-                  ),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  children: [
-                     if (widget.inlineThumbnail != null)
-                       Positioned.fill(
-                         child: EncryptedImageView(
-                           metadata: widget.message.media ?? MediaMetadata(
-                             mediaId: 'mock',
-                             mimeType: 'image/jpeg',
-                             sizeBytes: 0,
-                             inlineThumbnail: widget.inlineThumbnail,
-                           ),
-                           inlineThumbnail: widget.inlineThumbnail,
-                           fillContainer: true,
-                         )
-                       ),
-                     
-                     Positioned.fill(
-                       child: DecoratedBox(
-                         decoration: BoxDecoration(
-                           gradient: LinearGradient(
-                             begin: Alignment.bottomCenter,
-                             end: Alignment.center,
-                             colors: [
-                               Colors.black.withValues(alpha: 0.95),
-                               Colors.transparent,
-                             ],
-                           )
-                         )
-                       )
-                     ),
-
-                     Positioned(
-                       bottom: 44.0,
-                       left: 16.0,
-                       right: 16.0,
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Text(
-                             "${(_agreementScore * 100).round()}%",
-                             style: TextStyle(
-                               fontSize: 40.0,
-                               fontWeight: FontWeight.w300,
-                               color: _consensusColor,
-                               height: 1.0,
-                               letterSpacing: -1.0,
-                             ),
-                           ),
-                           const SizedBox(height: 8),
-                           Text(
-                             _title,
-                             style: const TextStyle(
-                               fontSize: 16.0,
-                               fontWeight: FontWeight.w300,
-                               color: Color(0xFFE8E8EC),
-                               height: 1.3,
-                             ),
-                           ),
-                         ],
-                       ),
-                     ),
-                  ],
+          return Transform.scale(
+            scale: _controller.value,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                widget.label,
+                style: HelloTypography.label.copyWith(
+                  color: textColor,
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14,
                 ),
               ),
             ),
           );
-        }
+        },
       ),
     );
   }

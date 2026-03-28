@@ -1,9 +1,9 @@
-import 'package:hello_engine/src/domain/models/key_fingerprint.dart';
-import 'package:hello_engine/src/domain/models/media_payload.dart';
-import 'package:hello_engine/src/domain/models/message.dart';
-import 'package:hello_engine/src/domain/models/presence_state.dart';
-import 'package:hello_engine/src/domain/models/receipt.dart';
-import 'package:hello_engine/src/domain/models/typing_indicator.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/key_fingerprint.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/media_payload.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/message.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/presence_state.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/receipt.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/typing_indicator.dart';
 
 /// Per-conversation session handle.
 ///

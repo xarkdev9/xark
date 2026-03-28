@@ -1,4 +1,4 @@
-import 'package:hello_engine/src/domain/models/message.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/message.dart';
 
 /// Abstract repository for message persistence.
 ///

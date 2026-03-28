@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'dart:ui';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hello_engine/chat_engine.dart';
+import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import '../theme.dart';
 import '../main.dart'; // engineProvider
 
@@ -152,9 +153,11 @@ class _EncryptedImageViewState extends ConsumerState<EncryptedImageView> {
         firstChild: _buildBlurredThumbnail(),
         secondChild: _failed 
             ? failedState 
-            : (_decryptedFile != null 
-                ? Image.file(_decryptedFile!, fit: BoxFit.cover) 
-                : const SizedBox.shrink()),
+            : (kIsWeb && widget.metadata.downloadUrl != null
+                ? Image.network(widget.metadata.downloadUrl!, fit: BoxFit.cover)
+                : (_decryptedFile != null 
+                    ? Image.file(_decryptedFile!, fit: BoxFit.cover) 
+                    : const SizedBox.shrink())),
         layoutBuilder: (topChild, topKey, bottomChild, bottomKey) {
           // Explicitly expanding children fixes sizing pops since images might bound differently natively
           return Stack(

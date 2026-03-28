@@ -1,13 +1,13 @@
-import 'package:hello_engine/src/devices/device_registry.dart';
-import 'package:hello_engine/src/domain/models/chat_engine_error.dart';
-import 'package:hello_engine/src/domain/models/connection_state.dart';
-import 'package:hello_engine/src/domain/models/contact_match.dart';
-import 'package:hello_engine/src/domain/models/conversation.dart';
-import 'package:hello_engine/src/domain/models/hello_response_chunk.dart';
-import 'package:hello_engine/src/domain/models/invite_link.dart';
-import 'package:hello_engine/src/domain/models/join_result.dart';
-import 'package:hello_engine/src/domain/models/user_profile.dart';
-import 'package:hello_engine/src/public_api/chat_session.dart';
+import 'package:e2ee_chat_sdk/src/devices/device_registry.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/chat_engine_error.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/connection_state.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/contact_match.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/conversation.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/hello_response_chunk.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/invite_link.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/join_result.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/user_profile.dart';
+import 'package:e2ee_chat_sdk/src/public_api/chat_session.dart';
 
 /// The top-level handle to the E2EE chat engine.
 ///

@@ -3,7 +3,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hello_engine/src/crypto/media/streaming_aead.dart';
+import 'package:e2ee_chat_sdk/src/crypto/media/streaming_aead.dart';
 
 void main() {
   group('StreamingAead', () {

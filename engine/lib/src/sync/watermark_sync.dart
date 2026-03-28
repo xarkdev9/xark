@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
-import 'package:hello_engine/src/persistence/database/app_database.dart';
-import 'package:hello_engine/src/ports/message_gateway.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/ports/message_gateway.dart';
 
 /// Watermark-based gap sync for offline reconnection (MOBILE-02).
 ///

@@ -2,7 +2,7 @@
 
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/crypto.dart';
+import 'package:e2ee_chat_sdk/src/crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

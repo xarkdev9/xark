@@ -1,6 +1,6 @@
-import 'package:hello_engine/src/domain/models/message.dart';
-import 'package:hello_engine/src/domain/repositories/conversation_repository.dart';
-import 'package:hello_engine/src/domain/repositories/message_repository.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/message.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/conversation_repository.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/message_repository.dart';
 
 /// Marks a message as read and resets the conversation unread count.
 ///

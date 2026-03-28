@@ -1,6 +1,6 @@
-import 'package:hello_engine/src/domain/models/receipt.dart';
-import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
-import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/receipt.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/receipt_repository.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
 import 'package:drift/drift.dart';
 
 /// Drift-backed implementation of [ReceiptRepository].
