@@ -1,6 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:hello_engine/src/chat_session_impl.dart';
+import 'package:hello_engine/src/domain/models/commitment_proof.dart';
+import 'package:hello_engine/src/domain/models/decision_item.dart';
+import 'package:hello_engine/src/domain/models/hello_response_chunk.dart';
+import 'package:hello_engine/src/domain/models/invite_link.dart';
+import 'package:hello_engine/src/domain/models/join_result.dart';
+import 'package:http/http.dart' as http;
 import 'package:hello_engine/src/crypto/crypto_isolate.dart';
 import 'package:hello_engine/src/crypto/keys/key_store.dart';
 import 'package:hello_engine/src/crypto/sender_keys/group_cipher.dart';
@@ -375,6 +382,142 @@ class ChatEngineImpl implements ChatEngine {
       participantIds: [config.userId],
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // AI, Decision, and Invite APIs
+  // ---------------------------------------------------------------------------
+
+  @override
+  Stream<HelloResponseChunk> streamHelloResponse({
+    required String prompt,
+    required String groupId,
+  }) async* {
+    try {
+      final uri = config.serverBaseUrl.resolve('/api/hello');
+      final request = http.Request('POST', uri);
+      request.headers['Content-Type'] = 'application/json';
+      request.headers['Authorization'] = 'Bearer ${config.authToken}';
+      request.body = jsonEncode({'prompt': prompt, 'groupId': groupId});
+
+      final response = await http.Client().send(request);
+
+      await for (final chunk in response.stream.transform(utf8.decoder)) {
+        // Parse SSE: "data: {...}\n\n"
+        for (final line in chunk.split('\n')) {
+          if (line.startsWith('data: ')) {
+            final json = jsonDecode(line.substring(6)) as Map<String, dynamic>;
+            if (json['done'] == true) {
+              yield const HelloResponseChunk(text: '', done: true);
+              return;
+            }
+            if (json['error'] != null) {
+              yield HelloResponseChunk(
+                text: '',
+                error: json['error'] as String,
+              );
+              return;
+            }
+            yield HelloResponseChunk(text: json['text'] as String? ?? '');
+          }
+        }
+      }
+    } catch (e) {
+      yield HelloResponseChunk(text: '', error: e.toString());
+    }
+  }
+
+  @override
+  Future<List<DecisionItem>> getDecisionItems(String groupId) async {
+    final response = await _apiClient.supabaseClient
+        .from('decision_items')
+        .select('*, reactions(*)')
+        .eq('space_id', groupId)
+        .order('weighted_score', ascending: false);
+
+    final rows = response as List<dynamic>;
+    return rows.map((item) {
+      final reactions = <String, String>{};
+      for (final r in (item['reactions'] as List<dynamic>? ?? <dynamic>[])) {
+        reactions[r['user_id'] as String] = r['signal'] as String;
+      }
+      return DecisionItem(
+        id: item['id'] as String,
+        groupId: groupId,
+        title: item['title'] as String? ?? '',
+        description: item['description'] as String?,
+        category: item['category'] as String?,
+        state: item['state'] as String? ?? 'proposed',
+        weightedScore:
+            (item['weighted_score'] as num?)?.toDouble() ?? 0.0,
+        agreementScore:
+            (item['agreement_score'] as num?)?.toDouble() ?? 0.0,
+        reactions: reactions,
+        isLocked: item['is_locked'] as bool? ?? false,
+        photoUrl: item['photo_url'] as String?,
+        proposedBy: item['proposed_by'] as String?,
+      );
+    }).toList();
+  }
+
+  @override
+  Future<void> reactToItem(String itemId, String signal) async {
+    await _apiClient.supabaseClient.rpc(
+      'upsert_reaction',
+      params: {
+        'p_item_id': itemId,
+        'p_user_id': config.userId,
+        'p_signal': signal,
+      },
+    );
+  }
+
+  @override
+  Future<void> lockItem(String itemId, CommitmentProof proof) async {
+    await _apiClient.supabaseClient
+        .from('decision_items')
+        .update({
+          'is_locked': true,
+          'locked_at': DateTime.now().toIso8601String(),
+          'commitment_proof': jsonEncode({
+            'type': proof.type,
+            'value': proof.value,
+            'submitted_by': proof.submittedBy,
+          }),
+        })
+        .eq('id', itemId);
+  }
+
+  @override
+  Future<InviteLink> generateInvite() async {
+    final uri = config.serverBaseUrl.resolve('/api/invite');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${config.authToken}',
+      },
+    );
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return InviteLink(
+      code: data['code'] as String,
+      url: data['url'] as String,
+    );
+  }
+
+  @override
+  Future<JoinResult> claimInvite(String code) async {
+    final uri = config.serverBaseUrl.resolve('/api/invite/claim');
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'code': code}),
+    );
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return JoinResult(
+      groupId: data['groupId'] as String,
+      accessToken: data['accessToken'] as String,
     );
   }
 

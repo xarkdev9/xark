@@ -4,10 +4,13 @@
 library chat_engine;
 
 export 'src/domain/models/chat_engine_error.dart';
+export 'src/domain/models/commitment_proof.dart';
 export 'src/domain/models/connection_state.dart';
 export 'src/domain/models/contact_match.dart';
+export 'src/domain/models/decision_item.dart';
 export 'src/domain/models/conversation.dart';
 export 'src/domain/models/decrypted_message.dart';
+export 'src/domain/models/hello_response_chunk.dart';
 export 'src/domain/models/key_fingerprint.dart';
 export 'src/domain/models/media_metadata.dart';
 export 'src/domain/models/media_payload.dart';
