@@ -25,6 +25,7 @@ import 'package:hello_engine/src/sync/conflict_resolver.dart';
 import 'package:hello_engine/src/sync/sync_coordinator.dart';
 import 'package:hello_engine/src/transport/realtime_listener.dart';
 import 'package:hello_engine/src/transport/supabase_client.dart';
+import 'package:hello_engine/src/crypto/keys/database_key_manager.dart';
 import 'package:hello_engine/src/persistence/database/database_factory.dart';
 import 'package:hello_engine/src/persistence/database/app_database.dart';
 import 'package:hello_engine/src/persistence/repositories/message_repository_impl.dart';
@@ -85,7 +86,9 @@ class ChatEngineImpl implements ChatEngine {
     }
 
     // 2. Open encrypted database.
-    final db = await DatabaseFactory.create();
+    // Get or generate database encryption key (null on web)
+    final dbKey = await DatabaseKeyManager.getOrCreateKey();
+    final db = await DatabaseFactory.create(encryptionKey: dbKey);
 
     // 3. Build transport layer.
     final apiClient = SupabaseClientWrapper(
