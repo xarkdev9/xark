@@ -4,20 +4,24 @@
 
 const HAS_WEB_LOCKS = typeof navigator !== 'undefined' && 'locks' in navigator;
 
-const inTabLocks = new Map<string, Promise<void>>();
+const inTabQueues = new Map<string, Promise<void>>();
 
 async function inTabLock<T>(name: string, fn: () => Promise<T>): Promise<T> {
-  while (inTabLocks.has(name)) {
-    await inTabLocks.get(name);
-  }
-  let resolve: () => void;
-  const promise = new Promise<void>((r) => { resolve = r; });
-  inTabLocks.set(name, promise);
+  // Chain on the previous lock holder's promise
+  const prev = inTabQueues.get(name) ?? Promise.resolve();
+  let release: () => void;
+  const next = new Promise<void>((r) => { release = r; });
+  inTabQueues.set(name, next);
+
+  await prev; // Wait for previous holder to finish
   try {
     return await fn();
   } finally {
-    inTabLocks.delete(name);
-    resolve!();
+    release!();
+    // Clean up if no one else is queued
+    if (inTabQueues.get(name) === next) {
+      inTabQueues.delete(name);
+    }
   }
 }
 

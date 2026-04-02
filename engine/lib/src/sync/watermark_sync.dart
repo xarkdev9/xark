@@ -100,9 +100,12 @@ class WatermarkSync {
       totalSynced += page.messages.length;
 
       // Advance the watermark to the highest seq in this page.
-      final maxSeq = page.messages
-          .map((m) => m['server_seq'] as int)
-          .reduce((a, b) => a > b ? a : b);
+      final seqs = page.messages
+          .map((m) => m['server_seq'] as int?)
+          .whereType<int>()
+          .toList();
+      if (seqs.isEmpty) break;
+      final maxSeq = seqs.reduce((a, b) => a > b ? a : b);
       await updateWatermark(groupId, maxSeq);
 
       cursor = page.nextCursor;

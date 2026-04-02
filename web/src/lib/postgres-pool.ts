@@ -8,11 +8,13 @@ import postgres from 'postgres';
 
 const globalForPostgres = globalThis as unknown as { sql: postgres.Sql };
 
-export const sql = globalForPostgres.sql || postgres(process.env.DATABASE_URL!, {
-  max: 5,
-  idle_timeout: 10,
-  connect_timeout: 5,
-});
+export const sql = globalForPostgres.sql || (process.env.DATABASE_URL
+  ? postgres(process.env.DATABASE_URL, {
+      max: 5,
+      idle_timeout: 10,
+      connect_timeout: 5,
+    })
+  : null);
 
 // Persist to globalThis unconditionally — ensures warm Vercel containers reuse the pool
-if (!globalForPostgres.sql) globalForPostgres.sql = sql;
+if (!globalForPostgres.sql && sql) globalForPostgres.sql = sql;
