@@ -6,8 +6,12 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/lib/postgres-pool';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { verifyAuth } from '@/lib/auth-verify';
+
+// NOTE: Originally used postgres.js TCP pool for lower latency.
+// Falls back to Supabase PostgREST RPC when DATABASE_URL is not set.
+// Set DATABASE_URL to the Supavisor pooler endpoint (port 6543) for TCP mode.
 // NOTE: JWT replay protection (jti check) intentionally NOT applied here.
 // The message route relies on client retries for idempotency — the atomic RPC's
 // ON CONFLICT (id) DO NOTHING handles dedup. Blocking retried JWTs would break
@@ -49,29 +53,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'invalid message_type' }, { status: 400 });
     }
 
-    // ── Atomic RPC via postgres.js TCP ──
-    const [result] = await sql`
-      SELECT send_e2ee_message(
-        ${message_id}::UUID,
-        ${group_id}::TEXT,
-        ${auth.userId}::TEXT,
-        ${sender_device_id ?? 0}::INTEGER,
-        ${msgType}::TEXT,
-        ${role ?? 'user'}::TEXT,
-        ${server_content ?? null}::TEXT,
-        ${reply_to_id ?? null}::UUID,
-        ${JSON.stringify(ciphertexts ?? [])}::JSONB,
-        ${JSON.stringify(distribution_ciphertexts ?? [])}::JSONB
-      ) AS result
-    `;
+    // ── Atomic RPC via Supabase PostgREST ──
+    const { data, error } = await supabaseAdmin.rpc('send_e2ee_message', {
+      p_message_id: message_id,
+      p_group_id: group_id,
+      p_sender_id: auth.userId,
+      p_sender_device_id: sender_device_id ?? 0,
+      p_message_type: msgType,
+      p_role: role ?? 'user',
+      p_server_content: server_content ?? null,
+      p_reply_to_id: reply_to_id ?? null,
+      p_ciphertexts: ciphertexts ?? [],
+      p_distributions: distribution_ciphertexts ?? [],
+    });
 
-    const data = result.result;
+    if (error) {
+      if (error.message?.includes('not_a_member')) {
+        return NextResponse.json({ error: 'not a member of this group' }, { status: 403 });
+      }
+      if (error.message?.includes('invalid_clock_skew')) {
+        return NextResponse.json({ error: 'clock skew exceeds 5 minute tolerance' }, { status: 400 });
+      }
+      throw new Error(error.message);
+    }
+
+    // The RPC returns JSONB — PostgREST may wrap it differently
+    const result = typeof data === 'string' ? JSON.parse(data) : data;
 
     return NextResponse.json({
-      message_id: data.message_id,
-      server_seq: data.server_seq,
-      created_at: data.created_at,
-      status: data.status,
+      message_id: result?.message_id ?? message_id,
+      server_seq: result?.server_seq ?? null,
+      created_at: result?.created_at ?? null,
+      status: result?.status ?? 'unknown',
     });
 
   } catch (err) {
@@ -85,6 +98,6 @@ export async function POST(req: NextRequest) {
     }
 
     console.error('[/api/message] error:', errMsg);
-    return NextResponse.json({ error: 'internal error' }, { status: 500 });
+    return NextResponse.json({ error: 'internal error', debug: errMsg }, { status: 500 });
   }
 }
