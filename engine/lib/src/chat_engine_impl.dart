@@ -120,6 +120,9 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
 
     // 4. Build crypto layer.
     final keyStore = KeyStoreImpl();
+    // WARNING: In-memory sender key store — group keys lost on app restart.
+    // Users will see decryption failures until new SK distributions arrive.
+    // TODO: Replace with Drift-backed SenderKeyStore for persistence across restarts.
     final senderKeyStoreImpl = _InMemorySenderKeyStore();
     final groupCipher = GroupCipher(store: senderKeyStoreImpl);
 
@@ -152,6 +155,7 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
       realtimeListener: realtimeListener,
       receiptRepo: receiptRepo,
       conversationRepo: conversationRepo,
+      userId: config.userId,
       conflictResolver: conflictResolver,
       backgroundUploader: backgroundUploader,
     );
@@ -539,7 +543,13 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
 }
 
 /// In-memory [SenderKeyStore] for bootstrapping.
-/// TODO: Replace with a drift-backed implementation for persistence.
+///
+/// **Known limitation:** All sender keys are lost on app restart. Group members
+/// will experience decryption failures until the sender redistributes keys.
+/// This is acceptable for development but must be replaced before production.
+///
+/// TODO(persistence): Replace with a Drift-backed SenderKeyStore that persists
+/// sender keys across restarts. Requires a new `sender_keys` table + migration.
 class _InMemorySenderKeyStore implements SenderKeyStore {
   final _store = <String, SenderKeyRecord>{};
 

@@ -98,6 +98,6 @@ export async function POST(req: NextRequest) {
     }
 
     console.error('[/api/message] error:', errMsg);
-    return NextResponse.json({ error: 'internal error', debug: errMsg }, { status: 500 });
+    return NextResponse.json({ error: 'internal error' }, { status: 500 });
   }
 }

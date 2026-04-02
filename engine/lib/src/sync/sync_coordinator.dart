@@ -61,6 +61,7 @@ class SyncCoordinator {
     required RealtimeListener realtimeListener,
     required ReceiptRepository receiptRepo,
     required ConversationRepository conversationRepo,
+    String? userId,
     OutboxWorker? outboxWorker,
     WatermarkSync? watermarkSync,
     ConflictResolver? conflictResolver,
@@ -70,6 +71,7 @@ class SyncCoordinator {
         _realtimeListener = realtimeListener,
         _receiptRepo = receiptRepo,
         _conversationRepo = conversationRepo,
+        _userId = userId,
         _outboxWorker = outboxWorker,
         _watermarkSync = watermarkSync,
         _conflictResolver = conflictResolver,
@@ -84,6 +86,7 @@ class SyncCoordinator {
   final RealtimeListener _realtimeListener;
   final ReceiptRepository _receiptRepo;
   final ConversationRepository _conversationRepo;
+  final String? _userId;
 
   /// MOBILE-03: background outbox worker with periodic drain.
   final OutboxWorker? _outboxWorker;
@@ -308,7 +311,7 @@ class SyncCoordinator {
   Future<void> sendTyping(String groupId) async {
     final indicator = TypingIndicator(
       groupId: groupId,
-      userId: '',
+      userId: _userId ?? '',
       startedAt: DateTime.now(),
     );
     emitTyping(indicator);
