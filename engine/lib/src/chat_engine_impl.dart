@@ -438,7 +438,7 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
     final response = await _apiClient.supabaseClient
         .from('decision_items')
         .select('*, reactions(*)')
-        .eq('space_id', groupId)
+        .eq('group_id', groupId)
         .order('weighted_score', ascending: false);
 
     final rows = response as List<dynamic>;

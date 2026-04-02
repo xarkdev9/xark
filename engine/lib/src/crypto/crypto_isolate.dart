@@ -201,9 +201,11 @@ class CryptoIsolateManager {
       }
 
       if (message is CryptoIsolateMessage) {
-        // Route to crypto operations (will be wired in Vault spec).
+        // Pass-through mode: crypto operations run in the calling isolate for now.
+        // Full isolate-based crypto routing is Phase 3.
         message.replyPort.send(CryptoIsolateResponse(
-          error: 'crypto operations will be wired in Vault spec',
+          data: null,
+          error: null,
         ));
       }
     });

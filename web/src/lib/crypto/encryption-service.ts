@@ -370,7 +370,8 @@ export async function distributeSenderKey(
         ciphertext: '__sender_key_dist__', // placeholder — real ciphertexts are per-recipient
         recipient_id: '_group_',
         recipient_device_id: 0,
-        message_type_override: 'sender_key_dist',
+        message_type: 'sender_key_dist',
+        message_id: msgId,
         distribution_ciphertexts: rowsWithMsgId,
       }),
     });
