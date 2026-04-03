@@ -3,39 +3,6 @@ import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 class MockDataSeed {
   static final DateTime _now = DateTime.now();
 
-  static const _chatLines = [
-    "Hey, what time works for everyone?",
-    "I found an amazing spot, check this out",
-    "lol that's exactly what I was thinking",
-    "Can someone send the address?",
-    "Running 10 min late, sorry!",
-    "This is going to be epic 🔥",
-    "Wait, did you see the price drop??",
-    "I'm in. Let's do it.",
-    "Anyone else craving sushi rn?",
-    "Just landed! The weather is perfect",
-    "Thanks for organizing everything",
-    "Okay cool, I'll book it tonight",
-    "Has anyone been there before?",
-    "That sunset photo is incredible",
-    "I vote yes, 100%",
-    "Let me check my calendar real quick",
-    "Perfect, see you all at 7!",
-    "The hotel looks amazing from the reviews",
-    "Should we rent a car or take taxis?",
-    "omg the food here is unreal",
-    "Send me the link when you get a chance",
-    "I think we should go with option A",
-    "Happy to split the cost evenly",
-    "Just sent the payment 💸",
-    "This group is the best honestly",
-    "Can't wait! Only 3 more days",
-    "Let's make a checklist for packing",
-    "Remember to bring sunscreen this time 😂",
-    "The flight is confirmed!",
-    "Who's handling the dinner reservation?",
-  ];
-
   static MediaMetadata createMockE2EEMedia(String id, String unsplashUrl) {
     return MediaMetadata(
       mediaId: id,
@@ -117,31 +84,19 @@ class MockDataSeed {
       ),
     ];
 
-    // 15 more chats — mix of 1:1 DMs and groups with real names
-    final dmNames = ['Emma', 'Liam', 'Olivia', 'Noah', 'Ava', 'Ethan', 'Sophia', 'Mason'];
-    final groupNames = ['Weekend Hike', 'Roommates', 'Book Club', 'Startup Ideas', 'Family', 'Gym Crew', 'Music Fest'];
-    final lastMessages = [
-      "See you tomorrow!", "lol that was hilarious", "Can you send the doc?",
-      "I'll be there at 6", "Happy birthday! 🎂", "Running late, 10 min",
-      "Thanks for dinner!", "Let's plan for next week", "Sounds perfect",
-      "Check this out", "Miss you!", "On my way", "👍", "haha okay",
-      "I just landed",
-    ];
-
+    // Seed 15 extra dormant/archived chats to fill the ScrollView
     for (int i = 0; i < 15; i++) {
-      final isDm = i % 3 != 0;
-      final name = isDm ? dmNames[i % dmNames.length] : groupNames[i % groupNames.length];
       list.add(Conversation(
-        id: isDm ? 'dm_${name.toLowerCase()}' : 'group_${name.toLowerCase().replaceAll(' ', '_')}',
-        type: isDm ? ConversationType.oneToOne : ConversationType.group,
-        participantIds: isDm ? ['me', name.toLowerCase()] : ['me', 'user_a', 'user_b'],
-        createdAt: _now.subtract(Duration(days: 30 + (i * 5))),
-        updatedAt: _now.subtract(Duration(hours: 3 + i * 4)),
-        unreadCount: i < 4 ? (i + 1) : 0,
+        id: 'dormant_$i',
+        type: i % 3 == 0 ? ConversationType.group : ConversationType.oneToOne,
+        participantIds: ['me', 'random_$i'],
+        createdAt: _now.subtract(Duration(days: 180 + (i * 10))),
+        updatedAt: _now.subtract(Duration(days: 10 + i * 2)),
+        unreadCount: 0,
         isPinned: false,
-        isArchived: false,
-        isMuted: i > 12,
-        lastMessageText: lastMessages[i % lastMessages.length],
+        isArchived: i > 10,
+        isMuted: i > 10,
+        lastMessageText: "Yeah sounds good.",
         isEncrypted: true,
       ));
     }
@@ -173,7 +128,7 @@ class MockDataSeed {
       bool isSystem = (i == count - 1); // Genesis message
 
       MessageType type = MessageType.e2ee;
-      String? text = _chatLines[(i * 7 + groupId.hashCode) % _chatLines.length];
+      String? text = "This is historical message $i in $groupId. E2EE payload stable.";
       MediaMetadata? media;
       Map<String, List<String>> reactions = {};
 
