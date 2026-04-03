@@ -179,8 +179,8 @@ class _ChatBubbleState extends State<ChatBubble>
   @override
   Widget build(BuildContext context) {
     // Zero-Box colors: flat, no shadows
-    const sentColor = Color(0xFFEF7C6E);
-    const receivedColor = Color(0xFFE8E3DD);
+    const sentColor = Color(0xFFF0F0F0);
+    const receivedColor = Color(0xFFFFFFFF);
     final bgColor = widget.isOutbound ? sentColor : receivedColor;
 
     // Tighter vertical spacing for grouped messages
@@ -274,7 +274,7 @@ class _ChatBubbleState extends State<ChatBubble>
             fontSize: 16,
             fontWeight: FontWeight.w400, // No-Bold
             color: widget.isOutbound
-                ? Colors.white.withValues(alpha: 0.95)
+                ? HelloColors.inkPrimary.withValues(alpha: 0.9)
                 : HelloColors.inkPrimary.withValues(alpha: 0.9),
             height: 1.4,
           ),
@@ -290,7 +290,7 @@ class _ChatBubbleState extends State<ChatBubble>
                   fontSize: 11,
                   fontWeight: FontWeight.w300, // No-Bold: tertiary
                   color: widget.isOutbound
-                      ? Colors.white.withValues(alpha: 0.5)
+                      ? HelloColors.inkTertiary.withValues(alpha: 0.5)
                       : HelloColors.inkTertiary.withValues(alpha: 0.5),
                 ),
               ),

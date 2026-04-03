@@ -158,7 +158,7 @@ class ChatRow extends StatelessWidget {
                           width: 8,
                           height: 8,
                           decoration: const BoxDecoration(
-                            color: Color(0xFFD4536B),
+                            color: Color(0xFFFF6B35),
                             shape: BoxShape.circle,
                           ),
                         ),
