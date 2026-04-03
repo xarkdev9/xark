@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import '../theme.dart';
 import '../providers/consensus_listener.dart';
+import '../demov2/gold_burst.dart';
 
 class ActionCardWidget extends ConsumerStatefulWidget {
   final DecisionItem item;
@@ -68,113 +69,116 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
 
     final photoUrl = widget.item.photoUrl;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: HelloColors.chrome,
-        borderRadius: BorderRadius.circular(26.0),
-        boxShadow: isIgnited
-            ? [
-                BoxShadow(
-                  color: HelloColors.gold.withValues(alpha: 0.2),
-                  blurRadius: 30.0,
-                  offset: const Offset(0, 10),
-                )
-              ]
-            : [],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(26.0),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // 1. Image Background
-            if (photoUrl != null && photoUrl.isNotEmpty) // Use Image.network for external Unsplash URL
-              Image.network(photoUrl, fit: BoxFit.cover)
-            else
-              Container(color: Colors.black12),
+    return GoldBurstOverlay(
+      trigger: isIgnited,
+      child: Container(
+        decoration: BoxDecoration(
+          color: HelloColors.chrome,
+          borderRadius: BorderRadius.circular(26.0),
+          boxShadow: isIgnited
+              ? [
+                  BoxShadow(
+                    color: HelloColors.gold.withValues(alpha: 0.2),
+                    blurRadius: 30.0,
+                    offset: const Offset(0, 10),
+                  )
+                ]
+              : [],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(26.0),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 1. Image Background
+              if (photoUrl != null && photoUrl.isNotEmpty) // Use Image.network for external Unsplash URL
+                Image.network(photoUrl, fit: BoxFit.cover)
+              else
+                Container(color: Colors.black12),
 
-            // 2. The Dark Wash
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: const Alignment(0.0, -0.2), // Fades out at 60% mark
-                    colors: [
-                      Colors.black.withValues(alpha: 0.85),
-                      Colors.transparent,
-                    ],
+              // 2. The Dark Wash
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: const Alignment(0.0, -0.2), // Fades out at 60% mark
+                      colors: [
+                        Colors.black.withValues(alpha: 0.85),
+                        Colors.transparent,
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // 3. Typography & Metadata (Bottom Left)
-            Positioned(
-              left: 24.0,
-              bottom: 24.0,
-              right: 140.0, // Leave room for signals
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   Text(
-                     (_agreementScore * 100).toInt().toString(),
-                     style: HelloTypography.hero.copyWith(
-                       fontSize: 48,
-                       color: _getScoreColor(_agreementScore),
-                       height: 1.0,
+              // 3. Typography & Metadata (Bottom Left)
+              Positioned(
+                left: 24.0,
+                bottom: 24.0,
+                right: 140.0, // Leave room for signals
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                     Text(
+                       (_agreementScore * 100).toInt().toString(),
+                       style: HelloTypography.hero.copyWith(
+                         fontSize: 48,
+                         color: _getScoreColor(_agreementScore),
+                         height: 1.0,
+                       ),
                      ),
-                   ),
-                   const SizedBox(height: 8),
-                   Text(
-                     widget.item.title,
-                     style: HelloTypography.spaceTitle.copyWith(
-                       color: Colors.white,
-                       fontWeight: FontWeight.w400,
+                     const SizedBox(height: 8),
+                     Text(
+                       widget.item.title,
+                       style: HelloTypography.spaceTitle.copyWith(
+                         color: Colors.white,
+                         fontWeight: FontWeight.w400,
+                       ),
+                       maxLines: 2,
+                       overflow: TextOverflow.ellipsis,
                      ),
-                     maxLines: 2,
-                     overflow: TextOverflow.ellipsis,
-                   ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            // 4. The 3-Signal Physics Matrix (Bottom Right)
-            Positioned(
-              right: 24.0,
-              bottom: 24.0,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   _PhysicsSignalButton(
-                     label: "Pass",
-                     onTap: () {
-                       HapticFeedback.lightImpact();
-                       _handleReaction('pass');
-                     },
-                   ),
-                   const SizedBox(width: 8),
-                   _PhysicsSignalButton(
-                     label: "Okay",
-                     onTap: () {
-                       HapticFeedback.lightImpact();
-                       _handleReaction('okay');
-                     },
-                   ),
-                   const SizedBox(width: 8),
-                   _PhysicsSignalButton(
-                     label: "Love",
-                     isRose: true,
-                     onTap: () {
-                       HapticFeedback.heavyImpact();
-                       _handleReaction('love');
-                     },
-                   ),
-                ],
+              // 4. The 3-Signal Physics Matrix (Bottom Right)
+              Positioned(
+                right: 24.0,
+                bottom: 24.0,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                     _PhysicsSignalButton(
+                       label: "Pass",
+                       onTap: () {
+                         HapticFeedback.lightImpact();
+                         _handleReaction('pass');
+                       },
+                     ),
+                     const SizedBox(width: 8),
+                     _PhysicsSignalButton(
+                       label: "Okay",
+                       onTap: () {
+                         HapticFeedback.lightImpact();
+                         _handleReaction('okay');
+                       },
+                     ),
+                     const SizedBox(width: 8),
+                     _PhysicsSignalButton(
+                       label: "Love",
+                       isRose: true,
+                       onTap: () {
+                         HapticFeedback.heavyImpact();
+                         _handleReaction('love');
+                       },
+                     ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
