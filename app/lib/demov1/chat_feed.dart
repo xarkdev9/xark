@@ -63,20 +63,25 @@ class _ChatFeedState extends ConsumerState<ChatFeed> {
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(conversationControllerProvider(widget.spaceId));
 
+    // Debug: print the async state
+    debugPrint('[ChatFeed] spaceId=${widget.spaceId} state=${messagesAsync.runtimeType} hasValue=${messagesAsync.hasValue} valueLength=${messagesAsync.value?.length}');
+
     return messagesAsync.when(
       loading: () => const Center(
         child: Text('Loading messages...', style: TextStyle(
-          fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w300,
-          color: Color(0x40000000),
+          fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w400,
+          color: Colors.red, // Make it obvious
         )),
       ),
-      error: (err, stack) => Center(child: Text('Error: $err')),
+      error: (err, stack) => Center(child: Text('Error: $err',
+        style: const TextStyle(color: Colors.red, fontSize: 14))),
       data: (messages) {
+        debugPrint('[ChatFeed] data received: ${messages.length} messages');
         if (messages.isEmpty) {
           return const Center(
-            child: Text('Send the first message', style: TextStyle(
-              fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w300,
-              color: Color(0x40000000),
+            child: Text('No messages yet', style: TextStyle(
+              fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w400,
+              color: Colors.orange,
             )),
           );
         }
