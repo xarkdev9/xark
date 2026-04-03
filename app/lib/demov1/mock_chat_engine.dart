@@ -18,8 +18,15 @@ class MockChatSession implements ChatSession {
 
   MockChatSession(this.groupId) {
     _cache = MockDataSeed.buildMessagesFor(groupId);
-    // Push initial
-    Future.microtask(() => _messagesController.add(_cache));
+    // Seed BehaviorSubjects immediately — Riverpod needs a value at subscription time
+    _messagesController.add(_cache);
+    _typingController.add([]);
+    _receiptsController.add([]);
+    _presenceController.add(PresenceState(
+      userId: groupId,
+      isOnline: true,
+      lastSeenAt: DateTime.now(),
+    ));
   }
 
   void pushNewInbound() {
