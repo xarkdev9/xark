@@ -1,5 +1,5 @@
 # MASTER ARCHITECTURE MAP
-**Last validated:** 2026-04-02 | **Package:** e2ee_chat_sdk v0.1.0
+**Last validated:** 2026-04-03 | **Package:** e2ee_chat_sdk v0.1.0
 
 ---
 
@@ -265,13 +265,24 @@ class AuthService {
 
 ## 3. Flutter App (hello_app)
 
-### File Structure (48 files)
+### File Structure (54 files)
 ```
 app/lib/
 ├── main.dart                        Entry point. MockChatEngine for dev.
 ├── theme.dart                       Design law enforcement.
 ├── animations/
 │   └── spring_curves.dart           SpringCurve (bouncy/snappy/gentle/heavy)
+├── demov2/                          Decide-first group interior
+│   ├── space_layout.dart            Decide (idx 0) | Chat (idx 1) + FAB
+│   ├── decision_board.dart          Netflix swim lane orchestrator
+│   ├── swim_lane_rail.dart          Horizontal card rail with vital labels
+│   ├── group_summary_card.dart      Compact group pulse dashboard
+│   ├── add_item_sheet.dart          [+] bottom sheet for new decision items
+│   ├── gold_burst.dart              Particle celebration overlay (consensus ≥80%)
+│   ├── chat_view.dart               Embedded chat for group interior
+│   ├── chat_feed.dart               Message feed (demov2 variant)
+│   ├── time_scrubber.dart           Decision history timeline
+│   └── standalone_main.dart         Standalone demov2 entry point
 ├── providers/
 │   ├── action_card_provider.dart    Filters messages by role=='hello' or type==ai
 │   ├── consensus_listener.dart      Watches starred cards for gold burst
@@ -279,8 +290,8 @@ app/lib/
 │   ├── e2ee_state_provider.dart     Tracks isReady, isGeneratingKeys, deviceId
 │   └── engine_error_listener.dart   Global error bus (AuthTokenExpired, KeyVerificationFailed)
 ├── src/
-│   ├── mock_chat_engine.dart        MockChatEngine for UI testing
-│   └── mock_data_seed.dart          Seed data for mock engine
+│   ├── mock_chat_engine.dart        MockChatEngine + addDecisionItem() for [+] flow
+│   └── mock_data_seed.dart          Seed data (15 Bali, 8 Sarah, 12 Tokyo items)
 ├── views/
 │   ├── action_carousel_page.dart    Netflix-style PageView (0.85 viewport fraction)
 │   ├── message_feed_page.dart       Composite: ChatFeed + InlinePoll
@@ -307,7 +318,7 @@ app/lib/
 │       ├── profile_edit.dart        Profile editor (mock)
 │       └── settings_page.dart       Settings root (mock)
 └── widgets/
-    ├── action_card_widget.dart      Decision card with spring physics
+    ├── action_card_widget.dart      Decision card with spring physics + GoldBurstOverlay
     ├── chat_bubble.dart             Zero-Box message bubble
     ├── chat_feed.dart               Reverse message list with receipts
     ├── encrypted_image_view.dart    E2EE media renderer

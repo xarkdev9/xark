@@ -3,11 +3,12 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Structure
-- engine/ — White-label E2EE chat SDK (package: e2ee_chat_sdk, 144 source files)
-- app/    — Flutter app shell (package: hello_app, imports e2ee_chat_sdk)
-- web/    — Next.js 16 web app (React + 18 API routes)
-- algo/   — Decision engine (TypeScript, 198 tests, hexagonal architecture)
-- docs/   — Architecture specs, plans, test results, handoff docs
+- engine/   — White-label E2EE chat SDK (package: e2ee_chat_sdk, 144 source files)
+- app/      — Flutter app shell (package: hello_app, imports e2ee_chat_sdk)
+- web/      — Next.js 16 web app (React + 18 API routes + Xpensly REST API)
+- algo/     — Decision engine (TypeScript, 198 tests, hexagonal architecture)
+- xpensly/  — Expense splitting SDK (xpensly_core + xpensly_ui, 88 files, 85 tests)
+- docs/     — Architecture specs, plans, test results, handoff docs
 
 ## SDK Identity
 - **Package name:** `e2ee_chat_sdk` (renamed from `hello_engine`)
@@ -40,6 +41,9 @@ cd web    && npm run dev              # Next.js web app (port 3000)
 cd web    && npm run build            # Production build
 cd web    && npx tsx tests/sdk-validation.ts  # 100 SDK validation tests
 cd algo   && npm test                 # Decision engine tests (198)
+cd xpensly/xpensly_core && dart test  # Xpensly core tests (69)
+cd xpensly/xpensly_core && dart analyze  # Xpensly core analysis
+cd xpensly/xpensly_ui && flutter test    # Xpensly UI widget tests (16)
 ```
 
 ## Architecture Blueprint
@@ -163,6 +167,17 @@ engine/lib/src/
 └── transport/       # SupabaseClientWrapper, RealtimeListener, typing indicators, realtime receipts
 ```
 
+## Decide-First Group UX (app/lib/demov2/)
+The group interior defaults to the Decide tab (Netflix swim lanes), with Chat accessible via swipe.
+- `space_layout.dart` — Decide (idx 0) | Chat (idx 1), FAB opens AddItemSheet
+- `decision_board.dart` — Orchestrator: groups DecisionItems by category, renders swim lane rails
+- `swim_lane_rail.dart` — Horizontal card rail (78% width, 55% height) with vital labels
+- `group_summary_card.dart` — Compact group pulse (active/locked/new counts, hottest item %)
+- `add_item_sheet.dart` — [+] bottom sheet (photo + title + category, 3-second flow)
+- `gold_burst.dart` — GoldBurstOverlay: 40 gold particles on consensus >= 80%, wraps ActionCardWidget
+- Smart category routing mirrors React `DecisionBoard.tsx` (hotels, restaurants, things to do, experiences, flights, dining, gifts, decorations, ideas)
+- Mock data: 15 Bali items, 8 Sarah items, 12 Tokyo items across 5 categories each
+
 ## Web Infrastructure (Added in Fortress Sprint)
 - `web/src/lib/postgres-pool.ts` — TCP connection pool singleton (globalThis, idle_timeout: 10s)
 - `web/src/lib/rate-limit-edge.ts` — Upstash Redis rate limiting (token bucket + sliding window, fail-open/closed)
@@ -200,6 +215,29 @@ Signal Protocol implementation with post-quantum upgrade path:
 - **Runtime (engine):** `cryptography` package (pure Dart, cross-platform)
 - **HKDF info strings use `XarkE2EE-*` prefix** — crypto constants, do not rename
 - **Crypto isolate:** Dedicated background isolate, TransferableTypedData, 10s watchdog, 3 max respawns
+
+## Xpensly SDK (Expense Splitting)
+Reusable expense-splitting SDK extracted from hello's settlement ledger. Three-layer architecture:
+- **`xpensly_core`** (pure Dart) — split calculator, settlement engine, debt simplifier, currency converter, recurrence expander, trip aggregator
+- **`xpensly_ui`** (Flutter) — 9 composable themed widgets (ExpenseEntry, SettlementCard, DebtCard, PaymentButton, ExpenseList, BalanceBar, TripSummaryWidget, SplitModeToggle, XpenslyDashboard)
+- **REST API** (`web/src/app/api/xpensly/`) — 19 TypeScript route handlers (5 stateless calculation + 14 stateful trip management)
+
+Split modes: equal, exact, percentage, shares. Debt simplification: graph-based minimum-transaction (default), pairwise toggle.
+Payment providers: Venmo, UPI, PayPal, Stripe, Razorpay (pluggable via `XpenslyPaymentProvider` interface).
+Data layer: pluggable via `XpenslyDataSource` interface (ships with `InMemoryDataSource`, `SupabaseDataSource` stub).
+Theme presets: `hello()` (dark/cyan), `material()` (M3), `minimal()`.
+
+```dart
+// Flutter usage
+final xpensly = Xpensly(
+  dataSource: InMemoryDataSource(),
+  paymentProviders: [VenmoPayment(), UpiPayment()],
+  config: XpenslyConfig(baseCurrency: 'EUR', simplifyDebts: true),
+);
+```
+
+**Spec:** `docs/superpowers/specs/2026-04-02-xpensly-sdk-design.md`
+**DB tables:** `xpensly_trips`, `xpensly_trip_members`, `xpensly_expenses`, `xpensly_expense_payers`, `xpensly_expense_splits`, `xpensly_settlements`, `xpensly_refunds`, `xpensly_exchange_rates`
 
 ## Pluggable Adapters (White-Label SDK)
 The engine uses port interfaces — implementations are swappable:
@@ -257,8 +295,11 @@ All theme tokens use `--hello-*` prefix (defined in `web/src/app/globals.css`). 
 - `docs/FRONTEND_HANDOFF.md` — Frontend team integration guide
 - `docs/FRONTEND_TO_BACKEND_HANDOFF.md` — Backend tasks from frontend team
 - `PHASE_1_FRONTEND_MANIFEST.md` — Phase 1 UI completion state
-- `docs/superpowers/specs/` — All design specs (Fortress, Vault, Engine, Polish, Moat, SDK)
+- `docs/superpowers/specs/` — All design specs (Fortress, Vault, Engine, Polish, Moat, SDK, Xpensly, Decide-First UX)
+- `docs/superpowers/specs/2026-04-03-decide-first-group-ux-design.md` — Decide-first group UX design spec
+- `docs/superpowers/specs/2026-04-02-xpensly-sdk-design.md` — Xpensly SDK design spec
 - `docs/superpowers/plans/` — Implementation plans
+- `docs/superpowers/plans/2026-04-03-decide-first-ux-plan.md` — Decide-first UX plan (8 tasks, all implemented)
 - `docs/test-results/` — SDK validation reports
 - `crypto.md` — 50-task engineering checklist (all implemented)
 - `docs/4PM_Goal.md` — 42-step planet-scale blueprint (all implemented)
