@@ -21,10 +21,15 @@ class ChatsTabView extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (err, stack) => const SizedBox.shrink(),
       data: (conversations) {
-        if (conversations.isEmpty) {
+        // Chats tab = 1:1 DMs only. Groups are on the Groups tab.
+        final dms = conversations
+            .where((c) => c.type == ConversationType.oneToOne)
+            .toList();
+
+        if (dms.isEmpty) {
           return const Center(
             child: Text(
-              "No secure chats yet.",
+              "No chats yet.",
               style: HelloTypography.hint,
             ),
           );
@@ -32,9 +37,9 @@ class ChatsTabView extends ConsumerWidget {
 
         return ListView.builder(
           padding: EdgeInsets.zero,
-          itemCount: conversations.length,
+          itemCount: dms.length,
           itemBuilder: (context, index) {
-            final convo = conversations[index];
+            final convo = dms[index];
             return ChatRow(conversation: convo);
           },
         );
