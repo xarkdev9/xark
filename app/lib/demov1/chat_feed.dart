@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'conversation_controller.dart';
 import 'chat_bubble.dart';
-import 'encrypted_image_view.dart';
 
 import 'demov1_main.dart'; // engineProvider
 
@@ -121,9 +120,22 @@ class _ChatFeedState extends ConsumerState<ChatFeed> {
               senderName = _resolveSenderName(msg.senderId);
             }
 
+            // For demo: render media as simple network image (no E2EE decrypt needed)
             Widget? mediaChild;
-            if (msg.media != null) {
-              mediaChild = EncryptedImageView(metadata: msg.media!);
+            if (msg.media != null && msg.media!.downloadUrl != null) {
+              mediaChild = SizedBox(
+                height: 200,
+                width: double.infinity,
+                child: Image.network(
+                  msg.media!.downloadUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 200,
+                    color: const Color(0xFFE8E3DD),
+                    child: const Center(child: Icon(Icons.image, size: 40, color: Color(0x40000000))),
+                  ),
+                ),
+              );
             }
 
             // System messages
