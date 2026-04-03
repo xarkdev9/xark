@@ -308,6 +308,22 @@ class MockChatEngine extends ChatEngine with ChatEngineDecisions {
     return _decisionCache[groupId] ?? [];
   }
 
+  void addDecisionItem(String groupId, {required String title, String? category, String? photoUrl}) {
+    final item = DecisionItem(
+      id: 'item_user_${DateTime.now().millisecondsSinceEpoch}',
+      groupId: groupId,
+      title: title,
+      category: category ?? 'Ideas',
+      state: 'proposed',
+      agreementScore: 0.0,
+      weightedScore: 0.0,
+      photoUrl: photoUrl,
+      proposedBy: 'me',
+    );
+    _decisionCache.putIfAbsent(groupId, () => []);
+    _decisionCache[groupId]!.add(item);
+  }
+
   @override
   Future<void> reactToItem(String itemId, String signal) async {
     // Artificial latency for reactor feedback
