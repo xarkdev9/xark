@@ -1,111 +1,219 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
+import '../animations/spring_curves.dart';
 import '../theme.dart';
-import '../main.dart'; // To access engineProvider
 
-class ChatInput extends ConsumerStatefulWidget {
-  const ChatInput({super.key});
+/// Liquid Chat Composer — premium E2EE input with AI morph.
+///
+/// Zero-Box: No borders. Ambient glow via BoxShadow(blurRadius:40, spread:0).
+/// No-Bold: Input text w400, hint w300.
+/// Liquid Physics: AnimatedContainer color morph on @hello detection.
+/// AI Morph: Accent glow (#D4536B) when @hello/@xark detected + haptic.
+
+class LiquidChatComposer extends StatefulWidget {
+  final ValueChanged<String> onSend;
+  final String aiTrigger;
+
+  const LiquidChatComposer({
+    super.key,
+    required this.onSend,
+    this.aiTrigger = '@hello',
+  });
 
   @override
-  ConsumerState<ChatInput> createState() => _ChatInputState();
+  State<LiquidChatComposer> createState() => _LiquidChatComposerState();
 }
 
-class _ChatInputState extends ConsumerState<ChatInput> {
-  final TextEditingController _controller = TextEditingController();
-  bool _isHelloMode = false;
+class _LiquidChatComposerState extends State<LiquidChatComposer>
+    with SingleTickerProviderStateMixin {
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+  bool _isAIMode = false;
+  bool _hasText = false;
+
+  // Max lines before internal scroll
+  static const int _maxExpandLines = 6;
 
   @override
   void initState() {
     super.initState();
-    // Target 9: Tactical text listener measuring @hello intent
-    _controller.addListener(() {
-      final text = _controller.text;
-      final helloMode = text.toLowerCase().contains('@hello');
-      if (helloMode != _isHelloMode) {
-        setState(() {
-          _isHelloMode = helloMode;
-        });
-      }
-    });
+    _controller.addListener(_onTextChanged);
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onTextChanged);
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    final text = _controller.text;
+    final lower = text.toLowerCase();
+    final aiDetected = lower.contains(widget.aiTrigger.toLowerCase()) ||
+        lower.contains('@xark');
+
+    if (aiDetected != _isAIMode) {
+      setState(() => _isAIMode = aiDetected);
+      if (aiDetected) {
+        HapticFeedback.lightImpact();
+      }
+    }
+
+    final hasText = text.trim().isNotEmpty;
+    if (hasText != _hasText) {
+      setState(() => _hasText = hasText);
+    }
   }
 
   void _handleSend() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    // Target 8: Optimistic UI. Send instantly for 120fps perceived input snap.
-    ref.read(engineProvider).getSession('default_space').sendText(text);
+    HapticFeedback.selectionClick();
+    widget.onSend(text);
     _controller.clear();
+    setState(() {
+      _isAIMode = false;
+      _hasText = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: HelloColors.chrome, 
-      padding: const EdgeInsets.only(
-        left: 16.0,
-        right: 16.0,
-        top: 12.0,
-        bottom: 96.0, // Global input padding bottom boundary: 96px
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            // Target 9: fluid color morph mapping to intelligence threshold constraints
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.fastOutSlowIn, // Natural Apple-tier physical inertia
-              decoration: BoxDecoration(
-                color: _isHelloMode 
-                    ? HelloColors.accent.withValues(alpha: 0.15) 
-                    : HelloColors.recessed,
-                borderRadius: BorderRadius.circular(24.0),
-                border: Border.all(
-                  color: _isHelloMode 
-                      ? HelloColors.accent.withValues(alpha: 0.5) 
-                      : Colors.transparent,
-                  width: 1.0,
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TextField(
-                controller: _controller,
-                onSubmitted: (_) => _handleSend(),
-                decoration: InputDecoration(
-                  hintText: _isHelloMode ? "ask hello anything..." : "Message...",
-                  hintStyle: HelloTypography.hint.copyWith(
-                    color: _isHelloMode 
-                        ? HelloColors.accent.withValues(alpha: 0.6)
-                        : HelloColors.inkTertiary,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        curve: SpringCurve.gentle,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          color: _isAIMode
+              ? HelloColors.accent.withOpacity(0.06)
+              : HelloColors.inkPrimary.withOpacity(0.03),
+          // Liquid glow — ambient shadow, no hard border
+          boxShadow: [
+            BoxShadow(
+              color: _isAIMode
+                  ? HelloColors.accent.withOpacity(0.15)
+                  : HelloColors.inkPrimary.withOpacity(0.04),
+              blurRadius: 40,
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Attachment button
+                  GestureDetector(
+                    onTap: () => HapticFeedback.selectionClick(),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        child: Icon(
+                          Icons.add_rounded,
+                          size: 22,
+                          color: _isAIMode
+                              ? HelloColors.accent.withOpacity(0.6)
+                              : HelloColors.inkPrimary.withOpacity(0.3),
+                        ),
+                      ),
+                    ),
                   ),
-                  border: InputBorder.none,
-                ),
-                style: HelloTypography.body.copyWith(
-                  color: _isHelloMode ? HelloColors.accent : HelloColors.inkPrimary,
-                ),
+                  const SizedBox(width: 8),
+
+                  // Text input — expands vertically, no border
+                  Expanded(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minHeight: 36,
+                        maxHeight: 36.0 * _maxExpandLines, // ~6 lines max
+                      ),
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        maxLines: null, // Unlimited expansion
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400, // No-Bold
+                          color: HelloColors.inkPrimary.withOpacity(0.85),
+                          height: 1.4,
+                        ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 8),
+                          hintText: _isAIMode
+                              ? 'ask ${widget.aiTrigger}...'
+                              : 'message...',
+                          hintStyle: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w300, // No-Bold: secondary
+                            color: _isAIMode
+                                ? HelloColors.accent.withOpacity(0.4)
+                                : HelloColors.inkPrimary.withOpacity(0.25),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Send button — appears with spring
+                  GestureDetector(
+                    onTap: _hasText ? _handleSend : null,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: SpringCurve.bouncy,
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _hasText
+                              ? (_isAIMode
+                                  ? HelloColors.accent
+                                  : HelloColors.accent.withOpacity(0.85))
+                              : Colors.transparent,
+                        ),
+                        child: Center(
+                          child: AnimatedRotation(
+                            turns: _hasText ? 0.0 : -0.25,
+                            duration: const Duration(milliseconds: 300),
+                            curve: SpringCurve.snappy,
+                            child: Icon(
+                              Icons.arrow_upward_rounded,
+                              size: 20,
+                              color: _hasText
+                                  ? Colors.white
+                                  : HelloColors.inkPrimary.withOpacity(0.2),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          // Fluid transition for the send button
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            decoration: const BoxDecoration(
-              color: HelloColors.accent,
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-              onPressed: _handleSend,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
