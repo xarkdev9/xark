@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme.dart';
-import 'liquid_fire_text.dart';
 import 'chat_feed.dart';
 import 'chat_input.dart';
 import 'demov1_main.dart'; // engineProvider
@@ -12,6 +11,31 @@ class ChatView extends ConsumerWidget {
   final String spaceId;
   const ChatView({super.key, required this.spaceId});
 
+  static const _titleMap = {
+    'bali': 'Bali Trip 🌴',
+    'sarah': "Sarah's Birthday",
+    'alice': 'Alice',
+    'tokyo': 'Tokyo 2026',
+    'horizon': 'Project Horizon',
+    'dm_emma': 'Emma',
+    'dm_liam': 'Liam',
+    'dm_olivia': 'Olivia',
+    'dm_noah': 'Noah',
+    'dm_ava': 'Ava',
+    'dm_ethan': 'Ethan',
+    'dm_sophia': 'Sophia',
+    'dm_mason': 'Mason',
+    'group_weekend_hike': 'Weekend Hike 🥾',
+    'group_roommates': 'Roommates',
+    'group_book_club': 'Book Club 📚',
+    'group_startup_ideas': 'Startup Ideas 💡',
+    'group_family': 'Family ❤️',
+    'group_gym_crew': 'Gym Crew 💪',
+    'group_music_fest': 'Music Fest 🎵',
+  };
+
+  String _resolveTitle(String id) => _titleMap[id] ?? id;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
@@ -19,13 +43,20 @@ class ChatView extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: HelloColors.voidBg,
         elevation: 0,
-        scrolledUnderElevation: 0, 
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20,
+            color: HelloColors.inkPrimary.withValues(alpha: 0.7)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const HelloAnimation(
-              text: 'hello', // Global branding placeholder override
-              style: HelloTypography.hero,
+            Text(
+              _resolveTitle(spaceId),
+              style: HelloTypography.spaceTitle.copyWith(
+                fontWeight: FontWeight.w400,
+              ),
             ),
             _PresenceIndicator(spaceId: spaceId),
           ],
