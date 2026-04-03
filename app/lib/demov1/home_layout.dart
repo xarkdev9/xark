@@ -124,16 +124,6 @@ class _HomeLayoutState extends ConsumerState<HomeLayout> {
               ),
             ),
             
-            // Spatial Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: SpatialSearchBar(
-                onChanged: (query) {
-                  // TODO: Wire to engine search when available
-                },
-              ),
-            ),
-
             // View Body
             Expanded(
               child: PageView(
