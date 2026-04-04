@@ -217,10 +217,14 @@ class _ChatBubbleState extends State<ChatBubble>
           // The bubble + timestamp below
           Transform.translate(
             offset: Offset(_dragOffset, 0),
-            child: Column(
-              crossAxisAlignment: widget.isOutbound
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
+            child: Align(
+              alignment: widget.isOutbound
+                  ? Alignment.centerRight
+                  : Alignment.centerLeft,
+              child: Column(
+                crossAxisAlignment: widget.isOutbound
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
               children: [
                 Container(
                   constraints: BoxConstraints(
@@ -264,6 +268,7 @@ class _ChatBubbleState extends State<ChatBubble>
                 _buildTimestampRow(),
                 SizedBox(height: bottomMargin),
               ],
+            ),
             ),
           ),
         ],

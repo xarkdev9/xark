@@ -73,59 +73,83 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
         bottom: false,
         child: Column(
           children: [
-            // Row 1: Back + Avatar + Name (centered)
+            // Top bar: < back | avatar + name (center) | Plans icon (right)
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
+              padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
               child: Row(
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back_ios_new, color: HelloColors.inkSecondary, size: 20),
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      if (_currentIndex == 1) {
+                        // If on Plans, go back to Chat first
+                        _onTabTapped(0);
+                      } else {
+                        Navigator.of(context).pop();
+                      }
+                    },
                   ),
                   const Spacer(),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(
-                      color: HelloColors.recessed,
-                      shape: BoxShape.circle,
+                  GestureDetector(
+                    onTap: () {
+                      // Tap name to toggle — subtle discovery
+                      _onTabTapped(_currentIndex == 0 ? 1 : 0);
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            color: HelloColors.recessed,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            widget.spaceTitle.isNotEmpty ? widget.spaceTitle[0].toUpperCase() : '?',
+                            style: HelloTypography.body.copyWith(fontSize: 14),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          widget.spaceTitle,
+                          style: HelloTypography.body.copyWith(fontSize: 16),
+                        ),
+                      ],
                     ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      widget.spaceTitle.isNotEmpty ? widget.spaceTitle[0].toUpperCase() : '?',
-                      style: HelloTypography.body.copyWith(fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget.spaceTitle,
-                    style: HelloTypography.body.copyWith(fontSize: 16),
                   ),
                   const Spacer(),
-                  const SizedBox(width: 52), // Balance the back button width
-                ],
-              ),
-            ),
-            // Row 2: Chat | Plans tabs
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-              child: Row(
-                children: [
+                  // Plans icon — toggles to Plans tab
                   GestureDetector(
-                    onTap: () => _onTabTapped(0),
-                    child: AnimatedOpacity(
+                    onTap: () => _onTabTapped(_currentIndex == 0 ? 1 : 0),
+                    child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      opacity: _currentIndex == 0 ? 1.0 : 0.4,
-                      child: const Text('Chat', style: HelloTypography.spaceTitle),
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  GestureDetector(
-                    onTap: () => _onTabTapped(1),
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 200),
-                      opacity: _currentIndex == 1 ? 1.0 : 0.4,
-                      child: const Text('Plans', style: HelloTypography.spaceTitle),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _currentIndex == 1
+                            ? HelloColors.accent.withValues(alpha: 0.12)
+                            : HelloColors.recessed,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _currentIndex == 1 ? Icons.chat_bubble_outline : Icons.view_agenda_outlined,
+                            size: 16,
+                            color: _currentIndex == 1 ? HelloColors.accent : HelloColors.inkTertiary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _currentIndex == 1 ? 'Chat' : 'Plans',
+                            style: HelloTypography.hint.copyWith(
+                              fontSize: 12,
+                              color: _currentIndex == 1 ? HelloColors.accent : HelloColors.inkTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
