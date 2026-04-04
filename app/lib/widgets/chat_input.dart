@@ -202,15 +202,19 @@ class _LiquidChatComposerState extends State<LiquidChatComposer>
                                   color: HelloColors.accent,
                                 ),
                               )
-                            : Text(
-                                'hello',
+                            : ShaderMask(
                                 key: const ValueKey('hello'),
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w400,
-                                  letterSpacing: -0.02 * 18,
-                                  color: HelloColors.accent,
+                                shaderCallback: (bounds) =>
+                                    HelloColors.liquidFireStandard.createShader(bounds),
+                                child: const Text(
+                                  'hello',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: -0.02 * 18,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                       ),

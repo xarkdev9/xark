@@ -144,32 +144,50 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
                         ),
                       ),
                     ),
-                  // Plans/Chat toggle
+                  // Plans/Chat toggle — bold, visible
                   GestureDetector(
                     onTap: () => _onTabTapped(_currentIndex == 0 ? 1 : 0),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      duration: const Duration(milliseconds: 250),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: _currentIndex == 1
                             ? HelloColors.accent.withValues(alpha: 0.12)
-                            : HelloColors.recessed,
-                        borderRadius: BorderRadius.circular(10),
+                            : HelloColors.inkPrimary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Glowing dot when on Chat (indicating Plans is waiting)
+                          if (_currentIndex == 0)
+                            Container(
+                              width: 7, height: 7,
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                color: HelloColors.accent,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: HelloColors.accent.withValues(alpha: 0.5),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                            ),
                           Icon(
                             _currentIndex == 1 ? Icons.chat_bubble_outline : Icons.view_agenda_outlined,
                             size: 16,
-                            color: _currentIndex == 1 ? HelloColors.accent : HelloColors.inkTertiary,
+                            color: _currentIndex == 1 ? HelloColors.accent : HelloColors.inkPrimary,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           Text(
                             _currentIndex == 1 ? 'Chat' : 'Plans',
-                            style: HelloTypography.hint.copyWith(
-                              fontSize: 12,
-                              color: _currentIndex == 1 ? HelloColors.accent : HelloColors.inkTertiary,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: _currentIndex == 1 ? HelloColors.accent : HelloColors.inkPrimary,
                             ),
                           ),
                         ],
