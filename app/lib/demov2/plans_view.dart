@@ -4,19 +4,51 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import '../main.dart';
 import '../theme.dart';
+import '../src/mock_data_seed.dart';
 import '../widgets/action_card_widget.dart';
 
-// ═══════════════════════════════════════════════════════
-// 3-TIER PLANS VIEW
+// ═══════════════════════════════════════════════════════════════════
+// 3-TIER PLANS VIEW — Correct Architecture
 //
-// Tier 1 (bottom): Events — horizontal scroll of event pills
-// Tier 2 (middle): Categories — Overview, Recommendations, Flights, Hotels...
-// Tier 3 (top):    Hero area — full detail cards or overview dashboard
+// TIER 1 (bottom): EVENTS within this group
+//   - Single-event groups (Bali): shows group name as sole event
+//   - Multi-event groups (Family): shows sub-events
 //
-// All tiers in thumb-arc range. No vertical scrolling through swim lanes.
-// ═══════════════════════════════════════════════════════
+// TIER 2 (thumb arc): CATEGORIES within selected event — DYNAMIC
+//   - Always starts with Overview
+//   - Then Recommendations (AI top picks)
+//   - Then dynamic categories extracted from items (Hotels, Flights...)
+//   - Ends with Split (Xpensly)
+//
+// TIER 3 (hero): Content
+//   - Overview = dashboard (what's done, what's pending)
+//   - Recommendations = top-voted items as Decision Cards
+//   - Any category = Decision Cards with full voting
+//   - Split = Xpensly expense page
+//
+// Rule: Overview is the ONLY dashboard. Everything else is Decision Cards.
+// ═══════════════════════════════════════════════════════════════════
 
-/// Category icon map for Tier 2 pills.
+/// Known item-type categories (if items have these, the group is single-event)
+const _knownItemCategories = {
+  'Hotels', 'Flights', 'Dining', 'Experiences', 'Ideas',
+  'Restaurants', 'Gifts', 'Decorations',
+};
+
+/// For multi-event groups, map event names to their natural category label
+const _eventCategoryHints = <String, String>{
+  "Mom's Birthday": 'Restaurants',
+  'Thanksgiving': 'Menu',
+  'Retirement Party': 'Venues',
+  'Summer Vacation': 'Destinations',
+  'Wedding Gift': 'Gifts',
+  'Home Renovation': 'Contractors',
+  'Christmas 2026': 'Plans',
+  'Grocery Run': 'Shopping List',
+  'Photo Shoot': 'Locations',
+};
+
+/// Icons for Tier 2 pills
 const _categoryIcons = <String, IconData>{
   'overview': Icons.dashboard_outlined,
   'recommendations': Icons.auto_awesome,
@@ -25,21 +57,30 @@ const _categoryIcons = <String, IconData>{
   'experiences': Icons.explore_outlined,
   'dining': Icons.restaurant_outlined,
   'restaurants': Icons.restaurant_outlined,
+  'destinations': Icons.place_outlined,
   'gifts': Icons.card_giftcard_outlined,
   'decorations': Icons.celebration_outlined,
   'ideas': Icons.lightbulb_outline,
-  'cards': Icons.style_outlined,
-  'things to do': Icons.local_activity_outlined,
+  'menu': Icons.menu_book_outlined,
+  'venues': Icons.location_city_outlined,
+  'contractors': Icons.construction_outlined,
+  'plans': Icons.event_outlined,
+  'shopping list': Icons.shopping_cart_outlined,
+  'locations': Icons.photo_camera_outlined,
+  'tasks': Icons.check_circle_outline,
   'cabs': Icons.local_taxi_outlined,
   'split': Icons.receipt_long_outlined,
 };
 
-IconData _iconFor(String category) =>
-    _categoryIcons[category.toLowerCase()] ?? Icons.label_outline;
+IconData _iconFor(String cat) =>
+    _categoryIcons[cat.toLowerCase()] ?? Icons.label_outline;
+
+// ═══════════════════════════════════════════════════════
+// MAIN WIDGET
+// ═══════════════════════════════════════════════════════
 
 class PlansView extends ConsumerStatefulWidget {
   final String groupId;
-
   const PlansView({super.key, required this.groupId});
 
   @override
@@ -47,13 +88,14 @@ class PlansView extends ConsumerStatefulWidget {
 }
 
 class _PlansViewState extends ConsumerState<PlansView> {
-  int _selectedEventIndex = 0;
-  int _selectedCategoryIndex = 0; // 0 = Overview, 1 = Recommendations, 2+ = dynamic
+  int _selectedEventIdx = 0;
+  int _selectedCatIdx = 0;
 
   @override
   Widget build(BuildContext context) {
     final engine = ref.watch(engineProvider);
     final engineDecisions = engine as ChatEngineDecisions;
+    final groupName = MockDataSeed.displayNames[widget.groupId] ?? widget.groupId;
 
     return FutureBuilder<List<DecisionItem>>(
       future: engineDecisions.getDecisionItems(widget.groupId),
@@ -69,112 +111,463 @@ class _PlansViewState extends ConsumerState<PlansView> {
           );
         }
 
-        // ── Extract events (unique categories from items) ──
-        final eventMap = <String, List<DecisionItem>>{};
-        for (final item in allItems) {
-          final event = item.category ?? 'General';
-          eventMap.putIfAbsent(event, () => []).add(item);
+        // ── Detect: single-event or multi-event group ──
+        final itemCategories = allItems.map((i) => i.category ?? '').toSet();
+        final isSingleEvent = itemCategories.every((c) => _knownItemCategories.contains(c));
+
+        // ── Build Tier 1: Events ──
+        late final List<String> eventNames;
+        late final Map<String, List<DecisionItem>> eventItemsMap;
+
+        if (isSingleEvent) {
+          // Bali-style: one event = group name, categories go to Tier 2
+          eventNames = [groupName];
+          eventItemsMap = {groupName: allItems};
+        } else {
+          // Family-style: item.category = event names
+          eventItemsMap = <String, List<DecisionItem>>{};
+          for (final item in allItems) {
+            final event = item.category ?? 'General';
+            eventItemsMap.putIfAbsent(event, () => []).add(item);
+          }
+          // Sort by most active first
+          eventNames = eventItemsMap.keys.toList()
+            ..sort((a, b) {
+              final sa = eventItemsMap[a]!.fold<double>(0, (s, i) => s + i.weightedScore);
+              final sb = eventItemsMap[b]!.fold<double>(0, (s, i) => s + i.weightedScore);
+              return sb.compareTo(sa);
+            });
         }
 
-        // Sort events: most active first (by total weighted score)
-        final eventNames = eventMap.keys.toList()
-          ..sort((a, b) {
-            final scoreA = eventMap[a]!.fold<double>(0, (s, i) => s + i.weightedScore);
-            final scoreB = eventMap[b]!.fold<double>(0, (s, i) => s + i.weightedScore);
-            return scoreB.compareTo(scoreA);
-          });
+        // Clamp indices
+        if (_selectedEventIdx >= eventNames.length) _selectedEventIdx = 0;
+        final selectedEvent = eventNames[_selectedEventIdx];
+        final eventItems = eventItemsMap[selectedEvent]!;
 
-        // Clamp selected index
-        if (_selectedEventIndex >= eventNames.length) {
-          _selectedEventIndex = 0;
+        // ── Build Tier 2: Categories (dynamic per event) ──
+        final List<String> tier2Categories = ['Overview', 'Recommendations'];
+
+        if (isSingleEvent) {
+          // Extract unique item categories as Tier 2 tabs
+          final cats = <String>{};
+          for (final item in eventItems) {
+            final c = item.category ?? 'Ideas';
+            cats.add(c);
+          }
+          // Sort: most items first
+          final sortedCats = cats.toList()
+            ..sort((a, b) {
+              final ca = eventItems.where((i) => i.category == a).length;
+              final cb = eventItems.where((i) => i.category == b).length;
+              return cb.compareTo(ca);
+            });
+          tier2Categories.addAll(sortedCats);
+        } else {
+          // Multi-event: derive category from event name
+          final hint = _eventCategoryHints[selectedEvent];
+          if (hint != null) {
+            tier2Categories.add(hint);
+          } else {
+            tier2Categories.add('Items');
+          }
         }
+        tier2Categories.add('Split');
 
-        final selectedEvent = eventNames[_selectedEventIndex];
-        final eventItems = eventMap[selectedEvent]!;
+        if (_selectedCatIdx >= tier2Categories.length) _selectedCatIdx = 0;
+        final selectedCat = tier2Categories[_selectedCatIdx];
 
-        // ── Build categories for selected event ──
-        // Overview → Recommendations → Cards (decision cards) → Split
-        final allCategories = ['Overview', 'Recommendations', 'Cards', 'Split'];
-
-        if (_selectedCategoryIndex >= allCategories.length) {
-          _selectedCategoryIndex = 0;
+        // ── Get items for the selected Tier 2 category ──
+        List<DecisionItem> catItems;
+        if (isSingleEvent && _selectedCatIdx >= 2 && _selectedCatIdx < tier2Categories.length - 1) {
+          // Filter items by the selected category name
+          catItems = eventItems.where((i) => i.category == selectedCat).toList();
+        } else {
+          catItems = eventItems;
         }
-
-        final selectedCategory = allCategories[_selectedCategoryIndex];
 
         return Column(
           children: [
-            // ═══ TIER 3: Hero Area (top — takes remaining space) ═══
+            // ═══ TIER 3: Hero Area ═══
             Expanded(
-              child: _buildHeroArea(selectedCategory, selectedEvent, eventItems, engineDecisions),
+              child: _buildHero(selectedCat, selectedEvent, catItems, eventItems, engineDecisions),
             ),
 
-            // ═══ TIER 1: Events (above categories — pick event first) ═══
-            _Tier1Events(
-              eventNames: eventNames,
-              eventMap: eventMap,
-              selectedIndex: _selectedEventIndex,
+            // ═══ TIER 1: Events ═══
+            _EventRail(
+              events: eventNames,
+              eventItems: eventItemsMap,
+              selectedIdx: _selectedEventIdx,
               onSelect: (idx) {
                 HapticFeedback.selectionClick();
-                setState(() {
-                  _selectedEventIndex = idx;
-                  _selectedCategoryIndex = 0; // Reset to Overview
-                });
+                setState(() { _selectedEventIdx = idx; _selectedCatIdx = 0; });
               },
             ),
 
-            // ═══ TIER 2: Categories (bottom — thumb arc) ═══
-            _Tier2Categories(
-              categories: allCategories,
-              selectedIndex: _selectedCategoryIndex,
+            // ═══ TIER 2: Categories (thumb arc) ═══
+            _CategoryRail(
+              categories: tier2Categories,
+              selectedIdx: _selectedCatIdx,
               onSelect: (idx) {
                 HapticFeedback.selectionClick();
-                setState(() => _selectedCategoryIndex = idx);
+                setState(() => _selectedCatIdx = idx);
               },
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
           ],
         );
       },
     );
   }
 
-  Widget _buildHeroArea(
+  Widget _buildHero(
     String category,
     String eventName,
-    List<DecisionItem> items,
+    List<DecisionItem> catItems,
+    List<DecisionItem> allEventItems,
     ChatEngineDecisions engine,
   ) {
+    // Overview = dashboard
     if (category == 'Overview') {
-      return _OverviewPage(eventName: eventName, items: items);
-    }
-    if (category == 'Recommendations') {
-      return _RecommendationsPage(eventName: eventName, items: items);
-    }
-    if (category == 'Split') {
-      return _SplitPage(eventName: eventName);
+      return _OverviewDashboard(eventName: eventName, items: allEventItems);
     }
 
-    // "Cards" — full ActionCardWidget decision cards with voting
-    final activeItems = items.where((i) => !i.isLocked).toList()
+    // Split = Xpensly
+    if (category == 'Split') {
+      return _SplitPlaceholder(eventName: eventName);
+    }
+
+    // Recommendations = top-voted items as decision cards
+    if (category == 'Recommendations') {
+      final sorted = List<DecisionItem>.from(allEventItems)
+        ..sort((a, b) => b.agreementScore.compareTo(a.agreementScore));
+      final topItems = sorted.where((i) => !i.isLocked).take(5).toList();
+      return _DecisionCardStream(
+        items: topItems,
+        engine: engine,
+        emptyMessage: 'Vote on items to see recommendations',
+      );
+    }
+
+    // Any other category = Decision Cards with voting
+    return _DecisionCardStream(
+      items: catItems.where((i) => !i.isLocked).toList(),
+      engine: engine,
+      emptyMessage: 'All items settled',
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// TIER 1: Event Rail
+// ═══════════════════════════════════════════════════════
+
+class _EventRail extends StatelessWidget {
+  final List<String> events;
+  final Map<String, List<DecisionItem>> eventItems;
+  final int selectedIdx;
+  final ValueChanged<int> onSelect;
+
+  const _EventRail({
+    required this.events,
+    required this.eventItems,
+    required this.selectedIdx,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: HelloColors.inkPrimary.withValues(alpha: 0.05), width: 0.5),
+        ),
+      ),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        itemCount: events.length,
+        itemBuilder: (context, idx) {
+          final name = events[idx];
+          final items = eventItems[name]!;
+          final isSelected = idx == selectedIdx;
+          final doneCount = items.where((i) => i.isLocked).length;
+          final allDone = doneCount == items.length;
+
+          return Padding(
+            padding: EdgeInsets.only(right: idx < events.length - 1 ? 8 : 0),
+            child: GestureDetector(
+              onTap: () => onSelect(idx),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? HelloColors.inkPrimary.withValues(alpha: 0.07)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isSelected
+                      ? Border.all(color: HelloColors.inkPrimary.withValues(alpha: 0.12), width: 1)
+                      : null,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (allDone)
+                      Icon(Icons.check_circle, size: 12, color: HelloColors.successGreen)
+                    else
+                      Container(
+                        width: 8, height: 8,
+                        decoration: BoxDecoration(
+                          color: isSelected ? HelloColors.accent : HelloColors.inkTertiary.withValues(alpha: 0.3),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    Text(
+                      name.length > 18 ? '${name.substring(0, 16)}...' : name,
+                      style: TextStyle(
+                        fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w400,
+                        color: isSelected ? HelloColors.inkPrimary : HelloColors.inkSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// TIER 2: Category Rail (thumb arc)
+// ═══════════════════════════════════════════════════════
+
+class _CategoryRail extends StatelessWidget {
+  final List<String> categories;
+  final int selectedIdx;
+  final ValueChanged<int> onSelect;
+
+  const _CategoryRail({
+    required this.categories,
+    required this.selectedIdx,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        itemCount: categories.length,
+        itemBuilder: (context, idx) {
+          final cat = categories[idx];
+          final isSelected = idx == selectedIdx;
+
+          return Padding(
+            padding: EdgeInsets.only(right: idx < categories.length - 1 ? 4 : 0),
+            child: GestureDetector(
+              onTap: () => onSelect(idx),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? HelloColors.accent.withValues(alpha: 0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_iconFor(cat), size: 15,
+                      color: isSelected ? HelloColors.accent : HelloColors.inkTertiary),
+                    const SizedBox(width: 5),
+                    Text(cat,
+                      style: TextStyle(
+                        fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w400,
+                        color: isSelected ? HelloColors.accent : HelloColors.inkSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// TIER 3: Overview Dashboard
+// ═══════════════════════════════════════════════════════
+
+class _OverviewDashboard extends StatelessWidget {
+  final String eventName;
+  final List<DecisionItem> items;
+
+  const _OverviewDashboard({required this.eventName, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final settled = items.where((i) => i.isLocked).toList();
+    final voting = items.where((i) => !i.isLocked && i.agreementScore > 0).toList()
+      ..sort((a, b) => b.agreementScore.compareTo(a.agreementScore));
+    final fresh = items.where((i) => !i.isLocked && i.agreementScore == 0).toList();
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Text(eventName, style: HelloTypography.hero.copyWith(fontSize: 22)),
+          const SizedBox(height: 4),
+          Text(
+            '${items.length} items  \u00b7  ${settled.length} done  \u00b7  ${voting.length} pending  \u00b7  ${fresh.length} new',
+            style: HelloTypography.hint,
+          ),
+          const SizedBox(height: 20),
+
+          // Settled
+          if (settled.isNotEmpty) ...[
+            _SectionLabel('Done', HelloColors.successGreen),
+            ...settled.map((i) => _ItemRow(item: i, trailing: 'settled', trailingColor: HelloColors.successGreen)),
+            const SizedBox(height: 16),
+          ],
+
+          // Voting (pending)
+          if (voting.isNotEmpty) ...[
+            _SectionLabel('Pending', HelloColors.accent),
+            ...voting.map((i) => _ItemRow(
+              item: i,
+              trailing: '${(i.agreementScore * 100).toInt()}%',
+              trailingColor: i.agreementScore >= 0.7 ? HelloColors.accent : HelloColors.inkSecondary,
+            )),
+            const SizedBox(height: 16),
+          ],
+
+          // Fresh (new)
+          if (fresh.isNotEmpty) ...[
+            _SectionLabel('New', HelloColors.inkTertiary),
+            ...fresh.map((i) => _ItemRow(item: i, trailing: 'new', trailingColor: HelloColors.inkTertiary)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _SectionLabel(this.text, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(text, style: HelloTypography.label.copyWith(color: color, letterSpacing: 1.0)),
+    );
+  }
+}
+
+class _ItemRow extends StatelessWidget {
+  final DecisionItem item;
+  final String trailing;
+  final Color trailingColor;
+
+  const _ItemRow({required this.item, required this.trailing, required this.trailingColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          // Thumbnail
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 44, height: 44,
+              child: item.photoUrl != null && item.photoUrl!.isNotEmpty
+                  ? (item.photoUrl!.startsWith('assets/')
+                      ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
+                      : Image.network(item.photoUrl!, fit: BoxFit.cover))
+                  : Container(
+                      color: HelloColors.recessed,
+                      child: Icon(Icons.image_outlined, size: 20, color: HelloColors.inkTertiary),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.title, style: HelloTypography.body.copyWith(fontSize: 15),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (item.description != null)
+                  Text(item.description!.split('\n').first,
+                      style: HelloTypography.hint.copyWith(fontSize: 12),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(trailing, style: HelloTypography.label.copyWith(color: trailingColor, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// TIER 3: Decision Card Stream (used by ALL categories except Overview)
+// ═══════════════════════════════════════════════════════
+
+class _DecisionCardStream extends StatelessWidget {
+  final List<DecisionItem> items;
+  final ChatEngineDecisions engine;
+  final String emptyMessage;
+
+  const _DecisionCardStream({
+    required this.items,
+    required this.engine,
+    required this.emptyMessage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = List<DecisionItem>.from(items)
       ..sort((a, b) {
         final ws = b.weightedScore.compareTo(a.weightedScore);
         if (ws != 0) return ws;
         return b.agreementScore.compareTo(a.agreementScore);
       });
 
-    if (activeItems.isEmpty) {
-      return const Center(child: Text('All items settled.', style: HelloTypography.hint));
+    if (sorted.isEmpty) {
+      return Center(child: Text(emptyMessage, style: HelloTypography.hint));
     }
 
     return PageView.builder(
       clipBehavior: Clip.none,
       controller: PageController(viewportFraction: 0.88),
       physics: const BouncingScrollPhysics(),
-      itemCount: activeItems.length,
+      itemCount: sorted.length,
       itemBuilder: (context, index) {
-        final item = activeItems[index];
+        final item = sorted[index];
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 16),
           child: ActionCardWidget(
@@ -191,475 +584,12 @@ class _PlansViewState extends ConsumerState<PlansView> {
 }
 
 // ═══════════════════════════════════════════════════════
-// TIER 1: Events (bottom rail)
+// TIER 3: Split (Xpensly placeholder)
 // ═══════════════════════════════════════════════════════
 
-class _Tier1Events extends StatelessWidget {
-  final List<String> eventNames;
-  final Map<String, List<DecisionItem>> eventMap;
-  final int selectedIndex;
-  final ValueChanged<int> onSelect;
-
-  const _Tier1Events({
-    required this.eventNames,
-    required this.eventMap,
-    required this.selectedIndex,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: HelloColors.inkPrimary.withValues(alpha: 0.06),
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        itemCount: eventNames.length,
-        itemBuilder: (context, index) {
-          final name = eventNames[index];
-          final items = eventMap[name]!;
-          final isSelected = index == selectedIndex;
-          final activeCount = items.where((i) => !i.isLocked).length;
-          final lockedCount = items.where((i) => i.isLocked).length;
-          final hottest = items.where((i) => !i.isLocked && i.agreementScore > 0).toList()
-            ..sort((a, b) => b.agreementScore.compareTo(a.agreementScore));
-          final topScore = hottest.isNotEmpty ? hottest.first.agreementScore : 0.0;
-
-          return Padding(
-            padding: EdgeInsets.only(right: index < eventNames.length - 1 ? 8 : 0),
-            child: GestureDetector(
-              onTap: () => onSelect(index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? HelloColors.inkPrimary.withValues(alpha: 0.08)
-                      : HelloColors.recessed,
-                  borderRadius: BorderRadius.circular(14),
-                  border: isSelected
-                      ? Border.all(color: HelloColors.inkPrimary.withValues(alpha: 0.15), width: 1)
-                      : null,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Status dot
-                    if (lockedCount == items.length)
-                      Icon(Icons.check_circle, size: 10, color: HelloColors.successGreen)
-                    else if (topScore >= 0.7)
-                      Container(width: 8, height: 8, decoration: BoxDecoration(
-                        color: HelloColors.accent, shape: BoxShape.circle,
-                      ))
-                    else
-                      Container(width: 8, height: 8, decoration: BoxDecoration(
-                        color: HelloColors.inkTertiary.withValues(alpha: 0.3), shape: BoxShape.circle,
-                      )),
-                    const SizedBox(width: 8),
-                    // Event name
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          name.length > 16 ? '${name.substring(0, 14)}...' : name,
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w400,
-                            color: isSelected ? HelloColors.inkPrimary : HelloColors.inkSecondary,
-                          ),
-                        ),
-                        Text(
-                          '$activeCount active${lockedCount > 0 ? ' · $lockedCount done' : ''}',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w300,
-                            color: HelloColors.inkTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// TIER 2: Categories (middle rail)
-// ═══════════════════════════════════════════════════════
-
-class _Tier2Categories extends StatelessWidget {
-  final List<String> categories;
-  final int selectedIndex;
-  final ValueChanged<int> onSelect;
-
-  const _Tier2Categories({
-    required this.categories,
-    required this.selectedIndex,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 42,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          final cat = categories[index];
-          final isSelected = index == selectedIndex;
-
-          return Padding(
-            padding: EdgeInsets.only(right: index < categories.length - 1 ? 6 : 0),
-            child: GestureDetector(
-              onTap: () => onSelect(index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? HelloColors.accent.withValues(alpha: 0.12)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _iconFor(cat),
-                      size: 16,
-                      color: isSelected ? HelloColors.accent : HelloColors.inkTertiary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      cat,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: isSelected ? HelloColors.accent : HelloColors.inkSecondary,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// TIER 3: Hero Area — Overview Page
-// ═══════════════════════════════════════════════════════
-
-class _OverviewPage extends StatelessWidget {
+class _SplitPlaceholder extends StatelessWidget {
   final String eventName;
-  final List<DecisionItem> items;
-
-  const _OverviewPage({required this.eventName, required this.items});
-
-  @override
-  Widget build(BuildContext context) {
-    final locked = items.where((i) => i.isLocked).toList();
-    final active = items.where((i) => !i.isLocked && i.agreementScore > 0).toList()
-      ..sort((a, b) => b.agreementScore.compareTo(a.agreementScore));
-    final fresh = items.where((i) => !i.isLocked && i.agreementScore == 0).toList();
-
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Event header
-          Text(
-            eventName,
-            style: HelloTypography.hero.copyWith(fontSize: 24),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${items.length} items · ${locked.length} settled · ${active.length} voting · ${fresh.length} new',
-            style: HelloTypography.hint.copyWith(fontSize: 13),
-          ),
-          const SizedBox(height: 24),
-
-          // Settled items (green checkmarks)
-          if (locked.isNotEmpty) ...[
-            Text('Settled', style: HelloTypography.label.copyWith(color: HelloColors.successGreen)),
-            const SizedBox(height: 8),
-            ...locked.map((item) => _OverviewRow(
-              item: item,
-              color: HelloColors.successGreen,
-              trailing: 'done',
-            )),
-            const SizedBox(height: 20),
-          ],
-
-          // Hot items (needs attention)
-          if (active.isNotEmpty) ...[
-            Text('Needs votes', style: HelloTypography.label.copyWith(color: HelloColors.accent)),
-            const SizedBox(height: 8),
-            ...active.map((item) => _OverviewRow(
-              item: item,
-              color: HelloColors.accent,
-              trailing: '${(item.agreementScore * 100).toInt()}%',
-            )),
-            const SizedBox(height: 20),
-          ],
-
-          // Fresh items (no votes yet)
-          if (fresh.isNotEmpty) ...[
-            Text('Just added', style: HelloTypography.label.copyWith(color: HelloColors.inkTertiary)),
-            const SizedBox(height: 8),
-            ...fresh.map((item) => _OverviewRow(
-              item: item,
-              color: HelloColors.inkTertiary,
-              trailing: 'new',
-            )),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _OverviewRow extends StatelessWidget {
-  final DecisionItem item;
-  final Color color;
-  final String trailing;
-
-  const _OverviewRow({required this.item, required this.color, required this.trailing});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          // Thumbnail
-          if (item.photoUrl != null && item.photoUrl!.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: item.photoUrl!.startsWith('assets/')
-                    ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
-                    : Image.network(item.photoUrl!, fit: BoxFit.cover),
-              ),
-            )
-          else
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: HelloColors.recessed,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.image_outlined, size: 20, color: HelloColors.inkTertiary),
-            ),
-          const SizedBox(width: 12),
-          // Title + description
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: HelloTypography.body.copyWith(fontSize: 15),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (item.description != null)
-                  Text(
-                    item.description!.split('\n').first,
-                    style: HelloTypography.hint.copyWith(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Score / status
-          Text(
-            trailing,
-            style: HelloTypography.label.copyWith(color: color, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// TIER 3: Hero Area — Recommendations Page
-// ═══════════════════════════════════════════════════════
-
-class _RecommendationsPage extends StatelessWidget {
-  final String eventName;
-  final List<DecisionItem> items;
-
-  const _RecommendationsPage({required this.eventName, required this.items});
-
-  @override
-  Widget build(BuildContext context) {
-    // Sort by agreement score — highest first (group's preference)
-    final sorted = List<DecisionItem>.from(items)
-      ..sort((a, b) => b.agreementScore.compareTo(a.agreementScore));
-    final top3 = sorted.take(3).toList();
-
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.auto_awesome, size: 18, color: HelloColors.accent),
-              const SizedBox(width: 8),
-              Text(
-                'Based on your group\'s votes',
-                style: HelloTypography.body.copyWith(fontSize: 15, color: HelloColors.inkSecondary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          if (top3.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 60),
-                child: Text('Vote on items to see recommendations', style: HelloTypography.hint),
-              ),
-            )
-          else
-            ...top3.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final item = entry.value;
-              return _RecommendationCard(item: item, rank: idx + 1);
-            }),
-        ],
-      ),
-    );
-  }
-}
-
-class _RecommendationCard extends StatelessWidget {
-  final DecisionItem item;
-  final int rank;
-
-  const _RecommendationCard({required this.item, required this.rank});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (item.agreementScore * 100).toInt();
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: rank == 1
-            ? HelloColors.accent.withValues(alpha: 0.06)
-            : HelloColors.recessed,
-        borderRadius: BorderRadius.circular(16),
-        border: rank == 1
-            ? Border.all(color: HelloColors.accent.withValues(alpha: 0.2), width: 1)
-            : null,
-      ),
-      child: Row(
-        children: [
-          // Rank number
-          Text(
-            '#$rank',
-            style: HelloTypography.hero.copyWith(
-              fontSize: 28,
-              color: rank == 1 ? HelloColors.accent : HelloColors.inkTertiary,
-              height: 1.0,
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Photo
-          if (item.photoUrl != null && item.photoUrl!.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 56, height: 56,
-                child: item.photoUrl!.startsWith('assets/')
-                    ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
-                    : Image.network(item.photoUrl!, fit: BoxFit.cover),
-              ),
-            ),
-          const SizedBox(width: 12),
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: HelloTypography.body.copyWith(fontSize: 15),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (item.description != null)
-                  Text(
-                    item.description!.split('\n').first,
-                    style: HelloTypography.hint.copyWith(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Score
-          Text(
-            '$pct%',
-            style: HelloTypography.hero.copyWith(
-              fontSize: 22,
-              color: pct >= 80 ? HelloColors.accent : HelloColors.inkSecondary,
-              height: 1.0,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// TIER 3: Hero Area — Split (Xpensly) Page
-// ═══════════════════════════════════════════════════════
-
-class _SplitPage extends StatelessWidget {
-  final String eventName;
-
-  const _SplitPage({required this.eventName});
+  const _SplitPlaceholder({required this.eventName});
 
   @override
   Widget build(BuildContext context) {
@@ -667,9 +597,11 @@ class _SplitPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long_outlined, size: 48, color: HelloColors.inkTertiary.withValues(alpha: 0.3)),
+          Icon(Icons.receipt_long_outlined, size: 48,
+              color: HelloColors.inkTertiary.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
-          Text('Expenses for $eventName', style: HelloTypography.body.copyWith(color: HelloColors.inkSecondary)),
+          Text('Expenses for $eventName',
+              style: HelloTypography.body.copyWith(color: HelloColors.inkSecondary)),
           const SizedBox(height: 8),
           Text('No expenses yet', style: HelloTypography.hint),
         ],
@@ -677,4 +609,3 @@ class _SplitPage extends StatelessWidget {
     );
   }
 }
-
