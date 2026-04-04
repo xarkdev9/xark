@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme.dart';
 import '../main.dart';
 import 'chat_view.dart';
-import 'decision_board.dart';
+import 'plans_view.dart';
 import 'add_item_sheet.dart';
 
 class SpaceLayout extends ConsumerStatefulWidget {
@@ -171,7 +171,7 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
                           child: ChatView(spaceId: widget.spaceId),
                         ),
                       ),
-                      DecisionBoard(groupId: widget.spaceId),
+                      PlansView(groupId: widget.spaceId),
                     ],
                   ),
 
