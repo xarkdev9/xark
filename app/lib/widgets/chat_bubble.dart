@@ -276,9 +276,7 @@ class _ChatBubbleState extends State<ChatBubble>
             fontFamily: 'Inter',
             fontSize: 16,
             fontWeight: FontWeight.w400, // No-Bold
-            color: widget.isOutbound
-                ? Colors.white.withValues(alpha: 0.95)
-                : HelloColors.inkPrimary.withValues(alpha: 0.9),
+            color: HelloColors.inkPrimary.withValues(alpha: 0.9),
             height: 1.4,
           ),
         ),

@@ -88,7 +88,7 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
                     child: AnimatedOpacity(
                       duration: const Duration(milliseconds: 200),
                       opacity: _currentIndex == 0 ? 1.0 : 0.4,
-                      child: const Text('Decide', style: HelloTypography.spaceTitle),
+                      child: const Text('Chat', style: HelloTypography.spaceTitle),
                     ),
                   ),
                   const SizedBox(width: 24),
@@ -97,7 +97,7 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
                     child: AnimatedOpacity(
                       duration: const Duration(milliseconds: 200),
                       opacity: _currentIndex == 1 ? 1.0 : 0.4,
-                      child: const Text('Chat', style: HelloTypography.spaceTitle),
+                      child: const Text('Plans', style: HelloTypography.spaceTitle),
                     ),
                   ),
                   const Spacer(),
@@ -118,18 +118,18 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
                     onPageChanged: (idx) => setState(() => _currentIndex = idx),
                     physics: const ClampingScrollPhysics(),
                     children: [
-                      DecisionBoard(groupId: widget.spaceId),
                       ProviderScope(
                         overrides: const [],
                         child: ClipRRect(
                           child: ChatView(spaceId: widget.spaceId),
                         ),
                       ),
+                      DecisionBoard(groupId: widget.spaceId),
                     ],
                   ),
 
-                  // FAB — only on Decide tab
-                  if (_currentIndex == 0)
+                  // FAB — only on Plans tab
+                  if (_currentIndex == 1)
                     Positioned(
                       right: 20,
                       bottom: 24,
