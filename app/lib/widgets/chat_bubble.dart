@@ -65,7 +65,32 @@ class _ChatBubbleState extends State<ChatBubble>
     'noah': Color(0xFF1ABC9C),
     'sofia': Color(0xFFE67E22),
     'maya': Color(0xFFF39C12),
+    'user_0': Color(0xFFFF6B6B),
+    'user_1': Color(0xFF4ECDC4),
+    'user_2': Color(0xFF9B59B6),
+    'user_3': Color(0xFF3498DB),
+    'user_4': Color(0xFF2ECC71),
   };
+
+  // Map raw user IDs to display names
+  static const _senderNames = <String, String>{
+    'user_0': 'Sarah',
+    'user_1': 'Alex',
+    'user_2': 'Maya',
+    'user_3': 'Jordan',
+    'user_4': 'Chris',
+    'user_x': 'Kim',
+    'priya': 'Priya',
+    'dad': 'Dad',
+    'emma': 'Emma',
+    'alex': 'Alex',
+    'liam': 'Liam',
+    'noah': 'Noah',
+    'sofia': 'Sofia',
+    'maya': 'Maya',
+  };
+
+  String _displayName(String? id) => _senderNames[id?.toLowerCase()] ?? id ?? '?';
 
   double _pressScale = 1.0;
 
@@ -199,9 +224,9 @@ class _ChatBubbleState extends State<ChatBubble>
                     // Sender name for incoming group messages
                     if (!widget.isOutbound && widget.isFirstInGroup && widget.senderId != null)
                       Padding(
-                        padding: const EdgeInsets.only(left: 42, bottom: 2),
+                        padding: const EdgeInsets.only(left: 42, bottom: 3),
                         child: Text(
-                          widget.senderId!,
+                          _displayName(widget.senderId),
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 11,
@@ -212,7 +237,12 @@ class _ChatBubbleState extends State<ChatBubble>
                       ),
 
                     // Avatar row + glass bubble
-                    Row(
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: widget.isOutbound ? 0 : 8,
+                        right: widget.isOutbound ? 0 : 0,
+                      ),
+                      child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -228,7 +258,7 @@ class _ChatBubbleState extends State<ChatBubble>
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              (widget.senderId ?? '?')[0].toUpperCase(),
+                              _displayName(widget.senderId)[0].toUpperCase(),
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 12,
@@ -245,8 +275,8 @@ class _ChatBubbleState extends State<ChatBubble>
                           child: Padding(
                             padding: EdgeInsets.only(
                               top: topMargin,
-                              left: widget.isOutbound ? 16 : 0,
-                              right: widget.isOutbound ? 16 : 16,
+                              left: widget.isOutbound ? 48 : 0,
+                              right: widget.isOutbound ? 12 : 12,
                             ),
                             child: ClipRRect(
                               borderRadius: _buildCornerRadii(),
@@ -289,6 +319,7 @@ class _ChatBubbleState extends State<ChatBubble>
                           ),
                         ),
                       ],
+                    ),
                     ),
 
                     // Reaction display (selected emoji floats below bubble)
