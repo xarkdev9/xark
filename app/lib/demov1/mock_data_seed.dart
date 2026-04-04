@@ -610,6 +610,121 @@ class MockDataSeed {
       ];
     }
 
+    else if (groupId == 'family') {
+      return [
+        // ── Mom's Birthday — restaurant vote (active, hot) ──
+        DecisionItem(
+          id: 'item_fam_bday1', groupId: 'family', category: "Mom's Birthday",
+          title: 'Carbone (Italian)',
+          description: 'Private dining room \u2022 \$85/person',
+          state: 'voting', weightedScore: 8.0, agreementScore: 0.82,
+          photoUrl: 'assets/decide/family_italian.jpg',
+          proposedBy: 'priya', reactions: {'love': 'me'},
+        ),
+        DecisionItem(
+          id: 'item_fam_bday2', groupId: 'family', category: "Mom's Birthday",
+          title: 'Nobu (Japanese)',
+          description: 'Omakase tasting \u2022 \$120/person',
+          state: 'voting', weightedScore: 3.0, agreementScore: 0.40,
+          photoUrl: 'assets/decide/family_dinner.jpg',
+          proposedBy: 'dad',
+        ),
+        // ── Thanksgiving 2026 — who brings what ──
+        DecisionItem(
+          id: 'item_fam_thx1', groupId: 'family', category: 'Thanksgiving',
+          title: 'Turkey (Deep Fried)',
+          description: 'Dad volunteers \u2022 20 lb bird',
+          state: 'locked', weightedScore: 10.0, agreementScore: 1.0, isLocked: true,
+          photoUrl: 'assets/decide/family_thanksgiving.jpg',
+          proposedBy: 'dad',
+        ),
+        DecisionItem(
+          id: 'item_fam_thx2', groupId: 'family', category: 'Thanksgiving',
+          title: 'Pumpkin Pie vs Pecan Pie',
+          description: 'Annual debate \u2022 vote now',
+          state: 'voting', weightedScore: 4.0, agreementScore: 0.55,
+          proposedBy: 'me',
+        ),
+        // ── Dad's Retirement Party — venue ──
+        DecisionItem(
+          id: 'item_fam_retire1', groupId: 'family', category: 'Retirement Party',
+          title: 'Backyard BBQ (Home)',
+          description: 'Casual \u2022 50 guests \u2022 free venue',
+          state: 'voting', weightedScore: 6.0, agreementScore: 0.70,
+          photoUrl: 'assets/decide/family_retirement.jpg',
+          proposedBy: 'me',
+        ),
+        DecisionItem(
+          id: 'item_fam_retire2', groupId: 'family', category: 'Retirement Party',
+          title: 'Restaurant Buyout',
+          description: 'Fancy \u2022 50 guests \u2022 \$3,000',
+          state: 'voting', weightedScore: 2.0, agreementScore: 0.30,
+          proposedBy: 'priya',
+        ),
+        // ── Summer Vacation — destination vote ──
+        DecisionItem(
+          id: 'item_fam_vac1', groupId: 'family', category: 'Summer Vacation',
+          title: 'Hawaii (Maui)',
+          description: 'Beach house \u2022 7 nights \u2022 \$4,200',
+          state: 'voting', weightedScore: 7.0, agreementScore: 0.65,
+          photoUrl: 'assets/decide/family_vacation.jpg',
+          proposedBy: 'priya',
+        ),
+        DecisionItem(
+          id: 'item_fam_vac2', groupId: 'family', category: 'Summer Vacation',
+          title: 'Lake Tahoe Cabin',
+          description: 'Mountain retreat \u2022 5 nights \u2022 \$2,800',
+          state: 'voting', weightedScore: 5.0, agreementScore: 0.50,
+          proposedBy: 'dad',
+        ),
+        // ── Cousin's Wedding Gift ──
+        DecisionItem(
+          id: 'item_fam_gift1', groupId: 'family', category: 'Wedding Gift',
+          title: 'KitchenAid Mixer (Red)',
+          description: 'From registry \u2022 \$350',
+          state: 'voting', weightedScore: 5.0, agreementScore: 0.60,
+          photoUrl: 'assets/decide/family_wedding.jpg',
+          proposedBy: 'me',
+        ),
+        // ── Home Renovation — contractor quotes ──
+        DecisionItem(
+          id: 'item_fam_reno1', groupId: 'family', category: 'Home Renovation',
+          title: 'Kitchen Remodel (Phase 1)',
+          description: 'Contractor A \u2022 \$15,000 \u2022 4 weeks',
+          state: 'voting', weightedScore: 3.0, agreementScore: 0.35,
+          photoUrl: 'assets/decide/family_renovation.jpg',
+          proposedBy: 'dad',
+        ),
+        // ── Christmas 2026 — early planning ──
+        DecisionItem(
+          id: 'item_fam_xmas1', groupId: 'family', category: 'Christmas 2026',
+          title: 'Secret Santa (Budget \$50)',
+          description: 'Draw names at Thanksgiving',
+          state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
+          photoUrl: 'assets/decide/family_christmas.jpg',
+          proposedBy: 'priya',
+        ),
+        // ── Grocery Run — this week ──
+        DecisionItem(
+          id: 'item_fam_groc1', groupId: 'family', category: 'Grocery Run',
+          title: "Costco List (Saturday)",
+          description: 'Chicken, rice, veggies, snacks',
+          state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
+          photoUrl: 'assets/decide/family_grocery.jpg',
+          proposedBy: 'me',
+        ),
+        // ── Family Photo Shoot — DONE (locked) ──
+        DecisionItem(
+          id: 'item_fam_photo1', groupId: 'family', category: 'Photo Shoot',
+          title: 'Golden Hour at Griffith Park',
+          description: 'Booked \u2022 Oct 15 \u2022 4:30 PM',
+          state: 'locked', weightedScore: 12.0, agreementScore: 1.0, isLocked: true,
+          photoUrl: 'assets/decide/family_photoshoot.jpg',
+          proposedBy: 'priya',
+        ),
+      ];
+    }
+
     return [];
   }
 }
