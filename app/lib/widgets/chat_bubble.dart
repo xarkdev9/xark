@@ -200,6 +200,7 @@ class _ChatBubbleState extends State<ChatBubble>
               child: Transform.scale(
                 scale: _pressScale,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: widget.isOutbound
                       ? CrossAxisAlignment.end
                       : CrossAxisAlignment.start,
@@ -250,6 +251,7 @@ class _ChatBubbleState extends State<ChatBubble>
                                       ? ClipRRect(
                                           borderRadius: _buildCornerRadii(),
                                           child: Column(
+                                            mainAxisSize: MainAxisSize.min,
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               widget.mediaChild!,
