@@ -90,9 +90,12 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 1. Image Background
-              if (photoUrl != null && photoUrl.isNotEmpty) // Use Image.network for external Unsplash URL
-                Image.network(photoUrl, fit: BoxFit.cover)
+              // 1. Image Background (asset or network)
+              if (photoUrl != null && photoUrl.isNotEmpty)
+                photoUrl.startsWith('assets/')
+                    ? Image.asset(photoUrl, fit: BoxFit.cover)
+                    : Image.network(photoUrl, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(color: Colors.black12))
               else
                 Container(color: Colors.black12),
 

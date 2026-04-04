@@ -178,7 +178,7 @@ class MockDataSeed {
           title: 'The St. Regis Bali Resort',
           description: '\$750/night \u2022 5-star \u2022 Nusa Dua',
           state: 'locked', weightedScore: 10.0, agreementScore: 1.0, isLocked: true,
-          photoUrl: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_stregis.jpg',
           proposedBy: 'user2', reactions: {'love': 'user_X'},
         ),
         DecisionItem(
@@ -186,7 +186,7 @@ class MockDataSeed {
           title: 'W Bali - Seminyak',
           description: '\$450/night \u2022 5-star \u2022 Seminyak',
           state: 'voting', weightedScore: 3.0, agreementScore: 0.45,
-          photoUrl: 'https://images.unsplash.com/photo-1542314831-c6a4d27ce66b?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_wbali.jpg',
           proposedBy: 'user3',
         ),
         DecisionItem(
@@ -194,7 +194,7 @@ class MockDataSeed {
           title: 'The Mulia Bali',
           description: '\$680/night \u2022 5-star \u2022 Nusa Dua',
           state: 'voting', weightedScore: 1.0, agreementScore: 0.30,
-          photoUrl: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_mulia.jpg',
           proposedBy: 'user4',
         ),
         // Experiences (3)
@@ -203,7 +203,7 @@ class MockDataSeed {
           title: 'Mount Batur Sunrise Trek',
           description: '\$65/person \u2022 4 Hours',
           state: 'locked', weightedScore: 8.0, agreementScore: 1.0, isLocked: true,
-          photoUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_batur.jpg',
           proposedBy: 'user4',
         ),
         DecisionItem(
@@ -211,7 +211,7 @@ class MockDataSeed {
           title: 'Ubud Rice Terraces Tour',
           description: '\$45/person \u2022 Half day',
           state: 'voting', weightedScore: 4.0, agreementScore: 0.60,
-          photoUrl: 'https://images.unsplash.com/photo-1555400038-63f5ba517a47?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_ubud.jpg',
           proposedBy: 'user2',
         ),
         DecisionItem(
@@ -219,7 +219,7 @@ class MockDataSeed {
           title: 'Sunset Dinner Cruise',
           description: '\$120/person \u2022 3 Hours',
           state: 'voting', weightedScore: 1.0, agreementScore: 0.25,
-          photoUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_cruise.jpg',
           proposedBy: 'user3',
         ),
         // Flights (2)
@@ -228,7 +228,7 @@ class MockDataSeed {
           title: 'Singapore Airlines SQ938',
           description: '\$320 \u2022 SIN \u2192 DPS \u2022 08:20 AM',
           state: 'voting', weightedScore: 5.0, agreementScore: 0.70,
-          photoUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_flight_sq.jpg',
           proposedBy: 'me',
         ),
         DecisionItem(
@@ -236,7 +236,7 @@ class MockDataSeed {
           title: 'Garuda Indonesia GA715',
           description: '\$280 \u2022 CGK \u2192 DPS \u2022 06:00 AM',
           state: 'voting', weightedScore: 2.0, agreementScore: 0.35,
-          photoUrl: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_flight_ga.jpg',
           proposedBy: 'user4',
         ),
         // Dining (3)
@@ -245,7 +245,7 @@ class MockDataSeed {
           title: 'Locavore',
           description: 'Michelin-worthy tasting menu \u2022 Ubud',
           state: 'voting', weightedScore: 4.0, agreementScore: 0.55,
-          photoUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_locavore.jpg',
           proposedBy: 'user2',
         ),
         DecisionItem(
@@ -253,7 +253,7 @@ class MockDataSeed {
           title: 'Sardine',
           description: 'Farm-to-table rice paddy views \u2022 Seminyak',
           state: 'voting', weightedScore: 2.0, agreementScore: 0.40,
-          photoUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_sardine.jpg',
           proposedBy: 'user3',
         ),
         DecisionItem(
@@ -261,7 +261,7 @@ class MockDataSeed {
           title: 'Warung Babi Guling Ibu Oka',
           description: 'Legendary roast suckling pig \u2022 Ubud',
           state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
-          photoUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_warung.jpg',
           proposedBy: 'me',
         ),
         // Loose / Ideas (4)
@@ -270,7 +270,7 @@ class MockDataSeed {
           title: 'Beach Club Day Pass',
           description: 'Potato Head or Finns?',
           state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
-          photoUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_beach.jpg',
           proposedBy: 'user2',
         ),
         DecisionItem(
@@ -285,7 +285,7 @@ class MockDataSeed {
           title: 'Group Spa Day',
           description: 'Traditional Balinese massage',
           state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
-          photoUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/bali_spa.jpg',
           proposedBy: 'user4',
         ),
       ];
@@ -297,7 +297,7 @@ class MockDataSeed {
           title: 'Carbone (Private Room)',
           description: 'Michelin-starred Italian-American retro glamour.',
           state: 'voting', weightedScore: 8.0, agreementScore: 0.90,
-          photoUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/sarah_carbone.jpg',
           proposedBy: 'alice', reactions: {'love': 'me'},
         ),
         DecisionItem(
@@ -305,7 +305,7 @@ class MockDataSeed {
           title: 'Balthazar',
           description: 'Classic French brasserie in SoHo.',
           state: 'voting', weightedScore: 1.0, agreementScore: 0.20,
-          photoUrl: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/sarah_balthazar.jpg',
           proposedBy: 'me',
         ),
         DecisionItem(
@@ -313,7 +313,7 @@ class MockDataSeed {
           title: 'Le Bernardin',
           description: 'World-class seafood. Special occasion perfect.',
           state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
-          photoUrl: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/sarah_bernardin.jpg',
           proposedBy: 'alice',
         ),
         // Gifts (3)
@@ -322,7 +322,7 @@ class MockDataSeed {
           title: 'Aesop Departure Kit',
           description: 'Luxury travel skincare set',
           state: 'voting', weightedScore: 4.0, agreementScore: 0.60,
-          photoUrl: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/sarah_aesop.jpg',
           proposedBy: 'me',
         ),
         DecisionItem(
@@ -330,7 +330,7 @@ class MockDataSeed {
           title: 'Concert Tickets (Billie Eilish)',
           description: 'MSG, 2 tickets, floor seats',
           state: 'voting', weightedScore: 3.0, agreementScore: 0.45,
-          photoUrl: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/sarah_concert.jpg',
           proposedBy: 'alice',
         ),
         DecisionItem(
@@ -353,7 +353,7 @@ class MockDataSeed {
           title: 'Custom Cake (Lady M)',
           description: 'Mille crepe, feeds 12',
           state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
-          photoUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/sarah_cake.jpg',
           proposedBy: 'me',
         ),
       ];
@@ -364,7 +364,7 @@ class MockDataSeed {
           title: 'Park Hyatt Tokyo',
           description: '\$650/night \u2022 Lost in Translation vibes',
           state: 'voting', weightedScore: 18.0, agreementScore: 0.94,
-          photoUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_parkhyatt.jpg',
           proposedBy: 'user2',
         ),
         DecisionItem(
@@ -372,7 +372,7 @@ class MockDataSeed {
           title: 'Andaz Tokyo',
           description: '\$420/night \u2022 Toranomon Hills',
           state: 'voting', weightedScore: 8.0, agreementScore: 0.60,
-          photoUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_andaz.jpg',
           proposedBy: 'user5',
         ),
         DecisionItem(
@@ -380,7 +380,7 @@ class MockDataSeed {
           title: 'Hoshinoya Tokyo',
           description: '\$380/night \u2022 Traditional ryokan luxury',
           state: 'voting', weightedScore: 3.0, agreementScore: 0.30,
-          photoUrl: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_hoshinoya.jpg',
           proposedBy: 'me',
         ),
         DecisionItem(
@@ -388,7 +388,7 @@ class MockDataSeed {
           title: 'TeamLab Borderless',
           description: 'Digital art museum \u2022 Odaiba',
           state: 'voting', weightedScore: 6.0, agreementScore: 0.67,
-          photoUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_teamlab.jpg',
           proposedBy: 'user2',
         ),
         DecisionItem(
@@ -396,7 +396,7 @@ class MockDataSeed {
           title: 'Shibuya Crossing at Night',
           description: 'Rooftop photo session \u2022 Mag\'s Park',
           state: 'voting', weightedScore: 4.0, agreementScore: 0.45,
-          photoUrl: 'https://images.unsplash.com/photo-1532236204992-f5e82c553420?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_shibuya.jpg',
           proposedBy: 'user5',
         ),
         DecisionItem(
@@ -404,7 +404,7 @@ class MockDataSeed {
           title: 'Sukiyabashi Jiro',
           description: '3-star Michelin sushi \u2022 Ginza',
           state: 'locked', weightedScore: 15.0, agreementScore: 1.0, isLocked: true,
-          photoUrl: 'https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_jiro.jpg',
           proposedBy: 'user2',
         ),
         DecisionItem(
@@ -412,7 +412,7 @@ class MockDataSeed {
           title: 'Ichiran Ramen',
           description: 'Solo booth ramen \u2022 Shinjuku',
           state: 'voting', weightedScore: 5.0, agreementScore: 0.55,
-          photoUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_ichiran.jpg',
           proposedBy: 'me',
         ),
         DecisionItem(
@@ -420,7 +420,7 @@ class MockDataSeed {
           title: 'Robot Restaurant',
           description: 'Wild dinner show \u2022 Kabukicho',
           state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
-          photoUrl: 'https://images.unsplash.com/photo-1480796927426-f609979314bd?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_robot.jpg',
           proposedBy: 'user5',
         ),
         DecisionItem(
@@ -442,7 +442,7 @@ class MockDataSeed {
           title: 'Kyoto Day Trip',
           description: 'Shinkansen round trip \u2022 \$120',
           state: 'voting', weightedScore: 7.0, agreementScore: 0.50,
-          photoUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_kyoto.jpg',
           proposedBy: 'user5',
         ),
         DecisionItem(
@@ -450,7 +450,7 @@ class MockDataSeed {
           title: 'Akihabara Shopping Spree',
           description: 'Anime, tech, arcades',
           state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
-          photoUrl: 'https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?q=80&w=800&auto=format&fit=crop',
+          photoUrl: 'assets/decide/tokyo_akihabara.jpg',
           proposedBy: 'user2',
         ),
       ];

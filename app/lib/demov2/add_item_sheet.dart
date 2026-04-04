@@ -22,12 +22,12 @@ class _AddItemSheetState extends State<AddItemSheet> {
   String? _previewUrl;
 
   static const _demoImages = [
-    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1578985545062-69928b1d9587?q=80&w=800&auto=format&fit=crop',
+    'assets/decide/demo_1.jpg',
+    'assets/decide/demo_2.jpg',
+    'assets/decide/demo_3.jpg',
+    'assets/decide/bali_beach.jpg',
+    'assets/decide/tokyo_kyoto.jpg',
+    'assets/decide/sarah_cake.jpg',
   ];
 
   void _pickImage() {
@@ -97,7 +97,9 @@ class _AddItemSheetState extends State<AddItemSheet> {
                     borderRadius: BorderRadius.circular(12),
                     child: AspectRatio(
                       aspectRatio: 16 / 10,
-                      child: Image.network(_previewUrl!, fit: BoxFit.cover),
+                      child: _previewUrl!.startsWith('assets/')
+                          ? Image.asset(_previewUrl!, fit: BoxFit.cover)
+                          : Image.network(_previewUrl!, fit: BoxFit.cover),
                     ),
                   )
                 : Container(

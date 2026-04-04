@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import '../../../../main.dart';
 import '../../../../theme.dart';
-import '../../chat/space_layout.dart';
+import '../../../demov2/space_layout.dart';
 
 final conversationsProvider = StreamProvider<List<Conversation>>((ref) {
   final engine = ref.watch(engineProvider);

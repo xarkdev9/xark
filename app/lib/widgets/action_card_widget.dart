@@ -90,9 +90,12 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 1. Image Background
-              if (photoUrl != null && photoUrl.isNotEmpty) // Use Image.network for external Unsplash URL
-                Image.network(photoUrl, fit: BoxFit.cover)
+              // 1. Image Background (asset or network)
+              if (photoUrl != null && photoUrl.isNotEmpty)
+                photoUrl.startsWith('assets/')
+                    ? Image.asset(photoUrl, fit: BoxFit.cover)
+                    : Image.network(photoUrl, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(color: Colors.black12))
               else
                 Container(color: Colors.black12),
 
@@ -139,6 +142,18 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
                        maxLines: 2,
                        overflow: TextOverflow.ellipsis,
                      ),
+                     if (widget.item.description != null && widget.item.description!.isNotEmpty) ...[
+                       const SizedBox(height: 4),
+                       Text(
+                         widget.item.description!.split('\n').first,
+                         style: HelloTypography.hint.copyWith(
+                           color: Colors.white.withValues(alpha: 0.7),
+                           fontSize: 13,
+                         ),
+                         maxLines: 1,
+                         overflow: TextOverflow.ellipsis,
+                       ),
+                     ],
                   ],
                 ),
               ),

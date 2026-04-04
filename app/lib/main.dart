@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'views/home/home_layout.dart';
 import 'views/auth/auth_flow_page.dart';
+
 import 'providers/engine_error_listener.dart';
 import 'theme.dart';
+import 'src/mock_chat_engine.dart';
 
 // ─── Global Providers ───────────────────────────────────────────────
 final engineProvider = Provider<ChatEngine>((ref) => throw UnimplementedError());
@@ -13,7 +15,7 @@ final appNavigatorKey = GlobalKey<NavigatorState>();
 // ─── Boot Configuration ─────────────────────────────────────────────
 // Set to false to use MockChatEngine for UI testing without backend.
 // Set to true for bare-metal E2EE engine boot with real Supabase.
-const bool _useLiveEngine = true;
+const bool _useLiveEngine = false;
 
 // Environment variables (injected via --dart-define or .env)
 const String _serverUrl = String.fromEnvironment(
@@ -93,14 +95,7 @@ void main() async {
 
 /// Mock engine factory — lazy import to avoid pulling mock code into prod builds
 Future<ChatEngine> _createMockEngine() async {
-  // Dynamic import keeps mock code tree-shakeable in release builds
-  final module = await Future.value(null); // Placeholder
-  // In dev mode, the mock engine is used for UI physics testing
-  // ignore: dead_code
-  throw UnimplementedError(
-    'MockChatEngine disabled in Phase 3. Set _useLiveEngine = false '
-    'and import src/mock_chat_engine.dart to re-enable.',
-  );
+  return MockChatEngine();
 }
 
 // ═══════════════════════════════════════════════════════════════════
