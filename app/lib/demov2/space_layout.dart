@@ -73,16 +73,44 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
         bottom: false,
         child: Column(
           children: [
-            // Top Navigation Rail
+            // Row 1: Back + Avatar + Name (centered)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
               child: Row(
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back_ios_new, color: HelloColors.inkSecondary, size: 20),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
+                  const Spacer(),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: HelloColors.recessed,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      widget.spaceTitle.isNotEmpty ? widget.spaceTitle[0].toUpperCase() : '?',
+                      style: HelloTypography.body.copyWith(fontSize: 14),
+                    ),
+                  ),
                   const SizedBox(width: 8),
+                  Text(
+                    widget.spaceTitle,
+                    style: HelloTypography.body.copyWith(fontSize: 16),
+                  ),
+                  const Spacer(),
+                  const SizedBox(width: 52), // Balance the back button width
+                ],
+              ),
+            ),
+            // Row 2: Chat | Plans tabs
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+              child: Row(
+                children: [
                   GestureDetector(
                     onTap: () => _onTabTapped(0),
                     child: AnimatedOpacity(
@@ -99,11 +127,6 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
                       opacity: _currentIndex == 1 ? 1.0 : 0.4,
                       child: const Text('Plans', style: HelloTypography.spaceTitle),
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    widget.spaceTitle,
-                    style: HelloTypography.hint.copyWith(fontSize: 14),
                   ),
                 ],
               ),
