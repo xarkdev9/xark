@@ -29,7 +29,7 @@ import '../widgets/action_card_widget.dart';
 // Rule: Overview is the ONLY dashboard. Everything else is Decision Cards.
 // ═══════════════════════════════════════════════════════════════════
 
-/// Icons for Tier 2 pills
+// Category icons (reserved for future use)
 const _categoryIcons = <String, IconData>{
   'overview': Icons.dashboard_outlined,
   'recommendations': Icons.auto_awesome,
@@ -53,8 +53,8 @@ const _categoryIcons = <String, IconData>{
   'split': Icons.receipt_long_outlined,
 };
 
-IconData _iconFor(String cat) =>
-    _categoryIcons[cat.toLowerCase()] ?? Icons.label_outline;
+// Icons available for future use
+// IconData _iconFor(String cat) => _categoryIcons[cat.toLowerCase()] ?? Icons.label_outline;
 
 // ═══════════════════════════════════════════════════════
 // MAIN WIDGET
@@ -283,40 +283,30 @@ class _EventRail extends StatelessWidget {
           final allDone = doneCount == items.length;
 
           return Padding(
-            padding: EdgeInsets.only(right: idx < events.length - 1 ? 8 : 0),
+            padding: EdgeInsets.only(right: idx < events.length - 1 ? 16 : 0),
             child: GestureDetector(
               onTap: () => onSelect(idx),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? HelloColors.inkPrimary.withValues(alpha: 0.07)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: isSelected
-                      ? Border.all(color: HelloColors.inkPrimary.withValues(alpha: 0.12), width: 1)
-                      : null,
-                ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (allDone)
-                      Icon(Icons.check_circle, size: 12, color: HelloColors.successGreen)
+                      Icon(Icons.check_circle, size: 10, color: HelloColors.successGreen)
                     else
                       Container(
-                        width: 8, height: 8,
+                        width: 6, height: 6,
                         decoration: BoxDecoration(
-                          color: isSelected ? HelloColors.accent : HelloColors.inkTertiary.withValues(alpha: 0.3),
+                          color: isSelected ? HelloColors.accent : HelloColors.inkTertiary.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                       ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text(
                       name.length > 18 ? '${name.substring(0, 16)}...' : name,
                       style: TextStyle(
-                        fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w400,
-                        color: isSelected ? HelloColors.inkPrimary : HelloColors.inkSecondary,
+                        fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w400,
+                        color: isSelected ? HelloColors.inkPrimary : HelloColors.inkTertiary,
                       ),
                     ),
                   ],
@@ -359,31 +349,17 @@ class _CategoryRail extends StatelessWidget {
           final isSelected = idx == selectedIdx;
 
           return Padding(
-            padding: EdgeInsets.only(right: idx < categories.length - 1 ? 4 : 0),
+            padding: EdgeInsets.only(right: idx < categories.length - 1 ? 20 : 0),
             child: GestureDetector(
               onTap: () => onSelect(idx),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? HelloColors.accent.withValues(alpha: 0.12)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(_iconFor(cat), size: 15,
-                      color: isSelected ? HelloColors.accent : HelloColors.inkTertiary),
-                    const SizedBox(width: 5),
-                    Text(cat,
-                      style: TextStyle(
-                        fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w400,
-                        color: isSelected ? HelloColors.accent : HelloColors.inkSecondary,
-                      ),
-                    ),
-                  ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  cat,
+                  style: TextStyle(
+                    fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w400,
+                    color: isSelected ? HelloColors.accent : HelloColors.inkTertiary,
+                  ),
                 ),
               ),
             ),
