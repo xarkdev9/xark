@@ -15,18 +15,26 @@ class SpaceLayout extends ConsumerStatefulWidget {
   ConsumerState<SpaceLayout> createState() => _SpaceLayoutState();
 }
 
-class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
+class _SpaceLayoutState extends ConsumerState<SpaceLayout>
+    with SingleTickerProviderStateMixin {
   late final PageController _pageController;
+  late final AnimationController _dotsController;
   int _currentIndex = 0;
+  bool _headerExpanded = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _dotsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
+    _dotsController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -73,146 +81,153 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
         bottom: false,
         child: Column(
           children: [
-            // Top bar: < back | avatar + name (center) | Plans icon (right)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new, color: HelloColors.inkSecondary, size: 20),
-                    onPressed: () {
-                      if (_currentIndex == 1) {
-                        // If on Plans, go back to Chat first
-                        _onTabTapped(0);
-                      } else {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () {
-                      // Tap name to toggle — subtle discovery
-                      _onTabTapped(_currentIndex == 0 ? 1 : 0);
-                    },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+            // ═══ MORPHING HEADER SURFACE ═══
+            // Compact: < back | avatar + name + breathing dots
+            // Expanded: actions appear below (plans, call, video)
+            GestureDetector(
+              onTap: () => setState(() => _headerExpanded = !_headerExpanded),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
+                child: Column(
+                  children: [
+                    // Main row: back + avatar + name + dots
+                    Row(
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new, color: HelloColors.inkSecondary, size: 20),
+                          onPressed: () {
+                            if (_headerExpanded) {
+                              setState(() => _headerExpanded = false);
+                            } else if (_currentIndex == 1) {
+                              _onTabTapped(0);
+                            } else {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                        ),
+                        const Spacer(),
+                        // Avatar with Liquid Fire ring (story-style)
                         Container(
-                          width: 32,
-                          height: 32,
-                          decoration: const BoxDecoration(
-                            color: HelloColors.recessed,
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
+                            gradient: _currentIndex == 0
+                                ? HelloColors.liquidFireStandard
+                                : null,
+                            color: _currentIndex == 1 ? HelloColors.successGreen : null,
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            widget.spaceTitle.isNotEmpty ? widget.spaceTitle[0].toUpperCase() : '?',
-                            style: HelloTypography.body.copyWith(fontSize: 14),
+                          padding: const EdgeInsets.all(2),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: HelloColors.voidBg,
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(1.5),
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: HelloColors.recessed,
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                widget.spaceTitle.isNotEmpty ? widget.spaceTitle[0].toUpperCase() : '?',
+                                style: HelloTypography.body.copyWith(fontSize: 13),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
+                        // Name
                         Text(
                           widget.spaceTitle,
                           style: HelloTypography.body.copyWith(fontSize: 16),
                         ),
+                        // Breathing dots (ambient indicator — plans need attention)
+                        if (_currentIndex == 0) ...[
+                          const SizedBox(width: 8),
+                          AnimatedBuilder(
+                            animation: _dotsController,
+                            builder: (context, child) {
+                              final t = _dotsController.value;
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: List.generate(3, (i) {
+                                  final delay = i * 0.15;
+                                  final dotT = ((t + delay) % 1.0);
+                                  final alpha = 0.2 + (dotT * 0.6);
+                                  return Container(
+                                    width: 5, height: 5,
+                                    margin: const EdgeInsets.only(left: 3),
+                                    decoration: BoxDecoration(
+                                      color: HelloColors.accent.withValues(alpha: alpha),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  );
+                                }),
+                              );
+                            },
+                          ),
+                        ],
+                        const Spacer(),
+                        // [+] only on Plans tab
+                        if (_currentIndex == 1)
+                          GestureDetector(
+                            onTap: _openAddSheet,
+                            child: Container(
+                              width: 28, height: 28,
+                              decoration: BoxDecoration(
+                                gradient: HelloColors.liquidFireStandard,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.add, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
-                  ),
-                  const Spacer(),
-                  // [+] add button — small, liquid fire accent
-                  if (_currentIndex == 1)
-                    GestureDetector(
-                      onTap: _openAddSheet,
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: HelloColors.accent,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: HelloColors.accent.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              spreadRadius: 0,
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.add, color: Colors.white, size: 18),
-                        ),
-                      ),
-                    ),
-                  // Plans/Chat toggle — bold, visible
-                  GestureDetector(
-                    onTap: () => _onTabTapped(_currentIndex == 0 ? 1 : 0),
-                    child: AnimatedContainer(
+
+                    // Expanded actions (floating text, no pills)
+                    AnimatedSize(
                       duration: const Duration(milliseconds: 250),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _currentIndex == 1
-                            ? HelloColors.accent.withValues(alpha: 0.12)
-                            : HelloColors.inkPrimary.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Glowing dot when on Chat (indicating Plans is waiting)
-                          if (_currentIndex == 0)
-                            Container(
-                              width: 7, height: 7,
-                              margin: const EdgeInsets.only(right: 6),
-                              decoration: BoxDecoration(
-                                color: HelloColors.accent,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: HelloColors.accent.withValues(alpha: 0.5),
-                                    blurRadius: 6,
+                      curve: Curves.easeOutCubic,
+                      child: _headerExpanded
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 8, bottom: 4),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _HeaderAction(
+                                    label: 'plans',
+                                    color: HelloColors.accent,
+                                    onTap: () {
+                                      setState(() => _headerExpanded = false);
+                                      _onTabTapped(_currentIndex == 0 ? 1 : 0);
+                                    },
+                                  ),
+                                  const SizedBox(width: 32),
+                                  _HeaderAction(
+                                    label: 'call',
+                                    color: HelloColors.inkTertiary,
+                                    onTap: () => setState(() => _headerExpanded = false),
+                                  ),
+                                  const SizedBox(width: 32),
+                                  _HeaderAction(
+                                    label: 'video',
+                                    color: HelloColors.inkTertiary,
+                                    onTap: () => setState(() => _headerExpanded = false),
                                   ),
                                 ],
                               ),
-                            ),
-                          Icon(
-                            _currentIndex == 1 ? Icons.chat_bubble_outline : Icons.view_agenda_outlined,
-                            size: 16,
-                            color: _currentIndex == 1 ? HelloColors.accent : HelloColors.inkPrimary,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            _currentIndex == 1 ? 'Chat' : 'Plans',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: _currentIndex == 1 ? HelloColors.accent : HelloColors.inkPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
+                            )
+                          : const SizedBox(width: double.infinity, height: 0),
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Floating context hint (below header, above content)
-            if (_currentIndex == 0)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-                child: Text(
-                  'swipe for plans  \u203A',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w300,
-                    color: HelloColors.inkTertiary.withValues(alpha: 0.4),
-                  ),
-                  textAlign: TextAlign.right,
+                  ],
                 ),
               ),
+            ),
 
             // Page content with ambient gradient
             Expanded(
@@ -257,6 +272,36 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating action text — no pill, no border, just text + tap
+class _HeaderAction extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _HeaderAction({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+          color: color,
+          letterSpacing: 0.3,
         ),
       ),
     );
