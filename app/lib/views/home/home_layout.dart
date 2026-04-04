@@ -5,7 +5,7 @@ import 'tabs/chats_tab_view.dart';
 import 'tabs/groups_tab_view.dart';
 import 'tabs/memories_tab_view.dart';
 import '../settings/settings_page.dart';
-import '../invite/claim_sheet.dart';
+
 
 
 class HomeLayout extends ConsumerStatefulWidget {
@@ -40,18 +40,10 @@ class _HomeLayoutState extends ConsumerState<HomeLayout> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<bool>(deepLinkInterceptorProvider, (previous, next) {
-      if (next == true) {
-        ClaimSheet.show(context);
-      }
-    });
-
     return Scaffold(
       backgroundColor: HelloColors.voidBg,
       body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+        child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
             // Spatial Typographic Header
@@ -182,21 +174,6 @@ class _HomeLayoutState extends ConsumerState<HomeLayout> {
             ),
           ],
         ),
-        Positioned(
-          top: 0,
-          left: 0,
-          width: 60,
-          height: 60,
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () {
-               ref.read(deepLinkInterceptorProvider.notifier).trigger(true);
-            },
-            child: const SizedBox(),
-          ),
-        ),
-      ],
-    ),
       ),
     );
   }
