@@ -192,7 +192,17 @@ class _PlansViewState extends ConsumerState<PlansView> {
               child: _buildHero(selectedCat, selectedEvent, catItems, eventItems, engineDecisions),
             ),
 
-            // ═══ TIER 1: Events ═══
+            // ═══ TIER 2: Categories (thumb arc — bottom) ═══
+            _CategoryRail(
+              categories: tier2Categories,
+              selectedIdx: _selectedCatIdx,
+              onSelect: (idx) {
+                HapticFeedback.selectionClick();
+                setState(() => _selectedCatIdx = idx);
+              },
+            ),
+
+            // ═══ TIER 1: Events (above categories) ═══
             _EventRail(
               events: eventNames,
               eventItems: eventItemsMap,
@@ -200,16 +210,6 @@ class _PlansViewState extends ConsumerState<PlansView> {
               onSelect: (idx) {
                 HapticFeedback.selectionClick();
                 setState(() { _selectedEventIdx = idx; _selectedCatIdx = 0; });
-              },
-            ),
-
-            // ═══ TIER 2: Categories (thumb arc) ═══
-            _CategoryRail(
-              categories: tier2Categories,
-              selectedIdx: _selectedCatIdx,
-              onSelect: (idx) {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedCatIdx = idx);
               },
             ),
 
