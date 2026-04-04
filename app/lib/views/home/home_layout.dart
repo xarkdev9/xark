@@ -6,7 +6,7 @@ import 'tabs/groups_tab_view.dart';
 import 'tabs/memories_tab_view.dart';
 import '../settings/settings_page.dart';
 import '../invite/claim_sheet.dart';
-import '../../widgets/spatial_search_bar.dart';
+
 
 class HomeLayout extends ConsumerStatefulWidget {
   const HomeLayout({super.key});
@@ -124,16 +124,6 @@ class _HomeLayoutState extends ConsumerState<HomeLayout> {
               ),
             ),
             
-            // Spatial Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: SpatialSearchBar(
-                onChanged: (query) {
-                  // TODO: Wire to engine search when available
-                },
-              ),
-            ),
-
             // View Body
             Expanded(
               child: PageView(
@@ -143,6 +133,50 @@ class _HomeLayoutState extends ConsumerState<HomeLayout> {
                   ChatsTabView(),
                   GroupsTabView(),
                   MemoriesTabView(),
+                ],
+              ),
+            ),
+
+            // iMessage-style Bottom Bar
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              decoration: BoxDecoration(
+                color: HelloColors.voidBg,
+                border: Border(
+                  top: BorderSide(
+                    color: HelloColors.inkPrimary.withValues(alpha: 0.06),
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.search_rounded,
+                    size: 24,
+                    color: HelloColors.inkPrimary.withValues(alpha: 0.35),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      // TODO: Open new chat composer
+                    },
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: HelloColors.accent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.edit_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

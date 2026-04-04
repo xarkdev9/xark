@@ -174,38 +174,45 @@ class _LiquidChatComposerState extends State<LiquidChatComposer>
                   ),
                   const SizedBox(width: 8),
 
-                  // Send button — appears with spring
+                  // Send / @hello button — morphs between states
                   GestureDetector(
-                    onTap: _hasText ? _handleSend : null,
+                    onTap: _hasText
+                        ? _handleSend
+                        : () {
+                            // Idle tap → insert @hello trigger
+                            _controller.text = '${widget.aiTrigger} ';
+                            _controller.selection = TextSelection.fromPosition(
+                              TextPosition(offset: _controller.text.length),
+                            );
+                            _focusNode.requestFocus();
+                          },
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: SpringCurve.bouncy,
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _hasText
-                              ? (_isAIMode
-                                  ? HelloColors.accent
-                                  : HelloColors.accent.withOpacity(0.85))
-                              : Colors.transparent,
-                        ),
-                        child: Center(
-                          child: AnimatedRotation(
-                            turns: _hasText ? 0.0 : -0.25,
-                            duration: const Duration(milliseconds: 300),
-                            curve: SpringCurve.snappy,
-                            child: Icon(
-                              Icons.arrow_upward_rounded,
-                              size: 20,
-                              color: _hasText
-                                  ? Colors.white
-                                  : HelloColors.inkPrimary.withOpacity(0.2),
-                            ),
-                          ),
-                        ),
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: _hasText
+                            ? Text(
+                                'send',
+                                key: const ValueKey('send'),
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: 0.06 * 14,
+                                  color: HelloColors.accent,
+                                ),
+                              )
+                            : Text(
+                                'hello',
+                                key: const ValueKey('hello'),
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: -0.02 * 18,
+                                  color: HelloColors.accent,
+                                ),
+                              ),
                       ),
                     ),
                   ),

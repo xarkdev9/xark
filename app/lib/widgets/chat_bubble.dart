@@ -178,9 +178,9 @@ class _ChatBubbleState extends State<ChatBubble>
 
   @override
   Widget build(BuildContext context) {
-    // Zero-Box colors: flat, no shadows
-    const sentColor = Color(0xFFEF7C6E);
-    const receivedColor = Color(0xFFE8E3DD);
+    // Bubble colors matching web CSS variables (globals.css)
+    const sentColor = Color(0xFFF0F0F0);     // --hello-bubble-sent
+    const receivedColor = Color(0xFFFFFFFF);  // --hello-bubble-received
     final bgColor = widget.isOutbound ? sentColor : receivedColor;
 
     // Tighter vertical spacing for grouped messages
@@ -231,11 +231,14 @@ class _ChatBubbleState extends State<ChatBubble>
                 ),
                 padding: widget.mediaChild != null
                     ? EdgeInsets.zero
-                    : const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                    : const EdgeInsets.fromLTRB(12, 8, 12, 6),
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: _buildCornerRadii(),
-                  // Zero-Box: absolutely no shadow
+                  border: Border.all(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    width: 0.5,
+                  ),
                 ),
                 child: widget.mediaChild != null
                     ? ClipRRect(
