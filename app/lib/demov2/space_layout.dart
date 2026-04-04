@@ -120,7 +120,31 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
                     ),
                   ),
                   const Spacer(),
-                  // Plans icon — toggles to Plans tab
+                  // [+] add button — small, liquid fire accent
+                  if (_currentIndex == 1)
+                    GestureDetector(
+                      onTap: _openAddSheet,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: HelloColors.accent,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: HelloColors.accent.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.add, color: Colors.white, size: 18),
+                        ),
+                      ),
+                    ),
+                  // Plans/Chat toggle
                   GestureDetector(
                     onTap: () => _onTabTapped(_currentIndex == 0 ? 1 : 0),
                     child: AnimatedContainer(
@@ -175,33 +199,6 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
                     ],
                   ),
 
-                  // FAB — only on Plans tab
-                  if (_currentIndex == 1)
-                    Positioned(
-                      right: 20,
-                      bottom: 24,
-                      child: GestureDetector(
-                        onTap: _openAddSheet,
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: HelloColors.accent,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: HelloColors.accent.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.add, color: Colors.white, size: 24),
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),

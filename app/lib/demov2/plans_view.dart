@@ -28,6 +28,7 @@ const _categoryIcons = <String, IconData>{
   'gifts': Icons.card_giftcard_outlined,
   'decorations': Icons.celebration_outlined,
   'ideas': Icons.lightbulb_outline,
+  'cards': Icons.style_outlined,
   'things to do': Icons.local_activity_outlined,
   'cabs': Icons.local_taxi_outlined,
   'split': Icons.receipt_long_outlined,
@@ -92,13 +93,8 @@ class _PlansViewState extends ConsumerState<PlansView> {
         final eventItems = eventMap[selectedEvent]!;
 
         // ── Build categories for selected event ──
-        // Always: Overview, Recommendations, then item-type categories
-        final dynamicCategories = <String>[];
-        // For now, items within an event are the options (all same "type")
-        // Add "Split" as a virtual category
-        dynamicCategories.add('Split');
-
-        final allCategories = ['Overview', 'Recommendations', ...dynamicCategories];
+        // Overview → Recommendations → Cards (decision cards) → Split
+        final allCategories = ['Overview', 'Recommendations', 'Cards', 'Split'];
 
         if (_selectedCategoryIndex >= allCategories.length) {
           _selectedCategoryIndex = 0;
@@ -113,19 +109,7 @@ class _PlansViewState extends ConsumerState<PlansView> {
               child: _buildHeroArea(selectedCategory, selectedEvent, eventItems, engineDecisions),
             ),
 
-            // ═══ TIER 2: Categories (middle) ═══
-            _Tier2Categories(
-              categories: allCategories,
-              selectedIndex: _selectedCategoryIndex,
-              onSelect: (idx) {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedCategoryIndex = idx);
-              },
-            ),
-
-            const SizedBox(height: 6),
-
-            // ═══ TIER 1: Events (bottom — thumb arc) ═══
+            // ═══ TIER 1: Events (above categories — pick event first) ═══
             _Tier1Events(
               eventNames: eventNames,
               eventMap: eventMap,
@@ -136,6 +120,16 @@ class _PlansViewState extends ConsumerState<PlansView> {
                   _selectedEventIndex = idx;
                   _selectedCategoryIndex = 0; // Reset to Overview
                 });
+              },
+            ),
+
+            // ═══ TIER 2: Categories (bottom — thumb arc) ═══
+            _Tier2Categories(
+              categories: allCategories,
+              selectedIndex: _selectedCategoryIndex,
+              onSelect: (idx) {
+                HapticFeedback.selectionClick();
+                setState(() => _selectedCategoryIndex = idx);
               },
             ),
 
@@ -162,13 +156,36 @@ class _PlansViewState extends ConsumerState<PlansView> {
       return _SplitPage(eventName: eventName);
     }
 
-    // Dynamic category — show items as hero cards
-    return _HeroCardStream(
-      items: items,
-      onReact: (item, reaction) => engine.reactToItem(item.id, reaction),
-      onLock: (item) => engine.lockItem(
-        item.id, CommitmentProof(type: 'mock', value: 'booked', submittedBy: 'me'),
-      ),
+    // "Cards" — full ActionCardWidget decision cards with voting
+    final activeItems = items.where((i) => !i.isLocked).toList()
+      ..sort((a, b) {
+        final ws = b.weightedScore.compareTo(a.weightedScore);
+        if (ws != 0) return ws;
+        return b.agreementScore.compareTo(a.agreementScore);
+      });
+
+    if (activeItems.isEmpty) {
+      return const Center(child: Text('All items settled.', style: HelloTypography.hint));
+    }
+
+    return PageView.builder(
+      clipBehavior: Clip.none,
+      controller: PageController(viewportFraction: 0.88),
+      physics: const BouncingScrollPhysics(),
+      itemCount: activeItems.length,
+      itemBuilder: (context, index) {
+        final item = activeItems[index];
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 16),
+          child: ActionCardWidget(
+            item: item,
+            onReact: () => engine.reactToItem(item.id, 'works_for_me'),
+            onPinCommit: () => engine.lockItem(
+              item.id, CommitmentProof(type: 'mock', value: 'booked', submittedBy: 'me'),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -193,7 +210,7 @@ class _Tier1Events extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
+      height: 64,
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
@@ -661,45 +678,3 @@ class _SplitPage extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════
-// TIER 3: Hero Area — Card Stream (for specific categories)
-// ═══════════════════════════════════════════════════════
-
-class _HeroCardStream extends StatelessWidget {
-  final List<DecisionItem> items;
-  final void Function(DecisionItem, String) onReact;
-  final void Function(DecisionItem) onLock;
-
-  const _HeroCardStream({
-    required this.items,
-    required this.onReact,
-    required this.onLock,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final sorted = List<DecisionItem>.from(items)
-      ..sort((a, b) {
-        final ws = b.weightedScore.compareTo(a.weightedScore);
-        if (ws != 0) return ws;
-        return b.agreementScore.compareTo(a.agreementScore);
-      });
-
-    return PageView.builder(
-      clipBehavior: Clip.none,
-      controller: PageController(viewportFraction: 0.88),
-      itemCount: sorted.length,
-      itemBuilder: (context, index) {
-        final item = sorted[index];
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
-          child: ActionCardWidget(
-            item: item,
-            onReact: () => onReact(item, 'works_for_me'),
-            onPinCommit: () => onLock(item),
-          ),
-        );
-      },
-    );
-  }
-}
