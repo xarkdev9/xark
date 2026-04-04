@@ -143,20 +143,29 @@ class _EncryptedImageViewState extends ConsumerState<EncryptedImageView> {
     );
 
     // Target 6: The CSS-to-Native Blur Transition (AnimatedCrossFade)
+    // Fast path: asset images skip the decrypt pipeline entirely
+    final url = widget.metadata.downloadUrl;
+    if (url != null && url.startsWith('assets/')) {
+      return ClipRRect(
+        borderRadius: borderRadius,
+        child: Image.asset(url, fit: BoxFit.cover),
+      );
+    }
+
     return ClipRRect(
       borderRadius: borderRadius,
       child: AnimatedCrossFade(
         duration: const Duration(milliseconds: 300),
-        crossFadeState: _loading 
-            ? CrossFadeState.showFirst 
+        crossFadeState: _loading
+            ? CrossFadeState.showFirst
             : CrossFadeState.showSecond,
         firstChild: _buildBlurredThumbnail(),
-        secondChild: _failed 
-            ? failedState 
-            : (kIsWeb && widget.metadata.downloadUrl != null
-                ? Image.network(widget.metadata.downloadUrl!, fit: BoxFit.cover)
-                : (_decryptedFile != null 
-                    ? Image.file(_decryptedFile!, fit: BoxFit.cover) 
+        secondChild: _failed
+            ? failedState
+            : (kIsWeb && url != null
+                ? Image.network(url, fit: BoxFit.cover)
+                : (_decryptedFile != null
+                    ? Image.file(_decryptedFile!, fit: BoxFit.cover)
                     : const SizedBox.shrink())),
         layoutBuilder: (topChild, topKey, bottomChild, bottomKey) {
           // Explicitly expanding children fixes sizing pops since images might bound differently natively

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import '../../../../theme.dart';
+import '../../../../src/mock_data_seed.dart';
 import 'chats_tab_view.dart';
 import '../../../demov2/space_layout.dart';
 
@@ -62,7 +63,7 @@ class GroupRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasUnread = conversation.unreadCount > 0;
     
-    final displayName = "Group ${conversation.id.length >= 4 ? conversation.id.substring(0, 4) : conversation.id}";
+    final displayName = MockDataSeed.displayNames[conversation.id] ?? conversation.id;
     final initial = displayName.substring(0, 1).toUpperCase();
 
     return GestureDetector(

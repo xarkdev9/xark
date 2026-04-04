@@ -3,13 +3,219 @@ import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 class MockDataSeed {
   static final DateTime _now = DateTime.now();
 
+  static MediaMetadata createMockE2EEMedia(String id, String unsplashUrl) {
+    return MediaMetadata(
+      mediaId: id,
+      mimeType: 'image/jpeg',
+      sizeBytes: 1024 * 1024,
+      downloadUrl: unsplashUrl,
+      encryptedKey: 'mock_base64_key====',
+      iv: 'mock_iv_base64==',
+      thumbnailUrl: unsplashUrl,
+    );
+  }
+
+  /// Display name map — used by UI to resolve conversation IDs to human names.
+  static const displayNames = <String, String>{
+    // 1:1 DMs
+    'dm_priya': 'Priya',
+    'dm_alex': 'Alex',
+    'dm_emma': 'Emma',
+    'dm_liam': 'Liam',
+    'dm_sofia': 'Sofia',
+    'dm_noah': 'Noah',
+    'dm_maya': 'Maya',
+    'dm_dad': 'Dad',
+    // Groups
+    'bali': 'Bali Trip 2026',
+    'sarah': "Sarah's Birthday",
+    'tokyo': 'Tokyo Neon Nights',
+    'family': 'Family',
+    'classof2000': 'Class of 2000',
+    'poker': 'Poker Night',
+    'alaska': 'Alaska 2026',
+    'swiss': 'Swiss Trip',
+    'sf': 'SF Trip',
+    'delhi': 'Delhi Trip',
+  };
+
+  static List<Conversation> buildConversations() {
+    return [
+      // ── 1:1 DMs (real person names) ──
+      Conversation(
+        id: 'dm_priya', type: ConversationType.oneToOne,
+        participantIds: ['me', 'priya'],
+        createdAt: _now.subtract(const Duration(days: 200)),
+        updatedAt: _now.subtract(const Duration(minutes: 3)),
+        unreadCount: 2, isPinned: true,
+        lastMessageText: "Just landed, the weather is perfect!",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'dm_alex', type: ConversationType.oneToOne,
+        participantIds: ['me', 'alex'],
+        createdAt: _now.subtract(const Duration(days: 365)),
+        updatedAt: _now.subtract(const Duration(minutes: 25)),
+        unreadCount: 0, isPinned: true,
+        lastMessageText: "Haha yeah, see you at 7",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'dm_emma', type: ConversationType.oneToOne,
+        participantIds: ['me', 'emma'],
+        createdAt: _now.subtract(const Duration(days: 90)),
+        updatedAt: _now.subtract(const Duration(hours: 1)),
+        unreadCount: 1, isPinned: false,
+        lastMessageText: "Can you send me that recipe?",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'dm_liam', type: ConversationType.oneToOne,
+        participantIds: ['me', 'liam'],
+        createdAt: _now.subtract(const Duration(days: 180)),
+        updatedAt: _now.subtract(const Duration(hours: 4)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "Running 10 min late, sorry!",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'dm_sofia', type: ConversationType.oneToOne,
+        participantIds: ['me', 'sofia'],
+        createdAt: _now.subtract(const Duration(days: 60)),
+        updatedAt: _now.subtract(const Duration(hours: 8)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "That sunset photo is incredible",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'dm_noah', type: ConversationType.oneToOne,
+        participantIds: ['me', 'noah'],
+        createdAt: _now.subtract(const Duration(days: 120)),
+        updatedAt: _now.subtract(const Duration(days: 1)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "I vote yes, 100%",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'dm_maya', type: ConversationType.oneToOne,
+        participantIds: ['me', 'maya'],
+        createdAt: _now.subtract(const Duration(days: 45)),
+        updatedAt: _now.subtract(const Duration(days: 2)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "Happy to split the cost evenly",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'dm_dad', type: ConversationType.oneToOne,
+        participantIds: ['me', 'dad'],
+        createdAt: _now.subtract(const Duration(days: 500)),
+        updatedAt: _now.subtract(const Duration(days: 3)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "Call me when you get a chance",
+        isEncrypted: true,
+      ),
+      // ── Groups ──
+      Conversation(
+        id: 'bali', type: ConversationType.group,
+        participantIds: ['me', 'priya', 'alex', 'emma'],
+        createdAt: _now.subtract(const Duration(days: 60)),
+        updatedAt: _now.subtract(const Duration(seconds: 15)),
+        unreadCount: 12, isPinned: true,
+        lastMessageText: "Did anyone book the St. Regis yet?",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'sarah', type: ConversationType.group,
+        participantIds: ['me', 'sofia', 'maya'],
+        createdAt: _now.subtract(const Duration(days: 30)),
+        updatedAt: _now.subtract(const Duration(minutes: 5)),
+        unreadCount: 5, isPinned: true,
+        lastMessageText: "Okay, 7pm works for me!",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'tokyo', type: ConversationType.group,
+        participantIds: ['me', 'liam', 'noah'],
+        createdAt: _now.subtract(const Duration(days: 90)),
+        updatedAt: _now.subtract(const Duration(hours: 2)),
+        unreadCount: 45, isPinned: false,
+        lastMessageText: "Itinerary looks packed \u{1F525}",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'family', type: ConversationType.group,
+        participantIds: ['me', 'dad', 'priya'],
+        createdAt: _now.subtract(const Duration(days: 400)),
+        updatedAt: _now.subtract(const Duration(hours: 6)),
+        unreadCount: 3, isPinned: false,
+        lastMessageText: "Dinner at 7? Mom is cooking biryani",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'classof2000', type: ConversationType.group,
+        participantIds: ['me', 'alex', 'liam', 'emma', 'noah', 'sofia'],
+        createdAt: _now.subtract(const Duration(days: 300)),
+        updatedAt: _now.subtract(const Duration(days: 1)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "Reunion confirmed for August!",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'poker', type: ConversationType.group,
+        participantIds: ['me', 'alex', 'noah', 'liam'],
+        createdAt: _now.subtract(const Duration(days: 200)),
+        updatedAt: _now.subtract(const Duration(days: 2)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "I'm bringing the chips this time",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'alaska', type: ConversationType.group,
+        participantIds: ['me', 'emma', 'priya', 'maya'],
+        createdAt: _now.subtract(const Duration(days: 14)),
+        updatedAt: _now.subtract(const Duration(hours: 12)),
+        unreadCount: 8, isPinned: false,
+        lastMessageText: "Northern lights forecast looks amazing",
+        isEncrypted: true,
+      ),
+      // Memory groups (past trips with photos)
+      Conversation(
+        id: 'swiss', type: ConversationType.group,
+        participantIds: ['me', 'priya', 'alex'],
+        createdAt: _now.subtract(const Duration(days: 180)),
+        updatedAt: _now.subtract(const Duration(days: 60)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "Best trip ever honestly",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'sf', type: ConversationType.group,
+        participantIds: ['me', 'emma', 'liam'],
+        createdAt: _now.subtract(const Duration(days: 250)),
+        updatedAt: _now.subtract(const Duration(days: 90)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "The clam chowder was unreal",
+        isEncrypted: true,
+      ),
+      Conversation(
+        id: 'delhi', type: ConversationType.group,
+        participantIds: ['me', 'dad', 'priya'],
+        createdAt: _now.subtract(const Duration(days: 320)),
+        updatedAt: _now.subtract(const Duration(days: 120)),
+        unreadCount: 0, isPinned: false,
+        lastMessageText: "Chandni Chowk street food was next level",
+        isEncrypted: true,
+      ),
+    ];
+  }
+
   static const _chatLines = [
     "Hey, what time works for everyone?",
     "I found an amazing spot, check this out",
     "lol that's exactly what I was thinking",
     "Can someone send the address?",
     "Running 10 min late, sorry!",
-    "This is going to be epic 🔥",
+    "This is going to be epic",
     "Wait, did you see the price drop??",
     "I'm in. Let's do it.",
     "Anyone else craving sushi rn?",
@@ -27,150 +233,52 @@ class MockDataSeed {
     "Send me the link when you get a chance",
     "I think we should go with option A",
     "Happy to split the cost evenly",
-    "Just sent the payment 💸",
+    "Just sent the payment",
     "This group is the best honestly",
     "Can't wait! Only 3 more days",
     "Let's make a checklist for packing",
-    "Remember to bring sunscreen this time 😂",
+    "Remember to bring sunscreen this time",
     "The flight is confirmed!",
     "Who's handling the dinner reservation?",
   ];
 
-  static MediaMetadata createMockE2EEMedia(String id, String unsplashUrl) {
-    return MediaMetadata(
-      mediaId: id,
-      mimeType: 'image/jpeg',
-      sizeBytes: 1024 * 1024,
-      downloadUrl: unsplashUrl,
-      encryptedKey: 'mock_base64_key====',
-      iv: 'mock_iv_base64==',
-      thumbnailUrl: unsplashUrl,
-    );
-  }
-
-  static List<Conversation> buildConversations() {
-    List<Conversation> list = [
-      Conversation(
-        id: 'bali',
-        type: ConversationType.group,
-        participantIds: ['me', 'user2', 'user3', 'user4'],
-        createdAt: _now.subtract(const Duration(days: 60)),
-        updatedAt: _now.subtract(const Duration(seconds: 15)),
-        unreadCount: 12,
-        isPinned: true,
-        lastMessageText: "Did anyone book the St. Regis yet?",
-        isArchived: false,
-        isMuted: false,
-        isEncrypted: true,
-      ),
-      Conversation(
-        id: 'sarah',
-        type: ConversationType.group,
-        participantIds: ['me', 'sarah', 'alice'],
-        createdAt: _now.subtract(const Duration(days: 30)),
-        updatedAt: _now.subtract(const Duration(minutes: 5)),
-        unreadCount: 5,
-        isPinned: true,
-        lastMessageText: "Okay, 7pm works for me!",
-        isArchived: false,
-        isMuted: false,
-        isEncrypted: true,
-      ),
-      Conversation(
-        id: 'alice',
-        type: ConversationType.oneToOne,
-        participantIds: ['me', 'alice'],
-        createdAt: _now.subtract(const Duration(days: 100)),
-        updatedAt: _now.subtract(const Duration(minutes: 12)),
-        unreadCount: 1,
-        isPinned: true,
-        lastMessageText: "Check out this photo I took",
-        isArchived: false,
-        isMuted: false,
-        isEncrypted: true,
-      ),
-      Conversation(
-        id: 'tokyo',
-        type: ConversationType.group,
-        participantIds: ['me', 'user2', 'user5'],
-        createdAt: _now.subtract(const Duration(days: 90)),
-        updatedAt: _now.subtract(const Duration(hours: 2)),
-        unreadCount: 45,
-        isPinned: false,
-        lastMessageText: "Itinerary looks packed \u{1F525}",
-        isArchived: false,
-        isMuted: false,
-        isEncrypted: true,
-      ),
-      Conversation(
-        id: 'horizon',
-        type: ConversationType.group,
-        participantIds: ['me', 'userX', 'userY'],
-        createdAt: _now.subtract(const Duration(days: 150)),
-        updatedAt: _now.subtract(const Duration(days: 1)),
-        unreadCount: 3,
-        isPinned: false,
-        lastMessageText: "Q3 objectives are locked.",
-        isArchived: false,
-        isMuted: false,
-        isEncrypted: true,
-      ),
-    ];
-
-    // 15 more chats — mix of 1:1 DMs and groups with real names
-    final dmNames = ['Emma', 'Liam', 'Olivia', 'Noah', 'Ava', 'Ethan', 'Sophia', 'Mason'];
-    final groupNames = ['Weekend Hike', 'Roommates', 'Book Club', 'Startup Ideas', 'Family', 'Gym Crew', 'Music Fest'];
-    final lastMessages = [
-      "See you tomorrow!", "lol that was hilarious", "Can you send the doc?",
-      "I'll be there at 6", "Happy birthday! 🎂", "Running late, 10 min",
-      "Thanks for dinner!", "Let's plan for next week", "Sounds perfect",
-      "Check this out", "Miss you!", "On my way", "👍", "haha okay",
-      "I just landed",
-    ];
-
-    for (int i = 0; i < 15; i++) {
-      final isDm = i % 3 != 0;
-      final name = isDm ? dmNames[i % dmNames.length] : groupNames[i % groupNames.length];
-      list.add(Conversation(
-        id: isDm ? 'dm_${name.toLowerCase()}' : 'group_${name.toLowerCase().replaceAll(' ', '_')}',
-        type: isDm ? ConversationType.oneToOne : ConversationType.group,
-        participantIds: isDm ? ['me', name.toLowerCase()] : ['me', 'user_a', 'user_b'],
-        createdAt: _now.subtract(Duration(days: 30 + (i * 5))),
-        updatedAt: _now.subtract(Duration(hours: 3 + i * 4)),
-        unreadCount: i < 4 ? (i + 1) : 0,
-        isPinned: false,
-        isArchived: false,
-        isMuted: i > 12,
-        lastMessageText: lastMessages[i % lastMessages.length],
-        isEncrypted: true,
-      ));
-    }
-
-    return list;
-  }
+  /// Memory images grouped by trip — used for media messages in past trip groups.
+  static const _memoryImages = <String, List<String>>{
+    'swiss': [
+      'assets/memories/swiss_1.jpg',
+      'assets/memories/swiss_2.jpg',
+      'assets/memories/swiss_3.jpg',
+      'assets/memories/swiss_4.jpg',
+    ],
+    'sf': [
+      'assets/memories/sf_1.jpg',
+      'assets/memories/sf_2.jpg',
+      'assets/memories/sf_3.jpg',
+      'assets/memories/sf_4.jpg',
+    ],
+    'delhi': [
+      'assets/memories/delhi_1.jpg',
+      'assets/memories/delhi_2.jpg',
+      'assets/memories/delhi_3.jpg',
+      'assets/memories/delhi_4.jpg',
+    ],
+  };
 
   static List<Message> buildMessagesFor(String groupId) {
     List<Message> feed = [];
-    int count = 50; 
+    final count = 50;
 
-    final unsplashLinks = [
-      'https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1542314831-c6a4d27ce66b?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1531804226530-70f8004aa44e?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800&auto=format&fit=crop',
-    ];
+    // Memory groups get their trip photos as media messages
+    final tripPhotos = _memoryImages[groupId];
 
     for (int i = 0; i < count; i++) {
-      // Reverse order simulation (index 0 is the newest message)
       final msgTime = _now.subtract(Duration(hours: i * 2, minutes: i * 13));
       final isSelf = i % 5 == 0;
       final sender = isSelf ? 'me' : 'user_${i % 4}';
 
       bool isMedia = (i % 8 == 2);
       bool isAi = (i % 25 == 3);
-      bool isSystem = (i == count - 1); // Genesis message
+      bool isSystem = (i == count - 1);
 
       MessageType type = MessageType.e2ee;
       String? text = _chatLines[(i * 7 + groupId.hashCode) % _chatLines.length];
@@ -179,19 +287,20 @@ class MockDataSeed {
 
       if (isSystem) {
         type = MessageType.system;
-        text = "This space was created and End-to-End Encrypted.";
+        text = "This group is end-to-end encrypted.";
       } else if (isAi) {
         type = MessageType.ai;
-        text = "I've synthesized the opinions based on your taste graph. Here is what I recommend for $groupId.";
+        text = "Based on your group's preferences, I'd recommend checking the top-rated option. Want me to research more?";
       } else if (isMedia) {
         type = MessageType.media;
         text = null;
-        media = createMockE2EEMedia(
-          'media_${groupId}_$i', 
-          unsplashLinks[i % unsplashLinks.length]
-        );
+        // Use trip photos if available, otherwise use decide assets
+        final photoUrl = tripPhotos != null
+            ? tripPhotos[(i ~/ 8) % tripPhotos.length]
+            : 'assets/decide/bali_beach.jpg';
+        media = createMockE2EEMedia('media_${groupId}_$i', photoUrl);
         if (i % 16 == 2) {
-           reactions = {'love': ['me', 'user_1']};
+          reactions = {'love': ['me', 'user_1']};
         }
       }
 

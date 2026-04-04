@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import '../../../../main.dart';
 import '../../../../theme.dart';
+import '../../../../src/mock_data_seed.dart';
 import '../../../demov2/space_layout.dart';
 
 final conversationsProvider = StreamProvider<List<Conversation>>((ref) {
@@ -21,20 +22,20 @@ class ChatsTabView extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (err, stack) => const SizedBox.shrink(),
       data: (conversations) {
-        if (conversations.isEmpty) {
+        // Chats tab = 1:1 DMs only
+        final dms = conversations.where((c) => c.type == ConversationType.oneToOne).toList();
+
+        if (dms.isEmpty) {
           return const Center(
-            child: Text(
-              "No secure chats yet.",
-              style: HelloTypography.hint,
-            ),
+            child: Text("No chats yet.", style: HelloTypography.hint),
           );
         }
 
         return ListView.builder(
           padding: EdgeInsets.zero,
-          itemCount: conversations.length,
+          itemCount: dms.length,
           itemBuilder: (context, index) {
-            final convo = conversations[index];
+            final convo = dms[index];
             return ChatRow(conversation: convo);
           },
         );
@@ -65,9 +66,7 @@ class ChatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasUnread = conversation.unreadCount > 0;
     
-    // We mock the user name logic here to avoid external dependencies for now.
-    // For a real app, we would map participant IDs to an Address Book / User profile map.
-    final displayName = "Chat ${conversation.id.length >= 4 ? conversation.id.substring(0, 4) : conversation.id}";
+    final displayName = MockDataSeed.displayNames[conversation.id] ?? conversation.id;
     final initial = displayName.substring(0, 1).toUpperCase();
 
     return GestureDetector(
