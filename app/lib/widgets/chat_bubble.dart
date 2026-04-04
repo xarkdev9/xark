@@ -21,6 +21,7 @@ class ChatBubble extends StatefulWidget {
   final bool isLastInGroup;   // Last message from this sender in sequence
   final Widget? mediaChild;   // EncryptedImageView nests here
   final String? timestamp;
+  final bool showReceipt;
   final VoidCallback? onReply;
 
   const ChatBubble({
@@ -32,6 +33,7 @@ class ChatBubble extends StatefulWidget {
     this.isLastInGroup = true,
     this.mediaChild,
     this.timestamp,
+    this.showReceipt = false,
     this.onReply,
   });
 
@@ -212,51 +214,56 @@ class _ChatBubbleState extends State<ChatBubble>
               ),
             ),
 
-          // The bubble itself
+          // The bubble + timestamp below
           Transform.translate(
             offset: Offset(_dragOffset, 0),
-            child: Align(
-              alignment: widget.isOutbound
-                  ? Alignment.centerRight
-                  : Alignment.centerLeft,
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.75,
-                ),
-                margin: EdgeInsets.only(
-                  top: topMargin,
-                  bottom: bottomMargin,
-                  left: 16,
-                  right: 16,
-                ),
-                padding: widget.mediaChild != null
-                    ? EdgeInsets.zero
-                    : const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: _buildCornerRadii(),
-                  border: Border.all(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    width: 0.5,
+            child: Column(
+              crossAxisAlignment: widget.isOutbound
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.68,
                   ),
+                  margin: EdgeInsets.only(
+                    top: topMargin,
+                    bottom: 0,
+                    left: 16,
+                    right: 16,
+                  ),
+                  padding: widget.mediaChild != null
+                      ? EdgeInsets.zero
+                      : const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: _buildCornerRadii(),
+                    border: Border.all(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: widget.mediaChild != null
+                      ? ClipRRect(
+                          borderRadius: _buildCornerRadii(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              widget.mediaChild!,
+                              if (widget.text.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+                                  child: _buildTextContent(),
+                                ),
+                            ],
+                          ),
+                        )
+                      : _buildTextContent(),
                 ),
-                child: widget.mediaChild != null
-                    ? ClipRRect(
-                        borderRadius: _buildCornerRadii(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            widget.mediaChild!,
-                            if (widget.text.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-                                child: _buildTextContent(),
-                              ),
-                          ],
-                        ),
-                      )
-                    : _buildTextContent(),
-              ),
+                // Timestamp + receipt BELOW the bubble (iMessage style)
+                _buildTimestampRow(),
+                SizedBox(height: bottomMargin),
+              ],
             ),
           ),
         ],
@@ -265,43 +272,52 @@ class _ChatBubbleState extends State<ChatBubble>
   }
 
   Widget _buildTextContent() {
-    return Wrap(
-      alignment: WrapAlignment.end,
-      crossAxisAlignment: WrapCrossAlignment.end,
-      spacing: 6,
-      children: [
-        Text(
-          widget.text,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 16,
-            fontWeight: FontWeight.w400, // No-Bold
-            color: HelloColors.inkPrimary.withValues(alpha: 0.9),
-            height: 1.4,
-          ),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (widget.timestamp != null)
-              Text(
-                widget.timestamp!,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w300, // No-Bold: tertiary
-                  color: widget.isOutbound
-                      ? Colors.white.withValues(alpha: 0.5)
-                      : HelloColors.inkTertiary.withValues(alpha: 0.5),
-                ),
+    // Clean text only — no timestamp inside bubble (iMessage style)
+    return Text(
+      widget.text,
+      style: TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+        color: HelloColors.inkPrimary.withValues(alpha: 0.9),
+        height: 1.35,
+      ),
+    );
+  }
+
+  /// Timestamp + receipt shown BELOW the bubble, not inside
+  Widget _buildTimestampRow() {
+    if (widget.timestamp == null && !widget.showReceipt) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: EdgeInsets.only(
+        top: 2,
+        left: widget.isOutbound ? 0 : 20,
+        right: widget.isOutbound ? 20 : 0,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: widget.isOutbound
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        children: [
+          if (widget.timestamp != null)
+            Text(
+              widget.timestamp!,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 11,
+                fontWeight: FontWeight.w300,
+                color: HelloColors.inkTertiary.withValues(alpha: 0.5),
               ),
-            if (widget.isOutbound) ...[
-              const SizedBox(width: 3),
-              _buildReceiptIcon(),
-            ],
+            ),
+          if (widget.showReceipt && widget.isOutbound) ...[
+            const SizedBox(width: 3),
+            _buildReceiptIcon(),
           ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
