@@ -476,45 +476,58 @@ class _OverviewDashboard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Progress ring with glow
-                Container(
-                  width: 52, height: 52,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent)
-                            .withValues(alpha: 0.2),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 52, height: 52,
-                        child: CircularProgressIndicator(
-                          value: progress,
-                          strokeWidth: 3,
-                          strokeCap: StrokeCap.round,
-                          backgroundColor: HelloColors.recessed,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent,
+                // Progress ring — hide at 0%, show "new" chip instead
+                if (progress == 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      gradient: HelloColors.liquidFireStandard,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text('new', style: TextStyle(
+                      fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w400,
+                      color: Colors.white,
+                    )),
+                  )
+                else
+                  Container(
+                    width: 52, height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent)
+                              .withValues(alpha: 0.25),
+                          blurRadius: 20,
+                          spreadRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 52, height: 52,
+                          child: CircularProgressIndicator(
+                            value: progress,
+                            strokeWidth: 4,
+                            strokeCap: StrokeCap.round,
+                            backgroundColor: HelloColors.recessed,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent,
+                            ),
                           ),
                         ),
-                      ),
-                      Text(
-                        '${(progress * 100).toInt()}%',
-                        style: TextStyle(
-                          fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w400,
-                          color: progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent,
+                        Text(
+                          '${(progress * 100).toInt()}%',
+                          style: TextStyle(
+                            fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w400,
+                            color: progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -600,7 +613,7 @@ class _MiniStat extends StatelessWidget {
   }
 }
 
-// ── Active Card (Soft UI + thumbnail) ─────────────────
+// ── Active Card — Liquid Fire energy ──────────────────
 
 class _ActiveCard extends StatelessWidget {
   final DecisionItem item;
@@ -610,6 +623,7 @@ class _ActiveCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = (item.agreementScore * 100).toInt();
     final isHot = item.agreementScore >= 0.7;
+    final isWarm = item.agreementScore >= 0.4;
     final proposer = item.proposedBy ?? 'someone';
     final hasPhoto = item.photoUrl != null && item.photoUrl!.isNotEmpty;
 
@@ -619,114 +633,146 @@ class _ActiveCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 3),
-          ),
-          // Accent ambient glow for hot items
-          if (isHot) BoxShadow(
-            color: HelloColors.accent.withValues(alpha: 0.08),
-            blurRadius: 24,
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
             offset: const Offset(0, 4),
+          ),
+          // Liquid Fire glow for hot items
+          if (isHot) BoxShadow(
+            color: HelloColors.accent.withValues(alpha: 0.15),
+            blurRadius: 30,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thumbnail (left side, 80px)
-            if (hasPhoto)
-              SizedBox(
-                width: 80,
-                child: AspectRatio(
-                  aspectRatio: 3 / 4,
-                  child: item.photoUrl!.startsWith('assets/')
-                      ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
-                      : Image.network(item.photoUrl!, fit: BoxFit.cover),
-                ),
-              ),
-            // Content (right side)
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(hasPhoto ? 12 : 14, 12, 14, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title + score
-                    Row(
+            Row(
+              children: [
+                // Thumbnail
+                if (hasPhoto)
+                  SizedBox(
+                    width: 88,
+                    child: AspectRatio(
+                      aspectRatio: 3 / 4,
+                      child: item.photoUrl!.startsWith('assets/')
+                          ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
+                          : Image.network(item.photoUrl!, fit: BoxFit.cover),
+                    ),
+                  ),
+                // Content
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(hasPhoto ? 14 : 16, 14, 14, 14),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            style: HelloTypography.body.copyWith(fontSize: 15, height: 1.25),
-                            maxLines: 2, overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (pct > 0) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: isHot
-                                  ? HelloColors.accent.withValues(alpha: 0.1)
-                                  : HelloColors.recessed,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '$pct%',
-                              style: TextStyle(
-                                fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w400,
-                                color: isHot ? HelloColors.accent : HelloColors.inkSecondary,
+                        // Title + bold score pill
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.title,
+                                style: HelloTypography.body.copyWith(fontSize: 15, height: 1.25),
+                                maxLines: 2, overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ),
-                        ],
-                      ],
-                    ),
-
-                    // Description
-                    if (item.description != null && item.description!.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        item.description!.split('\n').first,
-                        style: HelloTypography.hint.copyWith(fontSize: 12),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-
-                    const SizedBox(height: 8),
-
-                    // Avatar + progress
-                    Row(
-                      children: [
-                        _MiniAvatar(name: proposer),
-                        const SizedBox(width: 5),
-                        Text(proposer, style: HelloTypography.hint.copyWith(fontSize: 11)),
-                        const Spacer(),
-                        // Compact progress
-                        if (item.agreementScore > 0)
-                          SizedBox(
-                            width: 60,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(3),
-                              child: LinearProgressIndicator(
-                                value: item.agreementScore,
-                                minHeight: 4,
-                                backgroundColor: HelloColors.recessed,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  isHot ? HelloColors.accent : HelloColors.inkTertiary.withValues(alpha: 0.4),
+                            if (pct > 0) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  // Hot: solid accent. Warm: accent tint. Cold: gray
+                                  color: isHot
+                                      ? HelloColors.accent
+                                      : isWarm
+                                          ? HelloColors.accent.withValues(alpha: 0.12)
+                                          : HelloColors.recessed,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '$pct%',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w400,
+                                    color: isHot
+                                        ? Colors.white
+                                        : isWarm
+                                            ? HelloColors.accent
+                                            : HelloColors.inkSecondary,
+                                  ),
                                 ),
                               ),
-                            ),
+                            ] else
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: HelloColors.recessed,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Text('new', style: TextStyle(
+                                  fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w300,
+                                  color: HelloColors.inkTertiary,
+                                )),
+                              ),
+                          ],
+                        ),
+
+                        // Description
+                        if (item.description != null && item.description!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            item.description!.split('\n').first,
+                            style: HelloTypography.hint.copyWith(fontSize: 12),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
                           ),
+                        ],
+
+                        const SizedBox(height: 10),
+
+                        // Avatar + name
+                        Row(
+                          children: [
+                            _MiniAvatar(name: proposer),
+                            const SizedBox(width: 5),
+                            Text(proposer, style: HelloTypography.hint.copyWith(fontSize: 11)),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Liquid Fire progress bar (full width, bottom of card) ──
+            if (item.agreementScore > 0)
+              Container(
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: HelloColors.recessed,
+                ),
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: item.agreementScore.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: isHot || isWarm
+                          ? HelloColors.liquidFireStandard
+                          : const LinearGradient(
+                              colors: [Color(0xFF8A8A94), Color(0xFFB0B0B8)],
+                            ),
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(3),
+                        bottomRight: Radius.circular(3),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
