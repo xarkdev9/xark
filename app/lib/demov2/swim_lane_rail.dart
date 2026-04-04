@@ -45,8 +45,8 @@ class SwimLaneRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final cardWidth = screenWidth * 0.78;
-    final cardHeight = screenHeight * 0.55;
+    final cardWidth = screenWidth * 0.72;
+    final cardHeight = screenHeight * 0.35;
     final vital = _computeVital(items);
 
     return Column(
@@ -55,7 +55,7 @@ class SwimLaneRail extends StatelessWidget {
       children: [
         // Header
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

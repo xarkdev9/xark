@@ -115,81 +115,112 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
                 ),
               ),
 
-              // 3. Typography & Metadata (Bottom Left)
+              // 3. Title + Score (Bottom)
               Positioned(
-                left: 24.0,
-                bottom: 24.0,
-                right: 140.0, // Leave room for signals
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                left: 16.0,
+                bottom: 56.0, // Room for voting bar
+                right: 16.0,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                     Text(
-                       (_agreementScore * 100).toInt().toString(),
-                       style: HelloTypography.hero.copyWith(
-                         fontSize: 48,
-                         color: _getScoreColor(_agreementScore),
-                         height: 1.0,
-                       ),
-                     ),
-                     const SizedBox(height: 8),
-                     Text(
-                       widget.item.title,
-                       style: HelloTypography.spaceTitle.copyWith(
-                         color: Colors.white,
-                         fontWeight: FontWeight.w400,
-                       ),
-                       maxLines: 2,
-                       overflow: TextOverflow.ellipsis,
-                     ),
-                     if (widget.item.description != null && widget.item.description!.isNotEmpty) ...[
-                       const SizedBox(height: 4),
-                       Text(
-                         widget.item.description!.split('\n').first,
-                         style: HelloTypography.hint.copyWith(
-                           color: Colors.white.withValues(alpha: 0.7),
-                           fontSize: 13,
-                         ),
-                         maxLines: 1,
-                         overflow: TextOverflow.ellipsis,
-                       ),
-                     ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.item.title,
+                            style: HelloTypography.body.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w400,
+                              fontSize: 16,
+                              height: 1.25,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (widget.item.description != null && widget.item.description!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.item.description!.split('\n').first,
+                              style: HelloTypography.hint.copyWith(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${(_agreementScore * 100).toInt()}',
+                      style: HelloTypography.hero.copyWith(
+                        fontSize: 28,
+                        color: _getScoreColor(_agreementScore),
+                        height: 1.0,
+                      ),
+                    ),
                   ],
                 ),
               ),
 
-              // 4. The 3-Signal Physics Matrix (Bottom Right)
+              // 4. Voting Bar (Bottom — full width, frosted glass)
               Positioned(
-                right: 24.0,
-                bottom: 24.0,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                     _PhysicsSignalButton(
-                       label: "Pass",
-                       onTap: () {
-                         HapticFeedback.lightImpact();
-                         _handleReaction('pass');
-                       },
-                     ),
-                     const SizedBox(width: 8),
-                     _PhysicsSignalButton(
-                       label: "Okay",
-                       onTap: () {
-                         HapticFeedback.lightImpact();
-                         _handleReaction('okay');
-                       },
-                     ),
-                     const SizedBox(width: 8),
-                     _PhysicsSignalButton(
-                       label: "Love",
-                       isRose: true,
-                       onTap: () {
-                         HapticFeedback.heavyImpact();
-                         _handleReaction('love');
-                       },
-                     ),
-                  ],
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(26),
+                      bottomRight: Radius.circular(26),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Pass — dim, transparent
+                      _VoteChip(
+                        label: 'Pass',
+                        color: Colors.white.withValues(alpha: 0.15),
+                        textColor: Colors.white.withValues(alpha: 0.5),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          _handleReaction('pass');
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      // Okay — subtle white fill
+                      _VoteChip(
+                        label: 'Okay',
+                        color: Colors.white.withValues(alpha: 0.25),
+                        textColor: Colors.white.withValues(alpha: 0.85),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          _handleReaction('okay');
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      // Love — Liquid Fire gradient border + glow
+                      Expanded(
+                        child: _VoteChip(
+                          label: 'Love',
+                          color: HelloColors.accent.withValues(alpha: 0.25),
+                          textColor: HelloColors.accent,
+                          borderColor: HelloColors.accent.withValues(alpha: 0.6),
+                          isLove: true,
+                          onTap: () {
+                            HapticFeedback.heavyImpact();
+                            _handleReaction('love');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -200,63 +231,55 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
   }
 }
 
-class _PhysicsSignalButton extends StatefulWidget {
+/// Compact vote chip with spring physics and Liquid Fire support.
+class _VoteChip extends StatefulWidget {
   final String label;
+  final Color color;
+  final Color textColor;
+  final Color? borderColor;
+  final bool isLove;
   final VoidCallback onTap;
-  final bool isRose;
 
-  const _PhysicsSignalButton({
+  const _VoteChip({
     required this.label,
+    required this.color,
+    required this.textColor,
+    this.borderColor,
+    this.isLove = false,
     required this.onTap,
-    this.isRose = false,
   });
 
   @override
-  State<_PhysicsSignalButton> createState() => _PhysicsSignalButtonState();
+  State<_VoteChip> createState() => _VoteChipState();
 }
 
-class _PhysicsSignalButtonState extends State<_PhysicsSignalButton> with SingleTickerProviderStateMixin {
+class _VoteChipState extends State<_VoteChip> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      value: 1.0,
-      duration: const Duration(milliseconds: 150),
-    );
+    _controller = AnimationController(vsync: this, value: 1.0, duration: const Duration(milliseconds: 150));
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  void dispose() { _controller.dispose(); super.dispose(); }
 
-  void _onTapDown(TapDownDetails details) {
-    _controller.value = 0.85; // Instantly shrink
-  }
+  void _onTapDown(TapDownDetails _) => _controller.value = 0.88;
 
-  void _onTapUp(TapUpDetails details) {
+  void _onTapUp(TapUpDetails _) {
     widget.onTap();
-    _runSpringRelease();
+    final spring = const SpringDescription(mass: 1.0, stiffness: 500.0, damping: 24.0);
+    _controller.animateWith(SpringSimulation(spring, _controller.value, 1.0, 0.0));
   }
 
   void _onTapCancel() {
-    _runSpringRelease();
-  }
-
-  void _runSpringRelease() {
     final spring = const SpringDescription(mass: 1.0, stiffness: 500.0, damping: 24.0);
-    final simulation = SpringSimulation(spring, _controller.value, 1.0, 0.0);
-    _controller.animateWith(simulation);
+    _controller.animateWith(SpringSimulation(spring, _controller.value, 1.0, 0.0));
   }
 
   @override
   Widget build(BuildContext context) {
-    final textColor = widget.isRose ? const Color(0xFFD4536B) : Colors.white;
-
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: _onTapDown,
@@ -268,17 +291,27 @@ class _PhysicsSignalButtonState extends State<_PhysicsSignalButton> with SingleT
           return Transform.scale(
             scale: _controller.value,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
+                color: widget.color,
+                borderRadius: BorderRadius.circular(14),
+                border: widget.borderColor != null
+                    ? Border.all(color: widget.borderColor!, width: 1.5)
+                    : null,
+                boxShadow: widget.isLove
+                    ? [BoxShadow(color: HelloColors.accent.withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 0)]
+                    : [],
               ),
-              child: Text(
-                widget.label,
-                style: HelloTypography.label.copyWith(
-                  color: textColor,
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14,
+              child: Center(
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: widget.textColor,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ),
