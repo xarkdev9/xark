@@ -395,12 +395,29 @@ class _CategoryRail extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-// TIER 3: Next-Gen Overview (Soft UI + Spatial Depth)
+// TIER 3: Overview — Floating Visual Hierarchy
 //
-// Design system: Soft UI Evolution + Spatial glass hints
-// Visual: photo thumbnails integrated, soft shadows for depth,
-// progress as ambient glow, avatar stacks, spring scale feedback
+// ZERO: boxes, lines, grids, bars, progress bars
+// ONLY: floating photo cards, gradient overlays, facepile
+//       avatars, social copy, organic spacing
 // ═══════════════════════════════════════════════════════
+
+/// Per-person avatar colors (warm, vibrant, unique)
+const _avatarColors = <String, Color>{
+  'priya': Color(0xFFFF6B6B),
+  'dad': Color(0xFF4ECDC4),
+  'me': Color(0xFFFFB347),
+  'emma': Color(0xFF9B59B6),
+  'alex': Color(0xFF3498DB),
+  'mom': Color(0xFFE74C8B),
+  'liam': Color(0xFF2ECC71),
+  'noah': Color(0xFF1ABC9C),
+  'sofia': Color(0xFFE67E22),
+  'maya': Color(0xFFF39C12),
+};
+
+Color _colorForPerson(String name) =>
+    _avatarColors[name.toLowerCase()] ?? HelloColors.accent;
 
 class _OverviewDashboard extends StatelessWidget {
   final String eventName;
@@ -408,368 +425,196 @@ class _OverviewDashboard extends StatelessWidget {
 
   const _OverviewDashboard({required this.eventName, required this.items});
 
-  String _subCategory(DecisionItem item) {
-    final parts = (item.category ?? '').split('|');
-    return parts.length > 1 ? parts[1].trim() : (item.category ?? 'General');
-  }
-
   @override
   Widget build(BuildContext context) {
-    final total = items.length;
-    final settled = items.where((i) => i.isLocked).toList();
-    final voting = items.where((i) => !i.isLocked && i.agreementScore > 0).toList()
-      ..sort((a, b) => b.agreementScore.compareTo(a.agreementScore));
-    final fresh = items.where((i) => !i.isLocked && i.agreementScore == 0).toList();
-    final doneCount = settled.length;
-    final progress = total > 0 ? doneCount / total : 0.0;
-
-    // Group by sub-category
-    final sectionMap = <String, List<DecisionItem>>{};
-    for (final item in items) {
-      sectionMap.putIfAbsent(_subCategory(item), () => []).add(item);
-    }
-    final sectionKeys = sectionMap.keys.toList()
+    // Sort: hottest first, settled at end
+    final sorted = List<DecisionItem>.from(items)
       ..sort((a, b) {
-        final wa = sectionMap[a]!.fold<double>(0, (s, i) => s + i.weightedScore);
-        final wb = sectionMap[b]!.fold<double>(0, (s, i) => s + i.weightedScore);
-        return wb.compareTo(wa);
+        if (a.isLocked && !b.isLocked) return 1;
+        if (!a.isLocked && b.isLocked) return -1;
+        return b.agreementScore.compareTo(a.agreementScore);
       });
+
+    final settled = items.where((i) => i.isLocked).length;
+    final total = items.length;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ═══ HEADER — event name + progress arc ═══
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          // ── Floating header text (no box) ──
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 4),
+            child: Text(
+              eventName,
+              style: HelloTypography.hero.copyWith(fontSize: 26, height: 1.15),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(eventName, style: HelloTypography.spaceTitle.copyWith(fontSize: 20)),
-                      const SizedBox(height: 6),
-                      // Mini stat row
-                      Row(
-                        children: [
-                          _MiniStat('$doneCount', 'done', HelloColors.successGreen),
-                          const SizedBox(width: 16),
-                          _MiniStat('${voting.length}', 'voting', HelloColors.accent),
-                          const SizedBox(width: 16),
-                          _MiniStat('${fresh.length}', 'new', HelloColors.inkTertiary),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                // Progress ring — hide at 0%, show "new" chip instead
-                if (progress == 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      gradient: HelloColors.liquidFireStandard,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text('new', style: TextStyle(
-                      fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w400,
-                      color: Colors.white,
-                    )),
-                  )
-                else
-                  Container(
-                    width: 52, height: 52,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent)
-                              .withValues(alpha: 0.25),
-                          blurRadius: 20,
-                          spreadRadius: 3,
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 52, height: 52,
-                          child: CircularProgressIndicator(
-                            value: progress,
-                            strokeWidth: 4,
-                            strokeCap: StrokeCap.round,
-                            backgroundColor: HelloColors.recessed,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '${(progress * 100).toInt()}%',
-                          style: TextStyle(
-                            fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w400,
-                            color: progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 20),
+            child: Text(
+              settled > 0
+                  ? '$settled of $total settled \u2022 ${total - settled} to go'
+                  : '$total things to decide',
+              style: HelloTypography.hint.copyWith(fontSize: 14),
             ),
           ),
 
-          const SizedBox(height: 20),
+          // ── Cards stream: each item is a full-bleed photo card ──
+          ...sorted.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: item.isLocked
+                ? _FloatingSettledCard(item: item)
+                : _FloatingActiveCard(item: item),
+          )),
+        ],
+      ),
+    );
+  }
+}
 
-          // ═══ SECTIONS ═══
-          for (final sectionName in sectionKeys) ...[
-            // Section header
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 10),
-              child: Row(
-                children: [
-                  Text(
-                    sectionName.toUpperCase(),
-                    style: HelloTypography.label.copyWith(
-                      color: HelloColors.inkTertiary,
-                      letterSpacing: 1.2,
-                      fontSize: 11,
-                    ),
+// ── Floating Active Card — photo-first, text overlay ──
+
+class _FloatingActiveCard extends StatelessWidget {
+  final DecisionItem item;
+  const _FloatingActiveCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final proposer = item.proposedBy ?? 'someone';
+    final hasPhoto = item.photoUrl != null && item.photoUrl!.isNotEmpty;
+    final isHot = item.agreementScore >= 0.7;
+    final socialText = _buildSocialText(item);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        height: hasPhoto ? 180 : 100,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Photo background (or subtle gradient for no-photo items)
+            if (hasPhoto)
+              item.photoUrl!.startsWith('assets/')
+                  ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
+                  : Image.network(item.photoUrl!, fit: BoxFit.cover)
+            else
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      HelloColors.recessed,
+                      HelloColors.inkTertiary.withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Text(
-                      '+ add',
-                      style: HelloTypography.hint.copyWith(
-                        color: HelloColors.accent.withValues(alpha: 0.6),
-                        fontSize: 12,
-                      ),
+                ),
+              ),
+
+            // Dark gradient overlay (bottom half only)
+            if (hasPhoto)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.3, 1.0],
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.75),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Content floating on the image
+            Positioned(
+              left: 18, right: 18, bottom: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Title + description
+                  Text(
+                    item.title,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w400,
+                      color: hasPhoto ? Colors.white : HelloColors.inkPrimary,
+                      height: 1.2,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (item.description != null && item.description!.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      item.description!.split('\n').first,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w300,
+                        color: hasPhoto
+                            ? Colors.white.withValues(alpha: 0.7)
+                            : HelloColors.inkTertiary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  // Facepile + social copy
+                  Row(
+                    children: [
+                      // Facepile (overlapping avatars)
+                      _Facepile(names: [proposer, 'me']),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          socialText,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w300,
+                            color: hasPhoto
+                                ? Colors.white.withValues(alpha: 0.8)
+                                : HelloColors.inkSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            // Items
-            ..._sortedSection(sectionMap[sectionName]!).map((item) =>
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: item.isLocked
-                    ? _SettledCard(item: item)
-                    : _ActiveCard(item: item),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-          ],
-        ],
-      ),
-    );
-  }
-
-  List<DecisionItem> _sortedSection(List<DecisionItem> items) {
-    final s = items.where((i) => i.isLocked).toList();
-    final a = items.where((i) => !i.isLocked).toList()
-      ..sort((a, b) => b.agreementScore.compareTo(a.agreementScore));
-    return [...s, ...a];
-  }
-}
-
-/// Mini stat: number + label
-class _MiniStat extends StatelessWidget {
-  final String value;
-  final String label;
-  final Color color;
-  const _MiniStat(this.value, this.label, this.color);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(value, style: TextStyle(
-          fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w400, color: color,
-        )),
-        const SizedBox(width: 3),
-        Text(label, style: TextStyle(
-          fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w300, color: color.withValues(alpha: 0.6),
-        )),
-      ],
-    );
-  }
-}
-
-// ── Active Card — Liquid Fire energy ──────────────────
-
-class _ActiveCard extends StatelessWidget {
-  final DecisionItem item;
-  const _ActiveCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (item.agreementScore * 100).toInt();
-    final isHot = item.agreementScore >= 0.7;
-    final isWarm = item.agreementScore >= 0.4;
-    final proposer = item.proposedBy ?? 'someone';
-    final hasPhoto = item.photoUrl != null && item.photoUrl!.isNotEmpty;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-          // Liquid Fire glow for hot items
-          if (isHot) BoxShadow(
-            color: HelloColors.accent.withValues(alpha: 0.15),
-            blurRadius: 30,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                // Thumbnail
-                if (hasPhoto)
-                  SizedBox(
-                    width: 88,
-                    child: AspectRatio(
-                      aspectRatio: 3 / 4,
-                      child: item.photoUrl!.startsWith('assets/')
-                          ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
-                          : Image.network(item.photoUrl!, fit: BoxFit.cover),
-                    ),
+            // Hot indicator — floating top-right flame
+            if (isHot)
+              Positioned(
+                top: 12, right: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                // Content
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(hasPhoto ? 14 : 16, 14, 14, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title + bold score pill
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                item.title,
-                                style: HelloTypography.body.copyWith(fontSize: 15, height: 1.25),
-                                maxLines: 2, overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (pct > 0) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  // Hot: solid accent. Warm: accent tint. Cold: gray
-                                  color: isHot
-                                      ? HelloColors.accent
-                                      : isWarm
-                                          ? HelloColors.accent.withValues(alpha: 0.12)
-                                          : HelloColors.recessed,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '$pct%',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w400,
-                                    color: isHot
-                                        ? Colors.white
-                                        : isWarm
-                                            ? HelloColors.accent
-                                            : HelloColors.inkSecondary,
-                                  ),
-                                ),
-                              ),
-                            ] else
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: HelloColors.recessed,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Text('new', style: TextStyle(
-                                  fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w300,
-                                  color: HelloColors.inkTertiary,
-                                )),
-                              ),
-                          ],
-                        ),
-
-                        // Description
-                        if (item.description != null && item.description!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            item.description!.split('\n').first,
-                            style: HelloTypography.hint.copyWith(fontSize: 12),
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-
-                        const SizedBox(height: 10),
-
-                        // Avatar + name
-                        Row(
-                          children: [
-                            _MiniAvatar(name: proposer),
-                            const SizedBox(width: 5),
-                            Text(proposer, style: HelloTypography.hint.copyWith(fontSize: 11)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // ── Liquid Fire progress bar (full width, bottom of card) ──
-            if (item.agreementScore > 0)
-              Container(
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: HelloColors.recessed,
-                ),
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: item.agreementScore.clamp(0.0, 1.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: isHot || isWarm
-                          ? HelloColors.liquidFireStandard
-                          : const LinearGradient(
-                              colors: [Color(0xFF8A8A94), Color(0xFFB0B0B8)],
-                            ),
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(3),
-                        bottomRight: Radius.circular(3),
-                      ),
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.local_fire_department, size: 14, color: HelloColors.accent),
+                      const SizedBox(width: 3),
+                      Text('trending', style: TextStyle(
+                        fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w300,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      )),
+                    ],
                   ),
                 ),
               ),
@@ -778,112 +623,114 @@ class _ActiveCard extends StatelessWidget {
       ),
     );
   }
+
+  String _buildSocialText(DecisionItem item) {
+    final proposer = item.proposedBy ?? 'someone';
+    if (item.agreementScore >= 0.7) {
+      return '$proposer and others love this';
+    } else if (item.agreementScore >= 0.4) {
+      return 'Waiting on votes...';
+    } else if (item.agreementScore > 0) {
+      return '$proposer proposed this';
+    }
+    return 'Just added by $proposer';
+  }
 }
 
-// ── Settled Card (green depth) ────────────────────────
+// ── Floating Settled Card — photo with green veil ─────
 
-class _SettledCard extends StatelessWidget {
+class _FloatingSettledCard extends StatelessWidget {
   final DecisionItem item;
-  const _SettledCard({required this.item});
+  const _FloatingSettledCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
     final proposer = item.proposedBy ?? 'someone';
     final hasPhoto = item.photoUrl != null && item.photoUrl!.isNotEmpty;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: HelloColors.successGreen.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: HelloColors.successGreen.withValues(alpha: 0.12), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: HelloColors.successGreen.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Row(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        height: hasPhoto ? 140 : 80,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
+            // Photo
             if (hasPhoto)
-              SizedBox(
-                width: 72,
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      item.photoUrl!.startsWith('assets/')
-                          ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
-                          : Image.network(item.photoUrl!, fit: BoxFit.cover),
-                      // Green tint overlay
-                      Container(color: HelloColors.successGreen.withValues(alpha: 0.1)),
-                      // Checkmark
-                      Center(
-                        child: Container(
-                          width: 24, height: 24,
-                          decoration: BoxDecoration(
-                            color: HelloColors.successGreen,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: HelloColors.successGreen.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.check, size: 14, color: Colors.white),
-                        ),
-                      ),
+              item.photoUrl!.startsWith('assets/')
+                  ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
+                  : Image.network(item.photoUrl!, fit: BoxFit.cover)
+            else
+              Container(color: HelloColors.successGreen.withValues(alpha: 0.04)),
+
+            // Green veil
+            if (hasPhoto)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      HelloColors.successGreen.withValues(alpha: 0.15),
+                      HelloColors.successGreen.withValues(alpha: 0.5),
                     ],
                   ),
                 ),
               ),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(hasPhoto ? 12 : 14, 12, 14, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(item.title,
-                            style: HelloTypography.body.copyWith(fontSize: 15),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: HelloColors.successGreen.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text('Settled', style: TextStyle(
-                            fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w400,
-                            color: HelloColors.successGreen,
-                          )),
-                        ),
-                      ],
-                    ),
-                    if (item.description != null) ...[
-                      const SizedBox(height: 3),
-                      Text(item.description!.split('\n').first,
-                        style: HelloTypography.hint.copyWith(fontSize: 12),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ],
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        _MiniAvatar(name: proposer),
-                        const SizedBox(width: 5),
-                        Text('$proposer settled', style: HelloTypography.hint.copyWith(fontSize: 11)),
-                      ],
+
+            // Floating checkmark
+            Positioned(
+              top: 12, right: 14,
+              child: Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(
+                  color: HelloColors.successGreen,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: HelloColors.successGreen.withValues(alpha: 0.4),
+                      blurRadius: 12,
                     ),
                   ],
                 ),
+                child: const Icon(Icons.check, size: 16, color: Colors.white),
+              ),
+            ),
+
+            // Content
+            Positioned(
+              left: 18, right: 60, bottom: 14,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.title,
+                    style: TextStyle(
+                      fontFamily: 'Inter', fontSize: 17, fontWeight: FontWeight.w400,
+                      color: hasPhoto ? Colors.white : HelloColors.inkPrimary,
+                      height: 1.2,
+                    ),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      _Facepile(names: [proposer]),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$proposer booked this',
+                        style: TextStyle(
+                          fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w300,
+                          color: hasPhoto
+                              ? Colors.white.withValues(alpha: 0.8)
+                              : HelloColors.inkSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -893,26 +740,46 @@ class _SettledCard extends StatelessWidget {
   }
 }
 
-// ── Mini Avatar ───────────────────────────────────────
+// ── Facepile — overlapping colorful avatars ────────────
 
-class _MiniAvatar extends StatelessWidget {
-  final String name;
-  const _MiniAvatar({required this.name});
+class _Facepile extends StatelessWidget {
+  final List<String> names;
+  const _Facepile({required this.names});
 
   @override
   Widget build(BuildContext context) {
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    return Container(
-      width: 20, height: 20,
-      decoration: BoxDecoration(
-        color: HelloColors.inkPrimary.withValues(alpha: 0.08),
-        shape: BoxShape.circle,
+    final visible = names.take(3).toList();
+    return SizedBox(
+      width: 20.0 + (visible.length - 1) * 14.0,
+      height: 24,
+      child: Stack(
+        children: visible.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final name = entry.value;
+          final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+          final color = _colorForPerson(name);
+
+          return Positioned(
+            left: idx * 14.0,
+            child: Container(
+              width: 24, height: 24,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w400,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
-      alignment: Alignment.center,
-      child: Text(initial, style: const TextStyle(
-        fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w400,
-        color: HelloColors.inkSecondary,
-      )),
     );
   }
 }
