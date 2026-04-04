@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import '../providers/conversation_controller.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/encrypted_image_view.dart';
+import '../theme.dart';
 
 import '../main.dart'; // engineProvider
 
@@ -30,21 +33,43 @@ class ChatFeed extends ConsumerStatefulWidget {
 class _ChatFeedState extends ConsumerState<ChatFeed> {
   late final ScrollController _scrollController;
   bool _isLoadingMore = false;
+  bool _showTimestamps = false;
+  Timer? _scrollPauseTimer;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
+    // Show timestamps briefly on load, then fade after 2s
+    _showTimestamps = true;
+    _scrollPauseTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _showTimestamps = false);
+    });
   }
 
   @override
   void dispose() {
+    _scrollPauseTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
   void _onScroll() {
+    // Cancel any pending timestamp show
+    _scrollPauseTimer?.cancel();
+
+    // Hide timestamps while scrolling
+    if (_showTimestamps) {
+      setState(() => _showTimestamps = false);
+    }
+
+    // Show timestamps after 1s pause
+    _scrollPauseTimer = Timer(const Duration(milliseconds: 1000), () {
+      if (mounted) setState(() => _showTimestamps = true);
+    });
+
+    // Existing load-more logic
     if (_isLoadingMore) return;
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
@@ -78,6 +103,7 @@ class _ChatFeedState extends ConsumerState<ChatFeed> {
           spaceId: widget.spaceId,
           totalCount: messageCount,
           onReply: widget.onReply,
+          showTimestamp: _showTimestamps,
         );
       },
     );
@@ -89,12 +115,14 @@ class _FeedItem extends ConsumerWidget {
   final String spaceId;
   final int totalCount;
   final ValueChanged<Message>? onReply;
+  final bool showTimestamp;
 
   const _FeedItem({
     required this.index,
     required this.spaceId,
     required this.totalCount,
     this.onReply,
+    this.showTimestamp = false,
   });
 
   @override
@@ -149,16 +177,44 @@ class _FeedItem extends ConsumerWidget {
       mediaChild = EncryptedImageView(metadata: message.media!);
     }
 
+    final ts = message.timestamp;
+    final timeStr =
+        '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}';
+
+    // Show time header if timestamps are visible and this is last in group
+    final shouldShowTime = showTimestamp && isLastInGroup;
+
     return RepaintBoundary(
-      child: ChatBubble(
-        text: message.text ?? '',
-        isOutbound: isOutbound,
-        status: computedStatus,
-        isFirstInGroup: isFirstInGroup,
-        isLastInGroup: isLastInGroup,
-        mediaChild: mediaChild,
-        senderId: message.senderId,
-        onReply: onReply != null ? () => onReply!(message) : null,
+      child: Column(
+        children: [
+          ChatBubble(
+            text: message.text ?? '',
+            isOutbound: isOutbound,
+            status: computedStatus,
+            isFirstInGroup: isFirstInGroup,
+            isLastInGroup: isLastInGroup,
+            mediaChild: mediaChild,
+            senderId: message.senderId,
+            onReply: onReply != null ? () => onReply!(message) : null,
+          ),
+          if (shouldShowTime)
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 250),
+              opacity: showTimestamp ? 1.0 : 0.0,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                child: Text(
+                  timeStr,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w300,
+                    color: HelloColors.inkTertiary,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
