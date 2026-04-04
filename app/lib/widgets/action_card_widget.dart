@@ -23,16 +23,28 @@ class ActionCardWidget extends ConsumerStatefulWidget {
   ConsumerState<ActionCardWidget> createState() => _ActionCardWidgetState();
 }
 
-class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
+class _ActionCardWidgetState extends ConsumerState<ActionCardWidget>
+    with SingleTickerProviderStateMixin {
   double _agreementScore = 0.0;
   bool _isLocallyLocked = false;
-  String? _selectedVote; // null = no vote, 'love', 'okay', 'pass'
+  String? _selectedVote;
+  late AnimationController _scorePulse;
 
   @override
   void initState() {
     super.initState();
     _agreementScore = widget.item.agreementScore;
+    _scorePulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
     _checkConsensus();
+  }
+
+  @override
+  void dispose() {
+    _scorePulse.dispose();
+    super.dispose();
   }
 
   void _checkConsensus() {
@@ -54,7 +66,6 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
 
   void _handleReaction(String reaction) {
     setState(() {
-      // Toggle: tap same vote to deselect
       if (_selectedVote == reaction) {
         _selectedVote = null;
         return;
@@ -65,6 +76,8 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
       } else if (reaction == 'okay') {
         _agreementScore = (_agreementScore + 0.08).clamp(0.0, 1.0);
       }
+      // Score bounce — dopamine hit
+      _scorePulse.forward(from: 0.0);
       _checkConsensus();
     });
     widget.onReact();
@@ -162,12 +175,24 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      '${(_agreementScore * 100).toInt()}',
-                      style: HelloTypography.hero.copyWith(
-                        fontSize: 28,
-                        color: _getScoreColor(_agreementScore),
-                        height: 1.0,
+                    AnimatedBuilder(
+                      animation: _scorePulse,
+                      builder: (context, child) {
+                        // Overshoot: 1.0 → 1.35 → 1.0
+                        final t = _scorePulse.value;
+                        final scale = 1.0 + (0.35 * t * (1.0 - t) * 4);
+                        return Transform.scale(
+                          scale: scale,
+                          child: child,
+                        );
+                      },
+                      child: Text(
+                        '${(_agreementScore * 100).toInt()}',
+                        style: HelloTypography.hero.copyWith(
+                          fontSize: 28,
+                          color: _getScoreColor(_agreementScore),
+                          height: 1.0,
+                        ),
                       ),
                     ),
                   ],
@@ -283,29 +308,54 @@ class _VoteChip extends StatefulWidget {
   State<_VoteChip> createState() => _VoteChipState();
 }
 
-class _VoteChipState extends State<_VoteChip> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+class _VoteChipState extends State<_VoteChip> with TickerProviderStateMixin {
+  late AnimationController _tapController;    // Press-down + spring release
+  late AnimationController _selectController; // Selection pop overshoot
+  bool _wasSelected = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, value: 1.0, duration: const Duration(milliseconds: 150));
+    _tapController = AnimationController(vsync: this, value: 1.0, duration: const Duration(milliseconds: 100));
+    _selectController = AnimationController(vsync: this, value: 0.0, duration: const Duration(milliseconds: 600));
+    _wasSelected = widget.isSelected;
   }
 
   @override
-  void dispose() { _controller.dispose(); super.dispose(); }
+  void didUpdateWidget(_VoteChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Fire pop animation when transitioning to selected
+    if (widget.isSelected && !_wasSelected) {
+      _fireSelectPop();
+    }
+    _wasSelected = widget.isSelected;
+  }
 
-  void _onTapDown(TapDownDetails _) => _controller.value = 0.88;
+  void _fireSelectPop() {
+    // Overshoot spring: chip pops to 1.2 then bounces to 1.0
+    final spring = const SpringDescription(mass: 0.8, stiffness: 600.0, damping: 12.0);
+    _selectController.animateWith(SpringSimulation(spring, 0.0, 1.0, 8.0));
+  }
+
+  @override
+  void dispose() {
+    _tapController.dispose();
+    _selectController.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails _) => _tapController.value = 0.82;
 
   void _onTapUp(TapUpDetails _) {
     widget.onTap();
-    final spring = const SpringDescription(mass: 1.0, stiffness: 500.0, damping: 24.0);
-    _controller.animateWith(SpringSimulation(spring, _controller.value, 1.0, 0.0));
+    // Bouncy spring release from press-down
+    final spring = const SpringDescription(mass: 1.0, stiffness: 400.0, damping: 15.0);
+    _tapController.animateWith(SpringSimulation(spring, _tapController.value, 1.0, 0.0));
   }
 
   void _onTapCancel() {
-    final spring = const SpringDescription(mass: 1.0, stiffness: 500.0, damping: 24.0);
-    _controller.animateWith(SpringSimulation(spring, _controller.value, 1.0, 0.0));
+    final spring = const SpringDescription(mass: 1.0, stiffness: 400.0, damping: 15.0);
+    _tapController.animateWith(SpringSimulation(spring, _tapController.value, 1.0, 0.0));
   }
 
   @override
@@ -316,14 +366,25 @@ class _VoteChipState extends State<_VoteChip> with SingleTickerProviderStateMixi
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
       child: AnimatedBuilder(
-        animation: _controller,
+        animation: Listenable.merge([_tapController, _selectController]),
         builder: (context, child) {
+          // Combine tap scale + selection overshoot
+          final tapScale = _tapController.value;
+          // selectController overshoots past 1.0 then settles → maps to scale pop
+          final selectPop = _selectController.value > 0 && _selectController.value < 1.0
+              ? 1.0 + (_selectController.value * 0.2 * (1.0 - _selectController.value) * 4)
+              : 1.0;
+          final combinedScale = tapScale * selectPop;
+
           return Transform.scale(
-            scale: _controller.value,
+            scale: combinedScale,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
+              duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: widget.isSelected ? 10 : 8,
+              ),
               decoration: BoxDecoration(
                 color: widget.color,
                 borderRadius: BorderRadius.circular(14),
@@ -331,18 +392,23 @@ class _VoteChipState extends State<_VoteChip> with SingleTickerProviderStateMixi
                     ? Border.all(color: widget.borderColor!, width: 1.5)
                     : Border.all(color: Colors.transparent, width: 1.5),
                 boxShadow: widget.isLove
-                    ? [BoxShadow(color: HelloColors.accent.withValues(alpha: 0.4), blurRadius: 12, spreadRadius: 1)]
-                    : [],
+                    ? [
+                        BoxShadow(color: HelloColors.accent.withValues(alpha: 0.5), blurRadius: 16, spreadRadius: 2),
+                        BoxShadow(color: const Color(0xFFFF9F43).withValues(alpha: 0.3), blurRadius: 24, spreadRadius: 0),
+                      ]
+                    : widget.isSelected
+                        ? [BoxShadow(color: Colors.white.withValues(alpha: 0.15), blurRadius: 8, spreadRadius: 0)]
+                        : [],
               ),
               child: Center(
                 child: AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 250),
+                  duration: const Duration(milliseconds: 200),
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: widget.isSelected ? 14 : 13,
                     fontWeight: FontWeight.w400,
                     color: widget.textColor,
-                    letterSpacing: 0.5,
+                    letterSpacing: widget.isSelected ? 0.8 : 0.5,
                   ),
                   child: Text(widget.label),
                 ),
