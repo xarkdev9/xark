@@ -143,31 +143,21 @@ class _FeedItem extends ConsumerWidget {
       computedStatus = MessageStatus.delivered;
     }
 
-    // Format timestamp
-    final ts = message.timestamp;
-    final timeStr = '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}';
-
     // Media child for image messages
     Widget? mediaChild;
     if (message.media != null) {
       mediaChild = EncryptedImageView(metadata: message.media!);
     }
 
-    // iMessage style: timestamp only on last message in group
-    // Receipt ticks only on last outbound message in the entire feed
-    final showTimestamp = isLastInGroup;
-    final isLastSent = isOutbound && index == 0; // index 0 = newest in reversed list
-
     return RepaintBoundary(
       child: ChatBubble(
         text: message.text ?? '',
         isOutbound: isOutbound,
-        status: isLastSent ? computedStatus : MessageStatus.sent,
+        status: computedStatus,
         isFirstInGroup: isFirstInGroup,
         isLastInGroup: isLastInGroup,
-        timestamp: showTimestamp ? timeStr : null,
-        showReceipt: isLastSent,
         mediaChild: mediaChild,
+        senderId: message.senderId,
         onReply: onReply != null ? () => onReply!(message) : null,
       ),
     );

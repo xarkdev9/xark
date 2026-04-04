@@ -1,27 +1,28 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import '../theme.dart';
 
-/// Zero-Box Chat Bubble with smart corner radii, receipt morphing,
+/// Glassmorphic Chat Bubble with avatars, haptic scale, smart corner radii,
 /// and swipe-to-reply spring physics.
 ///
-/// Zero-Box: Flat backgrounds (#EF7C6E sent, #E8E3DD received). No shadows.
-/// No-Bold: Text at w400, timestamp at w300.
+/// Glassmorphism: Asymmetric backdrop blur (outbound 20σ, inbound 8σ).
+/// No-Bold: Text at w400, sender name at w300.
 /// Smart Corners: Consecutive same-sender messages reduce inner radius to 4.
-/// Receipt Morph: AnimatedSwitcher(300ms) for fluid tick transitions.
+/// Haptic Scale: Long-press scales to 0.98 with mediumImpact feedback.
 /// Swipe Physics: Horizontal drag → SpringSimulation snap-back.
 
 class ChatBubble extends StatefulWidget {
   final String text;
   final bool isOutbound;
   final MessageStatus status;
-  final bool isFirstInGroup;  // First message from this sender in sequence
-  final bool isLastInGroup;   // Last message from this sender in sequence
-  final Widget? mediaChild;   // EncryptedImageView nests here
-  final String? timestamp;
-  final bool showReceipt;
+  final bool isFirstInGroup;
+  final bool isLastInGroup;
+  final Widget? mediaChild;
+  final String? senderId;
   final VoidCallback? onReply;
 
   const ChatBubble({
@@ -32,8 +33,7 @@ class ChatBubble extends StatefulWidget {
     this.isFirstInGroup = true,
     this.isLastInGroup = true,
     this.mediaChild,
-    this.timestamp,
-    this.showReceipt = false,
+    this.senderId,
     this.onReply,
   });
 
@@ -53,6 +53,21 @@ class _ChatBubbleState extends State<ChatBubble>
   static const double _dragResistance = 0.35;
 
   static const _reactionEmojis = ['❤️', '😂', '👍', '😮', '🔥'];
+
+  static const _avatarColors = <String, Color>{
+    'priya': Color(0xFFFF6B6B),
+    'dad': Color(0xFF4ECDC4),
+    'me': Color(0xFFFFB347),
+    'emma': Color(0xFF9B59B6),
+    'alex': Color(0xFF3498DB),
+    'mom': Color(0xFFE74C8B),
+    'liam': Color(0xFF2ECC71),
+    'noah': Color(0xFF1ABC9C),
+    'sofia': Color(0xFFE67E22),
+    'maya': Color(0xFFF39C12),
+  };
+
+  double _pressScale = 1.0;
 
   // Spring for snap-back: high stiffness, moderate damping
   static final SpringDescription _snapSpring = SpringDescription(
@@ -122,72 +137,11 @@ class _ChatBubbleState extends State<ChatBubble>
     }
   }
 
-  Widget _buildReceiptIcon() {
-    if (!widget.isOutbound) return const SizedBox.shrink();
-
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.6, end: 1.0).animate(animation),
-            child: child,
-          ),
-        );
-      },
-      child: _receiptIcon(),
-    );
-  }
-
-  Widget _receiptIcon() {
-    switch (widget.status) {
-      case MessageStatus.sending:
-        return Icon(
-          Icons.access_time,
-          key: const ValueKey('sending'),
-          size: 13,
-          color: HelloColors.inkTertiary.withValues(alpha: 0.5),
-        );
-      case MessageStatus.sent:
-        return Icon(
-          Icons.check,
-          key: const ValueKey('sent'),
-          size: 13,
-          color: HelloColors.inkTertiary.withValues(alpha: 0.5),
-        );
-      case MessageStatus.delivered:
-        return Icon(
-          Icons.done_all,
-          key: const ValueKey('delivered'),
-          size: 13,
-          color: HelloColors.inkTertiary.withValues(alpha: 0.5),
-        );
-      case MessageStatus.read:
-        return const Icon(
-          Icons.done_all,
-          key: ValueKey('read'),
-          size: 13,
-          color: Color(0xFFD4536B), // Rose accent for read
-        );
-      case MessageStatus.failed:
-        return Icon(
-          Icons.error_outline,
-          key: const ValueKey('failed'),
-          size: 13,
-          color: HelloColors.errorOrange.withValues(alpha: 0.8),
-        );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Bubble colors matching web CSS variables (globals.css)
-    const sentColor = Color(0xFFF0F0F0);     // --hello-bubble-sent
-    const receivedColor = Color(0xFFFFFFFF);  // --hello-bubble-received
-    final bgColor = widget.isOutbound ? sentColor : receivedColor;
+    // Asymmetric glassmorphism
+    final bubbleOpacity = widget.isOutbound ? 0.6 : 0.85;
+    final blurSigma = widget.isOutbound ? 20.0 : 8.0;
 
     // Tighter vertical spacing for grouped messages
     final topMargin = widget.isFirstInGroup ? 8.0 : 2.0;
@@ -196,7 +150,13 @@ class _ChatBubbleState extends State<ChatBubble>
     return GestureDetector(
       onLongPress: () {
         HapticFeedback.mediumImpact();
-        setState(() => _showReactionPicker = !_showReactionPicker);
+        setState(() {
+          _pressScale = 0.98;
+          _showReactionPicker = !_showReactionPicker;
+        });
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted) setState(() => _pressScale = 1.0);
+        });
       },
       onHorizontalDragUpdate: _onHorizontalDragUpdate,
       onHorizontalDragEnd: _onHorizontalDragEnd,
@@ -222,125 +182,183 @@ class _ChatBubbleState extends State<ChatBubble>
               ),
             ),
 
-          // The bubble + timestamp below
+          // The bubble + reactions
           Transform.translate(
             offset: Offset(_dragOffset, 0),
             child: Align(
               alignment: widget.isOutbound
                   ? Alignment.centerRight
                   : Alignment.centerLeft,
-              child: Column(
-                crossAxisAlignment: widget.isOutbound
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.68,
-                  ),
-                  margin: EdgeInsets.only(
-                    top: topMargin,
-                    bottom: 0,
-                    left: 16,
-                    right: 16,
-                  ),
-                  padding: widget.mediaChild != null
-                      ? EdgeInsets.zero
-                      : const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: _buildCornerRadii(),
-                    border: Border.all(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      width: 0.5,
-                    ),
-                  ),
-                  child: widget.mediaChild != null
-                      ? ClipRRect(
-                          borderRadius: _buildCornerRadii(),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              widget.mediaChild!,
-                              if (widget.text.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-                                  child: _buildTextContent(),
+              child: Transform.scale(
+                scale: _pressScale,
+                child: Column(
+                  crossAxisAlignment: widget.isOutbound
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
+                  children: [
+                    // Sender name for incoming group messages
+                    if (!widget.isOutbound && widget.isFirstInGroup && widget.senderId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 42, bottom: 2),
+                        child: Text(
+                          widget.senderId!,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w300,
+                            color: HelloColors.inkTertiary,
+                          ),
+                        ),
+                      ),
+
+                    // Avatar row + glass bubble
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Avatar (incoming, first in group only)
+                        if (!widget.isOutbound && widget.isFirstInGroup)
+                          Container(
+                            width: 28,
+                            height: 28,
+                            margin: const EdgeInsets.only(right: 6, bottom: 2),
+                            decoration: BoxDecoration(
+                              color: _avatarColors[widget.senderId?.toLowerCase()] ?? HelloColors.accent,
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              (widget.senderId ?? '?')[0].toUpperCase(),
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white,
+                              ),
+                            ),
+                          )
+                        else if (!widget.isOutbound)
+                          const SizedBox(width: 34), // Space for missing avatar (grouped messages)
+
+                        // The glass bubble
+                        Flexible(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              top: topMargin,
+                              left: widget.isOutbound ? 16 : 0,
+                              right: widget.isOutbound ? 16 : 16,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: _buildCornerRadii(),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth: MediaQuery.of(context).size.width * 0.68,
+                                  ),
+                                  padding: widget.mediaChild != null
+                                      ? EdgeInsets.zero
+                                      : const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: bubbleOpacity),
+                                    borderRadius: _buildCornerRadii(),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: widget.mediaChild != null
+                                      ? ClipRRect(
+                                          borderRadius: _buildCornerRadii(),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              widget.mediaChild!,
+                                              if (widget.text.isNotEmpty)
+                                                Padding(
+                                                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+                                                  child: _buildTextContent(),
+                                                ),
+                                            ],
+                                          ),
+                                        )
+                                      : _buildTextContent(),
                                 ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Reaction display (selected emoji floats below bubble)
+                    if (_reaction != null)
+                      Padding(
+                        padding: EdgeInsets.only(
+                          left: widget.isOutbound ? 0 : 16,
+                          right: widget.isOutbound ? 16 : 0,
+                        ),
+                        child: Transform.translate(
+                          offset: const Offset(0, -6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: Text(_reaction!, style: const TextStyle(fontSize: 16)),
+                          ),
+                        ),
+                      ),
+
+                    // Reaction picker (floating emoji row on long press)
+                    if (_showReactionPicker)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
                             ],
                           ),
-                        )
-                      : _buildTextContent(),
-                ),
-                // Reaction display (selected emoji floats below bubble)
-                if (_reaction != null)
-                  Padding(
-                    padding: EdgeInsets.only(
-                      left: widget.isOutbound ? 0 : 16,
-                      right: widget.isOutbound ? 16 : 0,
-                    ),
-                    child: Transform.translate(
-                      offset: const Offset(0, -6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                            ),
-                          ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: _reactionEmojis.map((emoji) =>
+                              GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  setState(() {
+                                    _reaction = emoji;
+                                    _showReactionPicker = false;
+                                  });
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                                ),
+                              ),
+                            ).toList(),
+                          ),
                         ),
-                        child: Text(_reaction!, style: const TextStyle(fontSize: 16)),
                       ),
-                    ),
-                  ),
 
-                // Reaction picker (floating emoji row on long press)
-                if (_showReactionPicker)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: _reactionEmojis.map((emoji) =>
-                          GestureDetector(
-                            onTap: () {
-                              HapticFeedback.lightImpact();
-                              setState(() {
-                                _reaction = emoji;
-                                _showReactionPicker = false;
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Text(emoji, style: const TextStyle(fontSize: 24)),
-                            ),
-                          ),
-                        ).toList(),
-                      ),
-                    ),
-                  ),
-
-                // Timestamp + receipt BELOW the bubble (iMessage style)
-                _buildTimestampRow(),
-                SizedBox(height: bottomMargin),
-              ],
-            ),
+                    SizedBox(height: bottomMargin),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -358,42 +376,6 @@ class _ChatBubbleState extends State<ChatBubble>
         fontWeight: FontWeight.w400,
         color: HelloColors.inkPrimary.withValues(alpha: 0.9),
         height: 1.35,
-      ),
-    );
-  }
-
-  /// Timestamp + receipt shown BELOW the bubble, not inside
-  Widget _buildTimestampRow() {
-    if (widget.timestamp == null && !widget.showReceipt) {
-      return const SizedBox.shrink();
-    }
-    return Padding(
-      padding: EdgeInsets.only(
-        top: 2,
-        left: widget.isOutbound ? 0 : 20,
-        right: widget.isOutbound ? 20 : 0,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: widget.isOutbound
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        children: [
-          if (widget.timestamp != null)
-            Text(
-              widget.timestamp!,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 11,
-                fontWeight: FontWeight.w300,
-                color: HelloColors.inkTertiary.withValues(alpha: 0.5),
-              ),
-            ),
-          if (widget.showReceipt && widget.isOutbound) ...[
-            const SizedBox(width: 3),
-            _buildReceiptIcon(),
-          ],
-        ],
       ),
     );
   }
