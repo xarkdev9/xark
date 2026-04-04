@@ -13,20 +13,76 @@ class ChatView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Embedded inside SpaceLayout PageView — no Scaffold/AppBar (parent owns the nav rail)
+    // iMessage-style: messages scroll BEHIND floating top and bottom bars
+    // with gradient fades at the edges
     return Container(
       color: HelloColors.voidBg,
-      child: Column(
+      child: Stack(
         children: [
-          Expanded(
+          // Messages fill the entire space, scroll behind everything
+          Positioned.fill(
             child: ChatFeed(spaceId: spaceId),
           ),
-          _TypingIndicatorWidget(spaceId: spaceId),
-          LiquidChatComposer(
-            onSend: (text) {
-              // SECURITY MANDATE: Pure visual morph. No decrypted context to AI.
-              ref.read(engineProvider).getSession(spaceId).sendText(text);
-            },
+
+          // Top fade: messages fade to transparent as they approach the top
+          Positioned(
+            top: 0, left: 0, right: 0,
+            height: 40,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      HelloColors.voidBg,
+                      HelloColors.voidBg.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom: typing indicator + composer floating over messages
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Bottom fade: messages fade before reaching composer
+                IgnorePointer(
+                  child: Container(
+                    height: 32,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          HelloColors.voidBg,
+                          HelloColors.voidBg.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Typing + Composer on solid background
+                Container(
+                  color: HelloColors.voidBg,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _TypingIndicatorWidget(spaceId: spaceId),
+                      LiquidChatComposer(
+                        onSend: (text) {
+                          ref.read(engineProvider).getSession(spaceId).sendText(text);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
