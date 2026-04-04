@@ -29,25 +29,6 @@ import '../widgets/action_card_widget.dart';
 // Rule: Overview is the ONLY dashboard. Everything else is Decision Cards.
 // ═══════════════════════════════════════════════════════════════════
 
-/// Known item-type categories (if items have these, the group is single-event)
-const _knownItemCategories = {
-  'Hotels', 'Flights', 'Dining', 'Experiences', 'Ideas',
-  'Restaurants', 'Gifts', 'Decorations',
-};
-
-/// For multi-event groups, map event names to their natural category label
-const _eventCategoryHints = <String, String>{
-  "Mom's Birthday": 'Restaurants',
-  'Thanksgiving': 'Menu',
-  'Retirement Party': 'Venues',
-  'Summer Vacation': 'Destinations',
-  'Wedding Gift': 'Gifts',
-  'Home Renovation': 'Contractors',
-  'Christmas 2026': 'Plans',
-  'Grocery Run': 'Shopping List',
-  'Photo Shoot': 'Locations',
-};
-
 /// Icons for Tier 2 pills
 const _categoryIcons = <String, IconData>{
   'overview': Icons.dashboard_outlined,
@@ -111,50 +92,56 @@ class _PlansViewState extends ConsumerState<PlansView> {
           );
         }
 
-        // ── Detect: single-event or multi-event group ──
-        final itemCategories = allItems.map((i) => i.category ?? '').toSet();
-        final isSingleEvent = itemCategories.every((c) => _knownItemCategories.contains(c));
+        // ── Parse items: extract event and category from "Event|Category" format ──
+        // If category contains "|", it's multi-event: "Hawaii (Maui)|Hotels"
+        // If not, the category IS the Tier 2 category (single-event group like Bali)
 
-        // ── Build Tier 1: Events ──
+        final bool hasDelimiter = allItems.any((i) => (i.category ?? '').contains('|'));
+
         late final List<String> eventNames;
         late final Map<String, List<DecisionItem>> eventItemsMap;
 
-        if (isSingleEvent) {
-          // Bali-style: one event = group name, categories go to Tier 2
-          eventNames = [groupName];
-          eventItemsMap = {groupName: allItems};
-        } else {
-          // Family-style: item.category = event names
+        if (hasDelimiter) {
+          // Multi-event: parse "Event|Category"
           eventItemsMap = <String, List<DecisionItem>>{};
           for (final item in allItems) {
-            final event = item.category ?? 'General';
+            final parts = (item.category ?? 'General|Items').split('|');
+            final event = parts[0].trim();
             eventItemsMap.putIfAbsent(event, () => []).add(item);
           }
-          // Sort by most active first
           eventNames = eventItemsMap.keys.toList()
             ..sort((a, b) {
               final sa = eventItemsMap[a]!.fold<double>(0, (s, i) => s + i.weightedScore);
               final sb = eventItemsMap[b]!.fold<double>(0, (s, i) => s + i.weightedScore);
               return sb.compareTo(sa);
             });
+        } else {
+          // Single-event: group name IS the event, item categories are Tier 2
+          eventNames = [groupName];
+          eventItemsMap = {groupName: allItems};
         }
 
-        // Clamp indices
         if (_selectedEventIdx >= eventNames.length) _selectedEventIdx = 0;
         final selectedEvent = eventNames[_selectedEventIdx];
         final eventItems = eventItemsMap[selectedEvent]!;
 
-        // ── Build Tier 2: Categories (dynamic per event) ──
+        // ── Build Tier 2: Categories (dynamic per selected event) ──
         final List<String> tier2Categories = ['Overview', 'Recommendations'];
 
-        if (isSingleEvent) {
-          // Extract unique item categories as Tier 2 tabs
+        if (hasDelimiter) {
+          // Extract sub-categories from "Event|Category" for this event
+          final subCats = <String>{};
+          for (final item in eventItems) {
+            final parts = (item.category ?? '').split('|');
+            if (parts.length > 1) subCats.add(parts[1].trim());
+          }
+          tier2Categories.addAll(subCats);
+        } else {
+          // Single-event: item.category IS the Tier 2 label (Hotels, Flights, etc.)
           final cats = <String>{};
           for (final item in eventItems) {
-            final c = item.category ?? 'Ideas';
-            cats.add(c);
+            cats.add(item.category ?? 'Ideas');
           }
-          // Sort: most items first
           final sortedCats = cats.toList()
             ..sort((a, b) {
               final ca = eventItems.where((i) => i.category == a).length;
@@ -162,14 +149,6 @@ class _PlansViewState extends ConsumerState<PlansView> {
               return cb.compareTo(ca);
             });
           tier2Categories.addAll(sortedCats);
-        } else {
-          // Multi-event: derive category from event name
-          final hint = _eventCategoryHints[selectedEvent];
-          if (hint != null) {
-            tier2Categories.add(hint);
-          } else {
-            tier2Categories.add('Items');
-          }
         }
         tier2Categories.add('Split');
 
@@ -178,9 +157,16 @@ class _PlansViewState extends ConsumerState<PlansView> {
 
         // ── Get items for the selected Tier 2 category ──
         List<DecisionItem> catItems;
-        if (isSingleEvent && _selectedCatIdx >= 2 && _selectedCatIdx < tier2Categories.length - 1) {
-          // Filter items by the selected category name
-          catItems = eventItems.where((i) => i.category == selectedCat).toList();
+        if (_selectedCatIdx >= 2 && _selectedCatIdx < tier2Categories.length - 1) {
+          if (hasDelimiter) {
+            // Match by sub-category part after "|"
+            catItems = eventItems.where((i) {
+              final parts = (i.category ?? '').split('|');
+              return parts.length > 1 && parts[1].trim() == selectedCat;
+            }).toList();
+          } else {
+            catItems = eventItems.where((i) => i.category == selectedCat).toList();
+          }
         } else {
           catItems = eventItems;
         }

@@ -611,10 +611,111 @@ class MockDataSeed {
     }
 
     else if (groupId == 'family') {
+      // FORMAT: category = "Event|Category" for multi-event groups
       return [
-        // ── Mom's Birthday — restaurant vote (active, hot) ──
+        // ═══ HAWAII (MAUI) — full travel module ═══
         DecisionItem(
-          id: 'item_fam_bday1', groupId: 'family', category: "Mom's Birthday",
+          id: 'item_hi_h1', groupId: 'family', category: 'Hawaii (Maui)|Hotels',
+          title: 'Fairmont Kea Lani',
+          description: '\$520/night \u2022 5-star \u2022 Wailea Beach',
+          state: 'voting', weightedScore: 8.0, agreementScore: 0.75,
+          photoUrl: 'assets/decide/hawaii_hotel1.jpg',
+          proposedBy: 'priya',
+        ),
+        DecisionItem(
+          id: 'item_hi_h2', groupId: 'family', category: 'Hawaii (Maui)|Hotels',
+          title: 'Grand Wailea',
+          description: '\$480/night \u2022 Resort \u2022 9 pools',
+          state: 'voting', weightedScore: 5.0, agreementScore: 0.55,
+          photoUrl: 'assets/decide/hawaii_hotel2.jpg',
+          proposedBy: 'dad',
+        ),
+        DecisionItem(
+          id: 'item_hi_f1', groupId: 'family', category: 'Hawaii (Maui)|Flights',
+          title: 'United UA 1245 (SFO\u2192OGG)',
+          description: '\$380 round trip \u2022 Direct \u2022 5h 20m',
+          state: 'voting', weightedScore: 6.0, agreementScore: 0.60,
+          photoUrl: 'assets/decide/bali_flight_sq.jpg',
+          proposedBy: 'me',
+        ),
+        DecisionItem(
+          id: 'item_hi_f2', groupId: 'family', category: 'Hawaii (Maui)|Flights',
+          title: 'Hawaiian Airlines HA 11',
+          description: '\$420 round trip \u2022 Direct \u2022 5h 45m',
+          state: 'voting', weightedScore: 3.0, agreementScore: 0.35,
+          photoUrl: 'assets/decide/bali_flight_ga.jpg',
+          proposedBy: 'priya',
+        ),
+        DecisionItem(
+          id: 'item_hi_a1', groupId: 'family', category: 'Hawaii (Maui)|Activities',
+          title: 'Snorkeling at Molokini',
+          description: '\$95/person \u2022 Half day \u2022 Boat tour',
+          state: 'voting', weightedScore: 7.0, agreementScore: 0.70,
+          photoUrl: 'assets/decide/hawaii_snorkel.jpg',
+          proposedBy: 'priya',
+        ),
+        DecisionItem(
+          id: 'item_hi_a2', groupId: 'family', category: 'Hawaii (Maui)|Activities',
+          title: 'Road to Hana',
+          description: 'Full day drive \u2022 Waterfalls \u2022 Black sand beach',
+          state: 'voting', weightedScore: 4.0, agreementScore: 0.45,
+          photoUrl: 'assets/decide/hawaii_hana.jpg',
+          proposedBy: 'me',
+        ),
+        DecisionItem(
+          id: 'item_hi_a3', groupId: 'family', category: 'Hawaii (Maui)|Activities',
+          title: 'Old Lahaina Luau',
+          description: '\$130/person \u2022 Dinner + show \u2022 Oceanfront',
+          state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
+          photoUrl: 'assets/decide/hawaii_luau.jpg',
+          proposedBy: 'dad',
+        ),
+        DecisionItem(
+          id: 'item_hi_d1', groupId: 'family', category: "Hawaii (Maui)|Dining",
+          title: "Mama's Fish House",
+          description: 'Iconic seafood \u2022 Reserve 2 months ahead',
+          state: 'voting', weightedScore: 9.0, agreementScore: 0.85,
+          photoUrl: 'assets/decide/hawaii_fish.jpg',
+          proposedBy: 'priya', reactions: {'love': 'me'},
+        ),
+
+        // ═══ LAKE TAHOE — full travel module ═══
+        DecisionItem(
+          id: 'item_lt_h1', groupId: 'family', category: 'Lake Tahoe|Cabins',
+          title: 'Northstar Lodge & Spa',
+          description: '\$350/night \u2022 Ski-in/ski-out \u2022 Hot tub',
+          state: 'voting', weightedScore: 6.0, agreementScore: 0.65,
+          photoUrl: 'assets/decide/tahoe_cabin1.jpg',
+          proposedBy: 'dad',
+        ),
+        DecisionItem(
+          id: 'item_lt_h2', groupId: 'family', category: 'Lake Tahoe|Cabins',
+          title: 'Lakefront A-Frame',
+          description: '\$280/night \u2022 Airbnb \u2022 Sleeps 8',
+          state: 'voting', weightedScore: 4.0, agreementScore: 0.50,
+          photoUrl: 'assets/decide/tahoe_cabin2.jpg',
+          proposedBy: 'me',
+        ),
+        DecisionItem(
+          id: 'item_lt_a1', groupId: 'family', category: 'Lake Tahoe|Activities',
+          title: 'Emerald Bay Hike',
+          description: '6.4 mi round trip \u2022 Moderate \u2022 Lake views',
+          state: 'voting', weightedScore: 5.0, agreementScore: 0.55,
+          photoUrl: 'assets/decide/tahoe_hike.jpg',
+          proposedBy: 'priya',
+        ),
+        DecisionItem(
+          id: 'item_lt_a2', groupId: 'family', category: 'Lake Tahoe|Activities',
+          title: 'Kayak Sand Harbor',
+          description: '\$45/person \u2022 2 hours \u2022 Crystal clear water',
+          state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
+          photoUrl: 'assets/decide/tahoe_kayak.jpg',
+          proposedBy: 'dad',
+        ),
+
+        // ═══ MOM'S BIRTHDAY — categories within event ═══
+        DecisionItem(
+          id: 'item_fam_bday1', groupId: 'family', category: "Mom's Birthday|Restaurants",
           title: 'Carbone (Italian)',
           description: 'Private dining room \u2022 \$85/person',
           state: 'voting', weightedScore: 8.0, agreementScore: 0.82,
@@ -622,16 +723,40 @@ class MockDataSeed {
           proposedBy: 'priya', reactions: {'love': 'me'},
         ),
         DecisionItem(
-          id: 'item_fam_bday2', groupId: 'family', category: "Mom's Birthday",
+          id: 'item_fam_bday2', groupId: 'family', category: "Mom's Birthday|Restaurants",
           title: 'Nobu (Japanese)',
           description: 'Omakase tasting \u2022 \$120/person',
           state: 'voting', weightedScore: 3.0, agreementScore: 0.40,
           photoUrl: 'assets/decide/family_dinner.jpg',
           proposedBy: 'dad',
         ),
-        // ── Thanksgiving 2026 — who brings what ──
         DecisionItem(
-          id: 'item_fam_thx1', groupId: 'family', category: 'Thanksgiving',
+          id: 'item_fam_bday3', groupId: 'family', category: "Mom's Birthday|Gifts",
+          title: 'Aesop Departure Kit',
+          description: 'Luxury travel skincare set',
+          state: 'voting', weightedScore: 4.0, agreementScore: 0.60,
+          photoUrl: 'assets/decide/sarah_aesop.jpg',
+          proposedBy: 'me',
+        ),
+        DecisionItem(
+          id: 'item_fam_bday4', groupId: 'family', category: "Mom's Birthday|Decorations",
+          title: 'Balloon Arch (Rose Gold)',
+          description: 'Setup at venue 2hrs before',
+          state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
+          proposedBy: 'priya',
+        ),
+        DecisionItem(
+          id: 'item_fam_bday5', groupId: 'family', category: "Mom's Birthday|Decorations",
+          title: 'Custom Cake (Lady M)',
+          description: 'Mille crepe, feeds 12',
+          state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
+          photoUrl: 'assets/decide/sarah_cake.jpg',
+          proposedBy: 'me',
+        ),
+
+        // ═══ THANKSGIVING ═══
+        DecisionItem(
+          id: 'item_fam_thx1', groupId: 'family', category: 'Thanksgiving|Menu',
           title: 'Turkey (Deep Fried)',
           description: 'Dad volunteers \u2022 20 lb bird',
           state: 'locked', weightedScore: 10.0, agreementScore: 1.0, isLocked: true,
@@ -639,15 +764,16 @@ class MockDataSeed {
           proposedBy: 'dad',
         ),
         DecisionItem(
-          id: 'item_fam_thx2', groupId: 'family', category: 'Thanksgiving',
+          id: 'item_fam_thx2', groupId: 'family', category: 'Thanksgiving|Menu',
           title: 'Pumpkin Pie vs Pecan Pie',
           description: 'Annual debate \u2022 vote now',
           state: 'voting', weightedScore: 4.0, agreementScore: 0.55,
           proposedBy: 'me',
         ),
-        // ── Dad's Retirement Party — venue ──
+
+        // ═══ RETIREMENT PARTY ═══
         DecisionItem(
-          id: 'item_fam_retire1', groupId: 'family', category: 'Retirement Party',
+          id: 'item_fam_retire1', groupId: 'family', category: 'Retirement Party|Venues',
           title: 'Backyard BBQ (Home)',
           description: 'Casual \u2022 50 guests \u2022 free venue',
           state: 'voting', weightedScore: 6.0, agreementScore: 0.70,
@@ -655,67 +781,24 @@ class MockDataSeed {
           proposedBy: 'me',
         ),
         DecisionItem(
-          id: 'item_fam_retire2', groupId: 'family', category: 'Retirement Party',
+          id: 'item_fam_retire2', groupId: 'family', category: 'Retirement Party|Venues',
           title: 'Restaurant Buyout',
           description: 'Fancy \u2022 50 guests \u2022 \$3,000',
           state: 'voting', weightedScore: 2.0, agreementScore: 0.30,
           proposedBy: 'priya',
         ),
-        // ── Summer Vacation — destination vote ──
+
+        // ═══ SIMPLE EVENTS (no sub-category needed) ═══
         DecisionItem(
-          id: 'item_fam_vac1', groupId: 'family', category: 'Summer Vacation',
-          title: 'Hawaii (Maui)',
-          description: 'Beach house \u2022 7 nights \u2022 \$4,200',
-          state: 'voting', weightedScore: 7.0, agreementScore: 0.65,
-          photoUrl: 'assets/decide/family_vacation.jpg',
-          proposedBy: 'priya',
-        ),
-        DecisionItem(
-          id: 'item_fam_vac2', groupId: 'family', category: 'Summer Vacation',
-          title: 'Lake Tahoe Cabin',
-          description: 'Mountain retreat \u2022 5 nights \u2022 \$2,800',
-          state: 'voting', weightedScore: 5.0, agreementScore: 0.50,
-          proposedBy: 'dad',
-        ),
-        // ── Cousin's Wedding Gift ──
-        DecisionItem(
-          id: 'item_fam_gift1', groupId: 'family', category: 'Wedding Gift',
+          id: 'item_fam_gift1', groupId: 'family', category: 'Wedding Gift|Gifts',
           title: 'KitchenAid Mixer (Red)',
           description: 'From registry \u2022 \$350',
           state: 'voting', weightedScore: 5.0, agreementScore: 0.60,
           photoUrl: 'assets/decide/family_wedding.jpg',
           proposedBy: 'me',
         ),
-        // ── Home Renovation — contractor quotes ──
         DecisionItem(
-          id: 'item_fam_reno1', groupId: 'family', category: 'Home Renovation',
-          title: 'Kitchen Remodel (Phase 1)',
-          description: 'Contractor A \u2022 \$15,000 \u2022 4 weeks',
-          state: 'voting', weightedScore: 3.0, agreementScore: 0.35,
-          photoUrl: 'assets/decide/family_renovation.jpg',
-          proposedBy: 'dad',
-        ),
-        // ── Christmas 2026 — early planning ──
-        DecisionItem(
-          id: 'item_fam_xmas1', groupId: 'family', category: 'Christmas 2026',
-          title: 'Secret Santa (Budget \$50)',
-          description: 'Draw names at Thanksgiving',
-          state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
-          photoUrl: 'assets/decide/family_christmas.jpg',
-          proposedBy: 'priya',
-        ),
-        // ── Grocery Run — this week ──
-        DecisionItem(
-          id: 'item_fam_groc1', groupId: 'family', category: 'Grocery Run',
-          title: "Costco List (Saturday)",
-          description: 'Chicken, rice, veggies, snacks',
-          state: 'proposed', weightedScore: 0.0, agreementScore: 0.0,
-          photoUrl: 'assets/decide/family_grocery.jpg',
-          proposedBy: 'me',
-        ),
-        // ── Family Photo Shoot — DONE (locked) ──
-        DecisionItem(
-          id: 'item_fam_photo1', groupId: 'family', category: 'Photo Shoot',
+          id: 'item_fam_photo1', groupId: 'family', category: 'Photo Shoot|Locations',
           title: 'Golden Hour at Griffith Park',
           description: 'Booked \u2022 Oct 15 \u2022 4:30 PM',
           state: 'locked', weightedScore: 12.0, agreementScore: 1.0, isLocked: true,
