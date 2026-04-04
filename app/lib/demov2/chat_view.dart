@@ -7,21 +7,80 @@ import '../main.dart'; // engineProvider
 
 import '../providers/conversation_controller.dart';
 
-class ChatView extends ConsumerWidget {
+const _groupAmbientColors = <String, List<Color>>{
+  'family': [Color(0xFFFFB347), Color(0xFFFF6B6B)],
+  'bali': [Color(0xFF4ECDC4), Color(0xFF45B7D1)],
+  'tokyo': [Color(0xFF9B59B6), Color(0xFF3498DB)],
+  'sarah': [Color(0xFFE74C8B), Color(0xFFF39C12)],
+  'poker': [Color(0xFF2ECC71), Color(0xFF1ABC9C)],
+  'alaska': [Color(0xFF45B7D1), Color(0xFF96E6A1)],
+  'swiss': [Color(0xFF87CEEB), Color(0xFF98FB98)],
+  'sf': [Color(0xFFFF6347), Color(0xFFFFD700)],
+  'delhi': [Color(0xFFFF9933), Color(0xFF138808)],
+};
+
+class ChatView extends ConsumerStatefulWidget {
   final String spaceId;
   const ChatView({super.key, required this.spaceId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatView> createState() => _ChatViewState();
+}
+
+class _ChatViewState extends ConsumerState<ChatView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _gradientController;
+
+  @override
+  void initState() {
+    super.initState();
+    _gradientController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 20),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _gradientController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // iMessage-style: messages scroll BEHIND floating top and bottom bars
     // with gradient fades at the edges
     return Container(
       color: HelloColors.voidBg,
       child: Stack(
         children: [
+          // Ambient gradient with parallax (first layer, behind messages)
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _gradientController,
+              builder: (context, child) {
+                final t = _gradientController.value;
+                final colors = _groupAmbientColors[widget.spaceId] ??
+                    [const Color(0xFFFF6B35), const Color(0xFFFF9F43)];
+                return Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment(t - 0.5, -1),
+                      end: Alignment(1 - t, 1),
+                      colors: [
+                        colors[0].withValues(alpha: 0.06),
+                        colors[1].withValues(alpha: 0.06),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
           // Messages fill the entire space, scroll behind everything
           Positioned.fill(
-            child: ChatFeed(spaceId: spaceId),
+            child: ChatFeed(spaceId: widget.spaceId),
           ),
 
           // Top fade: messages fade to transparent as they approach the top
@@ -66,16 +125,16 @@ class ChatView extends ConsumerWidget {
                     ),
                   ),
                 ),
-                // Typing + Composer on solid background
+                // Typing + Composer on transparent background (glass effect ready)
                 Container(
-                  color: HelloColors.voidBg,
+                  color: Colors.transparent,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _TypingIndicatorWidget(spaceId: spaceId),
+                      _TypingIndicatorWidget(spaceId: widget.spaceId),
                       LiquidChatComposer(
                         onSend: (text) {
-                          ref.read(engineProvider).getSession(spaceId).sendText(text);
+                          ref.read(engineProvider).getSession(widget.spaceId).sendText(text);
                         },
                       ),
                     ],
@@ -109,7 +168,7 @@ class _TypingIndicatorWidgetState extends ConsumerState<_TypingIndicatorWidget> 
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
-    
+
     _opacityAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -198,28 +257,28 @@ class _ComposerState extends ConsumerState<_Composer> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: HelloColors.chrome, 
+      color: HelloColors.chrome,
       padding: const EdgeInsets.only(
         left: 16.0,
         right: 16.0,
         top: 12.0,
-        bottom: 96.0, 
+        bottom: 96.0,
       ),
       child: Row(
         children: [
           Expanded(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 400),
-              curve: Curves.fastOutSlowIn, 
+              curve: Curves.fastOutSlowIn,
               decoration: BoxDecoration(
                 // Morphs to #D4536B logic (HelloColors.accent) securely representing intent
-                color: _isHelloMode 
-                    ? HelloColors.accent.withValues(alpha: 0.15) 
+                color: _isHelloMode
+                    ? HelloColors.accent.withValues(alpha: 0.15)
                     : HelloColors.recessed,
                 borderRadius: BorderRadius.circular(24.0),
                 border: Border.all(
-                  color: _isHelloMode 
-                      ? HelloColors.accent.withValues(alpha: 0.5) 
+                  color: _isHelloMode
+                      ? HelloColors.accent.withValues(alpha: 0.5)
                       : Colors.transparent,
                   width: 1.0,
                 ),
@@ -229,9 +288,9 @@ class _ComposerState extends ConsumerState<_Composer> {
                 controller: _controller,
                 onSubmitted: (_) => _handleSend(),
                 decoration: InputDecoration(
-                  hintText: _isHelloMode ? "ask hello anything..." : "Message...", // Global Branding 
+                  hintText: _isHelloMode ? "ask hello anything..." : "Message...", // Global Branding
                   hintStyle: HelloTypography.hint.copyWith(
-                    color: _isHelloMode 
+                    color: _isHelloMode
                         ? HelloColors.accent.withValues(alpha: 0.6)
                         : HelloColors.inkTertiary,
                   ),
@@ -260,4 +319,3 @@ class _ComposerState extends ConsumerState<_Composer> {
     );
   }
 }
-

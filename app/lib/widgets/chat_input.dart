@@ -84,7 +84,7 @@ class _LiquidChatComposerState extends State<LiquidChatComposer>
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 400),
         curve: SpringCurve.gentle,
@@ -92,22 +92,22 @@ class _LiquidChatComposerState extends State<LiquidChatComposer>
           borderRadius: BorderRadius.circular(24),
           color: _isAIMode
               ? HelloColors.accent.withOpacity(0.06)
-              : HelloColors.inkPrimary.withOpacity(0.03),
-          // Liquid glow — ambient shadow, no hard border
+              : Colors.white.withValues(alpha: 0.8),
+          // Floating glass shadow
           boxShadow: [
             BoxShadow(
               color: _isAIMode
-                  ? HelloColors.accent.withOpacity(0.15)
-                  : HelloColors.inkPrimary.withOpacity(0.04),
-              blurRadius: 40,
-              spreadRadius: 0,
+                  ? HelloColors.accent.withOpacity(0.12)
+                  : Colors.black.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
@@ -121,10 +121,10 @@ class _LiquidChatComposerState extends State<LiquidChatComposer>
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         child: Icon(
-                          Icons.add_rounded,
-                          size: 22,
+                          Icons.auto_awesome,
+                          size: 20,
                           color: _isAIMode
-                              ? HelloColors.accent.withOpacity(0.6)
+                              ? HelloColors.accent.withOpacity(0.8)
                               : HelloColors.inkPrimary.withOpacity(0.3),
                         ),
                       ),
