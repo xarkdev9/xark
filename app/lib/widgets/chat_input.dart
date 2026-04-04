@@ -202,21 +202,7 @@ class _LiquidChatComposerState extends State<LiquidChatComposer>
                                   color: HelloColors.accent,
                                 ),
                               )
-                            : ShaderMask(
-                                key: const ValueKey('hello'),
-                                shaderCallback: (bounds) =>
-                                    HelloColors.liquidFireStandard.createShader(bounds),
-                                child: const Text(
-                                  'hello',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w400,
-                                    letterSpacing: -0.02 * 18,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
+                            : _HelloOrb(key: const ValueKey('hello')),
                       ),
                     ),
                   ),
@@ -226,6 +212,74 @@ class _LiquidChatComposerState extends State<LiquidChatComposer>
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Breathing Liquid Fire orb — the AI presence indicator
+class _HelloOrb extends StatefulWidget {
+  const _HelloOrb({super.key});
+
+  @override
+  State<_HelloOrb> createState() => _HelloOrbState();
+}
+
+class _HelloOrbState extends State<_HelloOrb> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = _controller.value;
+        final scale = 0.9 + (t * 0.2); // 0.9 → 1.1
+        final glowAlpha = 0.15 + (t * 0.25); // 0.15 → 0.4
+
+        return Transform.scale(
+          scale: scale,
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: HelloColors.liquidFireStandard,
+              boxShadow: [
+                BoxShadow(
+                  color: HelloColors.accent.withValues(alpha: glowAlpha),
+                  blurRadius: 14,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'h',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

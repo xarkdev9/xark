@@ -198,7 +198,23 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
               ),
             ),
 
-            // Page content
+            // Floating context hint (below header, above content)
+            if (_currentIndex == 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                child: Text(
+                  'swipe for plans  \u203A',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w300,
+                    color: HelloColors.inkTertiary.withValues(alpha: 0.4),
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+
+            // Page content with ambient gradient
             Expanded(
               child: Stack(
                 children: [
@@ -217,6 +233,26 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout> {
                     ],
                   ),
 
+                  // Ambient right-edge glow (Plans is waiting to the right)
+                  if (_currentIndex == 0)
+                    Positioned(
+                      right: 0, top: 0, bottom: 0,
+                      width: 24,
+                      child: IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerRight,
+                              end: Alignment.centerLeft,
+                              colors: [
+                                HelloColors.accent.withValues(alpha: 0.06),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
