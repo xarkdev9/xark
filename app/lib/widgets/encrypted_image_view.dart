@@ -46,7 +46,13 @@ class _EncryptedImageViewState extends ConsumerState<EncryptedImageView> {
   @override
   void initState() {
     super.initState();
-    _executeDecryptionPipeline();
+    // Asset images skip the decrypt pipeline entirely
+    final url = widget.metadata.downloadUrl;
+    if (url != null && url.startsWith('assets/')) {
+      _loading = false;
+    } else {
+      _executeDecryptionPipeline();
+    }
   }
 
   Future<void> _executeDecryptionPipeline() async {
