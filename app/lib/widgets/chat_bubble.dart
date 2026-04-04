@@ -54,24 +54,6 @@ class _ChatBubbleState extends State<ChatBubble>
 
   static const _reactionEmojis = ['❤️', '😂', '👍', '😮', '🔥'];
 
-  static const _avatarColors = <String, Color>{
-    'priya': Color(0xFFFF6B6B),
-    'dad': Color(0xFF4ECDC4),
-    'me': Color(0xFFFFB347),
-    'emma': Color(0xFF9B59B6),
-    'alex': Color(0xFF3498DB),
-    'mom': Color(0xFFE74C8B),
-    'liam': Color(0xFF2ECC71),
-    'noah': Color(0xFF1ABC9C),
-    'sofia': Color(0xFFE67E22),
-    'maya': Color(0xFFF39C12),
-    'user_0': Color(0xFFFF6B6B),
-    'user_1': Color(0xFF4ECDC4),
-    'user_2': Color(0xFF9B59B6),
-    'user_3': Color(0xFF3498DB),
-    'user_4': Color(0xFF2ECC71),
-  };
-
   // Map raw user IDs to display names
   static const _senderNames = <String, String>{
     'user_0': 'Sarah',
@@ -224,7 +206,7 @@ class _ChatBubbleState extends State<ChatBubble>
                     // Sender name for incoming group messages
                     if (!widget.isOutbound && widget.isFirstInGroup && widget.senderId != null)
                       Padding(
-                        padding: const EdgeInsets.only(left: 42, bottom: 3),
+                        padding: const EdgeInsets.only(left: 20, bottom: 3),
                         child: Text(
                           _displayName(widget.senderId),
                           style: const TextStyle(
@@ -236,47 +218,13 @@ class _ChatBubbleState extends State<ChatBubble>
                         ),
                       ),
 
-                    // Avatar row + glass bubble
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: widget.isOutbound ? 0 : 8,
-                        right: widget.isOutbound ? 0 : 0,
-                      ),
-                      child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Avatar (incoming, first in group only)
-                        if (!widget.isOutbound && widget.isFirstInGroup)
-                          Container(
-                            width: 28,
-                            height: 28,
-                            margin: const EdgeInsets.only(right: 6, bottom: 2),
-                            decoration: BoxDecoration(
-                              color: _avatarColors[widget.senderId?.toLowerCase()] ?? HelloColors.accent,
-                              shape: BoxShape.circle,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              _displayName(widget.senderId)[0].toUpperCase(),
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.white,
-                              ),
-                            ),
-                          )
-                        else if (!widget.isOutbound)
-                          const SizedBox(width: 34), // Space for missing avatar (grouped messages)
-
-                        // The glass bubble
-                        Flexible(
+                    // Glass bubble (no inline avatars — iMessage style)
+                    Flexible(
                           child: Padding(
                             padding: EdgeInsets.only(
                               top: topMargin,
-                              left: widget.isOutbound ? 48 : 0,
-                              right: widget.isOutbound ? 12 : 12,
+                              left: widget.isOutbound ? 48 : 16,
+                              right: widget.isOutbound ? 16 : 48,
                             ),
                             child: ClipRRect(
                               borderRadius: _buildCornerRadii(),
@@ -318,10 +266,6 @@ class _ChatBubbleState extends State<ChatBubble>
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    ),
-
                     // Reaction display (selected emoji floats below bubble)
                     if (_reaction != null)
                       Padding(
