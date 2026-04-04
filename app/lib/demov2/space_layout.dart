@@ -25,6 +25,7 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
   void initState() {
     super.initState();
     _pageController = PageController();
+    _pageController.addListener(() => setState(() {}));
     _breatheController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -216,19 +217,43 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
             Expanded(
               child: Stack(
                 children: [
-                  PageView(
+                  PageView.builder(
                     controller: _pageController,
                     onPageChanged: (idx) => setState(() => _currentIndex = idx),
                     physics: const ClampingScrollPhysics(),
-                    children: [
-                      ProviderScope(
-                        overrides: const [],
-                        child: ClipRRect(
-                          child: ChatView(spaceId: widget.spaceId),
-                        ),
-                      ),
-                      PlansView(groupId: widget.spaceId),
-                    ],
+                    itemCount: 2,
+                    itemBuilder: (context, index) {
+                      final child = index == 0
+                          ? ProviderScope(
+                              overrides: const [],
+                              child: ClipRRect(
+                                child: ChatView(spaceId: widget.spaceId),
+                              ),
+                            )
+                          : PlansView(groupId: widget.spaceId);
+
+                      return AnimatedBuilder(
+                        animation: _pageController,
+                        builder: (context, _) {
+                          double pageOffset = 0;
+                          if (_pageController.position.haveDimensions) {
+                            pageOffset = (_pageController.page ?? 0) - index;
+                          }
+                          // Scale: 1.0 when fully visible, 0.92 when off-screen
+                          final scale = 1.0 - (pageOffset.abs() * 0.08);
+                          // Opacity: 1.0 when visible, 0.7 when off-screen
+                          final opacity = 1.0 - (pageOffset.abs() * 0.3);
+
+                          return Transform.scale(
+                            scale: scale.clamp(0.92, 1.0),
+                            child: Opacity(
+                              opacity: opacity.clamp(0.7, 1.0),
+                              child: child,
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
 
                   // Ambient right-edge glow on Chat tab
