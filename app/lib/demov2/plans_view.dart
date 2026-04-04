@@ -395,7 +395,11 @@ class _CategoryRail extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-// TIER 3: Clarity Canvas Overview
+// TIER 3: Next-Gen Overview (Soft UI + Spatial Depth)
+//
+// Design system: Soft UI Evolution + Spatial glass hints
+// Visual: photo thumbnails integrated, soft shadows for depth,
+// progress as ambient glow, avatar stacks, spring scale feedback
 // ═══════════════════════════════════════════════════════
 
 class _OverviewDashboard extends StatelessWidget {
@@ -404,7 +408,6 @@ class _OverviewDashboard extends StatelessWidget {
 
   const _OverviewDashboard({required this.eventName, required this.items});
 
-  /// Parse sub-category from "Event|Category" format
   String _subCategory(DecisionItem item) {
     final parts = (item.category ?? '').split('|');
     return parts.length > 1 ? parts[1].trim() : (item.category ?? 'General');
@@ -420,13 +423,11 @@ class _OverviewDashboard extends StatelessWidget {
     final doneCount = settled.length;
     final progress = total > 0 ? doneCount / total : 0.0;
 
-    // Group items by sub-category
+    // Group by sub-category
     final sectionMap = <String, List<DecisionItem>>{};
     for (final item in items) {
-      final cat = _subCategory(item);
-      sectionMap.putIfAbsent(cat, () => []).add(item);
+      sectionMap.putIfAbsent(_subCategory(item), () => []).add(item);
     }
-    // Sort sections: most active first
     final sectionKeys = sectionMap.keys.toList()
       ..sort((a, b) {
         final wa = sectionMap[a]!.fold<double>(0, (s, i) => s + i.weightedScore);
@@ -436,98 +437,131 @@ class _OverviewDashboard extends StatelessWidget {
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ═══ COMPACT HEADER — name + progress ring ═══
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(eventName, style: HelloTypography.hero.copyWith(fontSize: 22)),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$doneCount done \u00b7 ${voting.length} pending \u00b7 ${fresh.length} new',
-                      style: HelloTypography.hint,
-                    ),
-                  ],
+          // ═══ HEADER — event name + progress arc ═══
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
                 ),
-              ),
-              const SizedBox(width: 12),
-              // Progress ring
-              SizedBox(
-                width: 36, height: 36,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 36, height: 36,
-                      child: CircularProgressIndicator(
-                        value: progress,
-                        strokeWidth: 2,
-                        backgroundColor: HelloColors.recessed,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${(progress * 100).toInt()}%',
-                      style: const TextStyle(
-                        fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w400,
-                        color: HelloColors.inkSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // ═══ SECTIONS — grouped by category ═══
-          for (final sectionName in sectionKeys) ...[
-            // Section header with + add
-            Row(
+              ],
+            ),
+            child: Row(
               children: [
-                Text(
-                  sectionName.toUpperCase(),
-                  style: HelloTypography.label.copyWith(
-                    color: HelloColors.inkSecondary, letterSpacing: 1.0,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(eventName, style: HelloTypography.spaceTitle.copyWith(fontSize: 20)),
+                      const SizedBox(height: 6),
+                      // Mini stat row
+                      Row(
+                        children: [
+                          _MiniStat('$doneCount', 'done', HelloColors.successGreen),
+                          const SizedBox(width: 16),
+                          _MiniStat('${voting.length}', 'voting', HelloColors.accent),
+                          const SizedBox(width: 16),
+                          _MiniStat('${fresh.length}', 'new', HelloColors.inkTertiary),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () {
-                    // TODO: open AddItemSheet with category pre-filled
-                  },
-                  child: Text(
-                    '+ add',
-                    style: HelloTypography.hint.copyWith(
-                      color: HelloColors.inkTertiary, fontSize: 12,
-                    ),
+                // Progress ring with glow
+                Container(
+                  width: 52, height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent)
+                            .withValues(alpha: 0.2),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 52, height: 52,
+                        child: CircularProgressIndicator(
+                          value: progress,
+                          strokeWidth: 3,
+                          strokeCap: StrokeCap.round,
+                          backgroundColor: HelloColors.recessed,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: TextStyle(
+                          fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w400,
+                          color: progress >= 1.0 ? HelloColors.successGreen : HelloColors.accent,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+          ),
 
-            // Items in this section (settled first, then by score)
+          const SizedBox(height: 20),
+
+          // ═══ SECTIONS ═══
+          for (final sectionName in sectionKeys) ...[
+            // Section header
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 10),
+              child: Row(
+                children: [
+                  Text(
+                    sectionName.toUpperCase(),
+                    style: HelloTypography.label.copyWith(
+                      color: HelloColors.inkTertiary,
+                      letterSpacing: 1.2,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {},
+                    child: Text(
+                      '+ add',
+                      style: HelloTypography.hint.copyWith(
+                        color: HelloColors.accent.withValues(alpha: 0.6),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Items
             ..._sortedSection(sectionMap[sectionName]!).map((item) =>
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 10),
                 child: item.isLocked
                     ? _SettledCard(item: item)
                     : _ActiveCard(item: item),
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
           ],
         ],
       ),
@@ -535,14 +569,38 @@ class _OverviewDashboard extends StatelessWidget {
   }
 
   List<DecisionItem> _sortedSection(List<DecisionItem> items) {
-    final settled = items.where((i) => i.isLocked).toList();
-    final active = items.where((i) => !i.isLocked).toList()
+    final s = items.where((i) => i.isLocked).toList();
+    final a = items.where((i) => !i.isLocked).toList()
       ..sort((a, b) => b.agreementScore.compareTo(a.agreementScore));
-    return [...settled, ...active];
+    return [...s, ...a];
   }
 }
 
-// ── Active Item Card ──────────────────────────────────
+/// Mini stat: number + label
+class _MiniStat extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color color;
+  const _MiniStat(this.value, this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(value, style: TextStyle(
+          fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w400, color: color,
+        )),
+        const SizedBox(width: 3),
+        Text(label, style: TextStyle(
+          fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w300, color: color.withValues(alpha: 0.6),
+        )),
+      ],
+    );
+  }
+}
+
+// ── Active Card (Soft UI + thumbnail) ─────────────────
 
 class _ActiveCard extends StatelessWidget {
   final DecisionItem item;
@@ -553,97 +611,130 @@ class _ActiveCard extends StatelessWidget {
     final pct = (item.agreementScore * 100).toInt();
     final isHot = item.agreementScore >= 0.7;
     final proposer = item.proposedBy ?? 'someone';
+    final hasPhoto = item.photoUrl != null && item.photoUrl!.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: HelloColors.chrome,
-        borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(color: HelloColors.accent, width: 3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Row 1: Title + Score
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  item.title,
-                  style: HelloTypography.body.copyWith(fontSize: 16),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (pct > 0)
-                Text(
-                  '$pct%',
-                  style: HelloTypography.hero.copyWith(
-                    fontSize: 22,
-                    color: isHot ? HelloColors.accent : HelloColors.inkSecondary,
-                    height: 1.0,
-                  ),
-                ),
-            ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 3),
           ),
-
-          // Row 2: Description
-          if (item.description != null && item.description!.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(
-              item.description!.split('\n').first,
-              style: HelloTypography.hint.copyWith(fontSize: 13),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-
-          const SizedBox(height: 8),
-
-          // Row 3: Avatar + proposer
-          Row(
-            children: [
-              _MiniAvatar(name: proposer),
-              const SizedBox(width: 6),
-              Text(
-                '$proposer proposed',
-                style: HelloTypography.hint.copyWith(fontSize: 12),
-              ),
-            ],
+          // Accent ambient glow for hot items
+          if (isHot) BoxShadow(
+            color: HelloColors.accent.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 4),
           ),
-
-          // Row 4: Progress bar
-          if (item.agreementScore > 0) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: item.agreementScore,
-                      minHeight: 6,
-                      backgroundColor: HelloColors.recessed,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isHot ? HelloColors.accent : HelloColors.inkTertiary,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Row(
+          children: [
+            // Thumbnail (left side, 80px)
+            if (hasPhoto)
+              SizedBox(
+                width: 80,
+                child: AspectRatio(
+                  aspectRatio: 3 / 4,
+                  child: item.photoUrl!.startsWith('assets/')
+                      ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
+                      : Image.network(item.photoUrl!, fit: BoxFit.cover),
+                ),
+              ),
+            // Content (right side)
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(hasPhoto ? 12 : 14, 12, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title + score
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: HelloTypography.body.copyWith(fontSize: 15, height: 1.25),
+                            maxLines: 2, overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (pct > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isHot
+                                  ? HelloColors.accent.withValues(alpha: 0.1)
+                                  : HelloColors.recessed,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$pct%',
+                              style: TextStyle(
+                                fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w400,
+                                color: isHot ? HelloColors.accent : HelloColors.inkSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+
+                    // Description
+                    if (item.description != null && item.description!.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        item.description!.split('\n').first,
+                        style: HelloTypography.hint.copyWith(fontSize: 12),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+
+                    const SizedBox(height: 8),
+
+                    // Avatar + progress
+                    Row(
+                      children: [
+                        _MiniAvatar(name: proposer),
+                        const SizedBox(width: 5),
+                        Text(proposer, style: HelloTypography.hint.copyWith(fontSize: 11)),
+                        const Spacer(),
+                        // Compact progress
+                        if (item.agreementScore > 0)
+                          SizedBox(
+                            width: 60,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(3),
+                              child: LinearProgressIndicator(
+                                value: item.agreementScore,
+                                minHeight: 4,
+                                backgroundColor: HelloColors.recessed,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  isHot ? HelloColors.accent : HelloColors.inkTertiary.withValues(alpha: 0.4),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── Settled Item Card ─────────────────────────────────
+// ── Settled Card (green depth) ────────────────────────
 
 class _SettledCard extends StatelessWidget {
   final DecisionItem item;
@@ -652,66 +743,105 @@ class _SettledCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final proposer = item.proposedBy ?? 'someone';
+    final hasPhoto = item.photoUrl != null && item.photoUrl!.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: HelloColors.successGreen.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(color: HelloColors.successGreen, width: 3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Row 1: Checkmark + Title + "Booked"
-          Row(
-            children: [
-              Icon(Icons.check_circle, size: 16, color: HelloColors.successGreen),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  item.title,
-                  style: HelloTypography.body.copyWith(fontSize: 16),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                'Booked',
-                style: HelloTypography.label.copyWith(
-                  color: HelloColors.successGreen, fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-
-          // Row 2: Description / booking details
-          if (item.description != null && item.description!.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(
-              item.description!.split('\n').first,
-              style: HelloTypography.hint.copyWith(fontSize: 13),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-
-          const SizedBox(height: 6),
-
-          // Row 3: Avatar + who handled it
-          Row(
-            children: [
-              _MiniAvatar(name: proposer),
-              const SizedBox(width: 6),
-              Text(
-                '$proposer settled',
-                style: HelloTypography.hint.copyWith(fontSize: 12),
-              ),
-            ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: HelloColors.successGreen.withValues(alpha: 0.12), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: HelloColors.successGreen.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Row(
+          children: [
+            if (hasPhoto)
+              SizedBox(
+                width: 72,
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      item.photoUrl!.startsWith('assets/')
+                          ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
+                          : Image.network(item.photoUrl!, fit: BoxFit.cover),
+                      // Green tint overlay
+                      Container(color: HelloColors.successGreen.withValues(alpha: 0.1)),
+                      // Checkmark
+                      Center(
+                        child: Container(
+                          width: 24, height: 24,
+                          decoration: BoxDecoration(
+                            color: HelloColors.successGreen,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: HelloColors.successGreen.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.check, size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(hasPhoto ? 12 : 14, 12, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(item.title,
+                            style: HelloTypography.body.copyWith(fontSize: 15),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: HelloColors.successGreen.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text('Settled', style: TextStyle(
+                            fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w400,
+                            color: HelloColors.successGreen,
+                          )),
+                        ),
+                      ],
+                    ),
+                    if (item.description != null) ...[
+                      const SizedBox(height: 3),
+                      Text(item.description!.split('\n').first,
+                        style: HelloTypography.hint.copyWith(fontSize: 12),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _MiniAvatar(name: proposer),
+                        const SizedBox(width: 5),
+                        Text('$proposer settled', style: HelloTypography.hint.copyWith(fontSize: 11)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -727,19 +857,16 @@ class _MiniAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     return Container(
-      width: 22, height: 22,
-      decoration: const BoxDecoration(
-        color: HelloColors.recessed,
+      width: 20, height: 20,
+      decoration: BoxDecoration(
+        color: HelloColors.inkPrimary.withValues(alpha: 0.08),
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: const TextStyle(
-          fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w400,
-          color: HelloColors.inkSecondary,
-        ),
-      ),
+      child: Text(initial, style: const TextStyle(
+        fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w400,
+        color: HelloColors.inkSecondary,
+      )),
     );
   }
 }
