@@ -26,7 +26,8 @@ class ActionCardWidget extends ConsumerStatefulWidget {
 class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
   double _agreementScore = 0.0;
   bool _isLocallyLocked = false;
-  
+  String? _selectedVote; // null = no vote, 'love', 'okay', 'pass'
+
   @override
   void initState() {
     super.initState();
@@ -46,17 +47,23 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
   }
 
   Color _getScoreColor(double score) {
-    if (score >= 0.80) return HelloColors.gold;
-    if (score >= 0.50) return Colors.cyan;
-    return Colors.amber;
+    if (score >= 0.80) return HelloColors.accent;
+    if (score >= 0.50) return const Color(0xFF40E0D0); // Turquoise
+    return HelloColors.seekingAmber;
   }
 
   void _handleReaction(String reaction) {
     setState(() {
+      // Toggle: tap same vote to deselect
+      if (_selectedVote == reaction) {
+        _selectedVote = null;
+        return;
+      }
+      _selectedVote = reaction;
       if (reaction == 'love') {
-        _agreementScore += 0.8;
+        _agreementScore = (_agreementScore + 0.15).clamp(0.0, 1.0);
       } else if (reaction == 'okay') {
-        _agreementScore += 0.5;
+        _agreementScore = (_agreementScore + 0.08).clamp(0.0, 1.0);
       }
       _checkConsensus();
     });
@@ -183,36 +190,57 @@ class _ActionCardWidgetState extends ConsumerState<ActionCardWidget> {
                   ),
                   child: Row(
                     children: [
-                      // Pass — dim, transparent
-                      _VoteChip(
-                        label: 'Pass',
-                        color: Colors.white.withValues(alpha: 0.15),
-                        textColor: Colors.white.withValues(alpha: 0.5),
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          _handleReaction('pass');
-                        },
+                      // Pass
+                      Expanded(
+                        child: _VoteChip(
+                          label: 'Pass',
+                          isSelected: _selectedVote == 'pass',
+                          color: _selectedVote == 'pass'
+                              ? Colors.white.withValues(alpha: 0.35)
+                              : Colors.white.withValues(alpha: 0.1),
+                          textColor: _selectedVote == 'pass'
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.4),
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            _handleReaction('pass');
+                          },
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      // Okay — subtle white fill
-                      _VoteChip(
-                        label: 'Okay',
-                        color: Colors.white.withValues(alpha: 0.25),
-                        textColor: Colors.white.withValues(alpha: 0.85),
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          _handleReaction('okay');
-                        },
+                      // Okay
+                      Expanded(
+                        child: _VoteChip(
+                          label: 'Okay',
+                          isSelected: _selectedVote == 'okay',
+                          color: _selectedVote == 'okay'
+                              ? Colors.white.withValues(alpha: 0.45)
+                              : Colors.white.withValues(alpha: 0.15),
+                          textColor: _selectedVote == 'okay'
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.55),
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            _handleReaction('okay');
+                          },
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      // Love — Liquid Fire gradient border + glow
+                      // Love — Liquid Fire when selected
                       Expanded(
                         child: _VoteChip(
                           label: 'Love',
-                          color: HelloColors.accent.withValues(alpha: 0.25),
-                          textColor: HelloColors.accent,
-                          borderColor: HelloColors.accent.withValues(alpha: 0.6),
-                          isLove: true,
+                          isSelected: _selectedVote == 'love',
+                          color: _selectedVote == 'love'
+                              ? HelloColors.accent.withValues(alpha: 0.35)
+                              : Colors.white.withValues(alpha: 0.1),
+                          textColor: _selectedVote == 'love'
+                              ? HelloColors.accent
+                              : Colors.white.withValues(alpha: 0.4),
+                          borderColor: _selectedVote == 'love'
+                              ? HelloColors.accent.withValues(alpha: 0.7)
+                              : null,
+                          isLove: _selectedVote == 'love',
                           onTap: () {
                             HapticFeedback.heavyImpact();
                             _handleReaction('love');
@@ -238,6 +266,7 @@ class _VoteChip extends StatefulWidget {
   final Color textColor;
   final Color? borderColor;
   final bool isLove;
+  final bool isSelected;
   final VoidCallback onTap;
 
   const _VoteChip({
@@ -246,6 +275,7 @@ class _VoteChip extends StatefulWidget {
     required this.textColor,
     this.borderColor,
     this.isLove = false,
+    this.isSelected = false,
     required this.onTap,
   });
 
@@ -290,28 +320,31 @@ class _VoteChipState extends State<_VoteChip> with SingleTickerProviderStateMixi
         builder: (context, child) {
           return Transform.scale(
             scale: _controller.value,
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: widget.color,
                 borderRadius: BorderRadius.circular(14),
                 border: widget.borderColor != null
                     ? Border.all(color: widget.borderColor!, width: 1.5)
-                    : null,
+                    : Border.all(color: Colors.transparent, width: 1.5),
                 boxShadow: widget.isLove
-                    ? [BoxShadow(color: HelloColors.accent.withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 0)]
+                    ? [BoxShadow(color: HelloColors.accent.withValues(alpha: 0.4), blurRadius: 12, spreadRadius: 1)]
                     : [],
               ),
               child: Center(
-                child: Text(
-                  widget.label,
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 250),
                   style: TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 13,
+                    fontSize: widget.isSelected ? 14 : 13,
                     fontWeight: FontWeight.w400,
                     color: widget.textColor,
                     letterSpacing: 0.5,
                   ),
+                  child: Text(widget.label),
                 ),
               ),
             ),
