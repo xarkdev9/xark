@@ -164,54 +164,44 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
                             widget.spaceTitle,
                             style: HelloTypography.body.copyWith(fontSize: 14),
                           ),
-                          // Swipe hint — animated drifting chevrons
+                          // Swipe hint — breathing context text
                           if (_currentIndex == 0) ...[
                             const SizedBox(height: 2),
                             AnimatedBuilder(
                               animation: _breatheController,
                               builder: (context, child) {
                                 final t = _breatheController.value;
-                                return Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'plans',
-                                      style: TextStyle(
-                                        fontFamily: 'Inter', fontSize: 11,
-                                        fontWeight: FontWeight.w300,
-                                        color: HelloColors.accent.withValues(
-                                            alpha: 0.25 + t * 0.2),
-                                      ),
+                                return Opacity(
+                                  opacity: 0.3 + t * 0.15,
+                                  child: const Text(
+                                    'swipe to explore plans',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter', fontSize: 11,
+                                      fontWeight: FontWeight.w300,
+                                      color: HelloColors.inkTertiary,
                                     ),
-                                    const SizedBox(width: 2),
-                                    ...List.generate(3, (i) {
-                                      final phase = ((t + i * 0.2) % 1.0);
-                                      return Padding(
-                                        padding: const EdgeInsets.only(left: 1),
-                                        child: Text(
-                                          '\u203A',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: HelloColors.accent.withValues(
-                                                alpha: phase * 0.45),
-                                          ),
-                                        ),
-                                      );
-                                    }),
-                                  ],
+                                  ),
                                 );
                               },
                             ),
                           ] else ...[
-                            // On Plans tab: show "chat" hint pointing left
                             const SizedBox(height: 2),
-                            Text(
-                              '\u2039 chat',
-                              style: TextStyle(
-                                fontFamily: 'Inter', fontSize: 11,
-                                fontWeight: FontWeight.w300,
-                                color: HelloColors.inkTertiary.withValues(alpha: 0.35),
-                              ),
+                            AnimatedBuilder(
+                              animation: _breatheController,
+                              builder: (context, child) {
+                                final t = _breatheController.value;
+                                return Opacity(
+                                  opacity: 0.3 + t * 0.15,
+                                  child: const Text(
+                                    'swipe to chat',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter', fontSize: 11,
+                                      fontWeight: FontWeight.w300,
+                                      color: HelloColors.inkTertiary,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ],

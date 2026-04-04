@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
@@ -148,7 +149,7 @@ class _ChatBubbleState extends State<ChatBubble>
   Widget build(BuildContext context) {
     // Asymmetric glassmorphism
     final bubbleOpacity = widget.isOutbound ? 0.6 : 0.85;
-    final blurSigma = widget.isOutbound ? 20.0 : 8.0;
+    final blurSigma = kIsWeb ? 0.0 : (widget.isOutbound ? 20.0 : 8.0);
 
     // Tighter vertical spacing for grouped messages
     final topMargin = widget.isFirstInGroup ? 8.0 : 2.0;
