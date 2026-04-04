@@ -11,16 +11,20 @@ final sessionMessagesProvider = StreamProvider.family<List<Message>, String>((re
   return ref.watch(engineProvider).getSession(id).messages;
 });
 
-/// Create memoriesProvider that filters the engine's messages yielding a flat list of MediaMetadata
+/// Memory-worthy groups — past trips with photos
+const _memoryGroupIds = {'swiss', 'sf', 'delhi', 'bali'};
+
+/// Create memoriesProvider that aggregates media from trip groups only
 final memoriesProvider = Provider<AsyncValue<List<MediaMetadata>>>((ref) {
   final convosAsync = ref.watch(conversationsProvider);
-  
+
   return convosAsync.whenData((list) {
     final allMedia = <MediaMetadata>[];
-    
+
     for (final c in list) {
+       if (!_memoryGroupIds.contains(c.id)) continue;
        final msgsAsync = ref.watch(sessionMessagesProvider(c.id));
-       
+
        if (msgsAsync is AsyncData<List<Message>>) {
            allMedia.addAll(
              msgsAsync.value
@@ -29,7 +33,7 @@ final memoriesProvider = Provider<AsyncValue<List<MediaMetadata>>>((ref) {
            );
        }
     }
-    
+
     return allMedia;
   });
 });
