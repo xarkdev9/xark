@@ -1,11 +1,24 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme.dart';
 import 'chat_feed.dart';
 import '../widgets/chat_input.dart';
-import '../main.dart'; // engineProvider
+import '../main.dart';
 
 import '../providers/conversation_controller.dart';
+
+// ═══════════════════════════════════════════════════════
+// OVERLAY ARCHITECTURE — Z-axis layered Stack
+//
+// Layer 0: Ambient gradient (animated, full-bleed)
+// Layer 1: Chat messages (full screen, padded top/bottom)
+// Layer 2: Floating glass input bar (Positioned bottom)
+//
+// NO fake gradient fades. NO rigid Columns. NO SafeArea clamps.
+// Messages scroll UNDER the glass overlays and blur naturally.
+// ═══════════════════════════════════════════════════════
 
 const _groupAmbientColors = <String, List<Color>>{
   'family': [Color(0xFFFFB347), Color(0xFFFF6B6B)],
@@ -48,82 +61,76 @@ class _ChatViewState extends ConsumerState<ChatView>
 
   @override
   Widget build(BuildContext context) {
-    // iMessage-style: messages scroll BEHIND floating top and bottom bars
-    // with gradient fades at the edges
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Stack(
-        children: [
-          // Ambient gradient with parallax (first layer, behind messages)
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _gradientController,
-              builder: (context, child) {
-                final t = _gradientController.value;
-                final colors = _groupAmbientColors[widget.spaceId] ??
-                    [const Color(0xFFFF6B35), const Color(0xFFFF9F43)];
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment(t - 0.5, -1),
-                      end: Alignment(1 - t, 1),
-                      colors: [
-                        colors[0].withValues(alpha: 0.06),
-                        colors[1].withValues(alpha: 0.06),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // Messages fill the entire space, scroll behind everything
-          Positioned.fill(
-            child: ChatFeed(spaceId: widget.spaceId),
-          ),
-
-          // Top fade removed — header in space_layout handles the fade
-
-          // Bottom: typing indicator + composer floating over messages
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Bottom fade: messages fade before reaching composer
-                IgnorePointer(
-                  child: Container(
-                    height: 32,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          HelloColors.voidBg.withValues(alpha: 0.6),
-                          HelloColors.voidBg.withValues(alpha: 0),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Typing + Composer on transparent background (glass effect ready)
-                Container(
-                  color: Colors.transparent,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _TypingIndicatorWidget(spaceId: widget.spaceId),
-                      LiquidChatComposer(
-                        onSend: (text) {
-                          ref.read(engineProvider).getSession(widget.spaceId).sendText(text);
-                        },
-                      ),
+      children: [
+        // ═══ LAYER 0: Ambient gradient (full-bleed, animated) ═══
+        Positioned.fill(
+          child: AnimatedBuilder(
+            animation: _gradientController,
+            builder: (context, child) {
+              final t = _gradientController.value;
+              final colors = _groupAmbientColors[widget.spaceId] ??
+                  [const Color(0xFFFF6B35), const Color(0xFFFF9F43)];
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment(t - 0.5, -1),
+                    end: Alignment(1 - t, 1),
+                    colors: [
+                      colors[0].withValues(alpha: 0.07),
+                      colors[1].withValues(alpha: 0.07),
                     ],
                   ),
                 ),
-              ],
+              );
+            },
+          ),
+        ),
+
+        // ═══ LAYER 1: Chat messages (full screen, padded for overlays) ═══
+        Positioned.fill(
+          child: ChatFeed(spaceId: widget.spaceId),
+        ),
+
+        // ═══ LAYER 2: Floating glass input bar ═══
+        Positioned(
+          bottom: bottomInset + 8,
+          left: 12,
+          right: 12,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 24,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _TypingIndicatorWidget(spaceId: widget.spaceId),
+                    LiquidChatComposer(
+                      onSend: (text) {
+                        ref.read(engineProvider).getSession(widget.spaceId).sendText(text);
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ],
+        ),
+      ],
     );
   }
 }
@@ -174,127 +181,17 @@ class _TypingIndicatorWidgetState extends ConsumerState<_TypingIndicatorWidget> 
       child: isTyping
           ? Container(
               width: double.infinity,
-              padding: const EdgeInsets.only(left: 32.0, bottom: 8.0),
+              padding: const EdgeInsets.only(left: 20.0, bottom: 4.0, top: 8.0),
               alignment: Alignment.centerLeft,
               child: FadeTransition(
                 opacity: _opacityAnimation,
                 child: const Text(
-                  "Alice is typing...", // Typographic indicator per doctrine
+                  "typing...",
                   style: HelloTypography.hint,
                 ),
               ),
             )
           : const SizedBox(width: double.infinity, height: 0),
-    );
-  }
-}
-
-/// Consolidated Composer enforcing the strict @hello AI protocol.
-class _Composer extends ConsumerStatefulWidget {
-  final String spaceId;
-  const _Composer({required this.spaceId});
-
-  @override
-  ConsumerState<_Composer> createState() => _ComposerState();
-}
-
-class _ComposerState extends ConsumerState<_Composer> {
-  final TextEditingController _controller = TextEditingController();
-  bool _isHelloMode = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Strictly listening for the @hello trigger case-insensitively.
-    _controller.addListener(() {
-      final text = _controller.text;
-      final helloMode = text.toLowerCase().contains('@hello');
-      if (helloMode != _isHelloMode) {
-        setState(() {
-          _isHelloMode = helloMode;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleSend() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-
-    // SECURITY MANDATE: Pure visual UI morph. No context decryption fed to AI.
-    // We send payload precisely as standard text over the E2EE stream.
-    ref.read(engineProvider).getSession(widget.spaceId).sendText(text);
-    _controller.clear();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: HelloColors.chrome,
-      padding: const EdgeInsets.only(
-        left: 16.0,
-        right: 16.0,
-        top: 12.0,
-        bottom: 96.0,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.fastOutSlowIn,
-              decoration: BoxDecoration(
-                // Morphs to #D4536B logic (HelloColors.accent) securely representing intent
-                color: _isHelloMode
-                    ? HelloColors.accent.withValues(alpha: 0.15)
-                    : HelloColors.recessed,
-                borderRadius: BorderRadius.circular(24.0),
-                border: Border.all(
-                  color: _isHelloMode
-                      ? HelloColors.accent.withValues(alpha: 0.5)
-                      : Colors.transparent,
-                  width: 1.0,
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TextField(
-                controller: _controller,
-                onSubmitted: (_) => _handleSend(),
-                decoration: InputDecoration(
-                  hintText: _isHelloMode ? "ask hello anything..." : "Message...", // Global Branding
-                  hintStyle: HelloTypography.hint.copyWith(
-                    color: _isHelloMode
-                        ? HelloColors.accent.withValues(alpha: 0.6)
-                        : HelloColors.inkTertiary,
-                  ),
-                  border: InputBorder.none,
-                ),
-                style: HelloTypography.body.copyWith(
-                  color: _isHelloMode ? HelloColors.accent : HelloColors.inkPrimary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            decoration: const BoxDecoration(
-              color: HelloColors.accent,
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-              onPressed: _handleSend,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

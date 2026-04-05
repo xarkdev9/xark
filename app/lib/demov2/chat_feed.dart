@@ -94,7 +94,8 @@ class _ChatFeedState extends ConsumerState<ChatFeed> {
     return ListView.builder(
       controller: _scrollController,
       reverse: true,
-      padding: const EdgeInsets.only(top: 110, bottom: 80),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.only(top: 130, bottom: 100),
       itemCount: messageCount,
       itemBuilder: (context, index) {
         final reversedIndex = messageCount - 1 - index;

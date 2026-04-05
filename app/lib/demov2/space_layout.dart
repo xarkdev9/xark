@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme.dart';
@@ -77,9 +79,9 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HelloColors.voidBg,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
+      extendBodyBehindAppBar: true,
+      extendBody: true,
+      body: Stack(
           children: [
             // ═══ PAGE CONTENT (fills entire space) ═══
             Positioned.fill(
@@ -121,12 +123,17 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
               ),
             ),
 
-            // ═══ FLOATING HEADER (transparent, over content) ═══
+            // ═══ FLOATING GLASS HEADER ═══
             Positioned(
               top: 0, left: 0, right: 0,
-              child: Container(
-                color: Colors.transparent,
-                child: Column(
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    color: HelloColors.voidBg.withValues(alpha: 0.55),
+                    child: SafeArea(
+                      bottom: false,
+                      child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Header content
@@ -259,25 +266,13 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
                       ],
                     ),
                   ),
-                  // Fade gradient below header
-                  IgnorePointer(
-                    child: Container(
-                      height: 20,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            HelloColors.voidBg.withValues(alpha: 0.4),
-                            HelloColors.voidBg.withValues(alpha: 0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: 4),
                 ],
               ),
-              ),
+            ),
+            ),
+            ),
+            ),
             ),
 
             // Ambient right-edge glow on Chat tab
@@ -302,7 +297,6 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
               ),
           ],
         ),
-      ),
     );
   }
 }
