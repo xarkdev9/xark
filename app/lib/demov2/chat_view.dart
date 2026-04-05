@@ -50,9 +50,7 @@ class _ChatViewState extends ConsumerState<ChatView>
   Widget build(BuildContext context) {
     // iMessage-style: messages scroll BEHIND floating top and bottom bars
     // with gradient fades at the edges
-    return Container(
-      color: HelloColors.voidBg,
-      child: Stack(
+    return Stack(
         children: [
           // Ambient gradient with parallax (first layer, behind messages)
           Positioned.fill(
@@ -83,25 +81,7 @@ class _ChatViewState extends ConsumerState<ChatView>
             child: ChatFeed(spaceId: widget.spaceId),
           ),
 
-          // Top fade: messages fade to transparent as they approach the top
-          Positioned(
-            top: 0, left: 0, right: 0,
-            height: 40,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      HelloColors.voidBg,
-                      HelloColors.voidBg.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // Top fade removed — header in space_layout handles the fade
 
           // Bottom: typing indicator + composer floating over messages
           Positioned(
@@ -118,7 +98,7 @@ class _ChatViewState extends ConsumerState<ChatView>
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                         colors: [
-                          HelloColors.voidBg,
+                          HelloColors.voidBg.withValues(alpha: 0.6),
                           HelloColors.voidBg.withValues(alpha: 0),
                         ],
                       ),
@@ -144,7 +124,6 @@ class _ChatViewState extends ConsumerState<ChatView>
             ),
           ),
         ],
-      ),
     );
   }
 }
