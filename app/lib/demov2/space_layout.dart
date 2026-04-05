@@ -94,9 +94,7 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
                   final child = index == 0
                       ? ProviderScope(
                           overrides: const [],
-                          child: ClipRRect(
-                            child: ChatView(spaceId: widget.spaceId),
-                          ),
+                          child: ChatView(spaceId: widget.spaceId),
                         )
                       : PlansView(groupId: widget.spaceId);
 
