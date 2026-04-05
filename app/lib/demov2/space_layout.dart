@@ -121,10 +121,12 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
               ),
             ),
 
-            // ═══ FLOATING HEADER (over content, with fade) ═══
+            // ═══ FLOATING HEADER (transparent, over content) ═══
             Positioned(
               top: 0, left: 0, right: 0,
-              child: Column(
+              child: Container(
+                color: Colors.transparent,
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Header content
@@ -266,7 +268,7 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            HelloColors.voidBg.withValues(alpha: 0.8),
+                            HelloColors.voidBg.withValues(alpha: 0.4),
                             HelloColors.voidBg.withValues(alpha: 0),
                           ],
                         ),
@@ -274,6 +276,7 @@ class _SpaceLayoutState extends ConsumerState<SpaceLayout>
                     ),
                   ),
                 ],
+              ),
               ),
             ),
 
