@@ -4,30 +4,15 @@
 // Native JSON mode (responseMimeType), chain-of-thought (_thought_process),
 // self-healing retry, context-aware synthesis. Anti-cringe voice.
 
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, type GenerativeModel } from "@google/generative-ai";
 import { getTool, listTools, getFunctionDeclarations } from "./tool-registry";
 import { runActor, startActorAsync, type ApifyResult } from "./apify-client";
 import { searchFlightsFli } from "./fli-client";
+import { getAIProvider } from "./ai-provider-factory";
 import { buildTastePromptInjection } from "@/lib/taste";
 
-const genAI = process.env.GEMINI_API_KEY
-  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-  : null;
-
-const GEMINI_TIMEOUT_MS = 45_000;
 const MAX_RESPONSE_LENGTH = 500;
 
-// ── Timeout wrapper — prevents Gemini from hanging indefinitely ──
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("gemini timeout")), ms)
-    ),
-  ]);
-}
-
-// ── Response quality gate — reject Gemini garbage before it reaches the user ──
+// ── Response quality gate — reject garbage before it reaches the user ──
 export function isGarbageResponse(text: string): boolean {
   if (!text || text.trim().length === 0) return true;
   if (text.length > MAX_RESPONSE_LENGTH) return true;
@@ -91,103 +76,13 @@ export interface OrchestratorResult {
   _debug?: Record<string, unknown>;
 }
 
-/** Fast local search — direct Gemini knowledge (no Google Search tool, ~3-5s) */
-async function geminiLocalSearch(
-  model: GenerativeModel,
-  query: string,
-  spaceTitle: string
-): Promise<Array<{ title: string; description: string; url?: string; phone?: string; address?: string }>> {
-  const location = spaceTitle || "the area";
-
-  try {
-    const result = await withTimeout(
-      model.generateContent({
-        contents: [{ role: "user", parts: [{ text: `You are a local guide for ${location}. Return 5-8 real, well-known places for: "${query}".
-
-RULES:
-- ONLY return places you are confident actually exist. no made-up names.
-- include the neighborhood/area in the description.
-- if you're not sure about a place, skip it. fewer accurate results > many guesses.
-
-Return ONLY a JSON array:
-[{"title":"Place Name","description":"Brief description with neighborhood","address":"approximate address or area"}]` }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-        },
-      }),
-      GEMINI_TIMEOUT_MS
-    );
-
-    const responseText = result.response.text();
-    if (!responseText) return [];
-
-    const parsed = JSON.parse(responseText);
-    const items = Array.isArray(parsed) ? parsed : [];
-    return items.map((item: Record<string, unknown>) => ({
-      title: String(item.title || ""),
-      description: String(item.description || ""),
-      url: item.url ? String(item.url) : undefined,
-      phone: item.phone ? String(item.phone) : undefined,
-      address: item.address ? String(item.address) : undefined,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-/** Call Gemini with Google Search grounding for knowledge queries */
-async function geminiSearchGrounded(
-  model: GenerativeModel,
-  query: string,
-  spaceTitle: string
-): Promise<Array<{ title: string; description: string; url?: string; phone?: string; address?: string }>> {
-  const contextualQuery = spaceTitle ? `${query} near ${spaceTitle}` : query;
-
-  try {
-    const result = await withTimeout(
-      model.generateContent({
-        contents: [{ role: "user", parts: [{ text: `Find real places for: ${contextualQuery}. Return a JSON array of objects with fields: title, description, url, phone, address. Return ONLY the JSON array, no other text.` }] }],
-        tools: [{ googleSearch: {} }] as any,
-      }),
-      GEMINI_TIMEOUT_MS
-    );
-
-    const responseText = result.response.text();
-    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((item: Record<string, unknown>) => ({
-      title: String(item.title || ""),
-      description: String(item.description || ""),
-      url: item.url ? String(item.url) : undefined,
-      phone: item.phone ? String(item.phone) : undefined,
-      address: item.address ? String(item.address) : undefined,
-    }));
-  } catch {
-    return [];
-  }
-}
+// geminiLocalSearch and geminiSearchGrounded moved to ai-provider.ts (GeminiProvider.localSearch / groundedSearch)
 
 export async function orchestrate(input: OrchestratorInput): Promise<OrchestratorResult> {
-  if (!genAI) {
+  const provider = getAIProvider();
+  if (!provider) {
     return { response: "not configured yet. someone needs to set up the api key." };
   }
-
-  const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-
-  // ── PRIORITY 3: systemInstruction — persona rules processed at deeper level ──
-  const model = genAI.getGenerativeModel({
-    model: modelName,
-    systemInstruction: buildStaticPrompt(),
-    safetySettings: [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-    ],
-  });
 
   // ── HELLO PANEL DETERMINISTIC BYPASS ──
   // confidence 1.0 = locked intent chip → skip Gemini, go directly to SearchApi
@@ -248,28 +143,20 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
   const dynamicContext = buildDynamicPrompt(input);
 
   try {
-    const result = await withTimeout(
-      model.generateContent({
-        contents: [
-          ...conversationHistory,
-          { role: "user", parts: [{ text: dynamicContext }] },
-        ],
-        tools: [{ functionDeclarations: getFunctionDeclarations() as any }],
-      }),
-      GEMINI_TIMEOUT_MS
-    );
+    const intentResult = await provider.parseIntent({
+      systemPrompt: buildStaticPrompt(),
+      conversationHistory,
+      dynamicPrompt: dynamicContext,
+      functionDeclarations: getFunctionDeclarations() as any,
+    });
 
-    const candidate = result.response.candidates?.[0];
-    if (candidate?.finishReason === "SAFETY") {
+    if (intentResult.blocked) {
       return { response: "nope. let's keep it chill.", action: "reason" };
     }
 
-    // ── Check for native function call ──
-    const functionCall = result.response.functionCalls()?.[0];
-
-    if (functionCall) {
-      const { name, args } = functionCall;
-      const params = (args ?? {}) as Record<string, string>;
+    if (intentResult.functionCall) {
+      const { name, args } = intentResult.functionCall;
+      const params = args;
       console.log(`[@hello] function call: ${name}`, JSON.stringify(params).slice(0, 120));
 
       // PRIORITY 9: Realtime thinking update after intent parse
@@ -313,12 +200,9 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       var searchTool = tool;
       var searchToolName = toolName;
       var searchParams = params;
+    } else if (intentResult.textResponse) {
+      return { response: isGarbageResponse(intentResult.textResponse) ? GARBAGE_FALLBACK : intentResult.textResponse, action: "reason" };
     } else {
-      // No function call — check for text response (fallback)
-      const textResponse = result.response.text();
-      if (textResponse && textResponse.trim().length > 0) {
-        return { response: isGarbageResponse(textResponse) ? GARBAGE_FALLBACK : textResponse.trim().slice(0, MAX_RESPONSE_LENGTH), action: "reason" };
-      }
       return { response: GARBAGE_FALLBACK, action: "reason" };
     }
   } catch (err) {
@@ -349,12 +233,11 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       // Use extracted location (not space title) for local search context
       const searchLocation = locationPart || input.spaceTitle || "";
 
-      // Try gemini-local first (fastest), escalate to gemini-search if empty
-      let groundedResults = await geminiLocalSearch(model, query, searchLocation);
+      // Try local knowledge first (fastest), escalate to grounded search if empty
+      let groundedResults = await provider.localSearch(query, searchLocation);
       if (groundedResults.length === 0) {
-        // Fallback: escalate to Google Search grounding
-        console.log("[@hello] gemini-local returned 0 results, escalating to gemini-search");
-        groundedResults = await geminiSearchGrounded(model, query, searchLocation);
+        console.log("[@hello] local search returned 0 results, escalating to grounded search");
+        groundedResults = await provider.groundedSearch(query, searchLocation);
       }
 
       if (groundedResults.length === 0) {
@@ -520,20 +403,10 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
 Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize the category) and return updated params as JSON: {"params": {...}}`;
 
       try {
-        const retryResult = await withTimeout(
-          model.generateContent({
-            contents: [{ role: "user", parts: [{ text: retryPrompt }] }],
-            generationConfig: {
-              responseMimeType: "application/json",
-            },
-          }),
-          GEMINI_TIMEOUT_MS
-        );
-
-        const retryParsed = JSON.parse(retryResult.response.text());
+        const retryParsed = await provider.generateJson(retryPrompt);
         const retryParams = retryParsed.params ?? retryParsed;
         if (retryParams && Object.keys(retryParams).length > 0) {
-          mappedParams = tool.paramMap(retryParams);
+          mappedParams = tool.paramMap(retryParams as Record<string, string>);
           results = await runActor(tool.actorId, mappedParams);
         }
       } catch {
@@ -542,10 +415,10 @@ Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize
     }
 
     if (results.length === 0) {
-      // Automatic fallback: Apify returned nothing → try gemini-search before giving up
-      console.log("[@hello] Apify returned 0 results, falling back to gemini-search");
+      // Automatic fallback: Apify returned nothing → try grounded search before giving up
+      console.log("[@hello] Apify returned 0 results, falling back to grounded search");
       const fallbackQuery = params?.query || params?.location || input.userMessage;
-      const fallbackResults = await geminiSearchGrounded(model, fallbackQuery, input.spaceTitle || "");
+      const fallbackResults = await provider.groundedSearch(fallbackQuery, input.spaceTitle || "");
       if (fallbackResults.length > 0) {
         const fbResults: ApifyResult[] = fallbackResults.map((r) => ({
           title: r.title,
@@ -565,11 +438,8 @@ Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize
 
     // ── Context-aware synthesis ──
     const synthesisPrompt = buildSynthesisPrompt(input, results);
-    const synthesisResult = await withTimeout(
-      model.generateContent(synthesisPrompt),
-      GEMINI_TIMEOUT_MS
-    );
-    const synthesisText = synthesisResult.response.text();
+    const synthesisResult = await provider.synthesize(synthesisPrompt);
+    const synthesisText = synthesisResult.text;
 
     return {
       response: isGarbageResponse(synthesisText)
