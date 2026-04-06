@@ -11,7 +11,9 @@ export type WhisperType =
   | "onboarding"
   | "consensus_ready"
   | "missing_category"
-  | "nudge_vote";
+  | "nudge_vote"
+  | "itinerary_ready"
+  | "consensus_split";
 
 export interface Whisper {
   id: string;
@@ -223,11 +225,107 @@ export async function generateWhispers(userId: string): Promise<Whisper[]> {
     } catch {
       // Graceful degradation
     }
+
+    // ── Check 5 (P1): Dates set + destination but no itinerary ──
+    try {
+      const { data: spaces } = await supabase
+        .from("space_members")
+        .select("group_id, spaces!inner(title)")
+        .eq("user_id", userId);
+
+      if (spaces && spaces.length > 0) {
+        for (const membership of spaces) {
+          const groupId = membership.group_id;
+          const title = (membership as any).spaces?.title || "";
+
+          // Check if dates exist
+          const { data: dates } = await supabase
+            .from("space_dates")
+            .select("start_date, end_date")
+            .eq("group_id", groupId)
+            .maybeSingle();
+
+          if (dates?.start_date && dates?.end_date) {
+            // Check if recommendation items exist
+            const { count } = await supabase
+              .from("decision_items")
+              .select("id", { count: "exact", head: true })
+              .eq("group_id", groupId)
+              .eq("category", "recommendation");
+
+            if ((count ?? 0) === 0) {
+              // Dates set but no itinerary — suggest building one
+              whispers.push({
+                id: `itinerary_ready_${groupId}`,
+                priority: 1,
+                ghostText: `dates are locked for ${title}. building your plan...`,
+                groupId,
+                spaceTitle: title,
+                type: "itinerary_ready",
+              });
+              break; // Max 1 itinerary whisper
+            }
+          }
+        }
+      }
+    } catch {
+      // Graceful degradation
+    }
+
+    // ── Check 6 (P0): Split vote — consensus conflict ──
+    try {
+      const { data: spaces } = await supabase
+        .from("space_members")
+        .select("group_id, spaces!inner(title)")
+        .eq("user_id", userId);
+
+      if (spaces && spaces.length > 0) {
+        for (const membership of spaces) {
+          const groupId = membership.group_id;
+          const title = (membership as any).spaces?.title || "";
+
+          // Find items with split votes (>=25% NotForMe)
+          const { data: items } = await supabase
+            .from("decision_items")
+            .select("id, title, metadata")
+            .eq("group_id", groupId)
+            .eq("state", "proposed");
+
+          if (items && items.length > 0) {
+            for (const item of items) {
+              const { data: reactions } = await supabase
+                .from("reactions")
+                .select("reaction_type")
+                .eq("item_id", item.id);
+
+              if (reactions && reactions.length >= 3) {
+                const notForMe = reactions.filter((r: any) => r.reaction_type === "not_for_me").length;
+                if (notForMe / reactions.length >= 0.25) {
+                  whispers.push({
+                    id: `consensus_split_${item.id}`,
+                    priority: 0,
+                    ghostText: `looks like you're split on ${item.title}. want me to find a compromise?`,
+                    groupId,
+                    spaceTitle: title,
+                    type: "consensus_split",
+                    itemId: item.id,
+                  });
+                  break; // Max 1 split whisper per check
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Graceful degradation
+    }
   } catch {
     // Outer guard — return whatever was collected before the error
   }
 
-  return sortByPriority(whispers);
+  // Throttle: max 2 whispers total (prevents notification spam)
+  return sortByPriority(whispers).slice(0, 2);
 }
 
 // ── Helpers ──

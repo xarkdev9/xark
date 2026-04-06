@@ -143,6 +143,33 @@ export function getFunctionDeclarations() {
       },
     },
     {
+      name: "generate_itinerary",
+      description: "Generate a day-by-day trip itinerary. Use when user says 'plan our trip', 'make an itinerary', 'what would X days in Y look like', 'build a plan'. MUST use this for any itinerary/plan request.",
+      parameters: {
+        type: "OBJECT" as const,
+        properties: {
+          destination: { type: "STRING" as const, description: "Trip destination (city/region)" },
+          start_date: { type: "STRING" as const, description: "Start date YYYY-MM-DD (optional — omit for dream mode)" },
+          end_date: { type: "STRING" as const, description: "End date YYYY-MM-DD (optional — omit for dream mode)" },
+          trip_days: { type: "NUMBER" as const, description: "Number of days (used when no dates, e.g. '5 days in Bali')" },
+        },
+        required: ["destination"],
+      },
+    },
+    {
+      name: "modify_itinerary",
+      description: "Modify a specific day/slot in the existing itinerary. Use when user says 'swap', 'change', 'I'm tired on day 3', 'too touristy', 'something more adventurous', 'make it a rest day'.",
+      parameters: {
+        type: "OBJECT" as const,
+        properties: {
+          day: { type: "STRING" as const, description: "Date YYYY-MM-DD or relative ('Tuesday', 'Day 3')" },
+          slot: { type: "STRING" as const, description: "morning, afternoon, evening, or 'all'" },
+          instruction: { type: "STRING" as const, description: "What to change: 'more adventurous', 'closer to hotel', 'cheaper', 'chill', 'rest day'" },
+        },
+        required: ["instruction"],
+      },
+    },
+    {
       name: "create_poll",
       description: "Create a live poll for group decision. Use when user asks to vote or decide between options.",
       parameters: {

@@ -180,6 +180,71 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
         };
       }
 
+      if (name === "generate_itinerary") {
+        if (input.onProgress) {
+          input.onProgress(`building ${params.destination || input.spaceTitle || ""} plan...`).catch(() => {});
+        }
+
+        const { generateItinerary } = await import("./itinerary-generator");
+        const itinerary = await generateItinerary({
+          destination: params.destination || input.spaceTitle || "",
+          startDate: params.start_date,
+          endDate: params.end_date,
+          tripDays: params.trip_days ? parseInt(params.trip_days, 10) : undefined,
+          groupSize: input.tasteContext?.memberCount || 2,
+          constraints: input.tasteContext?.hardConstraints?.join(", ") || "",
+          tasteContext: input.tasteContext?.softPreferences || "",
+          lockedDecisions: input.groundingPrompt,
+        });
+
+        const filledSlots = itinerary.slots.filter((s) => s.title);
+        const isDream = itinerary.isDreamMode;
+        const dayCount = new Set(itinerary.slots.map((s) => s.date)).size;
+
+        // Convert slots to search results for the standard decision_items pipeline
+        const searchResults: ApifyResult[] = itinerary.slots
+          .filter((s) => s.title && s.type !== "travel")
+          .map((s) => ({
+            title: s.title!,
+            price: s.price,
+            imageUrl: s.imageUrl,
+            description: [s.description, s.note].filter(Boolean).join(" — "),
+            externalUrl: s.externalUrl,
+            rating: s.rating,
+            source: s.source || "itinerary",
+          }));
+
+        const msg = isDream
+          ? `mapped out ${dayCount} days in ${params.destination || "your trip"}. ${filledSlots.length} real spots. set dates to unlock prices.`
+          : `your ${params.destination || "trip"} blueprint is ready — ${dayCount} days, ${filledSlots.length} spots. check Plans.`;
+
+        return {
+          response: msg,
+          searchResults,
+          action: "search",
+          tool: "itinerary",
+          payload: { itinerary },
+        };
+      }
+
+      if (name === "modify_itinerary") {
+        // Load existing itinerary items for this group
+        // The actual slot data comes from the decision_items table
+        // For now, respond with instruction to modify — the full implementation
+        // requires loading existing items from DB which happens in the route handler
+        return {
+          response: `got it — "${params.instruction}". updating the plan...`,
+          action: "search",
+          tool: "modify_itinerary",
+          payload: {
+            day: params.day,
+            slot: params.slot || "all",
+            instruction: params.instruction,
+            destination: input.spaceTitle || "",
+          },
+        };
+      }
+
       if (name === "create_poll") {
         const options = (args as any)?.options;
         return {

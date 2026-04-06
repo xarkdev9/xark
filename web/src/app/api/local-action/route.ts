@@ -3,6 +3,7 @@
 // Upserts space_dates for date commands.
 
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { verifyAuth } from "@/lib/auth-verify";
 
@@ -88,6 +89,135 @@ export async function POST(req: Request) {
           ? { start_date: currentDates.start_date, end_date: currentDates.end_date, label: currentDates.label }
           : {},
       });
+
+      // ── Auto-trigger itinerary generation after dates are set ──
+      // Resolve destination from space title (e.g., "Bali Trip" → "Bali")
+      const { data: spaceData } = await supabaseAdmin
+        .from("spaces")
+        .select("title")
+        .eq("id", groupId)
+        .single();
+      const spaceTitle = spaceData?.title || "";
+
+      // Check if destination is resolvable (not a person's name like "ram & myna")
+      const looksLikeDestination = spaceTitle.length > 2 &&
+        !/^\w+\s*[&+]\s*\w+$/.test(spaceTitle) && // skip "name & name" patterns
+        !/^new user/i.test(spaceTitle);
+
+      if (looksLikeDestination) {
+        // Check if itinerary items already exist for this group
+        const { count } = await supabaseAdmin
+          .from("decision_items")
+          .select("id", { count: "exact", head: true })
+          .eq("group_id", groupId)
+          .eq("category", "recommendation");
+
+        const hasExistingItinerary = (count ?? 0) > 0;
+
+        after(async () => {
+          try {
+            if (hasExistingItinerary) {
+              // Re-hydrate existing dream itinerary with real dates
+              console.log(`[itinerary] Re-hydrating dream plan for ${groupId} with dates ${start_date} to ${end_date}`);
+              const { data: existingItems } = await supabaseAdmin
+                .from("decision_items")
+                .select("*")
+                .eq("group_id", groupId)
+                .eq("category", "recommendation");
+
+              if (existingItems && existingItems.length > 0) {
+                const { rehydrateItinerary } = await import("@/lib/intelligence/itinerary-generator");
+                const slots = existingItems.map((item: Record<string, unknown>) => {
+                  const meta = (item.metadata ?? {}) as Record<string, unknown>;
+                  return {
+                    date: String(meta.itinerary_day || ""),
+                    time: String(meta.itinerary_slot || ""),
+                    type: String(item.category || ""),
+                    label: String(meta.itinerary_label || ""),
+                    query: String(meta.search_label || ""),
+                    note: String(item.description || ""),
+                    title: String(item.title || ""),
+                    price: meta.price ? String(meta.price) : undefined,
+                    imageUrl: meta.image_url ? String(meta.image_url) : undefined,
+                  };
+                });
+
+                const rehydrated = await rehydrateItinerary(slots, start_date, end_date, spaceTitle);
+                console.log(`[itinerary] Re-hydrated ${rehydrated.length} slots with real dates`);
+              }
+            } else {
+              // Generate fresh itinerary
+              console.log(`[itinerary] Auto-generating itinerary for ${groupId}: ${spaceTitle}, ${start_date} to ${end_date}`);
+              const { generateItinerary } = await import("@/lib/intelligence/itinerary-generator");
+
+              // Fetch group member count
+              const { count: memberCount } = await supabaseAdmin
+                .from("space_members")
+                .select("id", { count: "exact", head: true })
+                .eq("group_id", groupId);
+
+              const itinerary = await generateItinerary({
+                destination: spaceTitle,
+                startDate: start_date,
+                endDate: end_date,
+                groupSize: memberCount ?? 2,
+                constraints: "",
+                tasteContext: "",
+                lockedDecisions: "",
+              });
+
+              if (itinerary.slots.length > 0) {
+                // Insert as recommendation decision_items
+                const items = itinerary.slots
+                  .filter((s) => s.type !== "travel" && s.title)
+                  .map((s) => ({
+                    id: `item_${crypto.randomUUID()}`,
+                    group_id: groupId,
+                    title: (s.title || s.query).toLowerCase(),
+                    category: "recommendation",
+                    description: s.description || s.note || "",
+                    state: "proposed",
+                    proposed_by: null,
+                    agreement_score: 0,
+                    weighted_score: 0,
+                    is_locked: false,
+                    version: 0,
+                    metadata: {
+                      itinerary_day: s.date,
+                      itinerary_slot: s.time,
+                      itinerary_label: s.label,
+                      price: s.price,
+                      image_url: s.imageUrl,
+                      external_url: s.externalUrl,
+                      booking_url: s.bookingUrl || s.externalUrl,
+                      rating: s.rating,
+                      source: s.source || "itinerary",
+                      search_tier: "itinerary",
+                      recent_review: s.recentReview,
+                      cached_at: Date.now(),
+                    },
+                  }));
+
+                await supabaseAdmin.from("decision_items").upsert(items, { onConflict: "id" });
+                console.log(`[itinerary] Inserted ${items.length} recommendation items for ${groupId}`);
+
+                // Send ONE batched message to chat (not 15 individual notifications)
+                const dayCount = new Set(itinerary.slots.map((s) => s.date)).size;
+                await supabaseAdmin.from("messages").insert({
+                  id: crypto.randomUUID(),
+                  group_id: groupId,
+                  sender_id: null,
+                  role: "hello",
+                  content: `your ${spaceTitle} blueprint is ready — ${dayCount} days, ${items.length} spots. check Plans.`,
+                  message_type: "ai",
+                });
+              }
+            }
+          } catch (err) {
+            console.error("[itinerary] Auto-generation failed:", err instanceof Error ? err.message : String(err));
+          }
+        });
+      }
 
       return NextResponse.json({ ok: true });
     }
