@@ -218,10 +218,19 @@ async function fillSlots(
   skeleton: ItinerarySkeleton,
   input: GenerateItineraryInput
 ): Promise<ItinerarySlot[]> {
-  const allSlots: ItinerarySlot[] = [];
+  const isDream = !input.startDate;
 
+  // Build all slot descriptors first, then fill in PARALLEL
+  const slotDescriptors: Array<{ day: typeof skeleton.days[0]; slot: typeof skeleton.days[0]["slots"][0] }> = [];
   for (const day of skeleton.days) {
     for (const slot of day.slots) {
+      slotDescriptors.push({ day, slot });
+    }
+  }
+
+  // Fill all slots concurrently via Promise.all (was: sequential for-loop)
+  const filledSlots = await Promise.all(
+    slotDescriptors.map(async ({ day, slot }) => {
       const itinerarySlot: ItinerarySlot = {
         date: day.date,
         time: slot.time,
@@ -232,17 +241,12 @@ async function fillSlots(
       };
 
       // Travel blocks don't need filling
-      if (slot.type === "travel") {
-        allSlots.push(itinerarySlot);
-        continue;
-      }
+      if (slot.type === "travel") return itinerarySlot;
 
       // Dream mode: no flights (prices are date-dependent)
-      const isDream = !input.startDate;
       if (isDream && slot.type === "flight") {
         itinerarySlot.note = "Set dates to see flight prices";
-        allSlots.push(itinerarySlot);
-        continue;
+        return itinerarySlot;
       }
 
       // Fill the slot with real search data
@@ -276,11 +280,11 @@ async function fillSlots(
         console.warn(`[itinerary] Failed to fill slot "${slot.query}":`, err instanceof Error ? err.message : String(err));
       }
 
-      allSlots.push(itinerarySlot);
-    }
-  }
+      return itinerarySlot;
+    })
+  );
 
-  return allSlots;
+  return filledSlots;
 }
 
 async function searchForSlot(

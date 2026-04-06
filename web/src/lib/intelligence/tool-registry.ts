@@ -144,7 +144,7 @@ export function getFunctionDeclarations() {
     },
     {
       name: "generate_itinerary",
-      description: "Generate a day-by-day trip itinerary. Use when user says 'plan our trip', 'make an itinerary', 'what would X days in Y look like', 'build a plan'. MUST use this for any itinerary/plan request.",
+      description: "Generate a day-by-day trip itinerary. ONLY use when the user EXPLICITLY requests a multi-day plan with words like 'plan our trip', 'make an itinerary', 'build a plan', 'what would 5 days in Bali look like', 'organize our itinerary'. Do NOT use for: emoji-only messages, single-word queries, vague requests like 'find stuff', multi-item searches like 'find hotels and flights', or any query that doesn't explicitly mention planning/itinerary/organizing a trip for a specific duration or destination.",
       parameters: {
         type: "OBJECT" as const,
         properties: {

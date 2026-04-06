@@ -85,21 +85,54 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
+// ── Retry helper — exponential backoff on 503/429 (transient Gemini errors) ──
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts: number = 3,
+  baseDelayMs: number = 1000
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isRetryable = errMsg.includes("503") || errMsg.includes("429") ||
+        errMsg.includes("Service Unavailable") || errMsg.includes("high demand") ||
+        errMsg.includes("RESOURCE_EXHAUSTED");
+
+      if (!isRetryable || attempt === maxAttempts) throw err;
+
+      const delay = baseDelayMs * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+      console.warn(`[ai-provider] Retrying (attempt ${attempt + 1}/${maxAttempts}) after ${delay}ms: ${errMsg.slice(0, 80)}`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw new Error("withRetry: exhausted attempts"); // unreachable
+}
+
 // ── GeminiProvider ──
 
+const SAFETY_SETTINGS = [
+  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+] as const;
+
 export class GeminiProvider implements AIProvider {
-  private model: GenerativeModel;
+  private genAI: GoogleGenerativeAI; // singleton client — never re-instantiated
+  private proModel: GenerativeModel; // Pro: synthesis, itinerary, complex reasoning
+  private flashModelName: string; // Flash: intent parsing, local search (fast + cheap)
+  private proModelName: string;
 
   constructor(apiKey: string, modelName: string = "gemini-2.5-pro") {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({
+    this.genAI = new GoogleGenerativeAI(apiKey); // created ONCE
+    this.proModelName = modelName;
+    this.flashModelName = "gemini-2.5-flash"; // always Flash for routing
+    this.proModel = this.genAI.getGenerativeModel({
       model: modelName,
-      safetySettings: [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-      ],
+      safetySettings: [...SAFETY_SETTINGS],
     });
   }
 
@@ -109,19 +142,14 @@ export class GeminiProvider implements AIProvider {
     dynamicPrompt: string;
     functionDeclarations: FunctionDeclaration[];
   }): Promise<ParseIntentResult> {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-    const model = genAI.getGenerativeModel({
-      model: this.model.model || process.env.GEMINI_MODEL || "gemini-2.5-pro",
+    // Use FLASH for intent parsing — 3x faster, equally accurate for function calling
+    const model = this.genAI.getGenerativeModel({
+      model: this.flashModelName,
       systemInstruction: input.systemPrompt,
-      safetySettings: [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-      ],
+      safetySettings: [...SAFETY_SETTINGS],
     });
 
-    const result = await withTimeout(
+    const result = await withRetry(() => withTimeout(
       model.generateContent({
         contents: [
           ...input.conversationHistory,
@@ -130,7 +158,7 @@ export class GeminiProvider implements AIProvider {
         tools: [{ functionDeclarations: input.functionDeclarations as any }],
       }),
       TIMEOUT_MS
-    );
+    ));
 
     const candidate = result.response.candidates?.[0];
     if (candidate?.finishReason === "SAFETY") {
@@ -156,21 +184,23 @@ export class GeminiProvider implements AIProvider {
   }
 
   async synthesize(prompt: string): Promise<SynthesisResult> {
-    const result = await withTimeout(
-      this.model.generateContent(prompt),
+    // Use PRO for synthesis — quality matters for user-facing text
+    const result = await withRetry(() => withTimeout(
+      this.proModel.generateContent(prompt),
       TIMEOUT_MS
-    );
+    ));
     return { text: result.response.text() };
   }
 
   async generateJson(prompt: string): Promise<Record<string, unknown>> {
-    const result = await withTimeout(
-      this.model.generateContent({
+    // Use PRO for JSON generation — itinerary skeletons, retries need quality
+    const result = await withRetry(() => withTimeout(
+      this.proModel.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: { responseMimeType: "application/json" },
       }),
       TIMEOUT_MS
-    );
+    ));
     return JSON.parse(result.response.text());
   }
 
@@ -178,8 +208,10 @@ export class GeminiProvider implements AIProvider {
     title: string; description: string; url?: string; phone?: string; address?: string;
   }>> {
     try {
+      // Use FLASH for local search — speed matters more than depth
+      const flashModel = this.genAI.getGenerativeModel({ model: this.flashModelName, safetySettings: [...SAFETY_SETTINGS] });
       const result = await withTimeout(
-        this.model.generateContent({
+        flashModel.generateContent({
           contents: [{ role: "user", parts: [{ text: `You are a local guide for ${location}. Return 5-8 real, well-known places for: "${query}".
 
 RULES:
@@ -213,8 +245,10 @@ Return ONLY a JSON array:
   }>> {
     const contextualQuery = location ? `${query} near ${location}` : query;
     try {
+      // Use FLASH for grounded search — speed matters
+      const flashModel = this.genAI.getGenerativeModel({ model: this.flashModelName, safetySettings: [...SAFETY_SETTINGS] });
       const result = await withTimeout(
-        this.model.generateContent({
+        flashModel.generateContent({
           contents: [{ role: "user", parts: [{ text: `Find real places for: ${contextualQuery}. Return a JSON array of objects with fields: title, description, url, phone, address. Return ONLY the JSON array, no other text.` }] }],
           tools: [{ googleSearch: {} }] as any,
         }),

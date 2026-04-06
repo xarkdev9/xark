@@ -298,11 +298,30 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       // Use extracted location (not space title) for local search context
       const searchLocation = locationPart || input.spaceTitle || "";
 
-      // Try local knowledge first (fastest), escalate to grounded search if empty
-      let groundedResults = await provider.localSearch(query, searchLocation);
+      // Race local + grounded search in parallel (was: sequential fallback)
+      const [localResults, groundedSearchResults] = await Promise.all([
+        provider.localSearch(query, searchLocation),
+        provider.groundedSearch(query, searchLocation),
+      ]);
+      // Prefer local (faster, higher quality), fall back to grounded
+      let groundedResults = localResults.length > 0 ? localResults : groundedSearchResults;
+
+      // If both Gemini searches returned 0, try SearchAPI google_local as last resort
       if (groundedResults.length === 0) {
-        console.log("[@hello] local search returned 0 results, escalating to grounded search");
-        groundedResults = await provider.groundedSearch(query, searchLocation);
+        try {
+          const { searchLocal } = await import("./searchapi-client");
+          const searchApiResults = await searchLocal({ query, location: searchLocation });
+          if (searchApiResults.length > 0) {
+            console.log(`[@hello] Gemini search empty, SearchAPI local returned ${searchApiResults.length} results`);
+            groundedResults = searchApiResults.map((r) => ({
+              title: r.title,
+              description: r.description || "",
+              url: r.externalUrl,
+            }));
+          }
+        } catch {
+          // Fall through to empty response
+        }
       }
 
       if (groundedResults.length === 0) {
@@ -324,47 +343,43 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       };
     }
 
-    // ── fli tier (fastest for flights, 2-5s, 30-150 results, free) ──
+    // ── fli tier — race fli + SearchAPI in parallel (was: sequential waterfall) ──
     if (tool.tier === "fli") {
       const mappedParams = tool.paramMap(params);
       const origin = String(mappedParams.origin || "");
       const destination = String(mappedParams.destination || "");
-      const date = String(mappedParams.date || "");
+      const date = String(mappedParams.date || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
 
       if (origin && destination) {
-        console.log(`[@hello] fli dispatch: ${origin}->${destination} on ${date || "default"}`);
-        try {
-          const fliResults = await searchFlightsFli({
-            origin,
-            destination,
-            date: date || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-          });
+        console.log(`[@hello] flight race: fli + SearchAPI for ${origin}->${destination} on ${date}`);
+        const { searchFlights: searchFlightsApi } = await import("./searchapi-client");
 
-          if (fliResults.length > 0) {
-            const searchResults: ApifyResult[] = fliResults.map((f) => ({
-              title: f.title,
-              price: f.price,
-              imageUrl: f.imageUrl,
-              description: f.description,
-              externalUrl: f.bookingUrl,
-              rating: undefined,
-              source: "fli",
-            }));
+        // Race both sources simultaneously — first non-empty wins
+        const [fliResults, searchApiResults] = await Promise.allSettled([
+          searchFlightsFli({ origin, destination, date }).catch(() => [] as any[]),
+          searchFlightsApi({ origin, destination, date }).catch(() => [] as ApifyResult[]),
+        ]);
 
-            return {
-              response: `found ${searchResults.length} flights. they're in decide now.`,
-              searchResults,
-              action: "search",
-              tool: toolName,
-            };
-          }
+        const fli = fliResults.status === "fulfilled" ? fliResults.value : [];
+        const sapi = searchApiResults.status === "fulfilled" ? searchApiResults.value : [];
 
-          console.warn("[@hello] fli returned 0 results, falling through to SearchAPI...");
-        } catch (err) {
-          console.error("[@hello] fli failed, falling through to SearchAPI:", err instanceof Error ? err.message : String(err));
+        // Prefer fli (richer data, free), fall back to SearchAPI
+        const flightResults: ApifyResult[] = fli.length > 0
+          ? fli.map((f: any) => ({ title: f.title, price: f.price, imageUrl: f.imageUrl, description: f.description, externalUrl: f.bookingUrl, rating: undefined, source: "fli" }))
+          : sapi;
+
+        if (flightResults.length > 0) {
+          return {
+            response: `found ${flightResults.length} flights. they're in decide now.`,
+            searchResults: flightResults,
+            action: "search",
+            tool: toolName,
+          };
         }
+
+        console.warn("[@hello] both fli and SearchAPI returned 0 flights");
       }
-      // Fall through: fli failed or no origin/destination → try SearchAPI with google_flights
+      // Fall through to Apify if both returned 0
     }
 
     // ── SearchApi tier (fast, 2-5s, real Google data with images) ──
@@ -639,6 +654,12 @@ ROUTING EXAMPLES:
 - "what day is dec 12?" -> {"_thought_process":"date question.","action":"reason","directResponse":"that's a friday."}
 - "write a python script" -> {"_thought_process":"code request.","action":"reason","directResponse":"not my lane. try chatgpt."}
 - "thank you" -> {"_thought_process":"gratitude.","action":"reason","directResponse":"anytime."}
+- "plan our bali trip for 5 days" -> generate_itinerary (destination="Bali", trip_days=5). ONLY for explicit plan requests.
+- "what would a week in tokyo look like" -> generate_itinerary (destination="Tokyo", trip_days=7). Explicit plan request.
+- "swap tuesday morning for something chill" -> modify_itinerary (day="tuesday", slot="morning", instruction="something chill").
+- "make day 3 a rest day" -> modify_itinerary (day="Day 3", slot="all", instruction="rest day, spa, light meals").
+- "find hotels and flights" -> search_hotel (NOT generate_itinerary — this is a search, not a plan request).
+- emojis only (e.g. "🏨✈️🍕") -> respond_to_user (NOT generate_itinerary — emojis are not a plan request).
 
 JSON SCHEMA:
 {
