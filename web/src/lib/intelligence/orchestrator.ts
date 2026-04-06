@@ -8,6 +8,8 @@ import { getTool, listTools, getFunctionDeclarations } from "./tool-registry";
 import { runActor, startActorAsync, type ApifyResult } from "./apify-client";
 import { searchFlightsFli } from "./fli-client";
 import { getAIProvider } from "./ai-provider-factory";
+import { getCachedSearch, setCachedSearch } from "./search-cache";
+import { acquireSlot, releaseSlot } from "./global-semaphore";
 import { buildTastePromptInjection } from "@/lib/taste";
 
 const MAX_RESPONSE_LENGTH = 500;
@@ -78,11 +80,58 @@ export interface OrchestratorResult {
 
 // geminiLocalSearch and geminiSearchGrounded moved to ai-provider.ts (GeminiProvider.localSearch / groundedSearch)
 
+// ── Choreographed progress — makes the wait feel like a feature ──
+function createProgressChoreography(onProgress?: (text: string) => Promise<void>) {
+  const startTime = Date.now();
+  let lastStage = "";
+
+  return {
+    /** Emit a stage update. Skips if same stage or if request is fast (<1s total). */
+    async stage(text: string, minElapsedMs: number = 0) {
+      if (!onProgress || text === lastStage) return;
+      const elapsed = Date.now() - startTime;
+      // Skip intermediate stages if request is very fast (cache hit)
+      if (minElapsedMs > 0 && elapsed < minElapsedMs) return;
+      lastStage = text;
+      onProgress(text).catch(() => {});
+    },
+    /** Schedule a future stage — only fires if the request is still running */
+    scheduleLate(text: string, delayMs: number) {
+      if (!onProgress) return;
+      setTimeout(() => {
+        if (Date.now() - startTime >= delayMs) {
+          onProgress(text).catch(() => {});
+        }
+      }, delayMs);
+    },
+    elapsed() { return Date.now() - startTime; },
+  };
+}
+
 export async function orchestrate(input: OrchestratorInput): Promise<OrchestratorResult> {
   const provider = getAIProvider();
   if (!provider) {
     return { response: "not configured yet. someone needs to set up the api key." };
   }
+
+  const progress = createProgressChoreography(input.onProgress);
+  await progress.stage("reading your vibe...");
+  // Schedule late-stage updates (only fire if still running)
+  progress.scheduleLate("filtering for the best spots...", 5000);
+  progress.scheduleLate("polishing your plan...", 8000);
+
+  // ── Global concurrency guard — prevents thundering herd across all lambdas ──
+  const slot = await acquireSlot();
+  if (!slot.acquired) {
+    return {
+      response: "we're experiencing high demand. your plan will be ready in about 30 seconds.",
+      action: "reason",
+      _debug: { concurrency: slot.currentCount, rejected: true },
+    };
+  }
+
+  // Ensure slot is always released, even on errors
+  try {
 
   // ── HELLO PANEL DETERMINISTIC BYPASS ──
   // confidence 1.0 = locked intent chip → skip Gemini, go directly to SearchApi
@@ -92,9 +141,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     const { intent, params } = input.slotPayload;
     console.log(`[@hello] Deterministic bypass: intent=${intent}, params=${JSON.stringify(params)}`);
 
-    if (input.onProgress) {
-      input.onProgress(`searching ${params.location || params.query || "..."}...`).catch(() => {});
-    }
+    await progress.stage(`searching ${params.location || params.query || "..."}...`);
 
     const tool = getTool(intent);
     if (tool && tool.tier === "searchapi") {
@@ -159,11 +206,9 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       const params = args;
       console.log(`[@hello] function call: ${name}`, JSON.stringify(params).slice(0, 120));
 
-      // PRIORITY 9: Realtime thinking update after intent parse
-      if (input.onProgress) {
-        const location = params.location || params.query || input.spaceTitle || "";
-        input.onProgress(`searching ${location.toLowerCase().slice(0, 50)}...`).catch(() => {});
-      }
+      // Choreographed stage 2: show what we're searching for
+      const location = params.location || params.query || input.spaceTitle || "";
+      await progress.stage(`searching ${location.toLowerCase().slice(0, 50)}...`);
 
       // ── Route based on function name ──
       if (name === "respond_to_user") {
@@ -181,9 +226,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       }
 
       if (name === "generate_itinerary") {
-        if (input.onProgress) {
-          input.onProgress(`building ${params.destination || input.spaceTitle || ""} plan...`).catch(() => {});
-        }
+        await progress.stage(`building ${params.destination || input.spaceTitle || ""} plan...`);
 
         const { generateItinerary } = await import("./itinerary-generator");
         const itinerary = await generateItinerary({
@@ -285,6 +328,10 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     const toolName = searchToolName!;
     const params = searchParams!;
 
+    // ── Compute cache key early — used by all tiers ──
+    const cacheKey = [toolName, params.query, params.location, params.origin, params.destination, params.date]
+      .filter(Boolean).join(":").toLowerCase().replace(/\s+/g, "_").slice(0, 120);
+
     // ── Gemini Search grounding tier (fast, 2-3s, full maps integration) ──
     if (tool.tier === "gemini-search") {
       // Combine query + location for a complete search string
@@ -335,6 +382,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
         source: "gemini-search",
       }));
 
+      await setCachedSearch(cacheKey, toolName, results);
       return {
         response: `found ${results.length} spots. they're in decide now.`,
         searchResults: results,
@@ -382,6 +430,24 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       // Fall through to Apify if both returned 0
     }
 
+    // ── General search cache — check before hitting any API ──
+    if (!input.slotPayload) { // Don't use cache for deterministic bypass (HelloPanel)
+      const cached = await getCachedSearch(cacheKey, toolName);
+      if (cached && cached.results.length > 0) {
+        console.log(`[@hello] Cache hit for ${toolName}:${cacheKey} (${cached.results.length} results, age: ${Math.round((Date.now() - cached.cachedAt) / 60000)}m)`);
+        const searchResults: ApifyResult[] = cached.results.map((r) => ({
+          ...r,
+          source: r.source || cached.tool,
+        }));
+        return {
+          response: `found ${searchResults.length} spots. they're in decide now.`,
+          searchResults,
+          action: "search",
+          tool: toolName,
+        };
+      }
+    }
+
     // ── SearchApi tier (fast, 2-5s, real Google data with images) ──
     if (tool.tier === "searchapi" || (tool.tier === "fli" && tool.searchApiEngine)) {
       const mappedParams = tool.paramMap(params);
@@ -408,6 +474,8 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
         }
 
         if (searchResults.length > 0) {
+          // Cache the results for future requests
+          await setCachedSearch(cacheKey, toolName, searchResults);
           return {
             response: `found ${searchResults.length} spots. they're in decide now.`,
             searchResults,
@@ -533,6 +601,11 @@ Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize
 
   // Dead code guard — should never reach here with function calling
   return { response: GARBAGE_FALLBACK, action: "reason" };
+
+  } finally {
+    // Always release the global concurrency slot
+    await releaseSlot();
+  }
 }
 
 /** Static system prompt — stable across all invocations (~800 tokens).
