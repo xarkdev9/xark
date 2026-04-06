@@ -7,6 +7,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, type GenerativeModel } from "@google/generative-ai";
 import { getTool, listTools, getFunctionDeclarations } from "./tool-registry";
 import { runActor, startActorAsync, type ApifyResult } from "./apify-client";
+import { searchFlightsFli } from "./fli-client";
 import { buildTastePromptInjection } from "@/lib/taste";
 
 const genAI = process.env.GEMINI_API_KEY
@@ -375,8 +376,51 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       };
     }
 
+    // ── fli tier (fastest for flights, 2-5s, 30-150 results, free) ──
+    if (tool.tier === "fli") {
+      const mappedParams = tool.paramMap(params);
+      const origin = String(mappedParams.origin || "");
+      const destination = String(mappedParams.destination || "");
+      const date = String(mappedParams.date || "");
+
+      if (origin && destination) {
+        console.log(`[@hello] fli dispatch: ${origin}->${destination} on ${date || "default"}`);
+        try {
+          const fliResults = await searchFlightsFli({
+            origin,
+            destination,
+            date: date || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+          });
+
+          if (fliResults.length > 0) {
+            const searchResults: ApifyResult[] = fliResults.map((f) => ({
+              title: f.title,
+              price: f.price,
+              imageUrl: f.imageUrl,
+              description: f.description,
+              externalUrl: f.bookingUrl,
+              rating: undefined,
+              source: "fli",
+            }));
+
+            return {
+              response: `found ${searchResults.length} flights. they're in decide now.`,
+              searchResults,
+              action: "search",
+              tool: toolName,
+            };
+          }
+
+          console.warn("[@hello] fli returned 0 results, falling through to SearchAPI...");
+        } catch (err) {
+          console.error("[@hello] fli failed, falling through to SearchAPI:", err instanceof Error ? err.message : String(err));
+        }
+      }
+      // Fall through: fli failed or no origin/destination → try SearchAPI with google_flights
+    }
+
     // ── SearchApi tier (fast, 2-5s, real Google data with images) ──
-    if (tool.tier === "searchapi") {
+    if (tool.tier === "searchapi" || (tool.tier === "fli" && tool.searchApiEngine)) {
       const mappedParams = tool.paramMap(params);
       console.log(`[@hello] SearchApi dispatch: engine=${tool.searchApiEngine}, tier=${tool.tier}, actorId=${tool.actorId}, keys=${Object.keys(tool).join(",")}, params=${JSON.stringify(mappedParams).slice(0, 120)}`);
       try {

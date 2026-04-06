@@ -2,7 +2,7 @@
 // Register Apify actors by category. Orchestrator routes @hello requests here.
 
 export interface ToolDefinition {
-  tier: "gemini-search" | "apify" | "searchapi";
+  tier: "gemini-search" | "apify" | "searchapi" | "fli";
   actorId: string;
   description: string;
   paramMap: (userParams: Record<string, string>) => Record<string, unknown>;
@@ -174,10 +174,10 @@ registerTool("hotel", {
 });
 
 registerTool("flight", {
-  tier: "searchapi",
+  tier: "fli",
   actorId: process.env.APIFY_FLIGHT_ACTOR || "johnvc/Google-Flights-Data-Scraper-Flight-and-Price-Search",
-  searchApiEngine: "google_flights",
-  description: "Search flights via Google Flights API",
+  searchApiEngine: "google_flights", // kept for SearchAPI fallback
+  description: "Search flights via fli (primary) with SearchAPI fallback",
   paramMap: (p) => ({
     origin: p.origin?.toUpperCase(),
     destination: p.destination?.toUpperCase(),
