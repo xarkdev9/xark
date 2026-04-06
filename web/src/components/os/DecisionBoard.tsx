@@ -9,6 +9,8 @@ import type { ReactionType } from "@/hooks/useReactions";
 import { supabase } from "@/lib/supabase";
 import { DecisionCard } from "@/components/os/DecisionCard";
 import { AddItemModal } from "@/components/os/AddItemModal";
+import { PlansModeToggle } from "@/components/os/PlansModeToggle";
+import { TimelineDay } from "@/components/os/TimelineDay";
 import { useE2EE } from "@/hooks/useE2EE";
 import {
   colors,
@@ -25,6 +27,7 @@ interface DecisionItem {
   id: string;
   title: string;
   category: string;
+  description?: string;
   weighted_score: number;
   agreement_score: number;
   is_locked: boolean;
@@ -125,6 +128,7 @@ const DEMO_ITEMS: Record<string, DecisionItem[]> = {
 const PLURAL_MAP: Record<string, string> = {
   hotel: "hotels", activity: "activities", flight: "flights",
   dining: "dining", experience: "experiences", restaurant: "restaurants", general: "general",
+  recommendation: "itinerary",
 };
 
 function pluralizeCategory(cat: string): string {
@@ -823,6 +827,12 @@ export default function DecisionBoard({ groupId, filterCategory, userId, authLoa
   // ── v4 Decide: single-category focus + selected card state ──
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [plansMode, setPlansMode] = useState<"category" | "timeline">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("plans-mode") as "category" | "timeline") || "category";
+    }
+    return "category";
+  });
   const miniStripRef = useRef<HTMLDivElement>(null);
 
   // Auto-set to "all" overview when items load
@@ -936,6 +946,77 @@ export default function DecisionBoard({ groupId, filterCategory, userId, authLoa
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Plans Mode Toggle: Category / Timeline ── */}
+      {hasItems && (
+        <div style={{ padding: "8px 16px 0" }}>
+          <PlansModeToggle
+            mode={plansMode}
+            onModeChange={setPlansMode}
+            hasItineraryItems={items.some((i) => i.category === "recommendation")}
+          />
+        </div>
+      )}
+
+      {/* ── Timeline View ── */}
+      {plansMode === "timeline" && items.some((i) => i.category === "recommendation") ? (
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 80px", minHeight: 0 }}>
+          {(() => {
+            // Group recommendation items by day
+            const recItems = items.filter((i) => i.category === "recommendation");
+            const byDay = new Map<string, typeof recItems>();
+            for (const item of recItems) {
+              const day = (item.metadata as any)?.itinerary_day || "Unscheduled";
+              if (!byDay.has(day)) byDay.set(day, []);
+              byDay.get(day)!.push(item);
+            }
+
+            // Sort days chronologically
+            const sortedDays = [...byDay.entries()].sort(([a], [b]) => {
+              if (a.startsWith("Day") && b.startsWith("Day")) {
+                return parseInt(a.replace(/\D/g, "")) - parseInt(b.replace(/\D/g, ""));
+              }
+              return a.localeCompare(b);
+            });
+
+            return sortedDays.map(([day, dayItems]) => {
+              const label = dayItems[0]?.metadata
+                ? String((dayItems[0].metadata as any).itinerary_label || "")
+                : "";
+
+              const slots = dayItems.map((item) => {
+                const meta = (item.metadata || {}) as Record<string, unknown>;
+                return {
+                  date: String(meta.itinerary_day || day),
+                  time: String(meta.itinerary_slot || ""),
+                  type: String(item.category),
+                  label: String(meta.itinerary_label || ""),
+                  title: item.title,
+                  price: meta.price ? String(meta.price) : undefined,
+                  imageUrl: meta.image_url ? String(meta.image_url) : undefined,
+                  description: item.description || undefined,
+                  externalUrl: meta.external_url ? String(meta.external_url) : undefined,
+                  bookingUrl: meta.booking_url ? String(meta.booking_url) : undefined,
+                  rating: typeof meta.rating === "number" ? meta.rating : undefined,
+                  source: meta.source ? String(meta.source) : undefined,
+                  recentReview: meta.recent_review ? String(meta.recent_review) : undefined,
+                  note: "",
+                };
+              });
+
+              return (
+                <TimelineDay
+                  key={day}
+                  date={day}
+                  label={label}
+                  slots={slots}
+                />
+              );
+            });
+          })()}
+        </div>
+      ) : (
+        <>
 
       {/* ── Vital label ── */}
       {vital && (
@@ -1234,6 +1315,9 @@ export default function DecisionBoard({ groupId, filterCategory, userId, authLoa
           </motion.div>
         )}
       </AnimatePresence>
+
+      </>
+      )}
 
       {/* ═══ ADD ITEM MODAL ═══ */}
       <AddItemModal
