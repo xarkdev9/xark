@@ -307,7 +307,7 @@ export function DecisionCard({
           {/* Title + price */}
           <div style={{ paddingTop: "4px", flex: 1, minWidth: 0 }}>
             {/* Airline logo — only for flight cards with /airline-logos/ image */}
-            {metadata?.image_url && String(metadata.image_url).startsWith("/airline-logos/") && (
+            {metadata?.image_url && String(metadata.image_url).startsWith("/airline-logos/") ? (
               <img
                 src={String(metadata.image_url)}
                 alt=""
@@ -315,7 +315,7 @@ export function DecisionCard({
                 height={32}
                 style={{ borderRadius: 6, objectFit: "contain", background: "rgba(255,255,255,0.06)", marginBottom: 6 }}
               />
-            )}
+            ) : null}
             <p
               style={{
                 fontSize: "16px",
@@ -327,7 +327,7 @@ export function DecisionCard({
             >
               {title}
             </p>
-            {price && (
+            {price ? (
               <span
                 style={{
                   fontSize: "13px",
@@ -340,21 +340,17 @@ export function DecisionCard({
                 {price}
                 {source ? ` · ${source}` : ""}
               </span>
-            )}
+            ) : null}
             {/* Price staleness label — shown when cached_at is >15 minutes old */}
-            {metadata?.cached_at && typeof metadata.cached_at === "number" && (() => {
-              const ageMs = Date.now() - Number(metadata.cached_at);
-              if (ageMs < 15 * 60 * 1000) return null;
-              const ageMin = Math.round(ageMs / 60000);
-              const label = ageMin < 60 ? `Price from ${ageMin}m ago` : `Price from ${Math.round(ageMin / 60)}h ago`;
-              return (
-                <span style={{ display: "block", fontSize: 10, color: "var(--hello-ink-tertiary)", fontWeight: 300, marginTop: 2 }}>
-                  {label}
-                </span>
-              );
-            })()}
+            {typeof metadata?.cached_at === "number" && Date.now() - metadata.cached_at > 15 * 60 * 1000 ? (
+              <span style={{ display: "block", fontSize: 10, color: "var(--hello-ink-tertiary)", fontWeight: 300, marginTop: 2 }}>
+                {Date.now() - (metadata.cached_at as number) < 3600000
+                  ? `Price from ${Math.round((Date.now() - (metadata.cached_at as number)) / 60000)}m ago`
+                  : `Price from ${Math.round((Date.now() - (metadata.cached_at as number)) / 3600000)}h ago`}
+              </span>
+            ) : null}
             {/* Book button — shown when a booking or external URL is present */}
-            {(metadata?.booking_url || metadata?.external_url) && (
+            {(metadata?.booking_url || metadata?.external_url) ? (
               <a
                 href={String(metadata.booking_url || metadata.external_url)}
                 target="_blank"
@@ -376,7 +372,7 @@ export function DecisionCard({
               >
                 Book
               </a>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
