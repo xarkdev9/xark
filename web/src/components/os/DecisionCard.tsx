@@ -306,6 +306,16 @@ export function DecisionCard({
 
           {/* Title + price */}
           <div style={{ paddingTop: "4px", flex: 1, minWidth: 0 }}>
+            {/* Airline logo — only for flight cards with /airline-logos/ image */}
+            {metadata?.image_url && String(metadata.image_url).startsWith("/airline-logos/") && (
+              <img
+                src={String(metadata.image_url)}
+                alt=""
+                width={32}
+                height={32}
+                style={{ borderRadius: 6, objectFit: "contain", background: "rgba(255,255,255,0.06)", marginBottom: 6 }}
+              />
+            )}
             <p
               style={{
                 fontSize: "16px",
@@ -330,6 +340,42 @@ export function DecisionCard({
                 {price}
                 {source ? ` · ${source}` : ""}
               </span>
+            )}
+            {/* Price staleness label — shown when cached_at is >15 minutes old */}
+            {metadata?.cached_at && typeof metadata.cached_at === "number" && (() => {
+              const ageMs = Date.now() - Number(metadata.cached_at);
+              if (ageMs < 15 * 60 * 1000) return null;
+              const ageMin = Math.round(ageMs / 60000);
+              const label = ageMin < 60 ? `Price from ${ageMin}m ago` : `Price from ${Math.round(ageMin / 60)}h ago`;
+              return (
+                <span style={{ display: "block", fontSize: 10, color: "var(--hello-ink-tertiary)", fontWeight: 300, marginTop: 2 }}>
+                  {label}
+                </span>
+              );
+            })()}
+            {/* Book button — shown when a booking or external URL is present */}
+            {(metadata?.booking_url || metadata?.external_url) && (
+              <a
+                href={String(metadata.booking_url || metadata.external_url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "4px 12px",
+                  borderRadius: 14,
+                  background: "var(--hello-accent)",
+                  color: "white",
+                  fontSize: 11,
+                  fontWeight: 400,
+                  textDecoration: "none",
+                  marginTop: 8,
+                }}
+              >
+                Book
+              </a>
             )}
           </div>
         </div>

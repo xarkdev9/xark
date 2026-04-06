@@ -381,11 +381,13 @@ export async function POST(req: NextRequest) {
             price: r.price,
             image_url: photoUrls[idx] ?? fallbackImg,
             external_url: r.externalUrl,
+            booking_url: r.externalUrl,
             source: r.source ?? "searchapi",
-            search_tier: r.source?.startsWith("google-") ? "searchapi" : r.source === "gemini-local" ? "gemini-local" : r.source === "gemini-search" ? "gemini-search" : "apify",
+            search_tier: r.source === "fli" ? "fli" : r.source?.startsWith("google-") ? "searchapi" : r.source === "gemini-local" ? "gemini-local" : r.source === "gemini-search" ? "gemini-search" : "apify",
             rating: r.rating,
             search_batch: searchBatch,
             search_label: searchLabel,
+            cached_at: Date.now(),
           },
         }));
 
