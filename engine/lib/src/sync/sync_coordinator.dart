@@ -260,12 +260,20 @@ class SyncCoordinator {
     await _outboxProcessor.drainOutbox();
 
     // Run conflict resolution on the synced messages per group.
+    // Yield every 5 messages to keep the UI responsive at 60fps
+    // during batch decrypt on reconnect.
     if (_conflictResolver != null && missed.isNotEmpty) {
       // Group missed messages by group_id for reconciliation.
       final byGroup = <String, List<Map<String, dynamic>>>{};
-      for (final msg in missed) {
+      for (var i = 0; i < missed.length; i++) {
+        final msg = missed[i];
         final groupId = msg['group_id'] as String? ?? '';
         byGroup.putIfAbsent(groupId, () => []).add(msg);
+        // Yield to the event loop every 5 messages to prevent
+        // jank during heavy batch decrypt on reconnect.
+        if (i % 5 == 0) {
+          await Future<void>.delayed(Duration.zero);
+        }
       }
       for (final entry in byGroup.entries) {
         await _conflictResolver.reconcileGap(entry.key, entry.value);

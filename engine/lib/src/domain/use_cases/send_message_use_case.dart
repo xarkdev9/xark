@@ -135,48 +135,112 @@ class SendMessageUseCase {
         orElse: () => _myUserId,
       );
 
-      // We need to get the recipient's device ID. For now we use device 1
-      // as the default. In a full implementation, we would fan out to all
-      // of the recipient's devices.
-      const recipientDeviceId = 1;
+      // 5. Multi-device fan-out: get ALL recipient devices.
+      final devices = await _apiClient.getUserDevices(recipientId);
+      final deviceIds = devices
+          .map((d) => d['device_id'] as int)
+          .toList();
+      // Fallback: if device registry returns empty, use device 1.
+      if (deviceIds.isEmpty) {
+        deviceIds.add(1);
+      }
 
-      // 5. Get or establish session.
-      final sessionId = '$recipientId:$recipientDeviceId';
-      var ratchetState = await _keyStore.loadSession(sessionId);
-      ratchetState ??= await _establishSession(
-        recipientId,
-        recipientDeviceId,
-      );
+      // 6. Identify missing sessions and load existing ones.
+      final missingDeviceIds = <int>[];
+      final existingSessions = <int, RatchetState>{};
+      for (final deviceId in deviceIds) {
+        final sessionId = '$recipientId:$deviceId';
+        final session = await _keyStore.loadSession(sessionId);
+        if (session != null) {
+          existingSessions[deviceId] = session;
+        } else {
+          missingDeviceIds.add(deviceId);
+        }
+      }
 
-      // 6. Two-phase: save unacked state BEFORE network call.
-      await _keyStore.storeUnackedState(sessionId, ratchetState);
+      // 7. Establish X3DH sessions for all missing devices in parallel.
+      //    Each _establishSession call fetches a key bundle and runs X3DH.
+      //    Future.wait parallelizes the network I/O so all bundles are
+      //    fetched concurrently rather than sequentially.
+      if (missingDeviceIds.isNotEmpty) {
+        final sessions = await Future.wait(
+          missingDeviceIds.map(
+            (deviceId) => _establishSession(recipientId, deviceId),
+          ),
+        );
+        for (var i = 0; i < missingDeviceIds.length; i++) {
+          existingSessions[missingDeviceIds[i]] = sessions[i];
+        }
+      }
 
-      // 7. Encrypt.
-      final encryptResult =
-          await DoubleRatchet.encrypt(ratchetState, payloadBytes);
+      // 8. Encrypt per-device -- pure CPU, zero network I/O.
+      //    Use the first device's ciphertext as the envelope's primary
+      //    ciphertext, and add remaining devices as distribution
+      //    ciphertexts.
+      final perDeviceCiphertexts = <DistributionCiphertext>[];
+      EncryptResult? primaryEncryptResult;
+      int? primaryDeviceId;
 
-      // 8. Pack as base64.
-      final ciphertextB64 = base64Encode(encryptResult.ciphertext);
-      final headerB64 = base64Encode(encryptResult.encryptedHeader);
+      for (final entry in existingSessions.entries) {
+        final deviceId = entry.key;
+        final sessionId = '$recipientId:$deviceId';
 
-      // 9. Build envelope.
+        // Two-phase: save unacked state BEFORE encrypt.
+        await _keyStore.storeUnackedState(sessionId, entry.value);
+
+        final encryptResult =
+            await DoubleRatchet.encrypt(entry.value, payloadBytes);
+
+        if (primaryEncryptResult == null) {
+          // First device becomes the primary envelope ciphertext.
+          primaryEncryptResult = encryptResult;
+          primaryDeviceId = deviceId;
+        } else {
+          // Additional devices are added as distribution ciphertexts.
+          perDeviceCiphertexts.add(
+            DistributionCiphertext(
+              id: 'mc_${_uuid.v4()}',
+              recipientId: recipientId,
+              recipientDeviceId: deviceId,
+              ciphertext: base64Encode(encryptResult.ciphertext),
+              ratchetHeader: base64Encode(
+                encryptResult.encryptedHeader,
+              ),
+            ),
+          );
+        }
+
+        // Commit ratchet state atomically after successful encrypt.
+        await _keyStore.storeSession(sessionId, encryptResult.newState);
+        await _keyStore.deleteUnackedState(sessionId);
+
+        observer?.onRatchetAdvanced(
+          sessionId,
+          encryptResult.newState.sendMessageNumber,
+        );
+      }
+
+      // 9. Build envelope with primary ciphertext.
+      final ciphertextB64 =
+          base64Encode(primaryEncryptResult!.ciphertext);
+      final headerB64 =
+          base64Encode(primaryEncryptResult.encryptedHeader);
+
       final envelope = MessageEnvelope(
         id: messageId,
         groupId: groupId,
         senderDeviceId: _myDeviceId,
         ciphertext: ciphertextB64,
         recipientId: recipientId,
-        recipientDeviceId: recipientDeviceId,
+        recipientDeviceId: primaryDeviceId!,
         ratchetHeader: headerB64,
-        // messageType defaults to 'e2ee'
+        distributionCiphertexts: perDeviceCiphertexts,
       );
 
       // 10. Send via API.
       await _apiClient.sendMessage(envelope);
 
-      // 11. On success: commit session, cache plaintext, update status.
-      await _keyStore.storeSession(sessionId, encryptResult.newState);
-      await _keyStore.deleteUnackedState(sessionId);
+      // 11. On success: cache plaintext, update status.
       await _decryptedCache.cachePlaintext(messageId, plaintext);
 
       message = message.copyWith(status: MessageStatus.sent);
@@ -188,11 +252,6 @@ class SendMessageUseCase {
         messageId,
         plaintext,
         now,
-      );
-
-      observer?.onRatchetAdvanced(
-        sessionId,
-        encryptResult.newState.sendMessageNumber,
       );
 
       return message;

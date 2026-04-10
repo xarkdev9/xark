@@ -9,7 +9,6 @@ import 'package:e2ee_chat_sdk/src/domain/models/hello_response_chunk.dart';
 import 'package:e2ee_chat_sdk/src/domain/models/invite_link.dart';
 import 'package:e2ee_chat_sdk/src/domain/models/join_result.dart';
 import 'package:http/http.dart' as http;
-import 'package:e2ee_chat_sdk/src/crypto/crypto_isolate.dart';
 import 'package:e2ee_chat_sdk/src/crypto/keys/key_store.dart';
 import 'package:e2ee_chat_sdk/src/crypto/sender_keys/group_cipher.dart';
 import 'package:e2ee_chat_sdk/src/crypto/sender_keys/sender_key_store.dart';
@@ -68,7 +67,6 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
     required SenderKeyStore senderKeyStore,
     required GroupCipher groupCipher,
     required SyncCoordinator syncCoordinator,
-    required CryptoIsolateManager cryptoIsolate,
   })  : _keyStore = keyStore,
         _apiClient = apiClient,
         _messageRepo = messageRepo,
@@ -78,8 +76,7 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
         _decryptedCache = decryptedCache,
         _senderKeyStore = senderKeyStore,
         _groupCipher = groupCipher,
-        _syncCoordinator = syncCoordinator,
-        _cryptoIsolate = cryptoIsolate;
+        _syncCoordinator = syncCoordinator;
 
   /// Creates and returns a fully initialized [ChatEngine].
   ///
@@ -160,11 +157,7 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
       backgroundUploader: backgroundUploader,
     );
 
-    // 6. Spawn crypto isolate.
-    final cryptoIsolate = CryptoIsolateManager();
-    await cryptoIsolate.spawn();
-
-    // 6b. Register push decryption method channel (native bridge).
+    // 6. Register push decryption method channel (native bridge).
     PushMethodChannel.initialize();
 
     // 7. Assemble engine.
@@ -180,7 +173,6 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
       senderKeyStore: senderKeyStoreImpl,
       groupCipher: groupCipher,
       syncCoordinator: syncCoordinator,
-      cryptoIsolate: cryptoIsolate,
     );
   }
 
@@ -197,7 +189,6 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
   final SenderKeyStore _senderKeyStore;
   final GroupCipher _groupCipher;
   final SyncCoordinator _syncCoordinator;
-  final CryptoIsolateManager _cryptoIsolate;
 
   final Map<String, ChatSessionImpl> _sessions = <String, ChatSessionImpl>{};
 
@@ -302,11 +293,6 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
   Future<void> resume() async {
     if (!_connectionController.isClosed) {
       _connectionController.add(EngineConnectionState.connecting);
-    }
-
-    // Respawn crypto isolate if it died while suspended.
-    if (!_cryptoIsolate.isRunning) {
-      await _cryptoIsolate.spawn();
     }
 
     // Start all background sync workers (outbox, watermark, conflict
@@ -534,7 +520,6 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
   Future<void> dispose() async {
     _sessions.clear();
     PushMethodChannel.dispose();
-    await _cryptoIsolate.shutdown();
     await _syncCoordinator.dispose();
     _apiClient.dispose();
     await _errorController.close();

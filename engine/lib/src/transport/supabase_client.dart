@@ -133,6 +133,23 @@ class SupabaseClientWrapper {
     });
   }
 
+  /// Batch-fetches key bundles for multiple devices of a single user.
+  ///
+  /// Fetches all bundles in parallel via [Future.wait] to minimize
+  /// round-trip latency. Each call atomically consumes one OTK.
+  Future<List<Map<String, dynamic>>> fetchKeyBundles({
+    required String userId,
+    required List<int> deviceIds,
+  }) async {
+    final futures = deviceIds.map(
+      (deviceId) => fetchPeerKeyBundle(
+        userId: userId,
+        deviceId: deviceId,
+      ),
+    );
+    return Future.wait(futures);
+  }
+
   /// Returns the number of remaining OTKs for a device via PostgREST.
   Future<int> getOTKCount({
     required String userId,
