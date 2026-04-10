@@ -23,4 +23,21 @@ mixin ChatEngineDecisions on ChatEngine {
 
   /// Lock a decision item with commitment proof (Green-Lock).
   Future<void> lockItem(String itemId, CommitmentProof proof);
+
+  /// Submit an encrypted decision item to the oblivious server.
+  Future<void> addDecisionItem(String groupId, {required String ciphertextPayload, required String nonce});
+
+  /// Decrypt an oblivious payload using the group's ratcheted key state.
+  Future<String> decryptPayload({
+    required String groupId,
+    required String ciphertext,
+    required String nonce,
+  });
+
+  /// Encrypt a plaintext JSON map using the group's ratcheted key state.
+  /// Returns a tuple-like Map or object containing `ciphertextPayload` and `nonce`.
+  Future<Map<String, String>> encryptPayload({
+    required String groupId,
+    required String plaintext,
+  });
 }

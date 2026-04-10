@@ -1,0 +1,802 @@
+[
+  {
+    "id": "TEST_001",
+    "category": "Key Management",
+    "description": "Generate a single X25519 key pair and verify both public and private key components are non-null and have the expected byte length (32 bytes each).",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_002",
+    "category": "Key Management",
+    "description": "Generate a batch of 10 X25519 key pairs in sequence and verify all 10 pairs are unique (no duplicate public keys).",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_003",
+    "category": "Key Management",
+    "description": "Generate a batch of 100 X25519 key pairs in sequence and verify all 100 pairs are unique and conform to Curve25519 point validity constraints.",
+    "status": "pass",
+    "latency_ms": 8,
+    "error_log": null
+  },
+  {
+    "id": "TEST_004",
+    "category": "Key Management",
+    "description": "Generate an X25519 key pair, validate that the public key is a valid Curve25519 point (not the identity element, not low-order), and assert the private key is correctly clamped (bits 0,1,2 of first byte cleared; bit 7 of last byte cleared; bit 6 of last byte set).",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_005",
+    "category": "Key Management",
+    "description": "Time the generation of 1000 X25519 key pairs and assert the average latency per pair is under 5ms on the target platform.",
+    "status": "pass",
+    "latency_ms": 73,
+    "error_log": null
+  },
+  {
+    "id": "TEST_006",
+    "category": "Key Management",
+    "description": "Generate a single Ed25519 signing key pair and verify the public key is 32 bytes and the private key (seed) is 64 bytes.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_007",
+    "category": "Key Management",
+    "description": "Generate 10 Ed25519 signing key pairs, sign a fixed test message with each private key, and verify each signature with the corresponding public key.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_008",
+    "category": "Key Management",
+    "description": "Generate an Ed25519 signing key pair, sign a 256-byte random payload, tamper with one byte of the signature, and assert that verification returns false.",
+    "status": "pass",
+    "latency_ms": 3,
+    "error_log": null
+  },
+  {
+    "id": "TEST_009",
+    "category": "Key Management",
+    "description": "Store an X25519 private key in the in-memory key store under a known key ID, retrieve it by the same key ID, and assert byte-for-byte equality with the original.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_010",
+    "category": "Key Management",
+    "description": "Store 50 different private keys in the in-memory key store, retrieve each by its key ID under concurrent access from 5 goroutines/isolates, and assert no retrieval errors or data races.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_011",
+    "category": "Key Management",
+    "description": "Store a private key in the in-memory key store, delete the entry, attempt retrieval, and assert that the store returns a KeyNotFound error rather than stale data.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_012",
+    "category": "Key Management",
+    "description": "Simulate a two-party X25519 key exchange: generate key pairs for Alice and Bob, compute the shared secret from Alice's perspective (Alice private + Bob public) and from Bob's perspective (Bob private + Alice public), and assert both shared secrets are identical.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_013",
+    "category": "Key Management",
+    "description": "Perform a three-party X25519 key exchange simulation between sessions A, B, and C; verify that pairwise shared secrets are unique across all three pairs (AB != AC != BC).",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_014",
+    "category": "Key Management",
+    "description": "Exchange public keys between two sessions over a serialized JSON transport, deserialize each key bundle on the receiving side, re-derive the shared secret, and assert it matches the in-memory derived secret.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_015",
+    "category": "Key Management",
+    "description": "Attempt to perform an X25519 DH exchange when the remote public key field is null; assert the operation throws a NullPublicKeyError and does not crash the runtime.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_016",
+    "category": "Key Management",
+    "description": "Attempt to perform an X25519 DH exchange using a 31-byte (truncated) public key; assert the operation throws an InvalidKeyLengthError.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_017",
+    "category": "Key Management",
+    "description": "Attempt to perform an X25519 DH exchange using 32 bytes of all-zeros as the public key (the low-order point); assert the operation throws a LowOrderPointError or equivalent security rejection.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_018",
+    "category": "Key Management",
+    "description": "Generate a batch of 100 one-time pre-keys (OTKs) in a single operation, verify all 100 key IDs are unique integers, all public keys are valid X25519 points, and the batch completes within 500ms.",
+    "status": "pass",
+    "latency_ms": 6,
+    "error_log": null
+  },
+  {
+    "id": "TEST_019",
+    "category": "Key Management",
+    "description": "Generate 100 OTKs, upload the public key bundle to the key store, simulate a remote party claiming 100 OTKs one by one, and assert that each claimed OTK is removed from the store and the store is empty at the end.",
+    "status": "pass",
+    "latency_ms": 6,
+    "error_log": null
+  },
+  {
+    "id": "TEST_020",
+    "category": "Key Management",
+    "description": "Attempt to claim an OTK when the OTK pool is empty; assert the server returns a NoOTKAvailableError and falls back to the 3-DH handshake path (no OTK).",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_021",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a single-byte plaintext (0x41) with XChaCha20-Poly1305 using a randomly generated 256-bit key and 192-bit nonce, then decrypt and assert the recovered plaintext equals the original byte.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_022",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a 10-byte plaintext with XChaCha20-Poly1305, decrypt it, and assert byte-for-byte equality; also verify the ciphertext length equals plaintext length plus 16 bytes for the Poly1305 tag.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_023",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a 100-byte random plaintext with XChaCha20-Poly1305, decrypt it, and assert byte-for-byte equality; verify no padding was added to the plaintext.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_024",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a 1 KB (1024-byte) random plaintext with AES-256-GCM using a 256-bit key and 96-bit IV, decrypt it, and assert byte-for-byte equality within a 10ms latency budget.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_025",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a 10 KB random plaintext with AES-256-GCM, decrypt it, and assert byte-for-byte equality within a 50ms latency budget.",
+    "status": "pass",
+    "latency_ms": 11,
+    "error_log": null
+  },
+  {
+    "id": "TEST_026",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a 100 KB random binary payload with the streaming AEAD (64KB chunk mode), decrypt it, and assert the recovered plaintext is byte-for-byte identical to the original.",
+    "status": "pass",
+    "latency_ms": 98,
+    "error_log": null
+  },
+  {
+    "id": "TEST_027",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a 1 MB random binary payload with the streaming AEAD (64KB chunk mode, 16 chunks), decrypt it, and assert byte-for-byte equality; record total latency.",
+    "status": "pass",
+    "latency_ms": 1011,
+    "error_log": null
+  },
+  {
+    "id": "TEST_028",
+    "category": "Encryption/Decryption",
+    "description": "Attempt to encrypt a 10 MB payload with the streaming AEAD; assert the operation either succeeds within a 30-second timeout or returns a PayloadTooLargeError if the platform enforces a sub-10MB limit.",
+    "status": "pass",
+    "latency_ms": 11463,
+    "error_log": null
+  },
+  {
+    "id": "TEST_029",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a plaintext containing only emoji characters ('🔐🗝️🛡️💬🌍') with XChaCha20-Poly1305, decrypt it, and assert the recovered UTF-8 string equals the original emoji sequence.",
+    "status": "pass",
+    "latency_ms": 4,
+    "error_log": null
+  },
+  {
+    "id": "TEST_030",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a plaintext containing mixed Unicode BMP and supplementary plane characters (CJK, Arabic, Devanagari, mathematical symbols) with XChaCha20-Poly1305, decrypt it, and assert the recovered string is NFC-normalized and equals the original.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_031",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a right-to-left (RTL) Arabic string ('مرحبا بالعالم') with AES-256-GCM, decrypt it, and assert the recovered string equals the original including correct byte order for RTL characters.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_032",
+    "category": "Encryption/Decryption",
+    "description": "Attempt to encrypt a null reference as plaintext; assert the operation throws a NullPlaintextError and does not produce any ciphertext output.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_033",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a zero-length empty string ('') with XChaCha20-Poly1305, decrypt it, and assert the recovered plaintext is also an empty string; verify ciphertext is exactly 16 bytes (tag only).",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_034",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a plaintext with key K1, then attempt decryption with a different random key K2; assert the operation throws an AEADDecryptionFailedError and does not return any partial plaintext.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_035",
+    "category": "Encryption/Decryption",
+    "description": "Encrypt a plaintext with key K1 and nonce N1, then attempt decryption with the correct key K1 but a different nonce N2; assert decryption fails with AEADDecryptionFailedError.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_036",
+    "category": "Encryption/Decryption",
+    "description": "Produce a valid AES-256-GCM ciphertext, replace the entire byte sequence with 32 bytes of random data, attempt decryption, and assert a MalformedCiphertextError is returned.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_037",
+    "category": "Encryption/Decryption",
+    "description": "Produce a valid XChaCha20-Poly1305 ciphertext, prepend 3 random bytes to simulate a malformed header, attempt decryption, and assert a MalformedCiphertextError is returned without a panic.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_038",
+    "category": "Encryption/Decryption",
+    "description": "Produce a valid AES-256-GCM ciphertext of 100 bytes, truncate it to 50 bytes (removing the GCM authentication tag), attempt decryption, and assert a TruncatedCiphertextError or AEADDecryptionFailedError is returned.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_039",
+    "category": "Encryption/Decryption",
+    "description": "Produce a valid AES-256-GCM ciphertext, flip one bit in the 12-byte IV prefix, attempt decryption with the original key, and assert the AEAD tag verification fails with AEADDecryptionFailedError.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_040",
+    "category": "Encryption/Decryption",
+    "description": "Perform a full AES-256-GCM round-trip: generate a random 256-bit key and 96-bit IV, encrypt a 512-byte plaintext with 64-byte AAD, decrypt it, and assert both plaintext equality and AAD binding (decryption fails if AAD is modified).",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_041",
+    "category": "Encryption/Decryption",
+    "description": "Perform 100 sequential AES-256-GCM round-trips with unique keys and IVs each time, verify all 100 decrypt correctly, and assert no IV is reused across the set.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_042",
+    "category": "Encryption/Decryption",
+    "description": "Perform an AES-256-GCM round-trip on a known test vector from NIST SP 800-38D and assert the ciphertext and authentication tag exactly match the published expected values.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_043",
+    "category": "Encryption/Decryption",
+    "description": "Perform a full XChaCha20-Poly1305 round-trip: generate a 256-bit key and 192-bit nonce, encrypt a 1 KB plaintext, decrypt it, and assert byte-for-byte equality.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_044",
+    "category": "Encryption/Decryption",
+    "description": "Perform 100 sequential XChaCha20-Poly1305 round-trips with unique keys and nonces each time and verify all 100 decrypt correctly within a 1-second total time budget.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_045",
+    "category": "Encryption/Decryption",
+    "description": "Perform an XChaCha20-Poly1305 round-trip on a known test vector from RFC 8439 (adapted for XChaCha20) and assert the ciphertext bytes exactly match the published expected output.",
+    "status": "pass",
+    "latency_ms": 68,
+    "error_log": null
+  },
+  {
+    "id": "TEST_046",
+    "category": "Concurrency",
+    "description": "Dispatch 10 message encryption operations simultaneously from 10 concurrent threads/isolates, each encrypting a unique 1 KB payload with a shared session key, and assert all 10 ciphertexts are produced without error and are mutually distinct.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_047",
+    "category": "Concurrency",
+    "description": "Dispatch 50 message encryption operations simultaneously from 50 concurrent threads/isolates, each encrypting a unique 1 KB payload, and assert all 50 complete within 2 seconds with zero failures.",
+    "status": "pass",
+    "latency_ms": 2,
+    "error_log": null
+  },
+  {
+    "id": "TEST_048",
+    "category": "Concurrency",
+    "description": "Dispatch 100 message encryption operations simultaneously from 100 concurrent threads/isolates, each encrypting a unique 512-byte payload, and assert all 100 complete within 5 seconds with zero AEAD tag collisions.",
+    "status": "pass",
+    "latency_ms": 3,
+    "error_log": null
+  },
+  {
+    "id": "TEST_049",
+    "category": "Concurrency",
+    "description": "Encrypt 20 messages in order (sequence numbers 1-20), deliver them to a receiver in reverse order (20 down to 1) using the Double Ratchet out-of-order buffer, and assert all 20 decrypt correctly with no message loss.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_050",
+    "category": "Concurrency",
+    "description": "Encrypt 50 messages with monotonically increasing ratchet counters, shuffle the delivery order randomly, deliver to the receiver, and assert that all 50 messages are decrypted correctly using skipped-key caching.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_051",
+    "category": "Concurrency",
+    "description": "Encrypt 100 messages with increasing ratchet counters, drop messages 10, 25, 50, and 75 (simulate network loss), deliver the remaining 96 out of order, and assert all 96 decrypt correctly while the 4 dropped messages are recorded as skipped.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_052",
+    "category": "Concurrency",
+    "description": "Launch 10 concurrent goroutines/isolates each generating an X25519 key pair simultaneously; assert all 10 complete without race conditions and all resulting key pairs are unique.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_053",
+    "category": "Concurrency",
+    "description": "Launch 50 concurrent goroutines/isolates each generating an Ed25519 key pair simultaneously; assert all 50 complete without deadlock within 3 seconds.",
+    "status": "pass",
+    "latency_ms": 3,
+    "error_log": null
+  },
+  {
+    "id": "TEST_054",
+    "category": "Concurrency",
+    "description": "Launch 5 concurrent encrypt tasks and 5 concurrent decrypt tasks interleaved (each decrypt depends on the output of its paired encrypt), using a shared AES-256-GCM key; assert all 5 round-trips complete correctly with no data race on the key material.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_055",
+    "category": "Concurrency",
+    "description": "Launch 20 concurrent encrypt-then-decrypt pipelines sharing the same XChaCha20-Poly1305 key object; assert all 20 round-trips produce correct plaintext and the key object's internal state is not corrupted by concurrent access.",
+    "status": "pass",
+    "latency_ms": 6,
+    "error_log": null
+  },
+  {
+    "id": "TEST_056",
+    "category": "Concurrency",
+    "description": "Create two sender sessions (Alice and Bob) both attempting to encrypt a message for the same recipient (Carol) simultaneously; assert both ciphertexts are valid, independently decryptable by Carol, and that no key material leaks between the two sender sessions.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_057",
+    "category": "Concurrency",
+    "description": "Create two sender sessions racing to update the same recipient's ratchet state; assert the locking mechanism prevents a torn write and the final ratchet state is consistent with exactly one of the two updates.",
+    "status": "pass",
+    "latency_ms": 2,
+    "error_log": null
+  },
+  {
+    "id": "TEST_058",
+    "category": "Concurrency",
+    "description": "Launch 20 concurrent read and 5 concurrent write operations against the in-memory key store under a reader-writer lock; assert no reads return stale data after a write completes and no deadlock occurs.",
+    "status": "pass",
+    "latency_ms": 8,
+    "error_log": null
+  },
+  {
+    "id": "TEST_059",
+    "category": "Concurrency",
+    "description": "Perform 100 simultaneous key store put-and-get operations (50 puts of unique keys, 50 gets of previously stored keys) and assert the store maintains linearizability: every get returns the most recently put value for that key ID.",
+    "status": "pass",
+    "latency_ms": 3,
+    "error_log": null
+  },
+  {
+    "id": "TEST_060",
+    "category": "Concurrency",
+    "description": "Simulate 10 concurrent X3DH initiators all claiming OTKs from a pool of exactly 10 OTKs simultaneously; assert each initiator receives a unique OTK and the pool is empty at the end with no double-claiming.",
+    "status": "pass",
+    "latency_ms": 3,
+    "error_log": null
+  },
+  {
+    "id": "TEST_061",
+    "category": "Session/State",
+    "description": "Initialize a new Double Ratchet session between Alice and Bob via X3DH key agreement; assert both sides derive the same root key, chain keys are non-null, and the initial sending/receiving chain counters are zero.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_062",
+    "category": "Session/State",
+    "description": "Initialize a Double Ratchet session without an OTK (3-DH fallback path); assert the session initializes correctly, the initial root key differs from the 4-DH variant, and the first message can be sent and received correctly.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_063",
+    "category": "Session/State",
+    "description": "Advance the Double Ratchet 10 steps (10 messages from Alice to Bob), verify that each step produces a unique message key, and assert all 10 messages decrypt correctly in order.",
+    "status": "pass",
+    "latency_ms": 2,
+    "error_log": null
+  },
+  {
+    "id": "TEST_064",
+    "category": "Session/State",
+    "description": "Advance the Double Ratchet 100 steps with alternating send/receive turns (50 messages each direction), assert all 100 messages decrypt correctly, and verify the chain key after step 100 is distinct from the initial chain key.",
+    "status": "pass",
+    "latency_ms": 5,
+    "error_log": null
+  },
+  {
+    "id": "TEST_065",
+    "category": "Session/State",
+    "description": "Advance the Double Ratchet 1000 steps in a single direction (1000 messages from Alice to Bob), assert all 1000 messages decrypt correctly, and record total execution time; assert the skipped-key cache never exceeds 1000 entries.",
+    "status": "pass",
+    "latency_ms": 47,
+    "error_log": null
+  },
+  {
+    "id": "TEST_066",
+    "category": "Session/State",
+    "description": "After 10 ratchet steps, trigger a Diffie-Hellman ratchet rotation (Bob replies to Alice), assert that new DH public keys are exchanged, new root and chain keys are derived, and messages encrypted before the rotation cannot be decrypted with post-rotation keys.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_067",
+    "category": "Session/State",
+    "description": "Rotate session keys manually via the key rotation API, assert that the old chain keys are securely zeroed from memory, new keys are derived via HKDF, and a message encrypted with the new keys cannot be decrypted with the old keys.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_068",
+    "category": "Session/State",
+    "description": "While the sender is offline, queue 10 outgoing messages in the local outbox; assert all 10 are persisted to the local store, their order is preserved (sequence numbers 1-10), and each is encrypted with the appropriate ratchet state.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_069",
+    "category": "Session/State",
+    "description": "While the sender is offline, queue 100 outgoing messages in the local outbox; assert all 100 are persisted correctly and the outbox size does not exceed the configured maximum (default: 200 messages).",
+    "status": "pass",
+    "latency_ms": 3,
+    "error_log": null
+  },
+  {
+    "id": "TEST_070",
+    "category": "Session/State",
+    "description": "Queue 50 messages in the offline outbox, simulate reconnection, drain the queue, and assert all 50 messages are delivered to the server in sequence-number order with no duplicates.",
+    "status": "pass",
+    "latency_ms": 2,
+    "error_log": null
+  },
+  {
+    "id": "TEST_071",
+    "category": "Session/State",
+    "description": "Initialize a session, perform 5 ratchet steps, wipe the local SQLCipher database (simulate device wipe), and assert the session re-initialization from a backup seed correctly restores the ratchet state to the pre-wipe position.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_072",
+    "category": "Session/State",
+    "description": "Initialize a session without a backup seed, wipe local storage, and assert the engine correctly detects the missing session state, emits a SessionLostError, and guides the user through re-keying rather than silently producing incorrect decryptions.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_073",
+    "category": "Session/State",
+    "description": "Encrypt 20 messages in order but deliver them with 5 skipped (messages 3, 7, 12, 15, 18 are dropped), assert the receiver caches the skipped message keys, and later delivers the 5 skipped messages out of order; verify all decrypt correctly.",
+    "status": "pass",
+    "latency_ms": 65,
+    "error_log": null
+  },
+  {
+    "id": "TEST_074",
+    "category": "Session/State",
+    "description": "Attempt to cache more than 1000 skipped message keys in the bounded dictionary; assert the oldest entries are evicted when the limit is exceeded and an SkippedKeyEvictionWarning is emitted.",
+    "status": "pass",
+    "latency_ms": 6,
+    "error_log": null
+  },
+  {
+    "id": "TEST_075",
+    "category": "Session/State",
+    "description": "Serialize a fully initialized Double Ratchet session state (including root key, chain keys, skipped-key dict, ratchet step counters) to a JSON blob, deserialize it into a new session object, and assert the deserialized session produces identical encryption output for the next message.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_076",
+    "category": "Session/State",
+    "description": "Serialize a session state that includes 50 cached skipped message keys, deserialize it, and assert all 50 skipped keys are present and correctly indexed by their (DH public key, counter) tuple.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_077",
+    "category": "Session/State",
+    "description": "Initialize the same user session on 3 devices simultaneously (Sesame multi-device protocol), send a message from device 1, and assert that device 2 and device 3 both receive and decrypt the message correctly via fan-out encryption.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_078",
+    "category": "Session/State",
+    "description": "Initialize sessions on 3 devices, revoke device 2 via the device registry, send a new message, and assert that device 2 can no longer decrypt new messages while device 1 and device 3 still can.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_079",
+    "category": "Session/State",
+    "description": "Create a session and leave it idle for the configured inactivity timeout period (simulate via mock clock), assert the session emits a SessionExpiredEvent, and verify that attempting to send a message after expiry triggers a session re-establishment flow.",
+    "status": "pass",
+    "latency_ms": 101,
+    "error_log": null
+  },
+  {
+    "id": "TEST_080",
+    "category": "Session/State",
+    "description": "Distribute a sender key to a group of 5 members, assert all 5 receive the sender key distribution message, and verify that a subsequent group message encrypted with the sender key is decryptable by all 5 members.",
+    "status": "pass",
+    "latency_ms": 1,
+    "error_log": null
+  },
+  {
+    "id": "TEST_081",
+    "category": "Security",
+    "description": "Capture a valid encrypted message payload (ciphertext + nonce + tag), re-submit it to the server as a new message, and assert the server rejects it with a ReplayDetectedError due to the message ID or sequence number deduplication check.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_082",
+    "category": "Security",
+    "description": "Capture a valid encrypted message, wait for it to be acknowledged, then resubmit the identical payload 10 times rapidly, and assert all 10 replay attempts are rejected and do not increment the recipient's unread counter.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_083",
+    "category": "Security",
+    "description": "Produce a valid AES-256-GCM ciphertext with a known IV, flip bit 0 of the IV, attempt decryption, and assert AEADDecryptionFailedError is returned with no partial plaintext exposure.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_084",
+    "category": "Security",
+    "description": "Produce a valid XChaCha20-Poly1305 ciphertext with a known nonce, flip bit 191 (last bit of the nonce), attempt decryption, and assert AEADDecryptionFailedError is returned.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_085",
+    "category": "Security",
+    "description": "Produce a valid AES-256-GCM ciphertext, flip one bit in byte 17 of the ciphertext body (not the IV or tag), attempt decryption, and assert the GCM authentication tag verification fails before any plaintext is returned.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_086",
+    "category": "Security",
+    "description": "Produce a valid XChaCha20-Poly1305 ciphertext, zero out the last 8 bytes of the 16-byte Poly1305 authentication tag, attempt decryption, and assert AEADDecryptionFailedError is returned.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_087",
+    "category": "Security",
+    "description": "Simulate a MITM attack: intercept Alice's X3DH key bundle in transit, replace Alice's identity public key with the attacker's identity public key, attempt to establish a session using the tampered bundle, and assert that the safety number / key fingerprint computed by Bob does not match Alice's expected fingerprint.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_088",
+    "category": "Security",
+    "description": "Simulate a MITM key substitution where an attacker swaps both parties' public keys and attempts to forward decrypted-and-re-encrypted messages; assert that Ed25519 signed pre-key verification detects the substitution and the session establishment fails with SignatureVerificationError.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_089",
+    "category": "Security",
+    "description": "Advance a Double Ratchet session 20 steps, record the message keys used at steps 1-10 (old keys), then assert that the ciphertexts from steps 11-20 cannot be decrypted using any of the old message keys from steps 1-10, demonstrating forward secrecy.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_090",
+    "category": "Security",
+    "description": "Compromise the current sending chain key at ratchet step 50 (simulate leak), assert that messages sent at steps 1-49 remain undecryptable from the leaked chain key alone (forward secrecy), and assert that future DH ratchet rotation after step 50 generates new chain keys independent of the compromised material.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_091",
+    "category": "Security",
+    "description": "Generate key fingerprints (safety numbers) for Alice and Bob independently on both sides of a session, assert that both sides compute identical 60-digit numeric safety numbers, and assert the fingerprint changes when either party's identity key changes.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_092",
+    "category": "Security",
+    "description": "Generate key fingerprints for a session, rotate Alice's signed pre-key, re-compute fingerprints, and assert the safety number changes to reflect the new key material.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_093",
+    "category": "Security",
+    "description": "Run HKDF key derivation 1000 times using incrementing input key material and measure the standard deviation of derivation times; assert the coefficient of variation is below 5% to demonstrate resistance to timing side-channel attacks on key derivation.",
+    "status": "pass",
+    "latency_ms": 88,
+    "error_log": null
+  },
+  {
+    "id": "TEST_094",
+    "category": "Security",
+    "description": "Derive HKDF output for 100 different sessions (unique IKM, salt, and info strings per session) and assert all 100 derived keys are mutually distinct with no collisions.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_095",
+    "category": "Security",
+    "description": "Derive HKDF output for two sessions that share the same IKM and salt but differ only in the info string ('XarkE2EE-RootKey' vs 'XarkE2EE-ChainKey'), and assert the two outputs are different, demonstrating domain separation.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_096",
+    "category": "Security",
+    "description": "Simulate a sender key NACK scenario: member Alice misses Bob's sender key distribution message, attempts to decrypt a group message, and receives a SenderKeyMissing error; assert the NACK recovery handler automatically requests re-distribution and the message is successfully decrypted after re-distribution.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_097",
+    "category": "Security",
+    "description": "Simulate sender key NACK for 3 members simultaneously in a 5-member group; assert that all 3 NACK recoveries complete independently without blocking each other, and all 3 members can decrypt the missed group message after recovery.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_098",
+    "category": "Security",
+    "description": "Encrypt a user profile using the profile key encryption scheme (AES-256-GCM with a 32-byte profile key), decrypt it, and assert the recovered profile fields (display name, avatar URL, status) are byte-for-byte identical to the originals.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_099",
+    "category": "Security",
+    "description": "Generate a cryptographic message frank for a plaintext message using the franking key (HMAC-SHA-256), submit the frank along with the ciphertext to the moderation oracle, assert the oracle can verify the frank without decrypting the message, and assert a tampered frank is rejected.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  },
+  {
+    "id": "TEST_100",
+    "category": "Security",
+    "description": "Perform a PQXDH hybrid key exchange: generate X25519 and Kyber-1024 key pairs for both initiator and responder, execute the hybrid X3DH combining classical DH and KEM encapsulation, derive the shared hybrid secret via HKDF over both DH output and KEM shared secret, and assert both sides derive identical 32-byte session keys.",
+    "status": "pass",
+    "latency_ms": 0,
+    "error_log": null
+  }
+]

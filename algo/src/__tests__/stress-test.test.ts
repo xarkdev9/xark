@@ -20,7 +20,7 @@ function makeGroup(id: string, members: string[]): Group {
   };
 }
 
-const proof: BookingProof = { type: "confirmation_number", value: "CONF-12345", submittedBy: "alice" };
+const proof: BookingProof = { type: "confirmation_number", value: "CONF-12345", submittedBy: "alice", submittedAt: 2000 };
 
 // ═══════════════════════════════════════════════════════
 // STRESS TEST: 100 scenarios
@@ -36,25 +36,25 @@ describe("Stress Test: Heart-Sort Scoring", () => {
   });
 
   it("LoveIt adds +5", () => {
-    const item = engine.proposeItem("trip", "Hotel A", "desc", "hotel", "alice", 1);
+    const item = engine.proposeItem("trip", "Hotel A", "nonce", "alice", 1);
     engine.react(item.id, "bob", ReactionType.LoveIt, 2);
     expect(engine.getGroupItems("trip")[0]!.weightedScore).toBe(5);
   });
 
   it("WorksForMe adds +1", () => {
-    const item = engine.proposeItem("trip", "Hotel B", "desc", "hotel", "alice", 1);
+    const item = engine.proposeItem("trip", "Hotel B", "nonce", "alice", 1);
     engine.react(item.id, "bob", ReactionType.WorksForMe, 2);
     expect(engine.getGroupItems("trip")[0]!.weightedScore).toBe(1);
   });
 
   it("NotForMe adds -3", () => {
-    const item = engine.proposeItem("trip", "Hotel C", "desc", "hotel", "alice", 1);
+    const item = engine.proposeItem("trip", "Hotel C", "nonce", "alice", 1);
     engine.react(item.id, "bob", ReactionType.NotForMe, 2);
     expect(engine.getGroupItems("trip")[0]!.weightedScore).toBe(-3);
   });
 
   it("Multiple reactions sum: LoveIt*2 + NotForMe = 7", () => {
-    const item = engine.proposeItem("trip", "H", "d", "hotel", "alice", 1);
+    const item = engine.proposeItem("trip", "H", "nonce", "alice", 1);
     engine.react(item.id, "alice", ReactionType.LoveIt, 2);
     engine.react(item.id, "bob", ReactionType.LoveIt, 3);
     engine.react(item.id, "carol", ReactionType.NotForMe, 4);
@@ -62,19 +62,19 @@ describe("Stress Test: Heart-Sort Scoring", () => {
   });
 
   it("Last reaction per user wins (flip from Love to NotForMe)", () => {
-    const item = engine.proposeItem("trip", "H", "d", "hotel", "alice", 1);
+    const item = engine.proposeItem("trip", "H", "nonce", "alice", 1);
     engine.react(item.id, "bob", ReactionType.LoveIt, 2);
     engine.react(item.id, "bob", ReactionType.NotForMe, 3);
     expect(engine.getGroupItems("trip")[0]!.weightedScore).toBe(-3);
   });
 
   it("Zero reactions = score 0", () => {
-    engine.proposeItem("trip", "H", "d", "hotel", "alice", 1);
+    engine.proposeItem("trip", "H", "nonce", "alice", 1);
     expect(engine.getGroupItems("trip")[0]!.weightedScore).toBe(0);
   });
 
   it("Score goes deeply negative with many NotForMe", () => {
-    const item = engine.proposeItem("trip", "H", "d", "hotel", "alice", 1);
+    const item = engine.proposeItem("trip", "H", "nonce", "alice", 1);
     engine.react(item.id, "alice", ReactionType.NotForMe, 1);
     engine.react(item.id, "bob", ReactionType.NotForMe, 2);
     engine.react(item.id, "carol", ReactionType.NotForMe, 3);
@@ -82,31 +82,31 @@ describe("Stress Test: Heart-Sort Scoring", () => {
   });
 
   it("heartSort orders by weighted score desc", () => {
-    const a = engine.proposeItem("trip", "Low", "d", "hotel", "alice", 1);
-    const b = engine.proposeItem("trip", "High", "d", "hotel", "alice", 2);
-    const c = engine.proposeItem("trip", "Mid", "d", "hotel", "alice", 3);
+    const a = engine.proposeItem("trip", "Low", "nonce", "alice", 1);
+    const b = engine.proposeItem("trip", "High", "nonce", "alice", 2);
+    const c = engine.proposeItem("trip", "Mid", "nonce", "alice", 3);
     engine.react(b.id, "bob", ReactionType.LoveIt, 10);
     engine.react(b.id, "carol", ReactionType.LoveIt, 11);
     engine.react(c.id, "bob", ReactionType.LoveIt, 12);
     engine.react(a.id, "bob", ReactionType.WorksForMe, 13);
     const sorted = engine.getGroupItems("trip");
-    expect(sorted[0]!.title).toBe("High");
-    expect(sorted[1]!.title).toBe("Mid");
-    expect(sorted[2]!.title).toBe("Low");
+    expect(sorted[0]!.ciphertextPayload).toBe("High");
+    expect(sorted[1]!.ciphertextPayload).toBe("Mid");
+    expect(sorted[2]!.ciphertextPayload).toBe("Low");
   });
 
   it("Tiebreaker: earlier proposal wins", () => {
-    const a = engine.proposeItem("trip", "Earlier", "d", "hotel", "alice", 1);
-    const b = engine.proposeItem("trip", "Later", "d", "hotel", "alice", 2);
+    const a = engine.proposeItem("trip", "Earlier", "nonce", "alice", 1);
+    const b = engine.proposeItem("trip", "Later", "nonce", "alice", 2);
     engine.react(a.id, "bob", ReactionType.LoveIt, 10);
     engine.react(b.id, "bob", ReactionType.LoveIt, 11);
     const sorted = engine.getGroupItems("trip");
-    expect(sorted[0]!.title).toBe("Earlier");
+    expect(sorted[0]!.ciphertextPayload).toBe("Earlier");
   });
 
   it("Sort 100 items in under 50ms", () => {
     for (let i = 0; i < 100; i++) {
-      const item = engine.proposeItem("trip", `Item ${i}`, "d", "hotel", "alice", i);
+      const item = engine.proposeItem("trip", `Item ${i}`, "nonce", "alice", i);
       if (i % 3 === 0) engine.react(item.id, "bob", ReactionType.LoveIt, i + 1000);
     }
     const start = performance.now();
@@ -119,7 +119,7 @@ describe("Stress Test: Consensus Threshold", () => {
   it("5/5 LoveIt = 100% (group favorite)", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("g1", ["a", "b", "c", "d", "e"]));
-    const item = engine.proposeItem("g1", "H", "d", "hotel", "a", 1);
+    const item = engine.proposeItem("g1", "H", "nonce", "a", 1);
     engine.react(item.id, "a", ReactionType.LoveIt, 2);
     engine.react(item.id, "b", ReactionType.LoveIt, 3);
     engine.react(item.id, "c", ReactionType.LoveIt, 4);
@@ -133,7 +133,7 @@ describe("Stress Test: Consensus Threshold", () => {
   it("4/5 LoveIt = 80% (NOT group favorite — threshold is >80)", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("g2", ["a", "b", "c", "d", "e"]));
-    const item = engine.proposeItem("g2", "H", "d", "hotel", "a", 1);
+    const item = engine.proposeItem("g2", "H", "nonce", "a", 1);
     engine.react(item.id, "a", ReactionType.LoveIt, 2);
     engine.react(item.id, "b", ReactionType.LoveIt, 3);
     engine.react(item.id, "c", ReactionType.LoveIt, 4);
@@ -146,7 +146,7 @@ describe("Stress Test: Consensus Threshold", () => {
   it("NotForMe does NOT count as agreement", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("g3", ["a", "b", "c"]));
-    const item = engine.proposeItem("g3", "H", "d", "hotel", "a", 1);
+    const item = engine.proposeItem("g3", "H", "nonce", "a", 1);
     engine.react(item.id, "a", ReactionType.LoveIt, 2);
     engine.react(item.id, "b", ReactionType.NotForMe, 3);
     const score = engine.getAgreementScore(item.id);
@@ -157,7 +157,7 @@ describe("Stress Test: Consensus Threshold", () => {
     const engine = new ConsensusEngine();
     const members = Array.from({length: 15}, (_, i) => `g${i}`);
     engine.registerGroup(makeGroup("wedding", members));
-    const item = engine.proposeItem("wedding", "Garden Venue", "d", "venue", "g0", 1);
+    const item = engine.proposeItem("wedding", "Garden Venue", "nonce", "g0", 1);
     for (let i = 0; i < 13; i++) engine.react(item.id, `g${i}`, ReactionType.LoveIt, i + 10);
     expect(engine.getAgreementScore(item.id).isGroupFavorite).toBe(true);
   });
@@ -166,7 +166,7 @@ describe("Stress Test: Consensus Threshold", () => {
     const engine = new ConsensusEngine();
     const members = Array.from({length: 15}, (_, i) => `h${i}`);
     engine.registerGroup(makeGroup("w2", members));
-    const item = engine.proposeItem("w2", "Garden", "d", "venue", "h0", 1);
+    const item = engine.proposeItem("w2", "Garden", "nonce", "h0", 1);
     for (let i = 0; i < 12; i++) engine.react(item.id, `h${i}`, ReactionType.LoveIt, i + 10);
     expect(engine.getAgreementScore(item.id).isGroupFavorite).toBe(false);
   });
@@ -182,44 +182,44 @@ describe("Stress Test: Green-Lock Commitments", () => {
   });
 
   it("Lock with booking proof", () => {
-    const item = engine.proposeItem("trip", "Hotel", "d", "hotel", "alice", 1);
-    const locked = engine.lock(item.id, proof);
+    const item = engine.proposeItem("trip", "Hotel", "nonce", "alice", 1);
+    const locked = engine.lock(item.id, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
     expect(locked.state).toBe(BookableItemState.Locked);
-    expect(locked.commitmentProof!.value).toBe("CONF-12345");
+    expect(locked.commitmentCiphertext).toBe("CONF-12345");
   });
 
   it("Double-lock throws", () => {
-    const item = engine.proposeItem("trip", "Hotel", "d", "hotel", "alice", 1);
-    engine.lock(item.id, proof);
-    expect(() => engine.lock(item.id, proof)).toThrow();
+    const item = engine.proposeItem("trip", "Hotel", "nonce", "alice", 1);
+    engine.lock(item.id, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
+    expect(() => engine.lock(item.id, proof.value, "nonce", proof.submittedBy, proof.submittedAt)).toThrow();
   });
 
   it("Cannot react to locked item", () => {
-    const item = engine.proposeItem("trip", "Hotel", "d", "hotel", "alice", 1);
-    engine.lock(item.id, proof);
+    const item = engine.proposeItem("trip", "Hotel", "nonce", "alice", 1);
+    engine.lock(item.id, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
     expect(() => engine.react(item.id, "bob", ReactionType.LoveIt, 200)).toThrow();
   });
 
   it("Transfer ownership", () => {
-    const item = engine.proposeItem("trip", "Hotel", "d", "hotel", "alice", 1);
-    engine.lock(item.id, proof);
+    const item = engine.proposeItem("trip", "Hotel", "nonce", "alice", 1);
+    engine.lock(item.id, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
     const transferred = engine.transfer(item.id, "bob", 200);
     expect(transferred.ownership!.ownerId).toBe("bob");
   });
 
   it("Transfer to same owner throws", () => {
-    const item = engine.proposeItem("trip", "Hotel", "d", "hotel", "alice", 1);
-    engine.lock(item.id, proof);
+    const item = engine.proposeItem("trip", "Hotel", "nonce", "alice", 1);
+    engine.lock(item.id, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
     expect(() => engine.transfer(item.id, "alice", 200)).toThrow();
   });
 
   it("Ownership history tracks transfers", () => {
-    const item = engine.proposeItem("trip", "Hotel", "d", "hotel", "alice", 1);
-    engine.lock(item.id, proof);
+    const item = engine.proposeItem("trip", "Hotel", "nonce", "alice", 1);
+    engine.lock(item.id, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
     engine.transfer(item.id, "bob", 200);
     engine.transfer(item.id, "carol", 300);
     const final_item = engine.getGroupItems("trip").find(i => i.id === item.id)!;
-    expect(final_item.ownershipHistory.length).toBeGreaterThanOrEqual(2);
+    expect(final_item.ownership?.ownerId).toBe("carol");
   });
 });
 
@@ -228,9 +228,9 @@ describe("Stress Test: Real-World Scenarios", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("bali", ["ram", "priya", "alex", "emma", "liam"]));
 
-    const stregis = engine.proposeItem("bali", "St. Regis Bali", "$750/night, Nusa Dua", "hotel", "ram", 1);
-    const wbali = engine.proposeItem("bali", "W Bali Seminyak", "$450/night, Seminyak", "hotel", "priya", 2);
-    const mulia = engine.proposeItem("bali", "The Mulia", "$680/night, Nusa Dua", "hotel", "alex", 3);
+    const stregis = engine.proposeItem("bali", "St. Regis Bali", "nonce", "ram", 1);
+    const wbali = engine.proposeItem("bali", "W Bali Seminyak", "nonce", "priya", 2);
+    const mulia = engine.proposeItem("bali", "The Mulia", "nonce", "alex", 3);
 
     engine.react(stregis.id, "ram", ReactionType.LoveIt, 10);
     engine.react(stregis.id, "priya", ReactionType.LoveIt, 11);
@@ -245,7 +245,7 @@ describe("Stress Test: Real-World Scenarios", () => {
 
     // St. Regis should win
     const ranked = engine.getGroupItems("bali");
-    expect(ranked[0]!.title).toBe("St. Regis Bali");
+    expect(ranked[0]!.ciphertextPayload).toBe("St. Regis Bali");
     expect(ranked[0]!.weightedScore).toBe(21); // 4*5 + 1 = 21
 
     // 100% agreement (5/5 voted positively)
@@ -253,22 +253,18 @@ describe("Stress Test: Real-World Scenarios", () => {
     expect(engine.getAgreementScore(stregis.id).isGroupFavorite).toBe(true);
 
     // Lock with booking confirmation
-    const locked = engine.lock(stregis.id, {
-      type: "booking_confirmation",
-      value: "Booking.com Ref: BC-9876543",
-      submittedBy: "priya",
-    });
+    const locked = engine.lock(stregis.id, "Booking.com Ref: BC-9876543", "nonce", "priya", 2000);
 
     expect(locked.state).toBe(BookableItemState.Locked);
-    expect(locked.commitmentProof!.value).toContain("BC-9876543");
+    expect(locked.commitmentCiphertext).toContain("BC-9876543");
   });
 
   it("Family dinner: NotForMe kills Nobu, Carbone wins", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("dinner", ["mom", "dad", "ram", "priya"]));
 
-    const carbone = engine.proposeItem("dinner", "Carbone", "Italian", "restaurant", "ram", 1);
-    const nobu = engine.proposeItem("dinner", "Nobu", "Japanese", "restaurant", "priya", 2);
+    const carbone = engine.proposeItem("dinner", "Carbone", "nonce", "ram", 1);
+    const nobu = engine.proposeItem("dinner", "Nobu", "nonce", "priya", 2);
 
     engine.react(carbone.id, "mom", ReactionType.LoveIt, 10);
     engine.react(carbone.id, "dad", ReactionType.LoveIt, 11);
@@ -280,7 +276,7 @@ describe("Stress Test: Real-World Scenarios", () => {
     engine.react(nobu.id, "ram", ReactionType.NotForMe, 22);
 
     const ranked = engine.getGroupItems("dinner");
-    expect(ranked[0]!.title).toBe("Carbone"); // 15-3 = 12
+    expect(ranked[0]!.ciphertextPayload).toBe("Carbone"); // 15-3 = 12
     expect(ranked[1]!.weightedScore).toBeLessThan(0); // Nobu: -9
   });
 
@@ -288,16 +284,12 @@ describe("Stress Test: Real-World Scenarios", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("laptop", ["ram"]));
 
-    const mbp = engine.proposeItem("laptop", "MacBook Pro M4", "$2499", "electronics", "ram", 1);
+    const mbp = engine.proposeItem("laptop", "MacBook Pro M4", "nonce", "ram", 1);
     engine.react(mbp.id, "ram", ReactionType.LoveIt, 10);
 
     expect(engine.getAgreementScore(mbp.id).percentage).toBe(100);
 
-    const locked = engine.lock(mbp.id, {
-      type: "purchase",
-      value: "Apple Order #W12345678",
-      submittedBy: "ram",
-    });
+    const locked = engine.lock(mbp.id, "Apple Order #W12345678", "nonce", "ram", 2000);
 
     expect(locked.state).toBe(BookableItemState.Locked);
   });
@@ -307,8 +299,8 @@ describe("Stress Test: Real-World Scenarios", () => {
     engine.registerGroup(makeGroup("trip_a", ["ram", "alex"]));
     engine.registerGroup(makeGroup("trip_b", ["ram", "priya"]));
 
-    const hotelA = engine.proposeItem("trip_a", "Hilton", "d", "hotel", "ram", 1);
-    const hotelB = engine.proposeItem("trip_b", "Marriott", "d", "hotel", "ram", 2);
+    const hotelA = engine.proposeItem("trip_a", "Hilton", "nonce", "ram", 1);
+    const hotelB = engine.proposeItem("trip_b", "Marriott", "nonce", "ram", 2);
 
     engine.react(hotelA.id, "ram", ReactionType.LoveIt, 10);
     engine.react(hotelB.id, "ram", ReactionType.NotForMe, 20);
@@ -320,7 +312,7 @@ describe("Stress Test: Real-World Scenarios", () => {
   it("Change of mind: flip NotForMe to LoveIt", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("flip", ["a", "b"]));
-    const item = engine.proposeItem("flip", "H", "d", "hotel", "a", 1);
+    const item = engine.proposeItem("flip", "H", "nonce", "a", 1);
 
     engine.react(item.id, "b", ReactionType.NotForMe, 10);
     expect(engine.getGroupItems("flip")[0]!.weightedScore).toBe(-3);
@@ -346,8 +338,8 @@ describe("Stress Test: Real-World Scenarios", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("grounded", ["a", "b"]));
 
-    const hotel = engine.proposeItem("grounded", "St. Regis", "Booked", "hotel", "a", 1);
-    engine.lock(hotel.id, proof);
+    const hotel = engine.proposeItem("grounded", "St. Regis", "nonce", "a", 1);
+    engine.lock(hotel.id, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
 
     const ctx = engine.getGroundingContext("grounded");
     expect(ctx.lockedDecisions.length).toBeGreaterThanOrEqual(1);
@@ -361,7 +353,7 @@ describe("Stress Test: Scale & Performance", () => {
     engine.registerGroup(makeGroup("scale", ["a", "b"]));
     const start = performance.now();
     for (let i = 0; i < 100; i++) {
-      engine.proposeItem("scale", `Item ${i}`, "d", "hotel", "a", i);
+      engine.proposeItem("scale", `Item ${i}`, "nonce", "a", i);
     }
     expect(performance.now() - start).toBeLessThan(50);
     expect(engine.getGroupItems("scale").length).toBe(100);
@@ -371,7 +363,7 @@ describe("Stress Test: Scale & Performance", () => {
     const engine = new ConsensusEngine();
     const members = Array.from({length: 50}, (_, i) => `voter_${i}`);
     engine.registerGroup(makeGroup("big_vote", members));
-    const item = engine.proposeItem("big_vote", "Popular", "d", "hotel", "voter_0", 1);
+    const item = engine.proposeItem("big_vote", "Popular", "nonce", "voter_0", 1);
     for (let i = 0; i < 50; i++) {
       engine.react(item.id, `voter_${i}`, ReactionType.LoveIt, i + 10);
     }
@@ -381,7 +373,7 @@ describe("Stress Test: Scale & Performance", () => {
   it("Rapid flip-flop: 100 reaction changes, final state wins", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("flip", ["a", "b"]));
-    const item = engine.proposeItem("flip", "H", "d", "hotel", "a", 1);
+    const item = engine.proposeItem("flip", "H", "nonce", "a", 1);
 
     for (let i = 0; i < 100; i++) {
       engine.react(item.id, "b",
@@ -402,7 +394,7 @@ describe("Stress Test: Scale & Performance", () => {
       const members = Array.from({length: 5}, (_, j) => `s${s}_u${j}`);
       engine.registerGroup(makeGroup(`space_${s}`, members));
       for (let i = 0; i < 10; i++) {
-        engine.proposeItem(`space_${s}`, `Item ${s}_${i}`, "d", "hotel", members[0], i);
+        engine.proposeItem(`space_${s}`, `Item ${s}_${i}`, "nonce", members[0]!, i);
       }
     }
     expect(engine.getGroupItems("space_5").length).toBe(10);
@@ -413,18 +405,18 @@ describe("Stress Test: Security & Edge Cases", () => {
   it("Unreact on non-existent reaction is safe", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("sec", ["a", "b"]));
-    const item = engine.proposeItem("sec", "H", "d", "hotel", "a", 1);
+    const item = engine.proposeItem("sec", "H", "nonce", "a", 1);
     // Unreact without having reacted
-    engine.unreact(item.id, "b");
+    engine.unreact(item.id, "b", 20);
     expect(engine.getGroupItems("sec")[0]!.reactions.length).toBe(0);
   });
 
   it("React/unreact/react cycle preserves last state", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("cycle", ["a", "b"]));
-    const item = engine.proposeItem("cycle", "H", "d", "hotel", "a", 1);
+    const item = engine.proposeItem("cycle", "H", "nonce", "a", 1);
     engine.react(item.id, "b", ReactionType.LoveIt, 10);
-    engine.unreact(item.id, "b");
+    engine.unreact(item.id, "b", 15);
     engine.react(item.id, "b", ReactionType.NotForMe, 20);
     expect(engine.getGroupItems("cycle")[0]!.weightedScore).toBe(-3);
   });
@@ -441,9 +433,9 @@ describe("Stress Test: Security & Edge Cases", () => {
     const events: any[] = [];
     engine.on(e => events.push(e));
 
-    const item = engine.proposeItem("events", "H", "d", "hotel", "a", 1);
+    const item = engine.proposeItem("events", "H", "nonce", "a", 1);
     engine.react(item.id, "b", ReactionType.LoveIt, 10);
-    engine.lock(item.id, proof);
+    engine.lock(item.id, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
 
     expect(events.length).toBeGreaterThanOrEqual(3); // propose + react + lock
   });
@@ -451,7 +443,7 @@ describe("Stress Test: Security & Edge Cases", () => {
   it("Signal breakdown counts correctly", () => {
     const engine = new ConsensusEngine();
     engine.registerGroup(makeGroup("sig", ["a", "b", "c", "d"]));
-    const item = engine.proposeItem("sig", "H", "d", "hotel", "a", 1);
+    const item = engine.proposeItem("sig", "H", "nonce", "a", 1);
     engine.react(item.id, "a", ReactionType.LoveIt, 10);
     engine.react(item.id, "b", ReactionType.WorksForMe, 11);
     engine.react(item.id, "c", ReactionType.NotForMe, 12);

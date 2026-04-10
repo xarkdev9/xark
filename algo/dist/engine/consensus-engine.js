@@ -1,29 +1,43 @@
 /**
- * Xark Consensus Engine
+ * hello Universal Decision Engine
  *
  * Orchestrates the full decision lifecycle:
- *   Apify proposes options
- *     → Group reacts (❤️/👍🏻) → Weighted Heart-Sort re-orders in real-time
- *       → Any member books the top choice + provides confirmation
- *         → Green-Lock activates → Booker stamped as owner
- *           → @xark grounds all future suggestions to locked state
+ *   Options proposed (by Apify, manually, or any source)
+ *     → Members react (❤️/👍🏻) → Weighted Heart-Sort re-orders in real-time
+ *       → Any member commits (books, purchases, decides) + provides proof
+ *         → Lock activates → Committer stamped as owner
+ *           → @hello grounds all future suggestions to locked state
  *             → Another member can claim via "I'll take care of this"
+ *
+ * Supports multiple DecisionSpaces — each with its own state machine,
+ * reaction weights, thresholds, and items.
  *
  * No gates. No votes. No clustering. Just signal → act → lock.
  */
-import { BookableItemState, EventType, ReactionType, } from "../models/types.js";
+import { BookableItemState, DEFAULT_SPACE_CONFIG, EventType, ReactionType, } from "../models/types.js";
 import { addReaction, removeReaction, heartSort, calculateAgreementScore, getRankedSummary, } from "./heart-sort.js";
-import { lockItem, transferOwnership, isLocked } from "./green-lock.js";
+import { lockItem, transferOwnership, isLocked, commitItem } from "./green-lock.js";
 import { createTask, assignTask, reassignTask, unassignTask, } from "./task-assignment.js";
 import { buildGroundingContext, generateGroundingPrompt, } from "./ai-grounding.js";
+import { StateMachine } from "./state-machine.js";
+import { BOOKING_FLOW } from "./state-flows.js";
+import { randomUUID } from "node:crypto";
 export class ConsensusEngine {
     groups = new Map();
+    spaces = new Map();
+    spaceMachines = new Map();
     items = new Map();
     tasks = new Map();
     groupItems = new Map();
     groupTasks = new Map();
     listeners = [];
-    itemCounter = 0;
+    defaultConfig;
+    constructor(options) {
+        this.defaultConfig = {
+            ...DEFAULT_SPACE_CONFIG,
+            ...options?.defaultConfig,
+        };
+    }
     // --- Event System ---
     on(listener) {
         this.listeners.push(listener);
@@ -36,7 +50,62 @@ export class ConsensusEngine {
             listener(event);
         }
     }
-    // --- Group Management ---
+    // --- Decision Space Management ---
+    /**
+     * Creates a new DecisionSpace with its own config and state machine.
+     */
+    createSpace(space) {
+        this.spaces.set(space.id, space);
+        const flowConfig = space.flow ?? BOOKING_FLOW;
+        this.spaceMachines.set(space.id, new StateMachine(flowConfig));
+        if (!this.groupItems.has(space.id)) {
+            this.groupItems.set(space.id, new Set());
+        }
+        if (!this.groupTasks.has(space.id)) {
+            this.groupTasks.set(space.id, new Set());
+        }
+        // Also register as group for backwards compat
+        this.groups.set(space.id, {
+            id: space.id,
+            name: space.name,
+            members: space.members,
+            createdAt: space.createdAt,
+        });
+    }
+    /**
+     * Gets a DecisionSpace by ID.
+     */
+    getSpace(groupId) {
+        return this.spaces.get(groupId);
+    }
+    /**
+     * Gets the config for a space, falling back to default.
+     */
+    getSpaceConfig(groupId) {
+        const space = this.spaces.get(groupId);
+        return space?.config ?? this.defaultConfig;
+    }
+    /**
+     * Gets the state machine for a space, creating a default if needed.
+     */
+    getStateMachine(groupId) {
+        let machine = this.spaceMachines.get(groupId);
+        if (!machine) {
+            machine = new StateMachine(BOOKING_FLOW);
+            this.spaceMachines.set(groupId, machine);
+        }
+        return machine;
+    }
+    /**
+     * Sets a custom state machine for a space.
+     */
+    setStateMachine(groupId, machine) {
+        this.spaceMachines.set(groupId, machine);
+    }
+    // --- Group Management (backwards compat) ---
+    /**
+     * Registers a group. Alias for createSpace with default config.
+     */
     registerGroup(group) {
         this.groups.set(group.id, group);
         if (!this.groupItems.has(group.id)) {
@@ -49,51 +118,69 @@ export class ConsensusEngine {
     getGroup(groupId) {
         return this.groups.get(groupId);
     }
-    // --- Bookable Items (Green-Lock Engine) ---
+    // --- Decision Items ---
     /**
-     * Proposes a new bookable item to a group (typically from Apify agents).
+     * Adds a new decision item to a space/group.
+     * Uses crypto.randomUUID() for globally unique IDs.
      */
-    proposeItem(groupId, title, description, category, proposedBy, timestamp) {
-        this.itemCounter++;
+    addItem(groupId, ciphertextPayload, nonce, proposedBy, timestamp) {
+        const config = this.getSpaceConfig(groupId);
+        const machine = this.getStateMachine(groupId);
+        const id = `item_${randomUUID()}`;
         const item = {
-            id: `item_${this.itemCounter}`,
-            groupId,
-            title,
-            description,
-            category,
-            state: BookableItemState.Proposed,
+            id,
+            groupId: groupId,
+            ciphertextPayload,
+            nonce,
+            state: machine.getInitialState(),
             proposedBy,
             proposedAt: timestamp,
             reactions: [],
             weightedScore: 0,
-            bookingProof: null,
+            commitmentCiphertext: null,
+            commitmentNonce: null,
             ownership: null,
-            ownershipHistory: [],
             lockedAt: null,
+            version: 1,
         };
         this.items.set(item.id, item);
         this.getOrCreateGroupItems(groupId).add(item.id);
         this.emit({
             type: EventType.ItemProposed,
             timestamp,
-            groupId,
+            groupId: groupId,
             actorId: proposedBy,
-            payload: { itemId: item.id, title, category },
+            payload: { itemId: item.id, ciphertextPayload, nonce },
         });
         return item;
     }
     /**
-     * Adds a reaction (❤️ or 👍🏻) to an item. Triggers Heart-Sort re-ordering.
+     * Proposes a new bookable item to a group.
+     * Backwards-compatible alias for addItem().
+     */
+    proposeItem(groupId, ciphertextPayload, nonce, proposedBy, timestamp) {
+        return this.addItem(groupId, ciphertextPayload, nonce, proposedBy, timestamp);
+    }
+    /**
+     * Adds a reaction to an item. Triggers re-ranking.
      */
     react(itemId, userId, reactionType, timestamp) {
         const item = this.getItemOrThrow(itemId);
-        if (isLocked(item)) {
-            throw new Error(`Cannot react to locked item "${item.title}".`);
+        const machine = this.getStateMachine(item.groupId);
+        const config = this.getSpaceConfig(item.groupId);
+        if (isLocked(item, machine)) {
+            throw new Error(`Cannot react to locked item.`);
         }
-        const updated = addReaction(item, userId, reactionType, timestamp);
-        // Transition to heart_sorted once any reaction exists
-        if (updated.state === BookableItemState.Proposed && updated.reactions.length > 0) {
-            updated.state = BookableItemState.HeartSorted;
+        if (!config.allowSelfReaction && item.proposedBy === userId) {
+            throw new Error(`Self-reactions are not allowed in this space.`);
+        }
+        const updated = addReaction(item, userId, reactionType, timestamp, config.reactionWeights);
+        // Transition via state machine on first reaction
+        if (updated.reactions.length > 0) {
+            const nextState = machine.transition(updated.state, "reaction");
+            if (nextState !== null && nextState !== updated.state) {
+                updated.state = nextState;
+            }
         }
         this.items.set(itemId, updated);
         this.emit({
@@ -110,10 +197,12 @@ export class ConsensusEngine {
      */
     unreact(itemId, userId, timestamp) {
         const item = this.getItemOrThrow(itemId);
-        if (isLocked(item)) {
-            throw new Error(`Cannot modify reactions on locked item "${item.title}".`);
+        const machine = this.getStateMachine(item.groupId);
+        const config = this.getSpaceConfig(item.groupId);
+        if (isLocked(item, machine)) {
+            throw new Error(`Cannot modify reactions on locked item.`);
         }
-        const updated = removeReaction(item, userId);
+        const updated = removeReaction(item, userId, config.reactionWeights);
         this.items.set(itemId, updated);
         this.emit({
             type: EventType.ReactionRemoved,
@@ -125,23 +214,23 @@ export class ConsensusEngine {
         return updated;
     }
     /**
-     * Locks an item by providing booking confirmation.
-     * The booker is automatically stamped as the owner.
+     * Locks/commits an item by providing proof.
+     * The committer is automatically stamped as the owner.
      */
-    lock(itemId, proof) {
+    lock(itemId, commitmentCiphertext, commitmentNonce, userId, timestamp) {
         const item = this.getItemOrThrow(itemId);
-        const locked = lockItem(item, proof);
+        const machine = this.getStateMachine(item.groupId);
+        const config = this.getSpaceConfig(item.groupId);
+        const locked = commitItem(item, commitmentCiphertext, commitmentNonce, userId, timestamp, machine, config.requireProofForLock);
         this.items.set(itemId, locked);
         this.emit({
             type: EventType.ItemLocked,
-            timestamp: proof.submittedAt,
+            timestamp: timestamp,
             groupId: item.groupId,
-            actorId: proof.submittedBy,
+            actorId: userId,
             payload: {
                 itemId,
-                title: item.title,
-                proofType: proof.type,
-                ownerId: proof.submittedBy,
+                ownerId: userId,
             },
         });
         return locked;
@@ -151,8 +240,9 @@ export class ConsensusEngine {
      */
     transfer(itemId, newOwnerId, timestamp) {
         const item = this.getItemOrThrow(itemId);
+        const machine = this.getStateMachine(item.groupId);
         const previousOwnerId = item.ownership?.ownerId;
-        const updated = transferOwnership(item, newOwnerId, timestamp);
+        const updated = transferOwnership(item, newOwnerId, timestamp, machine);
         this.items.set(itemId, updated);
         this.emit({
             type: EventType.OwnershipTransferred,
@@ -161,7 +251,6 @@ export class ConsensusEngine {
             actorId: newOwnerId,
             payload: {
                 itemId,
-                title: item.title,
                 previousOwnerId,
                 newOwnerId,
             },
@@ -197,10 +286,17 @@ export class ConsensusEngine {
         });
         return updated;
     }
-    releaseTask(taskId) {
+    releaseTask(taskId, timestamp) {
         const task = this.getTaskOrThrow(taskId);
         const updated = unassignTask(task);
         this.tasks.set(taskId, updated);
+        this.emit({
+            type: EventType.TaskReleased,
+            timestamp: timestamp ?? Date.now(),
+            groupId: task.groupId,
+            actorId: task.assignee ?? "",
+            payload: { taskId, title: task.title },
+        });
         return updated;
     }
     // --- Queries ---
@@ -211,9 +307,10 @@ export class ConsensusEngine {
         return this.tasks.get(taskId);
     }
     /**
-     * Returns all items for a group, sorted by Heart-Sort (weighted score descending).
+     * Returns all items for a group/space, sorted by Heart-Sort (weighted score descending).
+     * Supports pagination via offset/limit.
      */
-    getGroupItems(groupId) {
+    getGroupItems(groupId, options) {
         const itemIds = this.groupItems.get(groupId);
         if (!itemIds)
             return [];
@@ -223,22 +320,30 @@ export class ConsensusEngine {
             if (item)
                 items.push(item);
         }
-        return heartSort(items);
+        const sorted = heartSort(items);
+        if (options) {
+            const offset = options.offset ?? 0;
+            const limit = options.limit ?? sorted.length;
+            return sorted.slice(offset, offset + limit);
+        }
+        return sorted;
     }
     /**
-     * Returns only locked items for a group.
+     * Returns only locked items for a group/space.
      */
     getLockedItems(groupId) {
-        return this.getGroupItems(groupId).filter(isLocked);
+        const machine = this.getStateMachine(groupId);
+        return this.getGroupItems(groupId).filter((item) => isLocked(item, machine));
     }
     /**
-     * Returns only unlocked (active) items for a group, sorted by score.
+     * Returns only unlocked (active) items for a group/space, sorted by score.
      */
     getActiveItems(groupId) {
-        return this.getGroupItems(groupId).filter((item) => !isLocked(item));
+        const machine = this.getStateMachine(groupId);
+        return this.getGroupItems(groupId).filter((item) => !isLocked(item, machine));
     }
     /**
-     * Returns all tasks for a group.
+     * Returns all tasks for a group/space.
      */
     getGroupTasks(groupId) {
         const taskIds = this.groupTasks.get(groupId);
@@ -258,8 +363,9 @@ export class ConsensusEngine {
     getRankedItems(groupId) {
         const group = this.groups.get(groupId);
         const totalMembers = group?.members.length ?? 0;
+        const config = this.getSpaceConfig(groupId);
         const items = this.getActiveItems(groupId);
-        return getRankedSummary(items, totalMembers);
+        return getRankedSummary(items, totalMembers, config.groupFavoriteThreshold);
     }
     /**
      * Calculates agreement score for a specific item.
@@ -268,20 +374,37 @@ export class ConsensusEngine {
         const item = this.getItemOrThrow(itemId);
         const group = this.groups.get(item.groupId);
         const totalMembers = group?.members.length ?? 0;
-        return calculateAgreementScore(item, totalMembers);
+        const config = this.getSpaceConfig(item.groupId);
+        return calculateAgreementScore(item, totalMembers, config.groupFavoriteThreshold);
+    }
+    // --- Signal Breakdown (for frontend variable reward schedule) ---
+    /**
+     * Returns the signal breakdown for an item.
+     * Frontend uses isUnanimousLoveIt to trigger the Social Gold burst.
+     */
+    getSignalBreakdown(itemId) {
+        const item = this.getItemOrThrow(itemId);
+        const group = this.groups.get(item.groupId);
+        const totalMembers = group?.members.length ?? 0;
+        const loveIt = item.reactions.filter((r) => r.type === ReactionType.LoveIt).length;
+        const worksForMe = item.reactions.filter((r) => r.type === ReactionType.WorksForMe).length;
+        const notForMe = item.reactions.filter((r) => r.type === ReactionType.NotForMe).length;
+        const isUnanimousLoveIt = totalMembers > 0 && loveIt === totalMembers;
+        return { loveIt, worksForMe, notForMe, isUnanimousLoveIt };
     }
     // --- AI Grounding ---
     /**
-     * Builds the grounding context for @xark.
+     * Builds the grounding context for @hello.
      * Returns all locked decisions as hard constraints and active items as context.
      */
     getGroundingContext(groupId) {
+        const machine = this.getStateMachine(groupId);
         const items = this.getGroupItems(groupId);
         const tasks = this.getGroupTasks(groupId);
-        return buildGroundingContext(groupId, items, tasks);
+        return buildGroundingContext(groupId, items, tasks, machine);
     }
     /**
-     * Generates the system prompt fragment for @xark.
+     * Generates the system prompt fragment for @hello.
      */
     getGroundingPrompt(groupId) {
         const context = this.getGroundingContext(groupId);

@@ -15,22 +15,18 @@ function makeItem(overrides: Partial<BookableItem> = {}): BookableItem {
   return {
     id: "item_1",
     groupId: "group_1",
-    groupId: "group_1",
-    title: "Hilton San Diego",
-    description: "Hilton hotel in downtown San Diego",
-    category: "hotel",
-    state: BookableItemState.HeartSorted,
+    ciphertextPayload: "Hilton San Diego",
+    nonce: "nonce",
+    state: BookableItemState.Ranked,
     proposedBy: "user_1",
     proposedAt: 1000,
     reactions: [],
     weightedScore: 10,
-    commitmentProof: null,
-    bookingProof: null,
+    commitmentCiphertext: null,
+    commitmentNonce: null,
     ownership: null,
-    ownershipHistory: [],
     lockedAt: null,
     version: 1,
-    metadata: {},
     ...overrides,
   };
 }
@@ -49,31 +45,31 @@ describe("lockItem", () => {
   it("locks an item with booking proof", () => {
     const item = makeItem();
     const proof = makeProof();
-    const locked = lockItem(item, proof);
+    const locked = lockItem(item, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
 
     expect(locked.state).toBe(BookableItemState.Locked);
-    expect(locked.bookingProof).toEqual(proof);
+    expect(locked.commitmentCiphertext).toEqual(proof.value);
     expect(locked.lockedAt).toBe(2000);
   });
 
   it("stamps the booker as owner", () => {
     const item = makeItem();
     const proof = makeProof({ submittedBy: "user_3" });
-    const locked = lockItem(item, proof);
+    const locked = lockItem(item, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
 
     expect(locked.ownership).not.toBeNull();
     expect(locked.ownership!.ownerId).toBe("user_3");
     expect(locked.ownership!.reason).toBe("booker");
   });
 
-  it("records ownership in history", () => {
+  it("records ownership details properly", () => {
     const item = makeItem();
     const proof = makeProof();
-    const locked = lockItem(item, proof);
+    const locked = lockItem(item, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
 
-    expect(locked.ownershipHistory).toHaveLength(1);
-    expect(locked.ownershipHistory[0]!.ownerId).toBe("user_2");
-    expect(locked.ownershipHistory[0]!.reason).toBe("booker");
+    expect(locked.ownership).not.toBeNull();
+    expect(locked.ownership!.ownerId).toBe("user_2");
+    expect(locked.ownership!.reason).toBe("booker");
   });
 
   it("accepts screenshot as proof type", () => {
@@ -82,34 +78,33 @@ describe("lockItem", () => {
       type: "screenshot",
       value: "/uploads/booking-confirmation.png",
     });
-    const locked = lockItem(item, proof);
+    const locked = lockItem(item, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
 
-    expect(locked.bookingProof!.type).toBe("screenshot");
-    expect(locked.bookingProof!.value).toBe("/uploads/booking-confirmation.png");
+    expect(locked.commitmentCiphertext).toBe("/uploads/booking-confirmation.png");
   });
 
   it("throws if item is already locked", () => {
     const item = makeItem({ state: BookableItemState.Locked });
     const proof = makeProof();
 
-    expect(() => lockItem(item, proof)).toThrow(GreenLockError);
-    expect(() => lockItem(item, proof)).toThrow("already locked");
+    expect(() => lockItem(item, proof.value, "nonce", proof.submittedBy, proof.submittedAt)).toThrow(GreenLockError);
+    expect(() => lockItem(item, proof.value, "nonce", proof.submittedBy, proof.submittedAt)).toThrow("already locked");
   });
 
   it("throws if proof value is empty", () => {
     const item = makeItem();
     const proof = makeProof({ value: "   " });
 
-    expect(() => lockItem(item, proof)).toThrow(GreenLockError);
-    expect(() => lockItem(item, proof)).toThrow("cannot be empty");
+    expect(() => lockItem(item, proof.value, "nonce", proof.submittedBy, proof.submittedAt)).toThrow(GreenLockError);
+    expect(() => lockItem(item, proof.value, "nonce", proof.submittedBy, proof.submittedAt)).toThrow("cannot be empty");
   });
 
   it("does not mutate the original item", () => {
     const item = makeItem();
     const proof = makeProof();
-    lockItem(item, proof);
+    lockItem(item, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
 
-    expect(item.state).toBe(BookableItemState.HeartSorted);
+    expect(item.state).toBe(BookableItemState.Ranked);
     expect(item.ownership).toBeNull();
   });
 });
@@ -119,20 +114,16 @@ describe("transferOwnership", () => {
     const item = makeItem({
       state: BookableItemState.Locked,
       ownership: { ownerId: "user_2", assignedAt: 2000, reason: "booker" },
-      ownershipHistory: [
-        { ownerId: "user_2", assignedAt: 2000, reason: "booker" },
-      ],
     });
 
     const transferred = transferOwnership(item, "user_4", 3000);
 
     expect(transferred.ownership!.ownerId).toBe("user_4");
     expect(transferred.ownership!.reason).toBe("transfer");
-    expect(transferred.ownershipHistory).toHaveLength(2);
   });
 
   it("throws if item is not locked", () => {
-    const item = makeItem({ state: BookableItemState.HeartSorted });
+    const item = makeItem({ state: BookableItemState.Ranked });
 
     expect(() => transferOwnership(item, "user_4", 3000)).toThrow(
       GreenLockError
@@ -158,15 +149,13 @@ describe("transferOwnership", () => {
     const proof = makeProof();
     const item = makeItem({
       state: BookableItemState.Locked,
-      bookingProof: proof,
+      commitmentCiphertext: proof.value,
+      commitmentNonce: "nonce",
       ownership: { ownerId: "user_2", assignedAt: 2000, reason: "booker" },
-      ownershipHistory: [
-        { ownerId: "user_2", assignedAt: 2000, reason: "booker" },
-      ],
     });
 
     const transferred = transferOwnership(item, "user_5", 3000);
-    expect(transferred.bookingProof).toEqual(proof);
+    expect(transferred.commitmentCiphertext).toEqual(proof.value);
     expect(transferred.state).toBe(BookableItemState.Locked);
   });
 });
@@ -181,7 +170,7 @@ describe("isLocked", () => {
   });
 
   it("returns false for heart-sorted items", () => {
-    expect(isLocked(makeItem({ state: BookableItemState.HeartSorted }))).toBe(
+    expect(isLocked(makeItem({ state: BookableItemState.Ranked }))).toBe(
       false
     );
   });

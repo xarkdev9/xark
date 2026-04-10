@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
+import 'dart:typed_data';
+import 'dart:ui' show IsolateNameServer;
 
 import 'package:e2ee_chat_sdk/src/chat_session_impl.dart';
 import 'package:e2ee_chat_sdk/src/domain/models/commitment_proof.dart';
@@ -12,6 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:e2ee_chat_sdk/src/crypto/keys/key_store.dart';
 import 'package:e2ee_chat_sdk/src/crypto/sender_keys/group_cipher.dart';
 import 'package:e2ee_chat_sdk/src/crypto/sender_keys/sender_key_store.dart';
+import 'package:e2ee_chat_sdk/src/crypto/sender_keys/sqlite_sender_key_store.dart';
 import 'package:e2ee_chat_sdk/src/domain/models/chat_engine_error.dart';
 import 'package:e2ee_chat_sdk/src/domain/models/connection_state.dart';
 import 'package:e2ee_chat_sdk/src/domain/models/contact_match.dart';
@@ -44,7 +48,10 @@ import 'package:e2ee_chat_sdk/src/crypto/keys/key_store_impl.dart';
 import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
 import 'package:e2ee_chat_sdk/src/devices/device_registry.dart';
 import 'package:e2ee_chat_sdk/src/domain/models/user_profile.dart';
+import 'package:e2ee_chat_sdk/src/notifications/push_decryptor.dart';
+import 'package:e2ee_chat_sdk/src/notifications/push_handler.dart';
 import 'package:e2ee_chat_sdk/src/notifications/push_method_channel.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:e2ee_chat_sdk/src/sync/outbox_processor.dart';
 import 'package:e2ee_chat_sdk/src/sync/gap_detector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -117,10 +124,9 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
 
     // 4. Build crypto layer.
     final keyStore = KeyStoreImpl();
-    // WARNING: In-memory sender key store — group keys lost on app restart.
-    // Users will see decryption failures until new SK distributions arrive.
-    // TODO: Replace with Drift-backed SenderKeyStore for persistence across restarts.
-    final senderKeyStoreImpl = _InMemorySenderKeyStore();
+    final senderKeyStoreImpl = SqliteSenderKeyStore();
+    // Initialize the DB structure if it hasn't been created yet
+    await senderKeyStoreImpl.initialize();
     final groupCipher = GroupCipher(store: senderKeyStoreImpl);
 
     // 5. Build sync layer.
@@ -160,8 +166,21 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
     // 6. Register push decryption method channel (native bridge).
     PushMethodChannel.initialize();
 
+    // 6c. Register IsolateNameServer port for background push hand-off.
+    //
+    // When the FCM background handler receives a push while the main app
+    // is alive (suspended in RAM), it sends the ciphertext over this port
+    // instead of touching the DB. This prevents ratchet state forks.
+    // The main thread decrypts atomically with its own in-memory state.
+    final pushReceivePort = ReceivePort();
+    IsolateNameServer.removePortNameMapping(mainEnginePortName);
+    IsolateNameServer.registerPortWithName(
+      pushReceivePort.sendPort,
+      mainEnginePortName,
+    );
+
     // 7. Assemble engine.
-    return ChatEngineImpl._(
+    final engine = ChatEngineImpl._(
       config: config,
       keyStore: keyStore,
       apiClient: apiClient,
@@ -174,6 +193,16 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
       groupCipher: groupCipher,
       syncCoordinator: syncCoordinator,
     );
+
+    // 8. Listen for push decrypt hand-offs from the background handler.
+    engine._pushReceivePort = pushReceivePort;
+    pushReceivePort.listen((data) {
+      if (data is Map<String, dynamic>) {
+        engine._handlePushDecryptHandoff(data);
+      }
+    });
+
+    return engine;
   }
 
   /// The configuration this engine was initialized with.
@@ -189,6 +218,10 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
   final SenderKeyStore _senderKeyStore;
   final GroupCipher _groupCipher;
   final SyncCoordinator _syncCoordinator;
+
+  /// ReceivePort for background push handler hand-off.
+  /// Set after construction in [initialize].
+  ReceivePort? _pushReceivePort;
 
   final Map<String, ChatSessionImpl> _sessions = <String, ChatSessionImpl>{};
 
@@ -359,6 +392,11 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
   }
 
   @override
+  Future<String> findOrCreateChat(String peerId) async {
+    return _apiClient.findOrCreateChat(peerId);
+  }
+
+  @override
   Future<Conversation> createGroup({
     required String title,
     String? atmosphere,
@@ -440,9 +478,10 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
       return DecisionItem(
         id: item['id'] as String,
         groupId: groupId,
-        title: item['title'] as String? ?? '',
-        description: item['description'] as String?,
-        category: item['category'] as String?,
+        ciphertextPayload: item['ciphertext_payload'] as String,
+        nonce: item['nonce'] as String,
+        commitmentCiphertext: item['commitment_ciphertext'] as String?,
+        commitmentNonce: item['commitment_nonce'] as String?,
         state: item['state'] as String? ?? 'proposed',
         weightedScore:
             (item['weighted_score'] as num?)?.toDouble() ?? 0.0,
@@ -450,7 +489,6 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
             (item['agreement_score'] as num?)?.toDouble() ?? 0.0,
         reactions: reactions,
         isLocked: item['is_locked'] as bool? ?? false,
-        photoUrl: item['photo_url'] as String?,
         proposedBy: item['proposed_by'] as String?,
       );
     }).toList();
@@ -466,6 +504,45 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
         'p_signal': signal,
       },
     );
+  }
+
+
+
+  @override
+  Future<void> addDecisionItem(String groupId, {required String ciphertextPayload, required String nonce}) async {
+    await _apiClient.supabaseClient.from('decision_items').insert({
+      'group_id': groupId,
+      'proposed_by': config.userId,
+      'ciphertext_payload': ciphertextPayload,
+      'nonce': nonce,
+      'state': 'proposed',
+      'version': 1,
+    });
+  }
+
+  @override
+  Future<String> decryptPayload({
+    required String groupId,
+    required String ciphertext,
+    required String nonce,
+  }) async {
+    final ctBytes = base64Decode(ciphertext);
+    // Use config.userId as sender fallback for now
+    final result = await _groupCipher.decrypt(groupId, config.userId, ctBytes);
+    return utf8.decode(result);
+  }
+
+  @override
+  Future<Map<String, String>> encryptPayload({
+    required String groupId,
+    required String plaintext,
+  }) async {
+    final plainBytes = Uint8List.fromList(utf8.encode(plaintext));
+    final result = await _groupCipher.encrypt(groupId, config.userId, plainBytes);
+    return {
+      'ciphertextPayload': base64Encode(result),
+      'nonce': 'embedded',
+    };
   }
 
   @override
@@ -516,9 +593,64 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Background Push Hand-off
+  // ---------------------------------------------------------------------------
+
+  /// Handles a push decrypt request handed off from the FCM background
+  /// handler via IsolateNameServer.
+  ///
+  /// The background handler detected that the main app is alive (suspended
+  /// in RAM) and sent the ciphertext here instead of touching the database.
+  /// We decrypt atomically with our in-memory ratchet state and show a
+  /// local notification.
+  void _handlePushDecryptHandoff(Map<String, dynamic> data) {
+    // Fire-and-forget -- errors are swallowed and fallback notification shown.
+    _doPushDecryptHandoff(data);
+  }
+
+  Future<void> _doPushDecryptHandoff(Map<String, dynamic> data) async {
+    try {
+      final payload = PushPayload.fromMap(data);
+      final result = await decryptPushPayload(payload);
+
+      // Show local notification with decrypted content or fallback.
+      final plugin = FlutterLocalNotificationsPlugin();
+      await plugin.initialize(
+        const InitializationSettings(
+          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          iOS: DarwinInitializationSettings(),
+        ),
+      );
+
+      await plugin.show(
+        result.messageId.hashCode,
+        result.senderName,
+        result.messagePreview,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'e2ee_chat_messages',
+            'Messages',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+      );
+    } catch (_) {
+      // Swallow all errors -- never crash the main engine from push handling.
+    }
+  }
+
   @override
   Future<void> dispose() async {
     _sessions.clear();
+
+    // Unregister the background push hand-off port.
+    IsolateNameServer.removePortNameMapping(mainEnginePortName);
+    _pushReceivePort?.close();
+    _pushReceivePort = null;
+
     PushMethodChannel.dispose();
     await _syncCoordinator.dispose();
     _apiClient.dispose();
@@ -527,37 +659,3 @@ class ChatEngineImpl extends ChatEngine with ChatEngineDecisions {
   }
 }
 
-/// In-memory [SenderKeyStore] for bootstrapping.
-///
-/// **Known limitation:** All sender keys are lost on app restart. Group members
-/// will experience decryption failures until the sender redistributes keys.
-/// This is acceptable for development but must be replaced before production.
-///
-/// TODO(persistence): Replace with a Drift-backed SenderKeyStore that persists
-/// sender keys across restarts. Requires a new `sender_keys` table + migration.
-class _InMemorySenderKeyStore implements SenderKeyStore {
-  final _store = <String, SenderKeyRecord>{};
-
-  String _key(String groupId, String senderId) => '$groupId:$senderId';
-
-  @override
-  Future<void> storeSenderKey(
-    String groupId, String senderId, SenderKeyRecord record,
-  ) async {
-    _store[_key(groupId, senderId)] = record;
-  }
-
-  @override
-  Future<SenderKeyRecord?> loadSenderKey(
-    String groupId, String senderId,
-  ) async {
-    return _store[_key(groupId, senderId)];
-  }
-
-  @override
-  Future<void> deleteSenderKey(
-    String groupId, String senderId,
-  ) async {
-    _store.remove(_key(groupId, senderId));
-  }
-}

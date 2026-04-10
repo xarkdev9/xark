@@ -22,15 +22,15 @@ DecisionItem _$DecisionItemFromJson(Map<String, dynamic> json) {
 mixin _$DecisionItem {
   String get id => throw _privateConstructorUsedError;
   String get groupId => throw _privateConstructorUsedError;
-  String get title => throw _privateConstructorUsedError;
-  String? get description => throw _privateConstructorUsedError;
-  String? get category => throw _privateConstructorUsedError;
+  String get ciphertextPayload => throw _privateConstructorUsedError;
+  String get nonce => throw _privateConstructorUsedError;
+  String? get commitmentCiphertext => throw _privateConstructorUsedError;
+  String? get commitmentNonce => throw _privateConstructorUsedError;
   String get state => throw _privateConstructorUsedError;
   double get weightedScore => throw _privateConstructorUsedError;
   double get agreementScore => throw _privateConstructorUsedError;
   Map<String, String> get reactions => throw _privateConstructorUsedError;
   bool get isLocked => throw _privateConstructorUsedError;
-  String? get photoUrl => throw _privateConstructorUsedError;
   String? get proposedBy => throw _privateConstructorUsedError;
 
   /// Serializes this DecisionItem to a JSON map.
@@ -52,15 +52,15 @@ abstract class $DecisionItemCopyWith<$Res> {
   $Res call(
       {String id,
       String groupId,
-      String title,
-      String? description,
-      String? category,
+      String ciphertextPayload,
+      String nonce,
+      String? commitmentCiphertext,
+      String? commitmentNonce,
       String state,
       double weightedScore,
       double agreementScore,
       Map<String, String> reactions,
       bool isLocked,
-      String? photoUrl,
       String? proposedBy});
 }
 
@@ -81,15 +81,15 @@ class _$DecisionItemCopyWithImpl<$Res, $Val extends DecisionItem>
   $Res call({
     Object? id = null,
     Object? groupId = null,
-    Object? title = null,
-    Object? description = freezed,
-    Object? category = freezed,
+    Object? ciphertextPayload = null,
+    Object? nonce = null,
+    Object? commitmentCiphertext = freezed,
+    Object? commitmentNonce = freezed,
     Object? state = null,
     Object? weightedScore = null,
     Object? agreementScore = null,
     Object? reactions = null,
     Object? isLocked = null,
-    Object? photoUrl = freezed,
     Object? proposedBy = freezed,
   }) {
     return _then(_value.copyWith(
@@ -101,17 +101,21 @@ class _$DecisionItemCopyWithImpl<$Res, $Val extends DecisionItem>
           ? _value.groupId
           : groupId // ignore: cast_nullable_to_non_nullable
               as String,
-      title: null == title
-          ? _value.title
-          : title // ignore: cast_nullable_to_non_nullable
+      ciphertextPayload: null == ciphertextPayload
+          ? _value.ciphertextPayload
+          : ciphertextPayload // ignore: cast_nullable_to_non_nullable
               as String,
-      description: freezed == description
-          ? _value.description
-          : description // ignore: cast_nullable_to_non_nullable
+      nonce: null == nonce
+          ? _value.nonce
+          : nonce // ignore: cast_nullable_to_non_nullable
+              as String,
+      commitmentCiphertext: freezed == commitmentCiphertext
+          ? _value.commitmentCiphertext
+          : commitmentCiphertext // ignore: cast_nullable_to_non_nullable
               as String?,
-      category: freezed == category
-          ? _value.category
-          : category // ignore: cast_nullable_to_non_nullable
+      commitmentNonce: freezed == commitmentNonce
+          ? _value.commitmentNonce
+          : commitmentNonce // ignore: cast_nullable_to_non_nullable
               as String?,
       state: null == state
           ? _value.state
@@ -133,10 +137,6 @@ class _$DecisionItemCopyWithImpl<$Res, $Val extends DecisionItem>
           ? _value.isLocked
           : isLocked // ignore: cast_nullable_to_non_nullable
               as bool,
-      photoUrl: freezed == photoUrl
-          ? _value.photoUrl
-          : photoUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
       proposedBy: freezed == proposedBy
           ? _value.proposedBy
           : proposedBy // ignore: cast_nullable_to_non_nullable
@@ -156,15 +156,15 @@ abstract class _$$DecisionItemImplCopyWith<$Res>
   $Res call(
       {String id,
       String groupId,
-      String title,
-      String? description,
-      String? category,
+      String ciphertextPayload,
+      String nonce,
+      String? commitmentCiphertext,
+      String? commitmentNonce,
       String state,
       double weightedScore,
       double agreementScore,
       Map<String, String> reactions,
       bool isLocked,
-      String? photoUrl,
       String? proposedBy});
 }
 
@@ -183,15 +183,15 @@ class __$$DecisionItemImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? groupId = null,
-    Object? title = null,
-    Object? description = freezed,
-    Object? category = freezed,
+    Object? ciphertextPayload = null,
+    Object? nonce = null,
+    Object? commitmentCiphertext = freezed,
+    Object? commitmentNonce = freezed,
     Object? state = null,
     Object? weightedScore = null,
     Object? agreementScore = null,
     Object? reactions = null,
     Object? isLocked = null,
-    Object? photoUrl = freezed,
     Object? proposedBy = freezed,
   }) {
     return _then(_$DecisionItemImpl(
@@ -203,17 +203,21 @@ class __$$DecisionItemImplCopyWithImpl<$Res>
           ? _value.groupId
           : groupId // ignore: cast_nullable_to_non_nullable
               as String,
-      title: null == title
-          ? _value.title
-          : title // ignore: cast_nullable_to_non_nullable
+      ciphertextPayload: null == ciphertextPayload
+          ? _value.ciphertextPayload
+          : ciphertextPayload // ignore: cast_nullable_to_non_nullable
               as String,
-      description: freezed == description
-          ? _value.description
-          : description // ignore: cast_nullable_to_non_nullable
+      nonce: null == nonce
+          ? _value.nonce
+          : nonce // ignore: cast_nullable_to_non_nullable
+              as String,
+      commitmentCiphertext: freezed == commitmentCiphertext
+          ? _value.commitmentCiphertext
+          : commitmentCiphertext // ignore: cast_nullable_to_non_nullable
               as String?,
-      category: freezed == category
-          ? _value.category
-          : category // ignore: cast_nullable_to_non_nullable
+      commitmentNonce: freezed == commitmentNonce
+          ? _value.commitmentNonce
+          : commitmentNonce // ignore: cast_nullable_to_non_nullable
               as String?,
       state: null == state
           ? _value.state
@@ -235,10 +239,6 @@ class __$$DecisionItemImplCopyWithImpl<$Res>
           ? _value.isLocked
           : isLocked // ignore: cast_nullable_to_non_nullable
               as bool,
-      photoUrl: freezed == photoUrl
-          ? _value.photoUrl
-          : photoUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
       proposedBy: freezed == proposedBy
           ? _value.proposedBy
           : proposedBy // ignore: cast_nullable_to_non_nullable
@@ -253,15 +253,15 @@ class _$DecisionItemImpl implements _DecisionItem {
   const _$DecisionItemImpl(
       {required this.id,
       required this.groupId,
-      required this.title,
-      this.description,
-      this.category,
+      required this.ciphertextPayload,
+      required this.nonce,
+      this.commitmentCiphertext,
+      this.commitmentNonce,
       required this.state,
       this.weightedScore = 0.0,
       this.agreementScore = 0.0,
       final Map<String, String> reactions = const {},
       this.isLocked = false,
-      this.photoUrl,
       this.proposedBy})
       : _reactions = reactions;
 
@@ -273,11 +273,13 @@ class _$DecisionItemImpl implements _DecisionItem {
   @override
   final String groupId;
   @override
-  final String title;
+  final String ciphertextPayload;
   @override
-  final String? description;
+  final String nonce;
   @override
-  final String? category;
+  final String? commitmentCiphertext;
+  @override
+  final String? commitmentNonce;
   @override
   final String state;
   @override
@@ -299,13 +301,11 @@ class _$DecisionItemImpl implements _DecisionItem {
   @JsonKey()
   final bool isLocked;
   @override
-  final String? photoUrl;
-  @override
   final String? proposedBy;
 
   @override
   String toString() {
-    return 'DecisionItem(id: $id, groupId: $groupId, title: $title, description: $description, category: $category, state: $state, weightedScore: $weightedScore, agreementScore: $agreementScore, reactions: $reactions, isLocked: $isLocked, photoUrl: $photoUrl, proposedBy: $proposedBy)';
+    return 'DecisionItem(id: $id, groupId: $groupId, ciphertextPayload: $ciphertextPayload, nonce: $nonce, commitmentCiphertext: $commitmentCiphertext, commitmentNonce: $commitmentNonce, state: $state, weightedScore: $weightedScore, agreementScore: $agreementScore, reactions: $reactions, isLocked: $isLocked, proposedBy: $proposedBy)';
   }
 
   @override
@@ -315,11 +315,13 @@ class _$DecisionItemImpl implements _DecisionItem {
             other is _$DecisionItemImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.groupId, groupId) || other.groupId == groupId) &&
-            (identical(other.title, title) || other.title == title) &&
-            (identical(other.description, description) ||
-                other.description == description) &&
-            (identical(other.category, category) ||
-                other.category == category) &&
+            (identical(other.ciphertextPayload, ciphertextPayload) ||
+                other.ciphertextPayload == ciphertextPayload) &&
+            (identical(other.nonce, nonce) || other.nonce == nonce) &&
+            (identical(other.commitmentCiphertext, commitmentCiphertext) ||
+                other.commitmentCiphertext == commitmentCiphertext) &&
+            (identical(other.commitmentNonce, commitmentNonce) ||
+                other.commitmentNonce == commitmentNonce) &&
             (identical(other.state, state) || other.state == state) &&
             (identical(other.weightedScore, weightedScore) ||
                 other.weightedScore == weightedScore) &&
@@ -329,8 +331,6 @@ class _$DecisionItemImpl implements _DecisionItem {
                 .equals(other._reactions, _reactions) &&
             (identical(other.isLocked, isLocked) ||
                 other.isLocked == isLocked) &&
-            (identical(other.photoUrl, photoUrl) ||
-                other.photoUrl == photoUrl) &&
             (identical(other.proposedBy, proposedBy) ||
                 other.proposedBy == proposedBy));
   }
@@ -341,15 +341,15 @@ class _$DecisionItemImpl implements _DecisionItem {
       runtimeType,
       id,
       groupId,
-      title,
-      description,
-      category,
+      ciphertextPayload,
+      nonce,
+      commitmentCiphertext,
+      commitmentNonce,
       state,
       weightedScore,
       agreementScore,
       const DeepCollectionEquality().hash(_reactions),
       isLocked,
-      photoUrl,
       proposedBy);
 
   /// Create a copy of DecisionItem
@@ -372,15 +372,15 @@ abstract class _DecisionItem implements DecisionItem {
   const factory _DecisionItem(
       {required final String id,
       required final String groupId,
-      required final String title,
-      final String? description,
-      final String? category,
+      required final String ciphertextPayload,
+      required final String nonce,
+      final String? commitmentCiphertext,
+      final String? commitmentNonce,
       required final String state,
       final double weightedScore,
       final double agreementScore,
       final Map<String, String> reactions,
       final bool isLocked,
-      final String? photoUrl,
       final String? proposedBy}) = _$DecisionItemImpl;
 
   factory _DecisionItem.fromJson(Map<String, dynamic> json) =
@@ -391,11 +391,13 @@ abstract class _DecisionItem implements DecisionItem {
   @override
   String get groupId;
   @override
-  String get title;
+  String get ciphertextPayload;
   @override
-  String? get description;
+  String get nonce;
   @override
-  String? get category;
+  String? get commitmentCiphertext;
+  @override
+  String? get commitmentNonce;
   @override
   String get state;
   @override
@@ -406,8 +408,6 @@ abstract class _DecisionItem implements DecisionItem {
   Map<String, String> get reactions;
   @override
   bool get isLocked;
-  @override
-  String? get photoUrl;
   @override
   String? get proposedBy;
 

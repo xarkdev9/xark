@@ -12,6 +12,7 @@ export declare class TaskAssignmentError extends Error {
 }
 /**
  * Creates a new task for a group.
+ * Uses crypto.randomUUID() for globally unique IDs.
  */
 export declare function createTask(groupId: GroupId, title: string, description: string, createdBy: UserId, timestamp: number): Task;
 /**
@@ -27,7 +28,8 @@ export declare function reassignTask(task: Task, newAssigneeId: UserId, timestam
  */
 export declare function unassignTask(task: Task): Task;
 /**
- * Resets the task counter (for testing).
+ * No-op for backwards compatibility. Task IDs are now UUIDs.
+ * @deprecated No longer needed — task IDs use crypto.randomUUID()
  */
 export declare function resetTaskCounter(): void;
 //# sourceMappingURL=task-assignment.d.ts.map

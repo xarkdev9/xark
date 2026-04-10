@@ -51,3 +51,11 @@ Target feature set. Architect for all from day one, even if not all ship in Phas
 | Sealed sender | Hide sender identity in transport envelope | None (transparent) |
 | Screen security | None (platform-level) | Block screenshots in sensitive views |
 | App lock (PIN / biometric) | Require unlock before DB open | PIN entry screen, biometric prompt |
+
+## Advanced Social Constructs
+
+| Feature | Engine (this repo) | UI (`~/chatF/`) |
+|---|---|---|
+| **Semantic Echo (Plan Resurrection)** | Search local DB for semantic group planning intents; yield JSON blueprint | Detect intent, render translucent "Echo Card" inline |
+| **Z-Axis Time-Scrub** | Provide localized milestones / settled DecisionItem hashes via chronological query | Render iOS-Photos style vertical haptic scrubber; fade chat background to 10% opacity; float cinematic "Decision Milestone" cards centrally |
+| **Plan Forking (GitHub for Social)** | Clone `DecisionItem` tree, strip votes, retain constraints & options | "Fork" swipe action on past plans; animates cloned widget into bottom of active chat stream |

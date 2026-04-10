@@ -10,15 +10,15 @@ class DecisionItem with _$DecisionItem {
   const factory DecisionItem({
     required String id,
     required String groupId,
-    required String title,
-    String? description,
-    String? category,
+    required String ciphertextPayload,
+    required String nonce,
+    String? commitmentCiphertext,
+    String? commitmentNonce,
     required String state,
     @Default(0.0) double weightedScore,
     @Default(0.0) double agreementScore,
     @Default({}) Map<String, String> reactions,
     @Default(false) bool isLocked,
-    String? photoUrl,
     String? proposedBy,
   }) = _DecisionItem;
 

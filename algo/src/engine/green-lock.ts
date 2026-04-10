@@ -30,25 +30,28 @@ export class GreenLockError extends Error {
  */
 export function commitItem(
   item: BookableItem,
-  proof: CommitmentProof,
+  commitmentCiphertext: string,
+  commitmentNonce: string,
+  submittedBy: UserId,
+  submittedAt: number,
   stateMachine: StateMachine,
   requireProof = true
 ): BookableItem {
   if (stateMachine.isLocked(item.state as string)) {
     throw new GreenLockError(
-      `Item "${item.title}" is already locked. Cannot re-lock a committed item.`
+      `Item is already locked. Cannot re-lock a committed item.`
     );
   }
 
-  if (requireProof && !proof.value.trim()) {
+  if (requireProof && !commitmentCiphertext.trim()) {
     throw new GreenLockError(
       "Commitment proof cannot be empty. Provide a screenshot, confirmation number, or other proof."
     );
   }
 
-  const now = proof.submittedAt;
+  const now = submittedAt;
   const ownership = {
-    ownerId: proof.submittedBy,
+    ownerId: submittedBy,
     assignedAt: now,
     reason: "booker" as const,
   };
@@ -56,10 +59,9 @@ export function commitItem(
   return {
     ...item,
     state: stateMachine.getLockedState() as BookableItem["state"],
-    commitmentProof: proof,
-    bookingProof: proof,
+    commitmentCiphertext,
+    commitmentNonce,
     ownership,
-    ownershipHistory: [...item.ownershipHistory, ownership],
     lockedAt: now,
   };
 }
@@ -74,23 +76,26 @@ export function commitItem(
  */
 export function lockItem(
   item: BookableItem,
-  bookingProof: CommitmentProof
+  commitmentCiphertext: string,
+  commitmentNonce: string,
+  submittedBy: UserId,
+  submittedAt: number
 ): BookableItem {
   if (item.state === BookableItemState.Locked) {
     throw new GreenLockError(
-      `Item "${item.title}" is already locked. Cannot re-lock a booked item.`
+      `Item is already locked. Cannot re-lock a booked item.`
     );
   }
 
-  if (!bookingProof.value.trim()) {
+  if (!commitmentCiphertext.trim()) {
     throw new GreenLockError(
       "Commitment proof cannot be empty. Provide a screenshot, confirmation number, or other proof."
     );
   }
 
-  const now = bookingProof.submittedAt;
+  const now = submittedAt;
   const ownership = {
-    ownerId: bookingProof.submittedBy,
+    ownerId: submittedBy,
     assignedAt: now,
     reason: "booker" as const,
   };
@@ -98,10 +103,9 @@ export function lockItem(
   return {
     ...item,
     state: BookableItemState.Locked,
-    commitmentProof: bookingProof,
-    bookingProof,
+    commitmentCiphertext,
+    commitmentNonce,
     ownership,
-    ownershipHistory: [...item.ownershipHistory, ownership],
     lockedAt: now,
   };
 }
@@ -124,13 +128,13 @@ export function transferOwnership(
 
   if (!isItemLocked) {
     throw new GreenLockError(
-      `Item "${item.title}" is not locked. Only locked items can have ownership transferred.`
+      `Item is not locked. Only locked items can have ownership transferred.`
     );
   }
 
   if (item.ownership?.ownerId === newOwnerId) {
     throw new GreenLockError(
-      `User is already the owner of "${item.title}".`
+      `User is already the owner.`
     );
   }
 
@@ -143,7 +147,6 @@ export function transferOwnership(
   return {
     ...item,
     ownership: newOwnership,
-    ownershipHistory: [...item.ownershipHistory, newOwnership],
   };
 }
 

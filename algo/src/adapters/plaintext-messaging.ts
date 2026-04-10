@@ -28,7 +28,7 @@ export class PlaintextMessagingAdapter implements MessagingPort {
       ? ` | Owner: ${item.ownership.ownerId}`
       : "";
     return {
-      text: `[${state}] ${item.title} (score: ${item.weightedScore})${owner}\n  ${item.description}`,
+      text: `[${state}] ${item.ciphertextPayload} (score: ${item.weightedScore})${owner}`,
     };
   }
 
@@ -39,7 +39,7 @@ export class PlaintextMessagingAdapter implements MessagingPort {
 
     const lines = items.map((item) => {
       const fav = item.isGroupFavorite ? " *GROUP FAVORITE*" : "";
-      return `#${item.rank} ${item.title} — ${item.weightedScore} pts (${Math.round(item.agreementScore)}% agree)${fav}`;
+      return `#${item.rank} ${item.ciphertextPayload} — ${item.weightedScore} pts (${Math.round(item.agreementScore)}% agree)${fav}`;
     });
 
     return { text: `Ranked items:\n${lines.join("\n")}` };
@@ -47,9 +47,8 @@ export class PlaintextMessagingAdapter implements MessagingPort {
 
   formatLockNotification(item: BookableItem): OutgoingMessage {
     const owner = item.ownership?.ownerId ?? "unknown";
-    const proof = item.commitmentProof?.value ?? item.bookingProof?.value ?? "";
     return {
-      text: `LOCKED: "${item.title}" committed by ${owner}${proof ? ` (ref: ${proof})` : ""}`,
+      text: `LOCKED: "${item.ciphertextPayload}" committed by ${owner}`,
     };
   }
 
@@ -60,21 +59,17 @@ export class PlaintextMessagingAdapter implements MessagingPort {
     const payload = event.payload as Record<string, unknown> | undefined;
     switch (event.type) {
       case "item_proposed":
-        return { text: `New option proposed: "${payload?.title}"` };
+        return { text: `New option proposed: "${payload?.ciphertextPayload || payload?.title}"` };
       case "reaction_added":
         return {
           text: `${event.actorId} reacted (new score: ${payload?.newScore})`,
         };
       case "item_locked":
-        return {
-          text: `"${payload?.title}" has been locked by ${payload?.ownerId}`,
-        };
+        return { text: `"${payload?.itemId}" has been locked by ${payload?.ownerId}` };
       case "ownership_transferred":
-        return {
-          text: `"${payload?.title}" transferred: ${payload?.previousOwnerId} → ${payload?.newOwnerId}`,
-        };
+        return { text: `"${payload?.itemId}" transferred: ${payload?.previousOwnerId} → ${payload?.newOwnerId}` };
       case "task_created":
-        return { text: `New task: "${payload?.title}"` };
+        return { text: `New task: "${payload?.ciphertextPayload || payload?.title}"` };
       case "task_assigned":
         return {
           text: `Task "${payload?.title}" claimed by ${payload?.assigneeId}`,

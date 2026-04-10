@@ -1,5 +1,5 @@
 /**
- * Xark Universal Decision Engine
+ * hello Universal Decision Engine
  *
  * A commitment protocol for group and individual coordination.
  * Social alignment (heart-sort) → Commitment (booking/purchase/decision) → Lock.
@@ -19,7 +19,6 @@ export {
 
 export type {
   UserId,
-  GroupId,
   GroupId,
   ItemId,
   TaskId,
@@ -119,6 +118,7 @@ export type {
 
 // Adapters (reference implementations)
 export { MemoryPersistenceAdapter } from "./adapters/memory-persistence.js";
+export { PostgresPersistenceAdapter } from "./adapters/postgres-persistence.js";
 export { MemoryEventBusAdapter } from "./adapters/memory-event-bus.js";
 export { MemoryCacheAdapter } from "./adapters/memory-cache.js";
 export { NoopAuthAdapter } from "./adapters/noop-auth.js";

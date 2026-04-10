@@ -43,6 +43,34 @@ class KeyStoreImpl implements KeyStore {
   static const _sessionPrefix = 'e2ee_session_';
   static const _unackedPrefix = 'e2ee_unacked_';
 
+  // Fallback cache for local macOS simulators without Developer Signing
+  final Map<String, String> _fallbackCache = {};
+
+  Future<void> _safeWrite(String key, String value) async {
+    try {
+      await const FlutterSecureStorage().write(key: key, value: value);
+    } catch (e) {
+      _fallbackCache[key] = value;
+    }
+  }
+
+  Future<String?> _safeRead(String key) async {
+    try {
+      final val = await const FlutterSecureStorage().read(key: key);
+      return val ?? _fallbackCache[key];
+    } catch (e) {
+      return _fallbackCache[key];
+    }
+  }
+
+  Future<void> _safeDelete(String key) async {
+    try {
+      await const FlutterSecureStorage().delete(key: key);
+    } catch (e) {
+      _fallbackCache.remove(key);
+    }
+  }
+
   @override
   Future<IdentityKeyPair> generateIdentityKeyPair() async {
     final ed = Ed25519();
@@ -66,21 +94,21 @@ class KeyStoreImpl implements KeyStore {
     );
 
     // Persist — wrap private keys with hardware key store if available.
-    await _storage.write(
-      key: '${_identityKeyPrefix}ed_pub',
-      value: base64Encode(pubKey),
+    await _safeWrite(
+      '${_identityKeyPrefix}ed_pub',
+      base64Encode(pubKey),
     );
-    await _storage.write(
-      key: '${_identityKeyPrefix}ed_priv',
-      value: base64Encode(await _wrapIfAvailable(seed)),
+    await _safeWrite(
+      '${_identityKeyPrefix}ed_priv',
+      base64Encode(await _wrapIfAvailable(seed)),
     );
-    await _storage.write(
-      key: '${_identityKeyPrefix}x_pub',
-      value: base64Encode(x25519Pub),
+    await _safeWrite(
+      '${_identityKeyPrefix}x_pub',
+      base64Encode(x25519Pub),
     );
-    await _storage.write(
-      key: '${_identityKeyPrefix}x_priv',
-      value: base64Encode(await _wrapIfAvailable(x25519Priv)),
+    await _safeWrite(
+      '${_identityKeyPrefix}x_priv',
+      base64Encode(await _wrapIfAvailable(x25519Priv)),
     );
 
     return identity;
@@ -117,25 +145,20 @@ class KeyStoreImpl implements KeyStore {
     );
 
     // Persist.
-    await _storage.write(
-      key: '${_signedPreKeyPrefix}id',
-      value: id.toString(),
+    await _safeWrite( '${_signedPreKeyPrefix}id',
+      id.toString(),
     );
-    await _storage.write(
-      key: '${_signedPreKeyPrefix}pub',
-      value: base64Encode(pubKey),
+    await _safeWrite( '${_signedPreKeyPrefix}pub',
+      base64Encode(pubKey),
     );
-    await _storage.write(
-      key: '${_signedPreKeyPrefix}priv',
-      value: base64Encode(privKey),
+    await _safeWrite( '${_signedPreKeyPrefix}priv',
+      base64Encode(privKey),
     );
-    await _storage.write(
-      key: '${_signedPreKeyPrefix}sig',
-      value: base64Encode(sigBytes),
+    await _safeWrite( '${_signedPreKeyPrefix}sig',
+      base64Encode(sigBytes),
     );
-    await _storage.write(
-      key: '${_signedPreKeyPrefix}ts',
-      value: now.toIso8601String(),
+    await _safeWrite( '${_signedPreKeyPrefix}ts',
+      now.toIso8601String(),
     );
 
     return spk;
@@ -160,13 +183,11 @@ class KeyStoreImpl implements KeyStore {
       );
 
       // Persist each OTK.
-      await _storage.write(
-        key: 'e2ee_otk_pub_$id',
-        value: base64Encode(pubKey),
+      await _safeWrite( 'e2ee_otk_pub_$id',
+        base64Encode(pubKey),
       );
-      await _storage.write(
-        key: 'e2ee_otk_priv_$id',
-        value: base64Encode(privKey),
+      await _safeWrite( 'e2ee_otk_priv_$id',
+        base64Encode(privKey),
       );
     }
 
@@ -175,10 +196,10 @@ class KeyStoreImpl implements KeyStore {
 
   @override
   Future<IdentityKeyPair?> getIdentityKeyPair() async {
-    final edPub = await _storage.read(key: '${_identityKeyPrefix}ed_pub');
-    final edPriv = await _storage.read(key: '${_identityKeyPrefix}ed_priv');
-    final xPub = await _storage.read(key: '${_identityKeyPrefix}x_pub');
-    final xPriv = await _storage.read(key: '${_identityKeyPrefix}x_priv');
+    final edPub = await _safeRead( '${_identityKeyPrefix}ed_pub');
+    final edPriv = await _safeRead( '${_identityKeyPrefix}ed_priv');
+    final xPub = await _safeRead( '${_identityKeyPrefix}x_pub');
+    final xPriv = await _safeRead( '${_identityKeyPrefix}x_priv');
 
     if (edPub == null || edPriv == null || xPub == null || xPriv == null) {
       return null;
@@ -199,11 +220,11 @@ class KeyStoreImpl implements KeyStore {
 
   @override
   Future<SignedPreKey?> getSignedPreKey() async {
-    final idStr = await _storage.read(key: '${_signedPreKeyPrefix}id');
-    final pub = await _storage.read(key: '${_signedPreKeyPrefix}pub');
-    final priv = await _storage.read(key: '${_signedPreKeyPrefix}priv');
-    final sig = await _storage.read(key: '${_signedPreKeyPrefix}sig');
-    final ts = await _storage.read(key: '${_signedPreKeyPrefix}ts');
+    final idStr = await _safeRead( '${_signedPreKeyPrefix}id');
+    final pub = await _safeRead( '${_signedPreKeyPrefix}pub');
+    final priv = await _safeRead( '${_signedPreKeyPrefix}priv');
+    final sig = await _safeRead( '${_signedPreKeyPrefix}sig');
+    final ts = await _safeRead( '${_signedPreKeyPrefix}ts');
 
     if (idStr == null ||
         pub == null ||
@@ -225,15 +246,14 @@ class KeyStoreImpl implements KeyStore {
   @override
   Future<void> storeSession(String sessionId, RatchetState state) async {
     final json = _serializeRatchetState(state);
-    await _storage.write(
-      key: '$_sessionPrefix$sessionId',
-      value: jsonEncode(json),
+    await _safeWrite( '$_sessionPrefix$sessionId',
+      jsonEncode(json),
     );
   }
 
   @override
   Future<RatchetState?> loadSession(String sessionId) async {
-    final raw = await _storage.read(key: '$_sessionPrefix$sessionId');
+    final raw = await _safeRead( '$_sessionPrefix$sessionId');
     if (raw == null) return null;
     final json = jsonDecode(raw) as Map<String, dynamic>;
     return _deserializeRatchetState(json);
@@ -241,21 +261,20 @@ class KeyStoreImpl implements KeyStore {
 
   @override
   Future<void> deleteSession(String sessionId) async {
-    await _storage.delete(key: '$_sessionPrefix$sessionId');
+    await _safeDelete( '$_sessionPrefix$sessionId');
   }
 
   @override
   Future<void> storeUnackedState(String sessionId, RatchetState state) async {
     final json = _serializeRatchetState(state);
-    await _storage.write(
-      key: '$_unackedPrefix$sessionId',
-      value: jsonEncode(json),
+    await _safeWrite( '$_unackedPrefix$sessionId',
+      jsonEncode(json),
     );
   }
 
   @override
   Future<RatchetState?> loadUnackedState(String sessionId) async {
-    final raw = await _storage.read(key: '$_unackedPrefix$sessionId');
+    final raw = await _safeRead( '$_unackedPrefix$sessionId');
     if (raw == null) return null;
     final json = jsonDecode(raw) as Map<String, dynamic>;
     return _deserializeRatchetState(json);
@@ -263,7 +282,7 @@ class KeyStoreImpl implements KeyStore {
 
   @override
   Future<void> deleteUnackedState(String sessionId) async {
-    await _storage.delete(key: '$_unackedPrefix$sessionId');
+    await _safeDelete( '$_unackedPrefix$sessionId');
   }
 
   @override

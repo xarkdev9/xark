@@ -33,7 +33,6 @@ import type {
   Task,
   TaskId,
   UserId,
-  GroupId,
 } from "../models/types.js";
 import {
   BookableItemState,
@@ -158,9 +157,8 @@ export class DecisionService {
   async addItem(
     identity: Identity,
     groupId: GroupId,
-    title: string,
-    description: string,
-    category: string
+    ciphertextPayload: string,
+    nonce: string
   ): Promise<BookableItem> {
     await this.authorize(identity, "item:propose", groupId);
     const space = await this.loadSpace(groupId);
@@ -170,23 +168,19 @@ export class DecisionService {
 
     const item: BookableItem = {
       id,
-      groupId,
       groupId: groupId as GroupId,
-      title,
-      description,
-      category,
+      ciphertextPayload,
+      nonce,
       state: machine.getInitialState() as BookableItem["state"],
       proposedBy: identity.userId,
       proposedAt: now,
       reactions: [],
       weightedScore: 0,
-      commitmentProof: null,
-      bookingProof: null,
+      commitmentCiphertext: null,
+      commitmentNonce: null,
       ownership: null,
-      ownershipHistory: [],
       lockedAt: null,
       version: 1,
-      metadata: {},
     };
 
     await this.persistence.saveItem(item);
@@ -197,7 +191,7 @@ export class DecisionService {
       timestamp: now,
       groupId: groupId as GroupId,
       actorId: identity.userId,
-      payload: { itemId: id, title, category },
+      payload: { itemId: id, ciphertextPayload, nonce },
     };
     await this.eventBus.publish(`space:${groupId}`, event);
 
@@ -218,7 +212,7 @@ export class DecisionService {
     const now = Date.now();
 
     if (isLocked(item, machine)) {
-      throw new Error(`Cannot react to locked item "${item.title}".`);
+      throw new Error(`Cannot react to locked item.`);
     }
 
     if (!config.allowSelfReaction && item.proposedBy === identity.userId) {
@@ -264,7 +258,7 @@ export class DecisionService {
     const now = Date.now();
 
     if (isLocked(item, machine)) {
-      throw new Error(`Cannot modify reactions on locked item "${item.title}".`);
+      throw new Error(`Cannot modify reactions on locked item.`);
     }
 
     let updated = removeReaction(item, identity.userId, config.reactionWeights);
@@ -287,7 +281,8 @@ export class DecisionService {
   async lock(
     identity: Identity,
     itemId: ItemId,
-    proof: CommitmentProof
+    commitmentCiphertext: string,
+    commitmentNonce: string
   ): Promise<BookableItem> {
     const item = await this.loadItem(itemId);
     await this.authorize(identity, "item:lock", item.groupId);
@@ -296,21 +291,20 @@ export class DecisionService {
     const machine = new StateMachine(space.flow ?? this.defaultFlow);
 
     const config = space.config ?? this.defaultConfig;
-    let locked = commitItem(item, proof, machine, config.requireProofForLock);
+    const now = Date.now();
+    let locked = commitItem(item, commitmentCiphertext, commitmentNonce, identity.userId, now, machine, config.requireProofForLock);
     locked = { ...locked, version: item.version + 1 };
     await this.persistence.saveItem(locked);
     await this.invalidateSpaceCache(item.groupId);
 
     const event: EngineEvent = {
       type: EventType.ItemLocked,
-      timestamp: proof.submittedAt,
+      timestamp: now,
       groupId: item.groupId as GroupId,
-      actorId: proof.submittedBy,
+      actorId: identity.userId,
       payload: {
         itemId,
-        title: item.title,
-        proofType: proof.type,
-        ownerId: proof.submittedBy,
+        ownerId: identity.userId,
       },
     };
     await this.eventBus.publish(`space:${item.groupId}`, event);
@@ -341,7 +335,7 @@ export class DecisionService {
       timestamp: now,
       groupId: item.groupId as GroupId,
       actorId: newOwnerId,
-      payload: { itemId, title: item.title, previousOwnerId, newOwnerId },
+      payload: { itemId, previousOwnerId, newOwnerId },
     };
     await this.eventBus.publish(`space:${item.groupId}`, event);
 

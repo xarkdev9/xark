@@ -142,7 +142,8 @@ export function getRankedSummary(
   threshold?: number
 ): Array<{
   itemId: ItemId;
-  title: string;
+  ciphertextPayload: string;
+  nonce: string;
   rank: number;
   weightedScore: number;
   agreementScore: number;
@@ -171,7 +172,8 @@ export function getRankedSummary(
 
     return {
       itemId: item.id,
-      title: item.title,
+      ciphertextPayload: item.ciphertextPayload,
+      nonce: item.nonce,
       rank: index + 1,
       weightedScore: item.weightedScore,
       agreementScore: agreement.percentage,

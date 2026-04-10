@@ -16,9 +16,8 @@ import type { StateMachine } from "./state-machine.js";
 export interface GroundingConstraint {
   type: "locked_decision" | "assigned_task";
   itemId: string;
-  title: string;
-  category: string;
-  description: string;
+  ciphertextPayload: string;
+  nonce: string;
   ownerId: string;
 }
 
@@ -27,8 +26,8 @@ export interface GroundingContext {
   lockedDecisions: GroundingConstraint[];
   activeItems: Array<{
     itemId: string;
-    title: string;
-    category: string;
+    ciphertextPayload: string;
+    nonce: string;
     weightedScore: number;
     state: string;
   }>;
@@ -58,16 +57,15 @@ export function buildGroundingContext(
       lockedDecisions.push({
         type: "locked_decision",
         itemId: item.id,
-        title: item.title,
-        category: item.category,
-        description: item.description,
+        ciphertextPayload: item.ciphertextPayload,
+        nonce: item.nonce,
         ownerId: item.ownership?.ownerId ?? "",
       });
     } else {
       activeItems.push({
         itemId: item.id,
-        title: item.title,
-        category: item.category,
+        ciphertextPayload: item.ciphertextPayload,
+        nonce: item.nonce,
         weightedScore: item.weightedScore,
         state: item.state,
       });
@@ -79,9 +77,8 @@ export function buildGroundingContext(
       lockedDecisions.push({
         type: "assigned_task",
         itemId: task.id,
-        title: task.title,
-        category: "task",
-        description: task.description,
+        ciphertextPayload: task.title,
+        nonce: "task",
         ownerId: task.assignee,
       });
     }
@@ -108,11 +105,11 @@ export function generateGroundingPrompt(context: GroundingContext): string {
   for (const decision of context.lockedDecisions) {
     if (decision.type === "locked_decision") {
       lines.push(
-        `- LOCKED DECISION: "${decision.title}" (${decision.category}) is confirmed and committed. Do NOT suggest alternatives that contradict this decision. Build upon it instead.`
+        `- LOCKED DECISION: (Encrypted Item ${decision.itemId}) is confirmed and committed. Do NOT suggest alternatives that contradict this decision. Build upon it instead.`
       );
     } else {
       lines.push(
-        `- ASSIGNED TASK: "${decision.title}" is assigned to a member. Do NOT reassign or question this.`
+        `- ASSIGNED TASK: (Task ${decision.itemId}) is assigned to a member. Do NOT reassign or question this.`
       );
     }
   }
@@ -135,6 +132,6 @@ export function checkSuggestionConflicts(
   suggestionCategory: string
 ): GroundingConstraint[] {
   return context.lockedDecisions.filter(
-    (d) => d.type === "locked_decision" && d.category === suggestionCategory
+    (d) => d.type === "locked_decision" && false // The server is blind to category now
   );
 }

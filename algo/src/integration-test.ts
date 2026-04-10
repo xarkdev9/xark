@@ -72,7 +72,7 @@ function main() {
     process.exit(1);
   }
 
-  console.log(`${BOLD}Xark Consensus Engine — Integration Test with Real Apify Data${RESET}`);
+  console.log(`${BOLD}hello Consensus Engine — Integration Test with Real Apify Data${RESET}`);
   console.log(`${DIM}Loaded ${hotels.length} real hotels from Booking.com via Apify${RESET}`);
 
   // ─── Setup ───────────────────────────────────────────────
@@ -104,8 +104,7 @@ function main() {
     const item = engine.proposeItem(
       "sd_trip",
       hotel.title,
-      hotel.description,
-      "hotel",
+      "nonce",
       "apify",
       Date.now()
     );
@@ -171,7 +170,7 @@ function main() {
   for (const r of ranked) {
     const fav = r.isGroupFavorite ? " ⭐ GROUP FAVORITE" : "";
     console.log(
-      `    ${BOLD}#${r.rank}${RESET} ${r.title} — ` +
+      `    ${BOLD}#${r.rank}${RESET} ${r.ciphertextPayload} — ` +
         `${BOLD}${r.weightedScore} pts${RESET} ` +
         `(❤️×${r.reactionBreakdown.hearts} 👍×${r.reactionBreakdown.thumbsUp}) ` +
         `${Math.round(r.agreementScore)}% agreement${GREEN}${fav}${RESET}`
@@ -191,10 +190,10 @@ function main() {
 
   // Verify AC Marriott is #1
   console.assert(
-    sorted[0]?.title.includes("Marriott"),
+    sorted[0]?.ciphertextPayload.includes("Marriott"),
     "AC Marriott should be #1"
   );
-  pass(`Top pick: "${sorted[0]?.title}" with ${sorted[0]?.weightedScore} pts`);
+  pass(`Top pick: "${sorted[0]?.ciphertextPayload}" with ${sorted[0]?.weightedScore} pts`);
 
   // Verify group favorite (>80% agreement)
   const marriottId = itemIds[4]!;
@@ -210,7 +209,7 @@ function main() {
   header("Phase 3: Green-Lock — Casey Books the Top Pick");
 
   const topItemId = sorted[0]!.id;
-  const topTitle = sorted[0]!.title;
+  const topTitle = sorted[0]!.ciphertextPayload;
 
   const proof: BookingProof = {
     type: "confirmation_number",
@@ -219,11 +218,11 @@ function main() {
     submittedAt: Date.now(),
   };
 
-  const locked = engine.lock(topItemId, proof);
+  const locked = engine.lock(topItemId, proof.value, "nonce", proof.submittedBy, proof.submittedAt);
 
   console.assert(locked.state === BookableItemState.Locked, "Item should be locked");
   console.assert(locked.ownership?.ownerId === "casey", "Casey should be owner");
-  console.assert(locked.bookingProof?.value === proof.value, "Proof should be stored");
+  console.assert(locked.commitmentCiphertext === proof.value, "Proof should be stored");
   pass(`"${topTitle}" → GREEN-LOCK activated`);
   pass(`Owner: Casey (booker) | Ref: ${proof.value}`);
   pass(`State: ${locked.state} | Locked at: ${new Date(locked.lockedAt!).toISOString()}`);
@@ -255,9 +254,7 @@ function main() {
   const transferred = engine.transfer(topItemId, "drew", Date.now());
   console.assert(transferred.ownership?.ownerId === "drew", "Drew should be new owner");
   console.assert(transferred.ownership?.reason === "transfer", "Reason should be transfer");
-  console.assert(transferred.ownershipHistory.length === 2, "2 ownership records");
   pass(`"${topTitle}" ownership transferred: Casey → Drew`);
-  pass(`Ownership history: ${transferred.ownershipHistory.map((o) => `${o.ownerId} (${o.reason})`).join(" → ")}`);
 
   // Verify transfer to self fails
   let selfTransferBlocked = false;
@@ -299,7 +296,7 @@ function main() {
 
   const prompt = engine.getGroundingPrompt("sd_trip");
   console.assert(prompt.includes("GROUNDING CONSTRAINTS"), "Prompt has constraints header");
-  console.assert(prompt.includes("LOCKED BOOKING"), "Prompt mentions locked booking");
+  console.assert(prompt.includes("LOCKED DECISION"), "Prompt mentions locked booking");
   console.assert(prompt.includes(topTitle), "Prompt mentions the locked hotel");
   console.assert(prompt.includes("ASSIGNED TASK"), "Prompt mentions tasks");
   console.assert(prompt.includes("Do NOT suggest alternatives"), "Prompt has restriction");

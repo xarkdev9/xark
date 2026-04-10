@@ -1,4 +1,4 @@
-// XARK OS v2.0 — E2EE Link Preview Pipeline Stress Test
+// hello OS v2.0 — E2EE Link Preview Pipeline Stress Test
 // Verifies the full link preview lifecycle:
 //   Sender types URL → debounced scrape (mocked) → mini preview → send →
 //   E2EE encrypt (text + linkPreview with encrypted og:image) →
@@ -75,12 +75,12 @@ test.describe('E2EE Link Preview Pipeline Stress Test', () => {
 
     // Console forwarding for debugging
     pageA.on('console', msg => {
-      if (msg.type() === 'error' || msg.text().includes('[link-preview]') || msg.text().includes('[xark-e2ee]')) {
+      if (msg.type() === 'error' || msg.text().includes('[link-preview]') || msg.text().includes('[hello-e2ee]')) {
         console.log(`[SENDER] ${msg.text()}`);
       }
     });
     pageB.on('console', msg => {
-      if (msg.type() === 'error' || msg.text().includes('[encrypted-media]') || msg.text().includes('[xark-e2ee]')) {
+      if (msg.type() === 'error' || msg.text().includes('[encrypted-media]') || msg.text().includes('[hello-e2ee]')) {
         console.log(`[RECEIVER] ${msg.text()}`);
       }
     });
@@ -145,7 +145,7 @@ test.describe('E2EE Link Preview Pipeline Stress Test', () => {
 
   test('Rapid-fire send: 5 URLs with link previews', async () => {
     const textarea = pageA.locator('textarea[placeholder="message..."]');
-    const initialBubbleCount = await pageA.locator('[style*="xark-bubble"]').count();
+    const initialBubbleCount = await pageA.locator('[style*="hello-bubble"]').count();
 
     for (let i = 0; i < LINK_COUNT; i++) {
       const url = `https://example.com/test-${i}`;
@@ -177,7 +177,7 @@ test.describe('E2EE Link Preview Pipeline Stress Test', () => {
     await pageA.waitForTimeout(5000);
 
     // Verify sender sees new messages
-    const finalBubbleCount = await pageA.locator('[style*="xark-bubble"]').count();
+    const finalBubbleCount = await pageA.locator('[style*="hello-bubble"]').count();
     console.log(`[TEST] Sender bubbles: ${initialBubbleCount} → ${finalBubbleCount}`);
     expect(finalBubbleCount).toBeGreaterThanOrEqual(initialBubbleCount + LINK_COUNT);
   });
@@ -289,7 +289,7 @@ test.describe('E2EE Link Preview Pipeline Stress Test', () => {
     }
 
     // Verify message text content also survived
-    const bubbleCount = await pageB.locator('[style*="xark-bubble"]').count();
+    const bubbleCount = await pageB.locator('[style*="hello-bubble"]').count();
     console.log(`[TEST] Receiver sees ${bubbleCount} total bubbles after refresh`);
     expect(bubbleCount).toBeGreaterThan(0);
   });

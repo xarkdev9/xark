@@ -67,6 +67,10 @@ abstract class ChatEngine {
   /// Create a new group conversation.
   Future<Conversation> createGroup({required String title, String? atmosphere});
 
+  /// Find or create a 1:1 conversation with another user.
+  /// Used for initiating direct X3DH E2EE sessions.
+  Future<String> findOrCreateChat(String peerId);
+
   /// Stream AI responses from @hello (SSE).
   ///
   /// The engine handles auth tokens and SSE parsing.

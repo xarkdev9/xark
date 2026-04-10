@@ -1,0 +1,2939 @@
+{
+  "suite": "Recommendation Engine Stress Test",
+  "total": 200,
+  "passed": 34,
+  "failed": 166,
+  "duration_ms": 12,
+  "results": [
+    {
+      "id": "HS_001",
+      "category": "Heart-Sort",
+      "description": "LoveIt adds +5 weight",
+      "status": "fail",
+      "latency_ms": 0.36,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_002",
+      "category": "Heart-Sort",
+      "description": "WorksForMe adds +1 weight",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_003",
+      "category": "Heart-Sort",
+      "description": "NotForMe adds -3 weight",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_004",
+      "category": "Heart-Sort",
+      "description": "Multiple reactions sum correctly: LoveIt+LoveIt+NotForMe = 7",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_005",
+      "category": "Heart-Sort",
+      "description": "Duplicate user reaction: last wins",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_006",
+      "category": "Heart-Sort",
+      "description": "Zero reactions = score 0",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_007",
+      "category": "Heart-Sort",
+      "description": "Score can go negative",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_008",
+      "category": "Heart-Sort",
+      "description": "heartSort orders by weighted score desc",
+      "status": "fail",
+      "latency_ms": 0.07,
+      "error_log": "Highest score first"
+    },
+    {
+      "id": "HS_009",
+      "category": "Heart-Sort",
+      "description": "Tiebreaker: earlier proposal wins",
+      "status": "pass",
+      "latency_ms": 0.02,
+      "error_log": null
+    },
+    {
+      "id": "HS_010",
+      "category": "Heart-Sort",
+      "description": "getTopItems returns correct count",
+      "status": "pass",
+      "latency_ms": 0.07,
+      "error_log": null
+    },
+    {
+      "id": "HS_011",
+      "category": "Heart-Sort",
+      "description": "getTopItems with N > items.length returns all",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "HS_012",
+      "category": "Heart-Sort",
+      "description": "addReaction creates new reaction",
+      "status": "fail",
+      "latency_ms": 0.06,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_013",
+      "category": "Heart-Sort",
+      "description": "addReaction replaces existing reaction from same user",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_014",
+      "category": "Heart-Sort",
+      "description": "removeReaction removes specific user reaction",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_015",
+      "category": "Heart-Sort",
+      "description": "removeReaction on non-existent user is no-op",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "HS_016",
+      "category": "Heart-Sort",
+      "description": "100 LoveIt reactions = score 500",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_017",
+      "category": "Heart-Sort",
+      "description": "Mixed: 10 LoveIt + 5 WorksForMe + 3 NotForMe = 46",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_018",
+      "category": "Heart-Sort",
+      "description": "getRankedSummary includes all items",
+      "status": "pass",
+      "latency_ms": 0.08,
+      "error_log": null
+    },
+    {
+      "id": "HS_019",
+      "category": "Heart-Sort",
+      "description": "Sort 1000 items in under 50ms",
+      "status": "pass",
+      "latency_ms": 1.18,
+      "error_log": null
+    },
+    {
+      "id": "HS_020",
+      "category": "Heart-Sort",
+      "description": "Empty array sorts to empty",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "HS_021",
+      "category": "Heart-Sort",
+      "description": "Single item sorts to itself",
+      "status": "pass",
+      "latency_ms": 0.02,
+      "error_log": null
+    },
+    {
+      "id": "HS_022",
+      "category": "Heart-Sort",
+      "description": "All NotForMe: score is deeply negative",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_023",
+      "category": "Heart-Sort",
+      "description": "Reaction weights match constants",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "HS_024",
+      "category": "Heart-Sort",
+      "description": "Score after rapid flip-flop: final state wins",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_025",
+      "category": "Heart-Sort",
+      "description": "Stable sort: equal scores preserve proposal order",
+      "status": "pass",
+      "latency_ms": 0.03,
+      "error_log": null
+    },
+    {
+      "id": "HS_026",
+      "category": "Heart-Sort",
+      "description": "Score recalculation after bulk reactions",
+      "status": "fail",
+      "latency_ms": 0.23,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_027",
+      "category": "Heart-Sort",
+      "description": "Negative score item sorted last",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Negative should be last"
+    },
+    {
+      "id": "HS_028",
+      "category": "Heart-Sort",
+      "description": "getTopItems(0) returns empty",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "HS_029",
+      "category": "Heart-Sort",
+      "description": "Concurrent-safe: addReaction returns new object",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "HS_030",
+      "category": "Heart-Sort",
+      "description": "removeReaction returns new object",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "CT_001",
+      "category": "Consensus",
+      "description": "0/5 = 0% agreement",
+      "status": "pass",
+      "latency_ms": 0.02,
+      "error_log": null
+    },
+    {
+      "id": "CT_002",
+      "category": "Consensus",
+      "description": "5/5 LoveIt = 100% agreement",
+      "status": "pass",
+      "latency_ms": 0.03,
+      "error_log": null
+    },
+    {
+      "id": "CT_003",
+      "category": "Consensus",
+      "description": "4/5 LoveIt = 80% (exactly threshold — NOT group favorite)",
+      "status": "pass",
+      "latency_ms": 0.02,
+      "error_log": null
+    },
+    {
+      "id": "CT_004",
+      "category": "Consensus",
+      "description": "5/5 = 100% IS group favorite",
+      "status": "pass",
+      "latency_ms": 0.02,
+      "error_log": null
+    },
+    {
+      "id": "CT_005",
+      "category": "Consensus",
+      "description": "NotForMe does NOT count as agreement",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "CT_006",
+      "category": "Consensus",
+      "description": "WorksForMe DOES count as agreement",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "CT_007",
+      "category": "Consensus",
+      "description": "Large group: 81/100 = 81% IS group favorite",
+      "status": "pass",
+      "latency_ms": 0.04,
+      "error_log": null
+    },
+    {
+      "id": "CT_008",
+      "category": "Consensus",
+      "description": "Large group: 80/100 = 80% NOT group favorite",
+      "status": "pass",
+      "latency_ms": 0.04,
+      "error_log": null
+    },
+    {
+      "id": "CT_009",
+      "category": "Consensus",
+      "description": "1 member group: 1/1 = 100%",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "CT_010",
+      "category": "Consensus",
+      "description": "2/2 = 100% in pair",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "CT_011",
+      "category": "Consensus",
+      "description": "Mixed: 3 LoveIt + 2 NotForMe out of 5 = 60%",
+      "status": "pass",
+      "latency_ms": 0.03,
+      "error_log": null
+    },
+    {
+      "id": "CT_012",
+      "category": "Consensus",
+      "description": "0 members = 0% (no division by zero)",
+      "status": "pass",
+      "latency_ms": 0.01,
+      "error_log": null
+    },
+    {
+      "id": "CT_013",
+      "category": "Consensus",
+      "description": "Reactions > members: capped at member count",
+      "status": "pass",
+      "latency_ms": 0.02,
+      "error_log": null
+    },
+    {
+      "id": "CT_014",
+      "category": "Consensus",
+      "description": "Engine: addItem + react cycle",
+      "status": "fail",
+      "latency_ms": 0.37,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_015",
+      "category": "Consensus",
+      "description": "Engine: unreact removes reaction",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_016",
+      "category": "Consensus",
+      "description": "Engine: getAgreementScore returns correct %",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_017",
+      "category": "Consensus",
+      "description": "Engine: react to locked item throws",
+      "status": "fail",
+      "latency_ms": 0.06,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_018",
+      "category": "Consensus",
+      "description": "Engine: getRankedItems returns sorted",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_019",
+      "category": "Consensus",
+      "description": "Engine: getActiveItems excludes locked",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_020",
+      "category": "Consensus",
+      "description": "Engine: getLockedItems only returns locked",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_021",
+      "category": "Consensus",
+      "description": "Engine: event emitted on react",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_022",
+      "category": "Consensus",
+      "description": "Engine: event emitted on lock",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_023",
+      "category": "Consensus",
+      "description": "Engine: getSignalBreakdown counts reactions by type",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_024",
+      "category": "Consensus",
+      "description": "Self-reaction blocked when configured",
+      "status": "pass",
+      "latency_ms": 0.03,
+      "error_log": null
+    },
+    {
+      "id": "CT_025",
+      "category": "Consensus",
+      "description": "Self-reaction allowed by default",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "SM_001",
+      "category": "State-Machine",
+      "description": "BOOKING_FLOW: proposed → ranked on reaction",
+      "status": "fail",
+      "latency_ms": 0.07,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_002",
+      "category": "State-Machine",
+      "description": "BOOKING_FLOW: ranked → locked on commitment",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_003",
+      "category": "State-Machine",
+      "description": "BOOKING_FLOW: proposed → locked directly (skip ranking)",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_004",
+      "category": "State-Machine",
+      "description": "SIMPLE_VOTE_FLOW: nominated → ranked → chosen",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_005",
+      "category": "State-Machine",
+      "description": "SOLO_DECISION_FLOW: considering → leaning → decided",
+      "status": "fail",
+      "latency_ms": 0.06,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_006",
+      "category": "State-Machine",
+      "description": "PURCHASE_FLOW: researching → shortlisted → negotiating → purchased",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_007",
+      "category": "State-Machine",
+      "description": "No state machine: state unchanged on react",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "SM_008",
+      "category": "State-Machine",
+      "description": "Flow variation test 8",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_009",
+      "category": "State-Machine",
+      "description": "Flow variation test 9",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_010",
+      "category": "State-Machine",
+      "description": "Flow variation test 10",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_011",
+      "category": "State-Machine",
+      "description": "Flow variation test 11",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_012",
+      "category": "State-Machine",
+      "description": "Flow variation test 12",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_013",
+      "category": "State-Machine",
+      "description": "Flow variation test 13",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_014",
+      "category": "State-Machine",
+      "description": "Flow variation test 14",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_015",
+      "category": "State-Machine",
+      "description": "Flow variation test 15",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_016",
+      "category": "State-Machine",
+      "description": "Flow variation test 16",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_017",
+      "category": "State-Machine",
+      "description": "Flow variation test 17",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_018",
+      "category": "State-Machine",
+      "description": "Flow variation test 18",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_019",
+      "category": "State-Machine",
+      "description": "Flow variation test 19",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_020",
+      "category": "State-Machine",
+      "description": "Flow variation test 20",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_021",
+      "category": "State-Machine",
+      "description": "Flow variation test 21",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_022",
+      "category": "State-Machine",
+      "description": "Flow variation test 22",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_023",
+      "category": "State-Machine",
+      "description": "Flow variation test 23",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_024",
+      "category": "State-Machine",
+      "description": "Flow variation test 24",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_025",
+      "category": "State-Machine",
+      "description": "Flow variation test 25",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "GL_001",
+      "category": "Green-Lock",
+      "description": "Lock item with proof",
+      "status": "fail",
+      "latency_ms": 0.06,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_002",
+      "category": "Green-Lock",
+      "description": "Double-lock throws GreenLockError",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_003",
+      "category": "Green-Lock",
+      "description": "Empty proof rejected when required",
+      "status": "pass",
+      "latency_ms": 0.02,
+      "error_log": null
+    },
+    {
+      "id": "GL_004",
+      "category": "Green-Lock",
+      "description": "getOwner returns correct owner",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_005",
+      "category": "Green-Lock",
+      "description": "transferOwnership changes owner",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_006",
+      "category": "Green-Lock",
+      "description": "transferOwnership to same owner throws",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_007",
+      "category": "Green-Lock",
+      "description": "Transfer unlocked item throws",
+      "status": "pass",
+      "latency_ms": 0.05,
+      "error_log": null
+    },
+    {
+      "id": "GL_008",
+      "category": "Green-Lock",
+      "description": "canLock returns true for unlocked item",
+      "status": "pass",
+      "latency_ms": 0.02,
+      "error_log": null
+    },
+    {
+      "id": "GL_009",
+      "category": "Green-Lock",
+      "description": "canLock returns false for locked item",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_010",
+      "category": "Green-Lock",
+      "description": "Ownership history tracks transfers",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_011",
+      "category": "Green-Lock",
+      "description": "Lock sets lockedAt timestamp",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_012",
+      "category": "Green-Lock",
+      "description": "Lock sets commitmentProof",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_013",
+      "category": "Green-Lock",
+      "description": "commitItem transitions state via state machine",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "stateMachine.isLocked is not a function"
+    },
+    {
+      "id": "GL_014",
+      "category": "Green-Lock",
+      "description": "Lock edge case 14",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_015",
+      "category": "Green-Lock",
+      "description": "Lock edge case 15",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_016",
+      "category": "Green-Lock",
+      "description": "Lock edge case 16",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_017",
+      "category": "Green-Lock",
+      "description": "Lock edge case 17",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_018",
+      "category": "Green-Lock",
+      "description": "Lock edge case 18",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_019",
+      "category": "Green-Lock",
+      "description": "Lock edge case 19",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_020",
+      "category": "Green-Lock",
+      "description": "Lock edge case 20",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_021",
+      "category": "Green-Lock",
+      "description": "Lock edge case 21",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_022",
+      "category": "Green-Lock",
+      "description": "Lock edge case 22",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_023",
+      "category": "Green-Lock",
+      "description": "Lock edge case 23",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_024",
+      "category": "Green-Lock",
+      "description": "Lock edge case 24",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_025",
+      "category": "Green-Lock",
+      "description": "Lock edge case 25",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "RW_001",
+      "category": "Real-World",
+      "description": "Bali Trip: 5 friends vote on 3 hotels, top wins",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "RW_002",
+      "category": "Real-World",
+      "description": "Bali Trip: Lock hotel with booking confirmation",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"bali2\" not found."
+    },
+    {
+      "id": "RW_003",
+      "category": "Real-World",
+      "description": "Family dinner: 3 restaurants, NotForMe kills option",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"dinner\" not found."
+    },
+    {
+      "id": "RW_004",
+      "category": "Real-World",
+      "description": "Solo decision: pick laptop",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "RW_005",
+      "category": "Real-World",
+      "description": "Wedding venue: 15 members, 12 LoveIt = 80% (NOT favorite)",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"wedding\" not found."
+    },
+    {
+      "id": "RW_006",
+      "category": "Real-World",
+      "description": "Wedding venue: 13/15 = 87% IS favorite",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"w2\" not found."
+    },
+    {
+      "id": "RW_007",
+      "category": "Real-World",
+      "description": "Task assignment: book airport transfer",
+      "status": "fail",
+      "latency_ms": 0.09,
+      "error_log": "Task \"test_space\" not found."
+    },
+    {
+      "id": "RW_008",
+      "category": "Real-World",
+      "description": "Grounding: locked hotel constrains AI",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "RW_009",
+      "category": "Real-World",
+      "description": "Multi-space: same user in 2 trips",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"trip_a\" not found."
+    },
+    {
+      "id": "RW_010",
+      "category": "Real-World",
+      "description": "Change of mind: user flips from NotForMe to LoveIt",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "RW_011",
+      "category": "Real-World",
+      "description": "Scenario 11: Birthday party plan",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"rw_space_11\" not found."
+    },
+    {
+      "id": "RW_012",
+      "category": "Real-World",
+      "description": "Scenario 12: Poker night food",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_12\" not found."
+    },
+    {
+      "id": "RW_013",
+      "category": "Real-World",
+      "description": "Scenario 13: Album listening party",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_13\" not found."
+    },
+    {
+      "id": "RW_014",
+      "category": "Real-World",
+      "description": "Scenario 14: Reunion venue",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_14\" not found."
+    },
+    {
+      "id": "RW_015",
+      "category": "Real-World",
+      "description": "Scenario 15: Group trip vote",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_15\" not found."
+    },
+    {
+      "id": "RW_016",
+      "category": "Real-World",
+      "description": "Scenario 16: Birthday party plan",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_16\" not found."
+    },
+    {
+      "id": "RW_017",
+      "category": "Real-World",
+      "description": "Scenario 17: Poker night food",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_17\" not found."
+    },
+    {
+      "id": "RW_018",
+      "category": "Real-World",
+      "description": "Scenario 18: Album listening party",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_18\" not found."
+    },
+    {
+      "id": "RW_019",
+      "category": "Real-World",
+      "description": "Scenario 19: Reunion venue",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_19\" not found."
+    },
+    {
+      "id": "RW_020",
+      "category": "Real-World",
+      "description": "Scenario 20: Group trip vote",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_20\" not found."
+    },
+    {
+      "id": "RW_021",
+      "category": "Real-World",
+      "description": "Scenario 21: Birthday party plan",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_21\" not found."
+    },
+    {
+      "id": "RW_022",
+      "category": "Real-World",
+      "description": "Scenario 22: Poker night food",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_22\" not found."
+    },
+    {
+      "id": "RW_023",
+      "category": "Real-World",
+      "description": "Scenario 23: Album listening party",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_23\" not found."
+    },
+    {
+      "id": "RW_024",
+      "category": "Real-World",
+      "description": "Scenario 24: Reunion venue",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_24\" not found."
+    },
+    {
+      "id": "RW_025",
+      "category": "Real-World",
+      "description": "Scenario 25: Group trip vote",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_25\" not found."
+    },
+    {
+      "id": "RW_026",
+      "category": "Real-World",
+      "description": "Scenario 26: Birthday party plan",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_26\" not found."
+    },
+    {
+      "id": "RW_027",
+      "category": "Real-World",
+      "description": "Scenario 27: Poker night food",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_27\" not found."
+    },
+    {
+      "id": "RW_028",
+      "category": "Real-World",
+      "description": "Scenario 28: Album listening party",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_28\" not found."
+    },
+    {
+      "id": "RW_029",
+      "category": "Real-World",
+      "description": "Scenario 29: Reunion venue",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_29\" not found."
+    },
+    {
+      "id": "RW_030",
+      "category": "Real-World",
+      "description": "Scenario 30: Group trip vote",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_30\" not found."
+    },
+    {
+      "id": "CR_001",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 1",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_002",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 2",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_003",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 3",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_004",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 4",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_005",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 5",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_006",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 6",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_007",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 7",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_008",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 8",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_009",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 9",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_010",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 10",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_011",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 11",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_012",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 12",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_013",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 13",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_014",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 14",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_015",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 15",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_016",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 16",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_017",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 17",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_018",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 18",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_019",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 19",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_020",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 20",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "AG_001",
+      "category": "AI-Grounding",
+      "description": "Empty space: no constraints",
+      "status": "pass",
+      "latency_ms": 0.09,
+      "error_log": null
+    },
+    {
+      "id": "AG_002",
+      "category": "AI-Grounding",
+      "description": "Locked item appears in grounding context",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "AG_003",
+      "category": "AI-Grounding",
+      "description": "buildGroundingContext includes locked items",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "AG_004",
+      "category": "AI-Grounding",
+      "description": "generateGroundingPrompt creates non-empty string",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "AG_005",
+      "category": "AI-Grounding",
+      "description": "checkSuggestionConflicts detects hotel conflict",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "AG_006",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 6",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"ag_6\" not found."
+    },
+    {
+      "id": "AG_007",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 7",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_7\" not found."
+    },
+    {
+      "id": "AG_008",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 8",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_8\" not found."
+    },
+    {
+      "id": "AG_009",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 9",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_9\" not found."
+    },
+    {
+      "id": "AG_010",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 10",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_10\" not found."
+    },
+    {
+      "id": "AG_011",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 11",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_11\" not found."
+    },
+    {
+      "id": "AG_012",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 12",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_12\" not found."
+    },
+    {
+      "id": "AG_013",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 13",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_13\" not found."
+    },
+    {
+      "id": "AG_014",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 14",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_14\" not found."
+    },
+    {
+      "id": "AG_015",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 15",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_15\" not found."
+    },
+    {
+      "id": "AG_016",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 16",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_16\" not found."
+    },
+    {
+      "id": "AG_017",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 17",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_17\" not found."
+    },
+    {
+      "id": "AG_018",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 18",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_18\" not found."
+    },
+    {
+      "id": "AG_019",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 19",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_19\" not found."
+    },
+    {
+      "id": "AG_020",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 20",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_20\" not found."
+    },
+    {
+      "id": "SP_001",
+      "category": "Scale",
+      "description": "1000 items added in under 100ms",
+      "status": "pass",
+      "latency_ms": 1.74,
+      "error_log": null
+    },
+    {
+      "id": "SP_002",
+      "category": "Scale",
+      "description": "10000 reactions processed in under 500ms",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"scale2\" not found."
+    },
+    {
+      "id": "SP_003",
+      "category": "Scale",
+      "description": "Sort 1000 items in under 20ms",
+      "status": "pass",
+      "latency_ms": 0.51,
+      "error_log": null
+    },
+    {
+      "id": "SP_004",
+      "category": "Scale",
+      "description": "100 spaces with 10 items each",
+      "status": "pass",
+      "latency_ms": 1.45,
+      "error_log": null
+    },
+    {
+      "id": "SP_005",
+      "category": "Scale",
+      "description": "50 users voting on same item",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"big_vote\" not found."
+    },
+    {
+      "id": "SP_006",
+      "category": "Scale",
+      "description": "Performance scenario 6",
+      "status": "fail",
+      "latency_ms": 0.07,
+      "error_log": "Item \"perf_6\" not found."
+    },
+    {
+      "id": "SP_007",
+      "category": "Scale",
+      "description": "Performance scenario 7",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_7\" not found."
+    },
+    {
+      "id": "SP_008",
+      "category": "Scale",
+      "description": "Performance scenario 8",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"perf_8\" not found."
+    },
+    {
+      "id": "SP_009",
+      "category": "Scale",
+      "description": "Performance scenario 9",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_9\" not found."
+    },
+    {
+      "id": "SP_010",
+      "category": "Scale",
+      "description": "Performance scenario 10",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_10\" not found."
+    },
+    {
+      "id": "SP_011",
+      "category": "Scale",
+      "description": "Performance scenario 11",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_11\" not found."
+    },
+    {
+      "id": "SP_012",
+      "category": "Scale",
+      "description": "Performance scenario 12",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_12\" not found."
+    },
+    {
+      "id": "SP_013",
+      "category": "Scale",
+      "description": "Performance scenario 13",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_13\" not found."
+    },
+    {
+      "id": "SP_014",
+      "category": "Scale",
+      "description": "Performance scenario 14",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_14\" not found."
+    },
+    {
+      "id": "SP_015",
+      "category": "Scale",
+      "description": "Performance scenario 15",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_15\" not found."
+    },
+    {
+      "id": "SP_016",
+      "category": "Scale",
+      "description": "Performance scenario 16",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_16\" not found."
+    },
+    {
+      "id": "SP_017",
+      "category": "Scale",
+      "description": "Performance scenario 17",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_17\" not found."
+    },
+    {
+      "id": "SP_018",
+      "category": "Scale",
+      "description": "Performance scenario 18",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_18\" not found."
+    },
+    {
+      "id": "SP_019",
+      "category": "Scale",
+      "description": "Performance scenario 19",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"perf_19\" not found."
+    },
+    {
+      "id": "SP_020",
+      "category": "Scale",
+      "description": "Performance scenario 20",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_20\" not found."
+    },
+    {
+      "id": "SP_021",
+      "category": "Scale",
+      "description": "Performance scenario 21",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_21\" not found."
+    },
+    {
+      "id": "SP_022",
+      "category": "Scale",
+      "description": "Performance scenario 22",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_22\" not found."
+    },
+    {
+      "id": "SP_023",
+      "category": "Scale",
+      "description": "Performance scenario 23",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"perf_23\" not found."
+    },
+    {
+      "id": "SP_024",
+      "category": "Scale",
+      "description": "Performance scenario 24",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"perf_24\" not found."
+    },
+    {
+      "id": "SP_025",
+      "category": "Scale",
+      "description": "Performance scenario 25",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"perf_25\" not found."
+    }
+  ],
+  "failures": [
+    {
+      "id": "HS_001",
+      "category": "Heart-Sort",
+      "description": "LoveIt adds +5 weight",
+      "status": "fail",
+      "latency_ms": 0.36,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_002",
+      "category": "Heart-Sort",
+      "description": "WorksForMe adds +1 weight",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_003",
+      "category": "Heart-Sort",
+      "description": "NotForMe adds -3 weight",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_004",
+      "category": "Heart-Sort",
+      "description": "Multiple reactions sum correctly: LoveIt+LoveIt+NotForMe = 7",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_005",
+      "category": "Heart-Sort",
+      "description": "Duplicate user reaction: last wins",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_006",
+      "category": "Heart-Sort",
+      "description": "Zero reactions = score 0",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_007",
+      "category": "Heart-Sort",
+      "description": "Score can go negative",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_008",
+      "category": "Heart-Sort",
+      "description": "heartSort orders by weighted score desc",
+      "status": "fail",
+      "latency_ms": 0.07,
+      "error_log": "Highest score first"
+    },
+    {
+      "id": "HS_012",
+      "category": "Heart-Sort",
+      "description": "addReaction creates new reaction",
+      "status": "fail",
+      "latency_ms": 0.06,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_013",
+      "category": "Heart-Sort",
+      "description": "addReaction replaces existing reaction from same user",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_014",
+      "category": "Heart-Sort",
+      "description": "removeReaction removes specific user reaction",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_016",
+      "category": "Heart-Sort",
+      "description": "100 LoveIt reactions = score 500",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_017",
+      "category": "Heart-Sort",
+      "description": "Mixed: 10 LoveIt + 5 WorksForMe + 3 NotForMe = 46",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_022",
+      "category": "Heart-Sort",
+      "description": "All NotForMe: score is deeply negative",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_024",
+      "category": "Heart-Sort",
+      "description": "Score after rapid flip-flop: final state wins",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_026",
+      "category": "Heart-Sort",
+      "description": "Score recalculation after bulk reactions",
+      "status": "fail",
+      "latency_ms": 0.23,
+      "error_log": "reactions is not iterable"
+    },
+    {
+      "id": "HS_027",
+      "category": "Heart-Sort",
+      "description": "Negative score item sorted last",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Negative should be last"
+    },
+    {
+      "id": "CT_014",
+      "category": "Consensus",
+      "description": "Engine: addItem + react cycle",
+      "status": "fail",
+      "latency_ms": 0.37,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_015",
+      "category": "Consensus",
+      "description": "Engine: unreact removes reaction",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_016",
+      "category": "Consensus",
+      "description": "Engine: getAgreementScore returns correct %",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_017",
+      "category": "Consensus",
+      "description": "Engine: react to locked item throws",
+      "status": "fail",
+      "latency_ms": 0.06,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_018",
+      "category": "Consensus",
+      "description": "Engine: getRankedItems returns sorted",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_019",
+      "category": "Consensus",
+      "description": "Engine: getActiveItems excludes locked",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_020",
+      "category": "Consensus",
+      "description": "Engine: getLockedItems only returns locked",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_021",
+      "category": "Consensus",
+      "description": "Engine: event emitted on react",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_022",
+      "category": "Consensus",
+      "description": "Engine: event emitted on lock",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_023",
+      "category": "Consensus",
+      "description": "Engine: getSignalBreakdown counts reactions by type",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CT_025",
+      "category": "Consensus",
+      "description": "Self-reaction allowed by default",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "SM_001",
+      "category": "State-Machine",
+      "description": "BOOKING_FLOW: proposed → ranked on reaction",
+      "status": "fail",
+      "latency_ms": 0.07,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_002",
+      "category": "State-Machine",
+      "description": "BOOKING_FLOW: ranked → locked on commitment",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_003",
+      "category": "State-Machine",
+      "description": "BOOKING_FLOW: proposed → locked directly (skip ranking)",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_004",
+      "category": "State-Machine",
+      "description": "SIMPLE_VOTE_FLOW: nominated → ranked → chosen",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_005",
+      "category": "State-Machine",
+      "description": "SOLO_DECISION_FLOW: considering → leaning → decided",
+      "status": "fail",
+      "latency_ms": 0.06,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_006",
+      "category": "State-Machine",
+      "description": "PURCHASE_FLOW: researching → shortlisted → negotiating → purchased",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_007",
+      "category": "State-Machine",
+      "description": "No state machine: state unchanged on react",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "SM_008",
+      "category": "State-Machine",
+      "description": "Flow variation test 8",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_009",
+      "category": "State-Machine",
+      "description": "Flow variation test 9",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_010",
+      "category": "State-Machine",
+      "description": "Flow variation test 10",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_011",
+      "category": "State-Machine",
+      "description": "Flow variation test 11",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_012",
+      "category": "State-Machine",
+      "description": "Flow variation test 12",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_013",
+      "category": "State-Machine",
+      "description": "Flow variation test 13",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_014",
+      "category": "State-Machine",
+      "description": "Flow variation test 14",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_015",
+      "category": "State-Machine",
+      "description": "Flow variation test 15",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_016",
+      "category": "State-Machine",
+      "description": "Flow variation test 16",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_017",
+      "category": "State-Machine",
+      "description": "Flow variation test 17",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_018",
+      "category": "State-Machine",
+      "description": "Flow variation test 18",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_019",
+      "category": "State-Machine",
+      "description": "Flow variation test 19",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_020",
+      "category": "State-Machine",
+      "description": "Flow variation test 20",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_021",
+      "category": "State-Machine",
+      "description": "Flow variation test 21",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_022",
+      "category": "State-Machine",
+      "description": "Flow variation test 22",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_023",
+      "category": "State-Machine",
+      "description": "Flow variation test 23",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_024",
+      "category": "State-Machine",
+      "description": "Flow variation test 24",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "SM_025",
+      "category": "State-Machine",
+      "description": "Flow variation test 25",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "GL_001",
+      "category": "Green-Lock",
+      "description": "Lock item with proof",
+      "status": "fail",
+      "latency_ms": 0.06,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_002",
+      "category": "Green-Lock",
+      "description": "Double-lock throws GreenLockError",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_004",
+      "category": "Green-Lock",
+      "description": "getOwner returns correct owner",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_005",
+      "category": "Green-Lock",
+      "description": "transferOwnership changes owner",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_006",
+      "category": "Green-Lock",
+      "description": "transferOwnership to same owner throws",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_009",
+      "category": "Green-Lock",
+      "description": "canLock returns false for locked item",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_010",
+      "category": "Green-Lock",
+      "description": "Ownership history tracks transfers",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_011",
+      "category": "Green-Lock",
+      "description": "Lock sets lockedAt timestamp",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_012",
+      "category": "Green-Lock",
+      "description": "Lock sets commitmentProof",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "GL_013",
+      "category": "Green-Lock",
+      "description": "commitItem transitions state via state machine",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "stateMachine.isLocked is not a function"
+    },
+    {
+      "id": "GL_014",
+      "category": "Green-Lock",
+      "description": "Lock edge case 14",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_015",
+      "category": "Green-Lock",
+      "description": "Lock edge case 15",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_016",
+      "category": "Green-Lock",
+      "description": "Lock edge case 16",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_017",
+      "category": "Green-Lock",
+      "description": "Lock edge case 17",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_018",
+      "category": "Green-Lock",
+      "description": "Lock edge case 18",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_019",
+      "category": "Green-Lock",
+      "description": "Lock edge case 19",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_020",
+      "category": "Green-Lock",
+      "description": "Lock edge case 20",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_021",
+      "category": "Green-Lock",
+      "description": "Lock edge case 21",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_022",
+      "category": "Green-Lock",
+      "description": "Lock edge case 22",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_023",
+      "category": "Green-Lock",
+      "description": "Lock edge case 23",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_024",
+      "category": "Green-Lock",
+      "description": "Lock edge case 24",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "GL_025",
+      "category": "Green-Lock",
+      "description": "Lock edge case 25",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "RW_001",
+      "category": "Real-World",
+      "description": "Bali Trip: 5 friends vote on 3 hotels, top wins",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "RW_002",
+      "category": "Real-World",
+      "description": "Bali Trip: Lock hotel with booking confirmation",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"bali2\" not found."
+    },
+    {
+      "id": "RW_003",
+      "category": "Real-World",
+      "description": "Family dinner: 3 restaurants, NotForMe kills option",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"dinner\" not found."
+    },
+    {
+      "id": "RW_004",
+      "category": "Real-World",
+      "description": "Solo decision: pick laptop",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "machine.getInitialState is not a function"
+    },
+    {
+      "id": "RW_005",
+      "category": "Real-World",
+      "description": "Wedding venue: 15 members, 12 LoveIt = 80% (NOT favorite)",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"wedding\" not found."
+    },
+    {
+      "id": "RW_006",
+      "category": "Real-World",
+      "description": "Wedding venue: 13/15 = 87% IS favorite",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"w2\" not found."
+    },
+    {
+      "id": "RW_007",
+      "category": "Real-World",
+      "description": "Task assignment: book airport transfer",
+      "status": "fail",
+      "latency_ms": 0.09,
+      "error_log": "Task \"test_space\" not found."
+    },
+    {
+      "id": "RW_008",
+      "category": "Real-World",
+      "description": "Grounding: locked hotel constrains AI",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "RW_009",
+      "category": "Real-World",
+      "description": "Multi-space: same user in 2 trips",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"trip_a\" not found."
+    },
+    {
+      "id": "RW_010",
+      "category": "Real-World",
+      "description": "Change of mind: user flips from NotForMe to LoveIt",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "RW_011",
+      "category": "Real-World",
+      "description": "Scenario 11: Birthday party plan",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"rw_space_11\" not found."
+    },
+    {
+      "id": "RW_012",
+      "category": "Real-World",
+      "description": "Scenario 12: Poker night food",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_12\" not found."
+    },
+    {
+      "id": "RW_013",
+      "category": "Real-World",
+      "description": "Scenario 13: Album listening party",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_13\" not found."
+    },
+    {
+      "id": "RW_014",
+      "category": "Real-World",
+      "description": "Scenario 14: Reunion venue",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_14\" not found."
+    },
+    {
+      "id": "RW_015",
+      "category": "Real-World",
+      "description": "Scenario 15: Group trip vote",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_15\" not found."
+    },
+    {
+      "id": "RW_016",
+      "category": "Real-World",
+      "description": "Scenario 16: Birthday party plan",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_16\" not found."
+    },
+    {
+      "id": "RW_017",
+      "category": "Real-World",
+      "description": "Scenario 17: Poker night food",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_17\" not found."
+    },
+    {
+      "id": "RW_018",
+      "category": "Real-World",
+      "description": "Scenario 18: Album listening party",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_18\" not found."
+    },
+    {
+      "id": "RW_019",
+      "category": "Real-World",
+      "description": "Scenario 19: Reunion venue",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_19\" not found."
+    },
+    {
+      "id": "RW_020",
+      "category": "Real-World",
+      "description": "Scenario 20: Group trip vote",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_20\" not found."
+    },
+    {
+      "id": "RW_021",
+      "category": "Real-World",
+      "description": "Scenario 21: Birthday party plan",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_21\" not found."
+    },
+    {
+      "id": "RW_022",
+      "category": "Real-World",
+      "description": "Scenario 22: Poker night food",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_22\" not found."
+    },
+    {
+      "id": "RW_023",
+      "category": "Real-World",
+      "description": "Scenario 23: Album listening party",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_23\" not found."
+    },
+    {
+      "id": "RW_024",
+      "category": "Real-World",
+      "description": "Scenario 24: Reunion venue",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_24\" not found."
+    },
+    {
+      "id": "RW_025",
+      "category": "Real-World",
+      "description": "Scenario 25: Group trip vote",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_25\" not found."
+    },
+    {
+      "id": "RW_026",
+      "category": "Real-World",
+      "description": "Scenario 26: Birthday party plan",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_26\" not found."
+    },
+    {
+      "id": "RW_027",
+      "category": "Real-World",
+      "description": "Scenario 27: Poker night food",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_27\" not found."
+    },
+    {
+      "id": "RW_028",
+      "category": "Real-World",
+      "description": "Scenario 28: Album listening party",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_28\" not found."
+    },
+    {
+      "id": "RW_029",
+      "category": "Real-World",
+      "description": "Scenario 29: Reunion venue",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_29\" not found."
+    },
+    {
+      "id": "RW_030",
+      "category": "Real-World",
+      "description": "Scenario 30: Group trip vote",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"rw_space_30\" not found."
+    },
+    {
+      "id": "CR_001",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 1",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_002",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 2",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_003",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 3",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_004",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 4",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_005",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 5",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_006",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 6",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_007",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 7",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_008",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 8",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_009",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 9",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_010",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 10",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_011",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 11",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_012",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 12",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_013",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 13",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_014",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 14",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_015",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 15",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_016",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 16",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_017",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 17",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_018",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 18",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_019",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 19",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "CR_020",
+      "category": "Concurrency",
+      "description": "Concurrent scenario 20",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "AG_002",
+      "category": "AI-Grounding",
+      "description": "Locked item appears in grounding context",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Item \"test_space\" not found."
+    },
+    {
+      "id": "AG_003",
+      "category": "AI-Grounding",
+      "description": "buildGroundingContext includes locked items",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "AG_004",
+      "category": "AI-Grounding",
+      "description": "generateGroundingPrompt creates non-empty string",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "AG_005",
+      "category": "AI-Grounding",
+      "description": "checkSuggestionConflicts detects hotel conflict",
+      "status": "fail",
+      "latency_ms": 0.02,
+      "error_log": "Cannot read properties of undefined (reading 'trim')"
+    },
+    {
+      "id": "AG_006",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 6",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"ag_6\" not found."
+    },
+    {
+      "id": "AG_007",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 7",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_7\" not found."
+    },
+    {
+      "id": "AG_008",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 8",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_8\" not found."
+    },
+    {
+      "id": "AG_009",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 9",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_9\" not found."
+    },
+    {
+      "id": "AG_010",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 10",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_10\" not found."
+    },
+    {
+      "id": "AG_011",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 11",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_11\" not found."
+    },
+    {
+      "id": "AG_012",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 12",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_12\" not found."
+    },
+    {
+      "id": "AG_013",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 13",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_13\" not found."
+    },
+    {
+      "id": "AG_014",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 14",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_14\" not found."
+    },
+    {
+      "id": "AG_015",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 15",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_15\" not found."
+    },
+    {
+      "id": "AG_016",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 16",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_16\" not found."
+    },
+    {
+      "id": "AG_017",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 17",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_17\" not found."
+    },
+    {
+      "id": "AG_018",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 18",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_18\" not found."
+    },
+    {
+      "id": "AG_019",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 19",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_19\" not found."
+    },
+    {
+      "id": "AG_020",
+      "category": "AI-Grounding",
+      "description": "Grounding scenario 20",
+      "status": "fail",
+      "latency_ms": 0.01,
+      "error_log": "Item \"ag_20\" not found."
+    },
+    {
+      "id": "SP_002",
+      "category": "Scale",
+      "description": "10000 reactions processed in under 500ms",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"scale2\" not found."
+    },
+    {
+      "id": "SP_005",
+      "category": "Scale",
+      "description": "50 users voting on same item",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"big_vote\" not found."
+    },
+    {
+      "id": "SP_006",
+      "category": "Scale",
+      "description": "Performance scenario 6",
+      "status": "fail",
+      "latency_ms": 0.07,
+      "error_log": "Item \"perf_6\" not found."
+    },
+    {
+      "id": "SP_007",
+      "category": "Scale",
+      "description": "Performance scenario 7",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_7\" not found."
+    },
+    {
+      "id": "SP_008",
+      "category": "Scale",
+      "description": "Performance scenario 8",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"perf_8\" not found."
+    },
+    {
+      "id": "SP_009",
+      "category": "Scale",
+      "description": "Performance scenario 9",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_9\" not found."
+    },
+    {
+      "id": "SP_010",
+      "category": "Scale",
+      "description": "Performance scenario 10",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_10\" not found."
+    },
+    {
+      "id": "SP_011",
+      "category": "Scale",
+      "description": "Performance scenario 11",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_11\" not found."
+    },
+    {
+      "id": "SP_012",
+      "category": "Scale",
+      "description": "Performance scenario 12",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_12\" not found."
+    },
+    {
+      "id": "SP_013",
+      "category": "Scale",
+      "description": "Performance scenario 13",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_13\" not found."
+    },
+    {
+      "id": "SP_014",
+      "category": "Scale",
+      "description": "Performance scenario 14",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_14\" not found."
+    },
+    {
+      "id": "SP_015",
+      "category": "Scale",
+      "description": "Performance scenario 15",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_15\" not found."
+    },
+    {
+      "id": "SP_016",
+      "category": "Scale",
+      "description": "Performance scenario 16",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_16\" not found."
+    },
+    {
+      "id": "SP_017",
+      "category": "Scale",
+      "description": "Performance scenario 17",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_17\" not found."
+    },
+    {
+      "id": "SP_018",
+      "category": "Scale",
+      "description": "Performance scenario 18",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_18\" not found."
+    },
+    {
+      "id": "SP_019",
+      "category": "Scale",
+      "description": "Performance scenario 19",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"perf_19\" not found."
+    },
+    {
+      "id": "SP_020",
+      "category": "Scale",
+      "description": "Performance scenario 20",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_20\" not found."
+    },
+    {
+      "id": "SP_021",
+      "category": "Scale",
+      "description": "Performance scenario 21",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_21\" not found."
+    },
+    {
+      "id": "SP_022",
+      "category": "Scale",
+      "description": "Performance scenario 22",
+      "status": "fail",
+      "latency_ms": 0.03,
+      "error_log": "Item \"perf_22\" not found."
+    },
+    {
+      "id": "SP_023",
+      "category": "Scale",
+      "description": "Performance scenario 23",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"perf_23\" not found."
+    },
+    {
+      "id": "SP_024",
+      "category": "Scale",
+      "description": "Performance scenario 24",
+      "status": "fail",
+      "latency_ms": 0.04,
+      "error_log": "Item \"perf_24\" not found."
+    },
+    {
+      "id": "SP_025",
+      "category": "Scale",
+      "description": "Performance scenario 25",
+      "status": "fail",
+      "latency_ms": 0.05,
+      "error_log": "Item \"perf_25\" not found."
+    }
+  ]
+}

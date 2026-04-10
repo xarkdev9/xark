@@ -7,6 +7,7 @@
  */
 
 export { MemoryPersistenceAdapter } from "./memory-persistence.js";
+export { PostgresPersistenceAdapter } from "./postgres-persistence.js";
 export { MemoryEventBusAdapter } from "./memory-event-bus.js";
 export { MemoryCacheAdapter } from "./memory-cache.js";
 export { NoopAuthAdapter } from "./noop-auth.js";

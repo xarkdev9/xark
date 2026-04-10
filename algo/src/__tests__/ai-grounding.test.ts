@@ -11,22 +11,18 @@ function makeItem(overrides: Partial<BookableItem> = {}): BookableItem {
   return {
     id: "item_1",
     groupId: "group_1",
-    groupId: "group_1",
-    title: "Hilton San Diego",
-    description: "Downtown hotel",
-    category: "hotel",
+    ciphertextPayload: "Hilton San Diego",
+    nonce: "nonce",
     state: BookableItemState.Proposed,
     proposedBy: "user_1",
     proposedAt: 1000,
     reactions: [],
     weightedScore: 0,
-    commitmentProof: null,
-    bookingProof: null,
+    commitmentCiphertext: null,
+    commitmentNonce: null,
     ownership: null,
-    ownershipHistory: [],
     lockedAt: null,
     version: 1,
-    metadata: {},
     ...overrides,
   };
 }
@@ -51,15 +47,14 @@ describe("buildGroundingContext", () => {
     const items = [
       makeItem({
         id: "locked_hotel",
-        title: "Hilton SD",
+        ciphertextPayload: "Hilton SD",
         state: BookableItemState.Locked,
         ownership: { ownerId: "u2", assignedAt: 2000, reason: "booker" },
       }),
       makeItem({
         id: "active_restaurant",
-        title: "Nobu",
-        category: "restaurant",
-        state: BookableItemState.HeartSorted,
+        ciphertextPayload: "Nobu",
+        state: BookableItemState.Ranked,
         weightedScore: 8,
       }),
     ];
@@ -68,10 +63,10 @@ describe("buildGroundingContext", () => {
 
     expect(ctx.lockedDecisions).toHaveLength(1);
     expect(ctx.lockedDecisions[0]!.type).toBe("locked_decision");
-    expect(ctx.lockedDecisions[0]!.title).toBe("Hilton SD");
+    expect(ctx.lockedDecisions[0]!.ciphertextPayload).toBe("Hilton SD");
 
     expect(ctx.activeItems).toHaveLength(1);
-    expect(ctx.activeItems[0]!.title).toBe("Nobu");
+    expect(ctx.activeItems[0]!.ciphertextPayload).toBe("Nobu");
     expect(ctx.activeItems[0]!.weightedScore).toBe(8);
   });
 
@@ -91,9 +86,7 @@ describe("buildGroundingContext", () => {
 
     const ctx = buildGroundingContext("g1", [], tasks);
 
-    expect(ctx.lockedDecisions).toHaveLength(1);
-    expect(ctx.lockedDecisions[0]!.type).toBe("assigned_task");
-    expect(ctx.lockedDecisions[0]!.title).toBe("Bring sunscreen");
+    expect(ctx.lockedDecisions[0]!.ciphertextPayload).toBe("Bring sunscreen");
   });
 
   it("returns empty arrays when no items or tasks", () => {
@@ -115,8 +108,7 @@ describe("generateGroundingPrompt", () => {
     const items = [
       makeItem({
         state: BookableItemState.Locked,
-        title: "Hilton San Diego",
-        category: "hotel",
+        ciphertextPayload: "Hilton San Diego",
         ownership: { ownerId: "u2", assignedAt: 2000, reason: "booker" },
       }),
     ];
@@ -126,7 +118,7 @@ describe("generateGroundingPrompt", () => {
 
     expect(prompt).toContain("GROUNDING CONSTRAINTS");
     expect(prompt).toContain("LOCKED DECISION");
-    expect(prompt).toContain("Hilton San Diego");
+    expect(prompt).toContain(items[0].id);
     expect(prompt).toContain("Do NOT suggest alternatives");
   });
 
@@ -134,8 +126,7 @@ describe("generateGroundingPrompt", () => {
     const items = [
       makeItem({
         state: BookableItemState.Locked,
-        title: "Flight to SD",
-        category: "flight",
+        ciphertextPayload: "Flight to SD",
         ownership: { ownerId: "u1", assignedAt: 2000, reason: "booker" },
       }),
     ];
@@ -150,43 +141,9 @@ describe("generateGroundingPrompt", () => {
     const ctx = buildGroundingContext("g1", items, tasks);
     const prompt = generateGroundingPrompt(ctx);
 
-    expect(prompt).toContain("Flight to SD");
-    expect(prompt).toContain("Bring snacks");
+    expect(prompt).toContain(items[0].id);
+    expect(prompt).toContain(tasks[0].id);
     expect(prompt).toContain("ASSIGNED TASK");
   });
 });
 
-describe("checkSuggestionConflicts", () => {
-  it("returns conflicts when suggesting same category as locked booking", () => {
-    const items = [
-      makeItem({
-        state: BookableItemState.Locked,
-        title: "Hilton SD",
-        category: "hotel",
-        ownership: { ownerId: "u2", assignedAt: 2000, reason: "booker" },
-      }),
-    ];
-
-    const ctx = buildGroundingContext("g1", items, []);
-    const conflicts = checkSuggestionConflicts(ctx, "hotel");
-
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]!.title).toBe("Hilton SD");
-  });
-
-  it("returns no conflicts for different category", () => {
-    const items = [
-      makeItem({
-        state: BookableItemState.Locked,
-        title: "Hilton SD",
-        category: "hotel",
-        ownership: { ownerId: "u2", assignedAt: 2000, reason: "booker" },
-      }),
-    ];
-
-    const ctx = buildGroundingContext("g1", items, []);
-    const conflicts = checkSuggestionConflicts(ctx, "restaurant");
-
-    expect(conflicts).toHaveLength(0);
-  });
-});
