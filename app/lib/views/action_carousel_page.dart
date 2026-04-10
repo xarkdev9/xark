@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/action_card_widget.dart';
 import '../providers/action_card_provider.dart';
+import '../providers/consensus_listener.dart';
+import '../providers/decrypted_item_payload.dart';
+import '../../theme.dart';
 
-class ActionCarouselPage extends StatefulWidget {
+class ActionCarouselPage extends ConsumerStatefulWidget {
   const ActionCarouselPage({super.key});
 
   @override
-  State<ActionCarouselPage> createState() => _ActionCarouselPageState();
+  ConsumerState<ActionCarouselPage> createState() => _ActionCarouselPageState();
 }
 
-class _ActionCarouselPageState extends State<ActionCarouselPage> {
+class _ActionCarouselPageState extends ConsumerState<ActionCarouselPage> {
   late PageController _controller;
 
   @override
   void initState() {
     super.initState();
-    // Maintain 0.85 to expose adjacent cards (Zero-box spatial depth)
+    // Netflix spatial mechanics: peek next/previous card
     _controller = PageController(viewportFraction: 0.85);
   }
 
@@ -28,52 +32,58 @@ class _ActionCarouselPageState extends State<ActionCarouselPage> {
 
   @override
   Widget build(BuildContext context) {
-    return _CarouselFeed(controller: _controller);
-  }
-}
+    // Only observing the 'default_space' actions payload
+    final asyncMessages = ref.watch(actionCardProvider('default_space'));
+    final lockedId = ref.watch(globalLockProvider);
 
-class _CarouselFeed extends ConsumerWidget {
-  final PageController controller;
-  const _CarouselFeed({required this.controller});
+    return Scaffold(
+      backgroundColor: HelloColors.voidBg,
+      body: asyncMessages.when(
+        loading: () => const SizedBox.shrink(),
+        error: (err, st) => const SizedBox.shrink(),
+        data: (messages) {
+          if (messages.isEmpty) return const SizedBox.shrink();
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Apple-Scale Mandate: The PageView array length is mapped.
-    // The underlying data updates silently in the child widgets keeping physics uninterrupted.
-    final cardCount = ref.watch(
-      actionCardProvider('default_space').select((asyncData) => asyncData.value?.length ?? 0)
-    );
+          return PageView.builder(
+            controller: _controller,
+            pageSnapping: true,
+            itemCount: messages.length,
+            itemBuilder: (context, index) {
+              final message = messages[index];
+              final isSubOptimalCard = lockedId != null && lockedId != message.id;
 
-    return PageView.builder(
-      controller: controller,
-      itemCount: cardCount,
-      itemBuilder: (context, index) {
-        return _CarouselItem(index: index);
-      },
-    );
-  }
-}
-
-class _CarouselItem extends ConsumerWidget {
-  final int index;
-  const _CarouselItem({required this.index});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cardData = ref.watch(
-      actionCardProvider('default_space').select((asyncData) {
-        final list = asyncData.value;
-        if (list == null || index < 0 || index >= list.length) return null;
-        return list[index];
-      })
-    );
-
-    if (cardData == null) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 24.0),
-      child: ActionCardWidget(
-        message: cardData,
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 32.0),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.fastOutSlowIn,
+                  opacity: isSubOptimalCard ? 0.3 : 1.0,
+                  child: ActionCardWidget(
+                    item: DecryptedItemPayload(
+                      title: message.text ?? 'Untitled',
+                      photoUrl: message.media?.downloadUrl,
+                      obliviousItem: DecisionItem(
+                        id: message.id,
+                        groupId: message.groupId,
+                        ciphertextPayload: '',
+                        nonce: '',
+                        state: 'active',
+                        weightedScore: 0.0,
+                        agreementScore: message.reactions.length * 0.1,
+                        isLocked: false,
+                        reactions: message.reactions.map(
+                          (emoji, reactors) => MapEntry(emoji, reactors.isNotEmpty ? reactors.first : ''),
+                        ),
+                      )
+                    ),
+                    onReact: () {},
+                    onPinCommit: () {},
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

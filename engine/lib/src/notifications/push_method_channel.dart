@@ -1,5 +1,5 @@
+import 'package:e2ee_chat_sdk/src/notifications/push_decryptor.dart';
 import 'package:flutter/services.dart';
-import 'push_decryptor.dart';
 
 /// Flutter method channel bridge for background push decryption.
 ///
@@ -11,7 +11,10 @@ import 'push_decryptor.dart';
 ///
 /// Methods:
 ///   'decryptPush' -> accepts Map payload -> returns Map result
-///   'getDecryptionReady' -> returns bool (crypto isolate available?)
+///     The payload must contain: ciphertext, nonce, sender_id, group_id,
+///     message_id. The engine opens the encrypted DB, loads the ratchet
+///     session, decrypts, and returns sender name + preview text.
+///   'getDecryptionReady' -> returns bool (engine crypto available?)
 
 class PushMethodChannel {
   static const _channel = MethodChannel('com.e2ee_chat.push_decrypt');
@@ -46,6 +49,11 @@ class PushMethodChannel {
     try {
       final args = Map<String, dynamic>.from(arguments as Map);
       final payload = PushPayload.fromMap(args);
+
+      // Calls the real decryptPushPayload which opens the encrypted DB,
+      // loads ratchet state, decrypts via DoubleRatchet, and persists
+      // the updated ratchet state. Returns sender name + preview on
+      // success, or a safe fallback on any failure.
       final result = await decryptPushPayload(payload);
 
       return {
@@ -58,7 +66,7 @@ class PushMethodChannel {
       };
     } catch (e) {
       return {
-        'senderName': 'Chat',
+        'senderName': 'hello',
         'messagePreview': 'You may have new messages',
         'groupId': '',
         'messageId': '',

@@ -200,11 +200,13 @@ export function UserMenu({ userName, userId }: UserMenuProps) {
         req.onblocked = () => resolve();
       });
 
-      // 4. Lock the encrypted store (zero wrapping key from RAM)
-      try {
-        const { lockStore } = await import("@/lib/crypto/encrypted-store");
-        lockStore();
-      } catch {}
+      // 4. Delete the hello-vault database (non-extractable master key)
+      await new Promise<void>((resolve) => {
+        const req = indexedDB.deleteDatabase('hello-vault');
+        req.onsuccess = () => resolve();
+        req.onerror = () => resolve();
+        req.onblocked = () => resolve();
+      });
 
       // 5. Clear localStorage crypto artifacts
       localStorage.removeItem('xark_store_salt');

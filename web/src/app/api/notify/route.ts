@@ -2,11 +2,21 @@
 // Server-side push trigger. Called by lifecycle event handlers.
 // Uses supabaseAdmin for service-role access to space_members and user_devices.
 // Checks users.preferences.muted_spaces before sending.
+//
+// SECURITY HARDENING (Stream E, Item 7):
+// Embeds E2EE ciphertext directly in the FCM data payload (up to 4KB).
+// The mobile client decrypts in background without any network fetch.
+// For payloads exceeding 4KB (rare — media metadata only), falls back
+// to a tickle that shows a generic notification.
 
 import { NextRequest, NextResponse } from "next/server";
 import { sendPush } from "@/lib/notifications";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { verifyAuth } from "@/lib/auth-verify";
+
+/// FCM data payload size limit (4KB). Payloads exceeding this fall back
+/// to a tickle notification.
+const FCM_DATA_LIMIT_BYTES = 4096;
 
 export async function POST(req: NextRequest) {
   // ── Auth — prevent unauthenticated push notification delivery ──
@@ -17,7 +27,16 @@ export async function POST(req: NextRequest) {
 
   // Rate limiting moved to edge proxy (BACKEND-03)
 
-  const { event, groupId, senderName, excludeUserId } = await req.json();
+  const {
+    event,
+    groupId,
+    senderName,
+    excludeUserId,
+    messageId,
+    senderId,
+    ciphertext: ciphertextBase64,
+    nonce: nonceBase64,
+  } = await req.json();
 
   // Input validation — E2EE COMPLIANT: no `body` field accepted (no plaintext in push)
   if (!groupId || typeof groupId !== 'string') {
@@ -89,11 +108,58 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sent: 0 });
   }
 
-  // E2EE COMPLIANT: metadata only — no message plaintext in push payload
-  await sendPush(tokens, {
-    groupId,
-    event: event ?? "new_message",
-    senderName: senderName ?? "someone",
-  });
+  // Build the push data payload.
+  // If ciphertext is provided and fits within FCM's 4KB data limit,
+  // embed it directly so the client can decrypt without network I/O.
+  // Otherwise, send a tickle that triggers a generic notification.
+  let pushData: Record<string, string>;
+
+  if (
+    ciphertextBase64 &&
+    nonceBase64 &&
+    typeof ciphertextBase64 === 'string' &&
+    typeof nonceBase64 === 'string'
+  ) {
+    // Estimate total data payload size (all fields combined)
+    const estimatedSize =
+      (ciphertextBase64?.length ?? 0) +
+      (nonceBase64?.length ?? 0) +
+      (messageId?.length ?? 0) +
+      (senderId?.length ?? 0) +
+      (groupId?.length ?? 0) +
+      50; // overhead for field names and separators
+
+    if (estimatedSize <= FCM_DATA_LIMIT_BYTES) {
+      // E2EE ciphertext embedded — zero-network push decryption
+      pushData = {
+        type: 'e2ee_message',
+        message_id: messageId ?? '',
+        sender_id: senderId ?? '',
+        group_id: groupId,
+        ciphertext: ciphertextBase64,
+        nonce: nonceBase64,
+      };
+    } else {
+      // Ciphertext exceeds 4KB (rare — media metadata only).
+      // Fall back to tickle. Client shows generic notification.
+      // Full decrypt happens when the user opens the app.
+      pushData = {
+        type: 'tickle',
+        groupId,
+        event: event ?? 'new_message',
+        senderName: senderName ?? 'someone',
+      };
+    }
+  } else {
+    // No ciphertext provided — legacy tickle path
+    pushData = {
+      type: 'tickle',
+      groupId,
+      event: event ?? 'new_message',
+      senderName: senderName ?? 'someone',
+    };
+  }
+
+  await sendPush(tokens, pushData);
   return NextResponse.json({ sent: tokens.length });
 }

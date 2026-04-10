@@ -166,3 +166,51 @@ export async function decryptFileAuto(
   }
   return decryptFile(encryptedBlob, aesKeyBase64, ivBase64, mimeType);
 }
+
+// ── Prepended-IV helpers (Concurrent Pointer Model) ──
+// Wire format: [IV (12 bytes)][AES-GCM ciphertext + auth tag (16 bytes)]
+// The IV is embedded in the blob, not stored separately in metadata.
+// This keeps key material inside the E2EE envelope while allowing
+// concurrent download of the encrypted blob.
+
+/**
+ * Encrypt plaintext with a caller-supplied AES-256-GCM key.
+ * Returns a single buffer: [iv(12)][ciphertext + GCM auth tag(16)].
+ * The IV is generated randomly and prepended — no separate IV field needed.
+ */
+export async function encryptWithPrependedIV(
+  plaintext: Uint8Array,
+  key: Uint8Array,
+): Promise<Uint8Array> {
+  // .buffer.slice(0) guarantees a clean ArrayBuffer (not SharedArrayBuffer)
+  const iv = new Uint8Array(crypto.getRandomValues(new Uint8Array(IV_BYTES)).buffer.slice(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', key.buffer.slice(0) as ArrayBuffer, AES_ALGO, false, ['encrypt'],
+  );
+  const ct = new Uint8Array(
+    await crypto.subtle.encrypt({ name: AES_ALGO, iv: iv as BufferSource }, cryptoKey, plaintext.buffer.slice(0) as ArrayBuffer),
+  );
+  // Wire format: [iv(12)][ct + GCM auth tag(16)]
+  const result = new Uint8Array(IV_BYTES + ct.byteLength);
+  result.set(iv, 0);
+  result.set(ct, IV_BYTES);
+  return result;
+}
+
+/**
+ * Decrypt a blob produced by `encryptWithPrependedIV`.
+ * Extracts the 12-byte IV prefix, then AES-GCM-decrypts the remainder.
+ */
+export async function decryptWithPrependedIV(
+  blob: Uint8Array,
+  key: Uint8Array,
+): Promise<Uint8Array> {
+  const iv = new Uint8Array(blob.slice(0, IV_BYTES).buffer.slice(0));
+  const ct = blob.slice(IV_BYTES);
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', key.buffer.slice(0) as ArrayBuffer, AES_ALGO, false, ['decrypt'],
+  );
+  return new Uint8Array(
+    await crypto.subtle.decrypt({ name: AES_ALGO, iv: iv as BufferSource }, cryptoKey, ct.buffer.slice(0) as ArrayBuffer),
+  );
+}

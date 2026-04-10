@@ -1,108 +1,155 @@
 // hello OS v2.0 — Encrypted IndexedDB Store
-// Encrypts all IndexedDB values with a master wrapping key.
-// Key derived from user PIN via Argon2id. Lives in RAM only.
-// Signal Desktop approach: at-rest encryption for key material.
+// Encrypts all IndexedDB values with a non-extractable AES-GCM-256 CryptoKey.
+// Key stored in a separate 'hello-vault' IndexedDB — XSS-resistant (attacker
+// cannot export the key via crypto.subtle). Zero user friction.
+// Replaces the old Argon2id PIN-based flow that was never called.
 
-import { aesEncrypt, aesDecrypt, randomBytes, toBase64, fromBase64 } from './primitives';
+import { toBase64, fromBase64 } from './primitives';
 
-// Module-level wrapping key — lives in RAM only, never persisted
-let wrappingKey: Uint8Array | null = null;
+// ── Module-level cache (lives for tab lifetime) ──
+let masterKey: CryptoKey | null = null;
 
-// Salt storage key in localStorage (salt is not secret — prevents rainbow tables)
-const SALT_STORAGE_KEY = 'xark_store_salt';
+// ── hello-vault IndexedDB helpers ──
 
-/**
- * Initialize the wrapping key from a user-provided PIN.
- * Must be called once per session (app start / unlock).
- * Uses Argon2id: 3 iterations, 64MB memory.
- */
-export async function unlockStore(pin: string): Promise<void> {
-  const { deriveBackupKey } = await import('./primitives');
+const VAULT_DB_NAME = 'hello-vault';
+const VAULT_DB_VERSION = 1;
+const VAULT_STORE = 'keys';
+const VAULT_KEY_ID = 'master';
 
-  // Get or create salt
-  let salt: Uint8Array;
-  const storedSalt = localStorage.getItem(SALT_STORAGE_KEY);
-  if (storedSalt) {
-    salt = fromBase64(storedSalt);
-  } else {
-    salt = randomBytes(16);
-    localStorage.setItem(SALT_STORAGE_KEY, toBase64(salt));
+function openVaultDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(VAULT_DB_NAME, VAULT_DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(VAULT_STORE)) {
+        db.createObjectStore(VAULT_STORE);
+      }
+    };
+  });
+}
+
+function vaultGet(db: IDBDatabase, key: string): Promise<CryptoKey | undefined> {
+  return new Promise((resolve, reject) => {
+    const txn = db.transaction(VAULT_STORE, 'readonly');
+    const store = txn.objectStore(VAULT_STORE);
+    const req = store.get(key);
+    req.onsuccess = () => resolve(req.result as CryptoKey | undefined);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function vaultPut(db: IDBDatabase, key: string, value: CryptoKey): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const txn = db.transaction(VAULT_STORE, 'readwrite');
+    const store = txn.objectStore(VAULT_STORE);
+    const req = store.put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ── Master key management ──
+
+async function getOrCreateMasterKey(): Promise<CryptoKey> {
+  if (masterKey) return masterKey;
+
+  const db = await openVaultDB();
+  const existing = await vaultGet(db, VAULT_KEY_ID);
+  if (existing) {
+    masterKey = existing;
+    db.close();
+    return existing;
   }
 
-  const { key } = deriveBackupKey(pin, salt);
-  wrappingKey = key;
+  const key = await crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    false, // NON-EXTRACTABLE — XSS cannot export this key
+    ['encrypt', 'decrypt']
+  );
+  await vaultPut(db, VAULT_KEY_ID, key);
+  db.close();
+  masterKey = key;
+  return key;
 }
 
-/**
- * Check if the store is unlocked (wrapping key in RAM).
- */
-export function isStoreUnlocked(): boolean {
-  return wrappingKey !== null;
+// ── Helpers ──
+
+function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const result = new Uint8Array(a.length + b.length);
+  result.set(a, 0);
+  result.set(b, a.length);
+  return result;
 }
 
-/**
- * Lock the store — zero the wrapping key from RAM.
- * Call on app close/background (best-effort via beforeunload).
- */
-export function lockStore(): void {
-  if (wrappingKey) {
-    // Best-effort zeroing (JS doesn't guarantee memory wiping, but we try)
-    wrappingKey.fill(0);
-    wrappingKey = null;
-  }
-}
+// ── Public API (same signatures as before — drop-in replacement) ──
 
 /**
  * Encrypt a value before writing to IndexedDB.
- * Returns prefixed string: "enc:" + base64(nonce ‖ ciphertext).
- * Falls back to "plain:" prefix when store is not unlocked (backward compat).
+ * Returns prefixed string: "wcrypt:" + base64(iv ‖ ciphertext).
  */
-export function encryptForStorage(plaintext: Uint8Array): string {
-  if (!wrappingKey) {
-    // Fallback: store as plaintext if unlockStore hasn't been called.
-    // This maintains backward compatibility during migration.
-    return `plain:${toBase64(plaintext)}`;
-  }
-  const { ciphertext, nonce } = aesEncrypt(plaintext, wrappingKey);
-  // Pack: nonce (24 bytes) + ciphertext
-  const packed = new Uint8Array(nonce.length + ciphertext.length);
-  packed.set(nonce, 0);
-  packed.set(ciphertext, nonce.length);
-  return `enc:${toBase64(packed)}`;
+export async function encryptForStorage(plaintext: Uint8Array): Promise<string> {
+  const key = await getOrCreateMasterKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    plaintext as BufferSource
+  ));
+  return `wcrypt:${toBase64(concat(iv, ct))}`;
 }
 
 /**
  * Decrypt a value after reading from IndexedDB.
  * Handles three formats:
- *   "enc:..."  — encrypted (requires unlocked store)
- *   "plain:..." — explicit plaintext (migration/fallback)
- *   raw base64  — legacy format (no prefix, oldest data)
+ *   "wcrypt:..." — WebCrypto encrypted (current format)
+ *   "plain:..."  — explicit plaintext (legacy fallback)
+ *   raw string   — legacy unencrypted format (oldest data)
  */
-export function decryptFromStorage(stored: string): Uint8Array {
+export async function decryptFromStorage(stored: string): Promise<Uint8Array> {
   // Legacy plaintext format (before encryption was enabled)
   if (stored.startsWith('plain:')) {
     return fromBase64(stored.slice(6));
   }
 
-  // Encrypted format
-  if (stored.startsWith('enc:')) {
-    if (!wrappingKey) {
-      throw new Error('[hello-e2ee] Store is locked — call unlockStore() first');
-    }
-    const packed = fromBase64(stored.slice(4));
-    const nonce = packed.slice(0, 24); // XChaCha20 uses 24-byte nonce
-    const ciphertext = packed.slice(24);
-    return aesDecrypt(ciphertext, nonce, wrappingKey);
+  // WebCrypto encrypted format
+  if (stored.startsWith('wcrypt:')) {
+    const blob = fromBase64(stored.slice(7));
+    const iv = blob.slice(0, 12);
+    const ct = blob.slice(12);
+    const key = await getOrCreateMasterKey();
+    return new Uint8Array(await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      ct
+    ));
   }
 
-  // Raw base64 (oldest format — no prefix, pre-encryption data)
-  return fromBase64(stored);
+  // Legacy: old 'enc:' format from Argon2id era — treat as plaintext since
+  // the wrapping key was never actually initialized (unlockStore was never called).
+  // These entries were never truly encrypted; the enc: path would have thrown.
+  // Fall through to raw handling.
+  if (stored.startsWith('enc:')) {
+    // This should not exist in practice (unlockStore was never called, so
+    // nothing was ever written with 'enc:' prefix). If encountered, the data
+    // is unrecoverable without the Argon2id key. Return empty to avoid crash.
+    console.warn('[hello-e2ee] Found legacy enc: entry — unrecoverable without Argon2id key');
+    return new Uint8Array(0);
+  }
+
+  // Legacy unencrypted format (raw base64 or raw text — oldest data)
+  try {
+    return fromBase64(stored);
+  } catch {
+    return new TextEncoder().encode(stored);
+  }
 }
 
 /**
  * Encrypt a JSON-serializable object for IndexedDB storage.
  */
-export function encryptObjectForStorage(obj: unknown): string {
+export async function encryptObjectForStorage(obj: unknown): Promise<string> {
   const json = JSON.stringify(obj);
   const bytes = new TextEncoder().encode(json);
   return encryptForStorage(bytes);
@@ -112,7 +159,7 @@ export function encryptObjectForStorage(obj: unknown): string {
  * Decrypt a JSON object from IndexedDB storage.
  * Handles both encrypted and legacy plaintext formats.
  */
-export function decryptObjectFromStorage<T>(stored: string): T {
-  const bytes = decryptFromStorage(stored);
+export async function decryptObjectFromStorage<T>(stored: string): Promise<T> {
+  const bytes = await decryptFromStorage(stored);
   return JSON.parse(new TextDecoder().decode(bytes)) as T;
 }

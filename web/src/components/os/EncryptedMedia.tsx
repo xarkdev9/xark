@@ -43,8 +43,8 @@ export function EncryptedMediaRenderer({
         if (cancelled) return;
 
         // Decrypt with AES key from E2EE channel
-        const { decryptFile } = await import("@/lib/crypto/file-encryption");
-        const url = await decryptFile(encryptedBlob, aesKeyBase64, ivBase64, mimeType);
+        const { decryptFileAuto } = await import("@/lib/crypto/file-encryption");
+        const url = await decryptFileAuto(encryptedBlob, aesKeyBase64, ivBase64, mimeType);
 
         if (cancelled) {
           URL.revokeObjectURL(url);

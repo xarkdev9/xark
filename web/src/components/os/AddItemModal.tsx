@@ -123,11 +123,17 @@ export function AddItemModal({
       const inlineThumbnail = await generateInlineThumbnail(file);
       console.log("[add-item] Thumbnail generated");
 
-      // Encrypt the image
-      const { encryptFile } = await import("@/lib/crypto/file-encryption");
-      const { encryptedBlob, aesKeyBase64, ivBase64 } = await encryptFile(file);
+      // ── Concurrent Pointer Model: AES key inside E2EE envelope ──
+      // 1. Generate a one-time AES-256 key
+      const aesKey = crypto.getRandomValues(new Uint8Array(32));
 
-      // Upload encrypted blob to Firebase
+      // 2. Encrypt file with prepended IV (IV embedded in blob, not metadata)
+      const { encryptWithPrependedIV } = await import("@/lib/crypto/file-encryption");
+      const fileBytes = new Uint8Array(await file.arrayBuffer());
+      const encryptedBytes = await encryptWithPrependedIV(fileBytes, aesKey);
+      const encryptedBlob = new Blob([encryptedBytes.buffer.slice(0) as ArrayBuffer], { type: 'application/octet-stream' });
+
+      // 3. Upload encrypted blob to Firebase → get download URL
       const { storageAdapter } = await import("@/lib/storage");
       const mediaId = `decide_${crypto.randomUUID()}`;
       const storagePath = `spaces/${groupId}/media/${mediaId}.enc`;
@@ -135,19 +141,22 @@ export function AddItemModal({
 
       console.log("[add-item] Encrypted + uploaded to Firebase:", downloadUrl.slice(0, 60));
 
-      // Build encrypted image payload
-      const encryptedImage = {
-        mediaUrl: downloadUrl,
-        aesKeyBase64,
-        ivBase64,
+      // 4. Build E2EE payload — AES key goes INSIDE the encrypted envelope
+      const imageKeyBase64 = btoa(String.fromCharCode(...aesKey));
+      const e2eePayload = {
+        title: title.trim(),
+        description: category.trim().toLowerCase() || "shared",
+        category: category.trim().toLowerCase() || "shared",
+        imageKey: imageKeyBase64,
         mimeType,
         ...(inlineThumbnail && { inlineThumbnail }),
       };
 
-      // Insert decision item with encrypted image metadata
-      const { getSupabaseToken } = await import("@/lib/supabase");
+      // 5. Encrypt payload via E2EE (Double Ratchet / Sender Keys)
+      await encrypt(JSON.stringify(e2eePayload), groupId);
+
+      // 6. INSERT with URL-only metadata — NO key material in plaintext
       const { supabase } = await import("@/lib/supabase");
-      const token = getSupabaseToken();
 
       const itemId = `item_${crypto.randomUUID()}`;
       const { error: insertError } = await supabase.from("decision_items").insert({
@@ -158,8 +167,10 @@ export function AddItemModal({
         state: "proposed",
         proposed_by: userId,
         metadata: {
-          encrypted_image: JSON.stringify(encryptedImage),
+          imageUrl: downloadUrl,
+          mimeType,
           source: "screenshot",
+          ...(inlineThumbnail && { inlineThumbnail }),
         },
       });
 

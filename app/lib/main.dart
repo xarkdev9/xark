@@ -1,24 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'views/home/home_layout.dart';
 import 'views/auth/auth_flow_page.dart';
-
 import 'providers/engine_error_listener.dart';
 import 'theme.dart';
-import 'src/mock_chat_engine.dart';
 
 // ─── Global Providers ───────────────────────────────────────────────
 final engineProvider = Provider<ChatEngine>((ref) => throw UnimplementedError());
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
-// ─── Boot Configuration ─────────────────────────────────────────────
-// Set to false to use MockChatEngine for UI testing without backend.
-// Set to true for bare-metal E2EE engine boot with real Supabase.
-const bool _useLiveEngine = false;
-
-// Environment variables (injected via --dart-define or .env)
-const String _serverUrl = String.fromEnvironment(
+// ─── Environment ────────────────────────────────────────────────────
+const String serverUrl = String.fromEnvironment(
   'SERVER_URL',
   defaultValue: 'https://ldnsxwkkxwztqyqkyuqa.supabase.co',
 );
@@ -27,75 +22,55 @@ const String _supabaseAnonKey = String.fromEnvironment(
   defaultValue: '',
 );
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+// ─── Mutable Container ─────────────────────────────────────────────
+// The container is created at startup. The engine override is applied
+// after auth completes (deferred init).
+late ProviderContainer _container;
 
-  ChatEngine engine;
-
-  if (_useLiveEngine) {
-    // ═══════════════════════════════════════════════════════════════
-    // PHASE 3: BARE-METAL ENGINE BOOT
-    // ═══════════════════════════════════════════════════════════════
-    //
-    // The bootloader initializes the real e2ee_chat_sdk engine:
-    // 1. SQLCipher database mounts (encryption key from platform Keychain)
-    // 2. Crypto isolate spawns (dedicated background thread for Signal ops)
-    // 3. Transport layer connects (SupabaseClientWrapper + Realtime)
-    // 4. Sync coordinator starts (outbox drain, watermark gap fill)
-    //
-    // AuthService is called BEFORE engine init to obtain the JWT.
-    // For now, we use a placeholder token — the auth flow will
-    // replace this with a real Firebase OTP → JWT exchange.
-    //
-    // The engine manages ALL backend communication. The UI never
-    // touches Supabase, Firebase, or any HTTP endpoint directly.
-    // ═══════════════════════════════════════════════════════════════
-
-    engine = await ChatEngineImpl.initialize(
-      ChatEngineConfig(
-        authToken: const String.fromEnvironment('AUTH_TOKEN', defaultValue: ''),
-        userId: const String.fromEnvironment('USER_ID', defaultValue: 'name_ram'),
-        deviceId: 99, // Flutter client — distinct from React's device_id=1
-        pushToken: '',
-        serverBaseUrl: Uri.parse(_serverUrl),
-        supabaseAnonKey: _supabaseAnonKey,
-        brand: const BrandConfig(
-          appName: 'hello',
-          aiName: '@hello',
-          aiEndpoint: '/api/hello',
-          pushChannelId: 'hello_messages',
-          pushChannelName: 'Messages',
-          fallbackSenderName: 'hello',
-        ),
+/// Called by the auth flow after Firebase OTP + AuthService JWT exchange.
+/// Boots the engine with real credentials and wires the error bus.
+Future<void> initializeEngine({
+  required WidgetRef ref,
+  required String authToken,
+  required String userId,
+}) async {
+  final engine = await ChatEngineImpl.initialize(
+    ChatEngineConfig(
+      authToken: authToken,
+      userId: userId,
+      deviceId: 99, // Flutter client — distinct from React's device_id=1
+      pushToken: '',
+      serverBaseUrl: Uri.parse(serverUrl),
+      supabaseAnonKey: _supabaseAnonKey,
+      brand: const BrandConfig(
+        appName: 'hello',
+        aiName: '@hello',
+        aiEndpoint: '/api/hello',
+        pushChannelId: 'hello_messages',
+        pushChannelName: 'Messages',
+        fallbackSenderName: 'hello',
       ),
-    );
-  } else {
-    // Mock simulation for UI testing without backend
-    // ignore: avoid_relative_lib_imports
-    final mock = await _createMockEngine();
-    engine = mock;
-  }
-
-  // ─── Riverpod Nervous System ────────────────────────────────────
-  final container = ProviderContainer(
-    overrides: [
-      engineProvider.overrideWithValue(engine),
-    ],
+    ),
   );
 
-  // ─── Headless Error Bus ─────────────────────────────────────────
-  setupHeadlessErrorBus(container);
+  // Override the engine provider with the real instance
+  _container.updateOverrides([
+    engineProvider.overrideWithValue(engine),
+  ]);
 
-  // ─── Launch ─────────────────────────────────────────────────────
-  runApp(UncontrolledProviderScope(
-    container: container,
-    child: const HelloApp(),
-  ));
+  setupHeadlessErrorBus(_container);
 }
 
-/// Mock engine factory — lazy import to avoid pulling mock code into prod builds
-Future<ChatEngine> _createMockEngine() async {
-  return MockChatEngine();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  _container = ProviderContainer();
+
+  runApp(UncontrolledProviderScope(
+    container: _container,
+    child: const HelloApp(),
+  ));
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -124,28 +99,32 @@ class _HelloAppState extends ConsumerState<HelloApp> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final engine = ref.read(engineProvider);
-    switch (state) {
-      case AppLifecycleState.resumed:
-        // Reconnects WebSocket, drains outbox, syncs gaps
-        engine.resume();
-        break;
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-        // Pauses sync, keeps push alive
-        engine.suspend();
-        break;
-      case AppLifecycleState.detached:
-        // Full teardown, secure key wipe
-        engine.dispose();
-        break;
-      default:
-        break;
+    try {
+      final engine = ref.read(engineProvider);
+      switch (state) {
+        case AppLifecycleState.resumed:
+          engine.resume();
+          break;
+        case AppLifecycleState.paused:
+        case AppLifecycleState.inactive:
+          engine.suspend();
+          break;
+        case AppLifecycleState.detached:
+          engine.dispose();
+          break;
+        default:
+          break;
+      }
+    } catch (_) {
+      // Engine not yet initialized — ignore lifecycle events
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Check if the user is already signed into Firebase
+    final isAuthenticated = fb.FirebaseAuth.instance.currentUser != null;
+
     return MaterialApp(
       navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
@@ -153,7 +132,6 @@ class _HelloAppState extends ConsumerState<HelloApp> with WidgetsBindingObserver
       theme: ThemeData(
         scaffoldBackgroundColor: HelloColors.voidBg,
         fontFamily: 'Inter',
-        // Zero-Box: strip all Material defaults
         cardTheme: const CardThemeData(
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
@@ -167,7 +145,77 @@ class _HelloAppState extends ConsumerState<HelloApp> with WidgetsBindingObserver
         '/home': (context) => const HomeLayout(),
         '/auth': (context) => const AuthFlowPage(),
       },
-      home: const HomeLayout(),
+      home: isAuthenticated ? const _ResumeSession() : const AuthFlowPage(),
+    );
+  }
+}
+
+/// Handles resuming an existing Firebase session.
+/// Re-exchanges the Firebase token for a fresh Supabase JWT,
+/// boots the engine, then navigates to home.
+class _ResumeSession extends ConsumerStatefulWidget {
+  const _ResumeSession();
+
+  @override
+  ConsumerState<_ResumeSession> createState() => _ResumeSessionState();
+}
+
+class _ResumeSessionState extends ConsumerState<_ResumeSession> {
+  @override
+  void initState() {
+    super.initState();
+    _resumeAuth();
+  }
+
+  Future<void> _resumeAuth() async {
+    try {
+      final user = fb.FirebaseAuth.instance.currentUser;
+      final idToken = await user?.getIdToken();
+
+      if (idToken == null) {
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/auth');
+        }
+        return;
+      }
+
+      final authService = AuthService(Uri.parse(serverUrl));
+      final result = await authService.authenticateWithFirebase(
+        firebaseIdToken: idToken,
+      );
+
+      if (!mounted) return;
+
+      await initializeEngine(
+        ref: ref,
+        authToken: result.accessToken,
+        userId: result.userId,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed('/home');
+    } catch (_) {
+      // Token expired or server unreachable — send to auth
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/auth');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: HelloColors.voidBg,
+      body: const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            color: HelloColors.inkPrimary,
+            strokeWidth: 2,
+          ),
+        ),
+      ),
     );
   }
 }
