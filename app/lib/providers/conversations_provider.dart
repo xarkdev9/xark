@@ -2,6 +2,7 @@ import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../main.dart' show engineProvider;
+import 'mock_data.dart';
 
 /// Safely resolves the engine, returning null if not yet initialized.
 /// The global engineProvider throws UnimplementedError until auth
@@ -17,8 +18,15 @@ ChatEngine? _engineOrNull(Ref ref) {
 
 /// Live stream of all conversations from the engine. Emits an
 /// empty list while the engine is uninitialized.
+///
+/// When [kUseMockData] is `true`, short-circuits to the static
+/// list from `mock_data.dart` so the home screen can be reviewed
+/// visually without auth.
 final conversationsStreamProvider =
     StreamProvider<List<Conversation>>((ref) {
+  if (kUseMockData) {
+    return Stream<List<Conversation>>.value(mockConversations);
+  }
   final engine = _engineOrNull(ref);
   if (engine == null) {
     return Stream<List<Conversation>>.value(const <Conversation>[]);

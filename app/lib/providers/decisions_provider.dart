@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../main.dart' show engineProvider;
 import 'conversations_provider.dart';
+import 'mock_data.dart';
 
 ChatEngine? _engineOrNull(Ref ref) {
   try {
@@ -19,12 +20,24 @@ ChatEngine? _engineOrNull(Ref ref) {
 /// filters to `!isLocked && state != 'archived'`, sorts by
 /// `agreementScore` descending.
 ///
+/// When [kUseMockData] is `true`, short-circuits to `mockDecisions`
+/// from `mock_data.dart` using the same filter + sort as the real
+/// path so the UI sees the same shape.
+///
 /// v1 note: the raw `DecisionItem` holds ciphertext payloads. Decision
 /// rows render the item id (truncated) as a placeholder title and the
 /// `state` as category. A `DecryptedItemPayload` wrapper is planned
 /// for v2 — this provider's public shape will not change.
 final activeDecisionsProvider =
     FutureProvider<List<DecisionItem>>((ref) async {
+  if (kUseMockData) {
+    final merged = [...mockDecisions]
+        .where((d) => !d.isLocked && d.state != 'archived')
+        .toList()
+      ..sort((a, b) => b.agreementScore.compareTo(a.agreementScore));
+    return merged;
+  }
+
   final engine = _engineOrNull(ref);
   if (engine is! ChatEngineDecisions) {
     return const <DecisionItem>[];
