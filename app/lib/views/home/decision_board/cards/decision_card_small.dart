@@ -28,6 +28,8 @@ class _DecisionCardSmallState extends State<DecisionCardSmall> {
     final score = (widget.item.item.agreementScore * 100).round();
 
     return CardShell(
+      id: widget.item.id,
+      kindOverlay: CardKindGradients.decision,
       onTap: widget.onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -13,6 +13,8 @@ class AiNudgeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CardShell(
+      id: item.id,
+      kindOverlay: CardKindGradients.ai,
       onTap: onTap,
       accentColor: HelloColors.focusAlpine,
       child: Column(
