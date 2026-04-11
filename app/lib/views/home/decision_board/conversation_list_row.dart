@@ -1,15 +1,9 @@
-// iMessage / WhatsApp-style conversation list row.
+// iMessage-style conversation list row.
 //
-// Flat 72px row (no card chrome) with:
-//   • Unread dot on the far left (8px, Rausch, only if unread)
-//   • 50px recessed avatar circle with initial
-//   • Name + timestamp on top row
-//   • 1-line message preview below, inkSecondary thin weight
-//   • 1px bottom hairline separator at 6% white
-//
-// Used by ChatsPage and GroupsPage instead of the masonry card
-// layout. Font weights stay within the No-Bold rule (max w400,
-// preview w300).
+// Flat row: [avatar] [name + timestamp] / [preview + count badge].
+// No left-side unread dot. When there are unread messages, a small
+// Rausch count badge appears bottom-right, vertically aligned with
+// the preview line — WhatsApp-minimal, iMessage-flat.
 
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'package:flutter/material.dart';
@@ -27,8 +21,6 @@ class ConversationListRow extends StatelessWidget {
     required this.isGroup,
     required this.onTap,
   });
-
-  bool get _isUnread => conversation.unreadCount > 0;
 
   String _displayName() {
     final id = conversation.id;
@@ -61,6 +53,7 @@ class ConversationListRow extends StatelessWidget {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final preview = conversation.lastMessageText ?? '';
     final subtitleText = preview.isEmpty ? 'No messages yet' : preview;
+    final unread = conversation.unreadCount;
 
     return Material(
       color: Colors.transparent,
@@ -81,23 +74,6 @@ class ConversationListRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Unread dot gutter on the far left, iMessage style.
-              SizedBox(
-                width: 14,
-                child: _isUnread
-                    ? Center(
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: HelloColors.accent,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-              // Avatar
               Container(
                 width: 50,
                 height: 50,
@@ -117,7 +93,6 @@ class ConversationListRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 14),
-              // Name + preview + timestamp column
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -153,23 +128,65 @@ class ConversationListRow extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      subtitleText,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w300,
-                        height: 1.3,
-                        color: HelloColors.inkSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            subtitleText,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w300,
+                              height: 1.3,
+                              color: HelloColors.inkSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (unread > 0) ...[
+                          const SizedBox(width: 10),
+                          _UnreadBadge(count: unread),
+                        ],
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tiny Rausch pill with an inkPrimary count inside. 18px tall,
+/// 6px horizontal padding, expands to fit 1-3 digit counts.
+class _UnreadBadge extends StatelessWidget {
+  final int count;
+  const _UnreadBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final text = count > 99 ? '99+' : '$count';
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18),
+      height: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        color: HelloColors.accent,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 11,
+          fontWeight: FontWeight.w400,
+          height: 1,
+          color: Color(0xFFF0EFF4),
         ),
       ),
     );
