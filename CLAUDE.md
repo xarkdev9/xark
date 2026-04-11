@@ -495,12 +495,13 @@ See `DESIGN.md`. **⚠️ STALE:** the current DESIGN.md still describes the old
 
 Project changelog lives at `docs/CHANGELOG.md`. **Append-only**, newest entries on top, one entry per spec→plan→implementation cycle (not per commit). Each entry: one-line summary, why, commit range, architecture notes, spec/plan paths, gotchas, out-of-scope. Retroactive entries for prior work are short; new entries use the full template.
 
-A future Track 1 hook will auto-invoke an "auto-librarian" on Stop events to append entries and update this CLAUDE.md from the diff. Until that's wired, entries are written manually at the end of each deploy by the controller.
+**Auto-librarian wired (2026-04-11):** A `Stop` hook at `docs/hooks/update-guardrails.sh` automatically refreshes this `CLAUDE.md` and `docs/CHANGELOG.md` whenever a Claude Code session ends with new source commits. The librarian runs as a `claude --print --bare` headless session — surgical edits only, append-only changelog, never rewrites philosophy. See `docs/hooks/README.md` for design principles, gates, and debugging. Manual override: `touch /tmp/hello-librarian-skip` to suppress the next fire.
 
 ---
 
 ## Key Documents
 - `docs/CHANGELOG.md` — Append-only project history, newest first
+- `docs/hooks/` — Stop-hook auto-librarian (script + locked prompt + design README)
 - `docs/superpowers/specs/2026-04-11-liquid-plasma-brand-design.md` — Plasma brand spec
 - `docs/superpowers/plans/2026-04-11-liquid-plasma-brand-plan.md` — Plasma plan (3 waves, 12 tasks)
 - `docs/superpowers/specs/2026-04-03-decide-first-group-ux-design.md` — Superseded UX spec (archived, do not use as current)
