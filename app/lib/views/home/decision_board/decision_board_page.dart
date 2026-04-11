@@ -12,11 +12,11 @@ import '../../../providers/tabs_provider.dart';
 import '../../../theme.dart';
 import 'atmosphere.dart';
 import 'bottom_bar.dart';
-import 'floating_avatar.dart';
 import 'pages/chats_page.dart';
 import 'pages/groups_page.dart';
 import 'pages/home_page.dart';
 import 'pages/plans_page.dart';
+import 'tab_header.dart';
 import 'sheets/new_chat_sheet.dart';
 import 'sheets/search_sheet.dart';
 
@@ -92,9 +92,9 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
             ),
           ),
           Positioned(
-            top: MediaQuery.of(context).padding.top + 12,
+            top: MediaQuery.of(context).padding.top + 16,
             left: 20,
-            child: const FloatingAvatar(),
+            child: const TabHeader(),
           ),
           Align(
             alignment: Alignment.bottomCenter,
