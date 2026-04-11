@@ -164,7 +164,7 @@ class _CardShellState extends ConsumerState<CardShell>
   Widget build(BuildContext context) {
     final isFocused = ref.watch(centeredFeedItemIdProvider) == widget.id;
     final rimColor =
-        (widget.accentColor ?? Colors.white).withValues(alpha: 0.10);
+        (widget.accentColor ?? Colors.black).withValues(alpha: 0.06);
 
     return KeyedSubtree(
       key: _key,
@@ -202,15 +202,15 @@ class _CardShellState extends ConsumerState<CardShell>
                           DecoratedBox(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(24),
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.07),
-                                  Colors.white.withValues(alpha: 0.02),
-                                ],
-                              ),
+                              color: Colors.white,
                               border: Border.all(color: rimColor, width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
                             child: Padding(
                               padding: widget.padding,
@@ -264,8 +264,8 @@ class _CardShellState extends ConsumerState<CardShell>
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
-                                color: Colors.white
-                                    .withValues(alpha: _ringOpacity.value),
+                                color: Colors.black
+                                    .withValues(alpha: _ringOpacity.value * 0.5),
                                 width: 1,
                               ),
                             ),
