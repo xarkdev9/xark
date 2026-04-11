@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../models/feed_item.dart';
 import '../../../../providers/filtered_feed_providers.dart';
-import '../_card_factory.dart';
-import '../masonry_grid.dart';
+import '../conversation_list_row.dart';
+import '../sheets/group_sheet.dart';
 
 class GroupsPage extends ConsumerStatefulWidget {
   const GroupsPage({super.key});
@@ -21,16 +22,24 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
   Widget build(BuildContext context) {
     super.build(context);
     final feed = ref.watch(groupsFeedProvider);
+    final groups = feed.whereType<GroupFeedItem>().toList(growable: false);
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
         const SliverToBoxAdapter(child: SizedBox(height: 56)),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-          sliver: MasonryFeedGrid(
-            itemCount: feed.length,
-            itemBuilder: (ctx, i) => buildFeedItemCard(ctx, feed[i]),
+          padding: const EdgeInsets.only(bottom: 96),
+          sliver: SliverList.builder(
+            itemCount: groups.length,
+            itemBuilder: (ctx, i) {
+              final item = groups[i];
+              return ConversationListRow(
+                conversation: item.conversation,
+                isGroup: true,
+                onTap: () => openGroupSheet(ctx, item),
+              );
+            },
           ),
         ),
       ],
