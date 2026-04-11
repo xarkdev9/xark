@@ -107,15 +107,17 @@ class _DecisionSheetState extends State<_DecisionSheet> {
         child: Container(
           height: height,
           decoration: BoxDecoration(
-            color: HelloColors.voidBg.withValues(alpha: 0.72),
+            color: HelloColors.voidBg.withValues(alpha: 0.94),
             border: Border(
               top: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: Colors.black.withValues(alpha: 0.06),
                 width: 1,
               ),
             ),
           ),
-          child: Column(
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
             children: [
               const SizedBox(height: 10),
               Container(
@@ -276,6 +278,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

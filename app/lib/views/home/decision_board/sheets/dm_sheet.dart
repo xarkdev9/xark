@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../chat_bubble.dart';
 import '../message_input_bar.dart';
 import 'attachment_sheet.dart';
 
@@ -81,11 +82,18 @@ class _DmSheet extends StatelessWidget {
     return _SheetShell(
       eyebrow: 'DIRECT MESSAGE',
       title: name,
-      body: ListView.separated(
+      body: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         itemCount: messages.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, i) => _MessageBubble(msg: messages[i]),
+        itemBuilder: (_, i) {
+          final msg = messages[i];
+          return ChatBubble(
+            text: msg.text,
+            isOutbound: msg.fromMe,
+            isFirstInGroup: true,
+            isLastInGroup: true,
+          );
+        },
       ),
       footer: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -114,38 +122,6 @@ class _MockMessage {
   const _MockMessage({required this.text, required this.fromMe});
 }
 
-class _MessageBubble extends StatelessWidget {
-  final _MockMessage msg;
-  const _MessageBubble({required this.msg});
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: msg.fromMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 280),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: msg.fromMe
-              ? HelloColors.accent.withValues(alpha: 0.22)
-              : HelloColors.recessed,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Text(
-          msg.text,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            height: 1.35,
-            color: HelloColors.inkPrimary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SheetShell extends StatelessWidget {
   final String eyebrow;
   final String title;
@@ -168,15 +144,17 @@ class _SheetShell extends StatelessWidget {
         child: Container(
           height: height,
           decoration: BoxDecoration(
-            color: HelloColors.voidBg.withValues(alpha: 0.72),
+            color: HelloColors.voidBg.withValues(alpha: 0.94),
             border: Border(
               top: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: Colors.black.withValues(alpha: 0.06),
                 width: 1,
               ),
             ),
           ),
-          child: Column(
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
             children: [
               const SizedBox(height: 10),
               Container(
@@ -245,6 +223,7 @@ class _SheetShell extends StatelessWidget {
               Expanded(child: body),
               if (footer != null) footer!,
             ],
+          ),
           ),
         ),
       ),
