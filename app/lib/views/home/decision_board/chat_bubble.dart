@@ -150,12 +150,10 @@ class _ChatBubbleState extends State<ChatBubble>
     final bubbleColor = widget.isOutbound
         ? Colors.white
         : HelloColors.recessed;
-    final bubbleBorder = widget.isOutbound
-        ? Border.all(
-            color: Colors.black.withValues(alpha: 0.08),
-            width: 1,
-          )
-        : null;
+    final bubbleBorder = Border.all(
+      color: Colors.black.withValues(alpha: 0.08),
+      width: 1,
+    );
     final blurSigma = kIsWeb ? 0.0 : (widget.isOutbound ? 20.0 : 8.0);
     final showAvatar = !widget.isOutbound &&
         widget.isFirstInGroup &&
@@ -224,15 +222,14 @@ class _ChatBubbleState extends State<ChatBubble>
                     ),
                     const SizedBox(width: 6),
                   ],
-                  Flexible(
-                    child: Transform.scale(
-                      scale: _pressScale,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: widget.isOutbound
-                            ? CrossAxisAlignment.end
-                            : CrossAxisAlignment.start,
-                        children: [
+                  Transform.scale(
+                    scale: _pressScale,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: widget.isOutbound
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
                     // Sender name for incoming group messages
                     if (!widget.isOutbound && widget.isFirstInGroup && widget.senderId != null)
                       Padding(
@@ -248,48 +245,55 @@ class _ChatBubbleState extends State<ChatBubble>
                         ),
                       ),
 
-                    // Glass bubble (no inline avatars — iMessage style)
-                    Flexible(
-                          child: Padding(
-                            padding: EdgeInsets.only(top: topMargin),
-                            child: ClipRRect(
-                              borderRadius: _buildCornerRadii(),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth: MediaQuery.of(context).size.width * 0.68,
-                                  ),
-                                  padding: widget.mediaChild != null
-                                      ? EdgeInsets.zero
-                                      : const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                                  decoration: BoxDecoration(
-                                    color: bubbleColor,
-                                    borderRadius: _buildCornerRadii(),
-                                    border: bubbleBorder,
-                                  ),
-                                  child: widget.mediaChild != null
-                                      ? ClipRRect(
-                                          borderRadius: _buildCornerRadii(),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              widget.mediaChild!,
-                                              if (widget.text.isNotEmpty)
-                                                Padding(
-                                                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-                                                  child: _buildTextContent(),
-                                                ),
-                                            ],
-                                          ),
-                                        )
-                                      : _buildTextContent(),
-                                ),
-                              ),
+                    // Glass bubble
+                    Padding(
+                      padding: EdgeInsets.only(top: topMargin),
+                      child: ClipRRect(
+                        borderRadius: _buildCornerRadii(),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(
+                            sigmaX: blurSigma,
+                            sigmaY: blurSigma,
+                          ),
+                          child: Container(
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width * 0.68,
                             ),
+                            padding: widget.mediaChild != null
+                                ? EdgeInsets.zero
+                                : const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                            decoration: BoxDecoration(
+                              color: bubbleColor,
+                              borderRadius: _buildCornerRadii(),
+                              border: bubbleBorder,
+                            ),
+                            child: widget.mediaChild != null
+                                ? ClipRRect(
+                                    borderRadius: _buildCornerRadii(),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        widget.mediaChild!,
+                                        if (widget.text.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              12,
+                                              6,
+                                              12,
+                                              8,
+                                            ),
+                                            child: _buildTextContent(),
+                                          ),
+                                      ],
+                                    ),
+                                  )
+                                : _buildTextContent(),
                           ),
                         ),
+                      ),
+                    ),
                     // Reaction display (selected emoji floats below bubble)
                     if (_reaction != null)
                       Padding(
@@ -355,8 +359,7 @@ class _ChatBubbleState extends State<ChatBubble>
                       ),
 
                     SizedBox(height: bottomMargin),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
                 ],

@@ -82,6 +82,7 @@ class _DmSheet extends StatelessWidget {
     return _SheetShell(
       eyebrow: 'DIRECT MESSAGE',
       title: name,
+      avatarInitial: name.isNotEmpty ? name[0].toUpperCase() : '?',
       body: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         itemCount: messages.length,
@@ -125,11 +126,13 @@ class _MockMessage {
 class _SheetShell extends StatelessWidget {
   final String eyebrow;
   final String title;
+  final String? avatarInitial;
   final Widget body;
   final Widget? footer;
   const _SheetShell({
     required this.eyebrow,
     required this.title,
+    this.avatarInitial,
     required this.body,
     this.footer,
   });
@@ -169,7 +172,33 @@ class _SheetShell extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    if (avatarInitial != null) ...[
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: HelloColors.recessed,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            width: 1,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          avatarInitial!,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w400,
+                            color: HelloColors.inkSecondary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
