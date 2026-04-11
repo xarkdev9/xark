@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/feed_item.dart';
 import '../../../providers/feed_provider.dart';
 import '../../../providers/focus_provider.dart';
+import '../../../providers/viewport_focus_provider.dart';
 import '../../../theme.dart';
 import 'atmosphere.dart';
 import 'cards/ai_nudge_card.dart';
@@ -43,6 +44,58 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
+
+  late final ScrollController _scrollController;
+  String? _lastCenteredId;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_updateCenteredFocus);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateCenteredFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_updateCenteredFocus);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Walks [cardKeyRegistry], finds which card's visual center is
+  /// closest to the viewport midline (44% of viewport height), and
+  /// writes the winner to [centeredFeedItemIdProvider]. Only writes
+  /// when the winner actually changes.
+  void _updateCenteredFocus() {
+    if (!mounted) return;
+    final viewportSize = MediaQuery.of(context).size;
+    final targetY = viewportSize.height * 0.44;
+
+    String? bestId;
+    double bestDistance = double.infinity;
+
+    cardKeyRegistry.forEach((id, key) {
+      final ctx = key.currentContext;
+      if (ctx == null) return;
+      final renderObject = ctx.findRenderObject();
+      if (renderObject is! RenderBox || !renderObject.attached) return;
+      final offset = renderObject.localToGlobal(Offset.zero);
+      final cardCenterY = offset.dy + renderObject.size.height / 2;
+      final distance = (cardCenterY - targetY).abs();
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestId = id;
+      }
+    });
+
+    if (bestId != _lastCenteredId) {
+      _lastCenteredId = bestId;
+      ref.read(centeredFeedItemIdProvider.notifier).state = bestId;
+    }
+  }
 
   void _stubSnack(BuildContext ctx, String msg) {
     ScaffoldMessenger.of(ctx).showSnackBar(
@@ -143,9 +196,15 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
         children: [
           const Positioned.fill(child: AmbientMesh()),
           SafeArea(
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (_) {
+                _updateCenteredFocus();
+                return false;
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                slivers: [
                 SliverToBoxAdapter(child: FeedHeader(focus: focus)),
                 if (focusItem != null)
                   SliverPadding(
@@ -165,7 +224,8 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
                     itemBuilder: (ctx, i) => _buildCard(ctx, rest[i]),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
