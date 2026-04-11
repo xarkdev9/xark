@@ -11,7 +11,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/feed_item.dart';
 import '../../../providers/feed_provider.dart';
-import '../../../providers/focus_provider.dart';
 import '../../../providers/viewport_focus_provider.dart';
 import '../../../theme.dart';
 import 'atmosphere.dart';
@@ -27,9 +26,12 @@ import 'cards/settlement_card.dart';
 import 'cards/trip_card.dart';
 import 'feed_header.dart';
 import 'masonry_grid.dart';
+import 'search_compose_bar.dart';
 import 'sheets/decision_sheet.dart';
 import 'sheets/dm_sheet.dart';
 import 'sheets/group_sheet.dart';
+import 'sheets/new_chat_sheet.dart';
+import 'sheets/search_sheet.dart';
 import 'sheets/settlement_sheet.dart';
 
 class DecisionBoardPage extends ConsumerStatefulWidget {
@@ -181,7 +183,6 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
   Widget build(BuildContext context) {
     super.build(context);
     final feed = ref.watch(feedProvider);
-    final focus = ref.watch(focusTripProvider);
 
     // Split the feed: FocusHero renders in its own sliver; everything
     // else flows into the masonry grid.
@@ -205,27 +206,37 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
                 controller: _scrollController,
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                SliverToBoxAdapter(child: FeedHeader(focus: focus)),
-                if (focusItem != null)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    sliver: SliverToBoxAdapter(
-                      child: FocusHeroCard(
-                        item: focusItem,
-                        onTap: () =>
-                            _openTripRoute(context, focusItem.trip.id),
+                  const SliverToBoxAdapter(child: FeedHeader()),
+                  if (focusItem != null)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      sliver: SliverToBoxAdapter(
+                        child: FocusHeroCard(
+                          item: focusItem,
+                          onTap: () =>
+                              _openTripRoute(context, focusItem.trip.id),
+                        ),
                       ),
                     ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                    sliver: MasonryFeedGrid(
+                      itemCount: rest.length,
+                      itemBuilder: (ctx, i) => _buildCard(ctx, rest[i]),
+                    ),
                   ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                  sliver: MasonryFeedGrid(
-                    itemCount: rest.length,
-                    itemBuilder: (ctx, i) => _buildCard(ctx, rest[i]),
-                  ),
-                ),
                 ],
               ),
+            ),
+          ),
+          // Floating iMessage-style escape hatch — search any chat
+          // or start a new one. Always visible at the bottom of the
+          // home screen.
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SearchComposeBar(
+              onSearchTap: () => openSearchSheet(context),
+              onComposeTap: () => openNewChatSheet(context),
             ),
           ),
         ],
