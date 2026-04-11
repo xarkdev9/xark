@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
-import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 import '_card_shell.dart';
 
 /// Tall 1-col trip card with destination photo, dates, member stack,
@@ -140,14 +140,16 @@ class TripCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       if (trip.pendingDecisionCount > 0)
-                        Text(
-                          '${trip.pendingDecisionCount} pending',
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: 0.3,
-                            color: HelloColors.accent,
+                        PlasmaTint(
+                          child: Text(
+                            '${trip.pendingDecisionCount} pending',
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: 0.3,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                     ],

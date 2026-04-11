@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 
 Future<void> openSettlementSheet(
   BuildContext context,
@@ -96,18 +97,29 @@ class _SettlementSheet extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        s.isOwedToYou ? 'OWED TO YOU' : 'YOU OWE',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w400,
-                          letterSpacing: 1.5,
-                          color: s.isOwedToYou
-                              ? HelloColors.liveGreen
-                              : HelloColors.accent,
-                        ),
-                      ),
+                      child: s.isOwedToYou
+                          ? Text(
+                              'OWED TO YOU',
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: 1.5,
+                                color: HelloColors.liveGreen,
+                              ),
+                            )
+                          : PlasmaTint(
+                              child: const Text(
+                                'YOU OWE',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: 1.5,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                     ),
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -197,28 +209,42 @@ class _SettlementSheet extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: s.isOwedToYou
-                          ? HelloColors.recessed
-                          : HelloColors.accent,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      s.isOwedToYou ? 'REMIND' : 'PAY NOW',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 2.5,
-                        color: s.isOwedToYou
-                            ? HelloColors.inkPrimary
-                            : const Color(0xFFF0EFF4),
-                      ),
-                    ),
-                  ),
+                  child: s.isOwedToYou
+                      ? Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: HelloColors.recessed,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'REMIND',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: 2.5,
+                              color: HelloColors.inkPrimary,
+                            ),
+                          ),
+                        )
+                      : PlasmaFill(
+                          borderRadius: BorderRadius.circular(14),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          height: 56,
+                          child: const Center(
+                            child: Text(
+                              'PAY NOW',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: 2.5,
+                                color: Color(0xFFF0EFF4),
+                              ),
+                            ),
+                          ),
+                        ),
                 ),
               ),
             ],

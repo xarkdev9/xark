@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 import '_card_shell.dart';
 
 /// 1-col settlement card. Shows "You owe X" or "X owes you" plus
@@ -29,18 +30,29 @@ class SettlementCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            s.isOwedToYou ? 'OWED TO YOU' : 'YOU OWE',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 9,
-              fontWeight: FontWeight.w400,
-              letterSpacing: 1.5,
-              color: s.isOwedToYou
-                  ? HelloColors.liveGreen
-                  : HelloColors.accent,
-            ),
-          ),
+          s.isOwedToYou
+              ? const Text(
+                  'OWED TO YOU',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 9,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 1.5,
+                    color: HelloColors.liveGreen,
+                  ),
+                )
+              : PlasmaTint(
+                  child: const Text(
+                    'YOU OWE',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 9,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 1.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
           const SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -111,22 +123,22 @@ class _PayButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        height: 32,
+      child: SizedBox(
         width: double.infinity,
-        decoration: BoxDecoration(
-          color: HelloColors.accent,
+        child: PlasmaFill(
           borderRadius: BorderRadius.circular(8),
-        ),
-        alignment: Alignment.center,
-        child: const Text(
-          'PAY',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 11,
-            fontWeight: FontWeight.w400,
-            letterSpacing: 2,
-            color: Color(0xFFFFFFFF),
+          height: 32,
+          child: const Center(
+            child: Text(
+              'PAY',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 2,
+                color: Color(0xFFFFFFFF),
+              ),
+            ),
           ),
         ),
       ),

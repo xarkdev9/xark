@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
-import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 import '_card_shell.dart';
 
 /// Full-width hero card for the pinned focus trip. Always appears
@@ -164,14 +164,16 @@ class FocusHeroCard extends StatelessWidget {
                       ),
                       if (trip.pendingDecisionCount > 0) ...[
                         const SizedBox(width: 16),
-                        Text(
-                          '${trip.pendingDecisionCount} PENDING',
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: 1.5,
-                            color: HelloColors.accent,
+                        PlasmaTint(
+                          child: Text(
+                            '${trip.pendingDecisionCount} PENDING',
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: 1.5,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
