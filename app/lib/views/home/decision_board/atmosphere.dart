@@ -1,8 +1,10 @@
-// Home atmosphere — ambient mesh that shifts with the current focus.
+// Home atmosphere — ambient mesh that shifts primary glow based on
+// the card the user is currently scrolling through. As each card
+// kind comes under the viewport midline, the primary blob lerps
+// to that kind's signature color over 450ms.
 //
-// The primary blob color is driven by [focusTripProvider]. Swiss →
-// alpine blue, Goa → ocean teal, Bali → sunset amber, no focus →
-// default deep violet.
+// Fallback cascade: centered kind → focus trip accent → default
+// deep violet.
 
 import 'dart:math' as math;
 
@@ -10,11 +12,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/focus_provider.dart';
+import '../../../providers/viewport_focus_provider.dart';
 
 const Color _defaultPrimary = Color(0xFF7C3AED); // deep violet
 const Color _teal = Color(0xFF14B8A6);
 const Color _rose = Color(0xFFD4536B);
 const Color _gold = Color(0xFFC8A84E);
+
+Color? _primaryForKind(String? kind) {
+  if (kind == null) return null;
+  return switch (kind) {
+    'dm' => const Color(0xFF8B5CF6),
+    'group' => const Color(0xFFF97316),
+    'decision' => const Color(0xFF10B981),
+    'trip' => const Color(0xFF4A90E2),
+    'settlement' => const Color(0xFFFACC15),
+    'itinerary' => const Color(0xFF14B8A6),
+    'memory' => const Color(0xFFFF9B6E),
+    'ai' => const Color(0xFF4A90E2),
+    _ => null,
+  };
+}
 
 class AmbientMesh extends ConsumerStatefulWidget {
   const AmbientMesh({super.key});
@@ -45,7 +63,10 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
   @override
   Widget build(BuildContext context) {
     final focus = ref.watch(focusTripProvider);
-    final primary = focus?.accentColor ?? _defaultPrimary;
+    final centeredKind = ref.watch(centeredFeedItemKindProvider);
+    final primary = _primaryForKind(centeredKind) ??
+        focus?.accentColor ??
+        _defaultPrimary;
 
     return AnimatedBuilder(
       animation: _controller,
@@ -60,7 +81,6 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Base wash — subtle violet undercoat
               const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
@@ -75,15 +95,23 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
                   ),
                 ),
               ),
-              // Focus-tinted blob — top left
               Positioned(
                 left: -60 + dx1,
                 top: -80 + dy1,
                 width: 560,
                 height: 460,
-                child: _BlurBlob(color: primary, opacity: 0.22),
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: primary),
+                  duration: const Duration(milliseconds: 450),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, color, _) {
+                    return _BlurBlob(
+                      color: color ?? primary,
+                      opacity: 0.22,
+                    );
+                  },
+                ),
               ),
-              // Teal accent — right mid
               Positioned(
                 right: -80 + dx2,
                 top: 200 + dy2,
@@ -91,7 +119,6 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
                 height: 460,
                 child: const _BlurBlob(color: _teal, opacity: 0.10),
               ),
-              // Rose accent — bottom left
               Positioned(
                 left: -100 - dx1,
                 bottom: -60 - dy1,
@@ -99,7 +126,6 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
                 height: 420,
                 child: const _BlurBlob(color: _rose, opacity: 0.08),
               ),
-              // Gold accent — center bottom
               Positioned(
                 left: 40,
                 right: 40,
@@ -107,7 +133,6 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
                 height: 380,
                 child: const _BlurBlob(color: _gold, opacity: 0.06),
               ),
-              // Grain overlay
               const _GrainLayer(),
             ],
           ),
