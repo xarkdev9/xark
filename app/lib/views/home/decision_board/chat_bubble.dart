@@ -163,7 +163,22 @@ class _ChatBubbleState extends State<ChatBubble>
     final topMargin = widget.isFirstInGroup ? 8.0 : 2.0;
     final bottomMargin = widget.isLastInGroup ? 8.0 : 2.0;
 
-    return GestureDetector(
+    // Cap bubble width against the ACTUAL chat column width — not
+    // MediaQuery's full screen width. On web, MediaQuery returns the
+    // full browser viewport (often 1000px+), which made the old
+    // `screen * 0.68` cap effectively infinite and let long messages
+    // stretch toward the middle of the screen instead of hugging the
+    // right edge. LayoutBuilder reads the ListView cell's width so the
+    // cap is relative to the chat column and consistent DM↔group.
+    return LayoutBuilder(
+      builder: (context, outerConstraints) {
+        final availableWidth = outerConstraints.maxWidth.isFinite
+            ? outerConstraints.maxWidth
+            : MediaQuery.of(context).size.width;
+        final bubbleMaxWidth =
+            (availableWidth * 0.72).clamp(180.0, 360.0);
+
+        return GestureDetector(
       onLongPress: () {
         HapticFeedback.mediumImpact();
         setState(() {
@@ -258,7 +273,7 @@ class _ChatBubbleState extends State<ChatBubble>
                           ),
                           child: Container(
                             constraints: BoxConstraints(
-                              maxWidth: MediaQuery.of(context).size.width * 0.68,
+                              maxWidth: bubbleMaxWidth,
                             ),
                             padding: widget.mediaChild != null
                                 ? EdgeInsets.zero
@@ -368,6 +383,8 @@ class _ChatBubbleState extends State<ChatBubble>
             ),
         ],
       ),
+    );
+      },
     );
   }
 
