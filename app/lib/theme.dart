@@ -3,7 +3,13 @@ import 'package:flutter/material.dart';
 class HelloColors {
   static const Color voidBg = Color(0xFF050507);
   static const Color surfaceDeep = Color(0xFF0A0A0E);
+  static const Color recessed = Color(0xFF17171C); // flat avatar / chip bg
   static const Color accent = Color(0xFFFF385C); // Rausch (Airbnb)
+  static const Color focusViolet = Color(0xFF7C3AED); // default focus tint
+  static const Color focusAlpine = Color(0xFF4A90E2); // Swiss
+  static const Color focusOcean = Color(0xFF14B8A6); // Goa
+  static const Color focusSunset = Color(0xFFFF9B6E); // Bali
+  static const Color liveGreen = Color(0xFF10B981); // LIVE EVENT tag
   static const Color primary = Color(0xFFD4536B); // Deep Rose / Liquid Fire
   static const Color inkPrimary = Color(0xFFF0EFF4);
   static const Color inkSecondary = Color(0x8CF0EFF4); // 55% opacity
