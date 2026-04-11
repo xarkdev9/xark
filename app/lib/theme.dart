@@ -7,8 +7,12 @@ class HelloColors {
   static const Color recessed = Color(0xFFF0F0F0); // subtle gray (chips, avatars)
   static const Color white = Color(0xFFFFFFFF); // explicit white for bubbles
 
-  // Brand / accent (unchanged from dark theme)
-  static const Color accent = Color(0xFFFF385C); // Rausch (Airbnb)
+  // Brand / accent — Liquid Plasma representative hue.
+  // Animated plasma lives in PlasmaFill / PlasmaTint / PlasmaStroke /
+  // PlasmaProgressBar. This flat constant is the single-color
+  // stand-in for surfaces that cannot animate (tokens, exports,
+  // un-migrated legacy code).
+  static const Color accent = Color(0xFFFF4D00); // plasma representative
 
   // Focus trip accents (unchanged)
   static const Color focusViolet = Color(0xFF7C3AED);
