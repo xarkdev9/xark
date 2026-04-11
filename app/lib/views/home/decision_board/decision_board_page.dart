@@ -1,38 +1,24 @@
-// The V10 live-surface home screen.
+// The home screen — a 4-tab scaffold (HOME / CHATS / GROUPS / PLANS)
+// with a horizontal TabBarView, a single bottom BottomBar glass pill
+// containing the mode chip + search field + mic/send + compose,
+// and a floating user avatar in the top-left.
 //
-// A masonry feed of 10 card types sourced from `feedProvider` and
-// sorted by time desc with the focus trip pinned at index 0. Every
-// card opens a full-screen modal sheet on tap, except TripCard
-// (which navigates) and Memory/Itinerary/AiNudge (which show a
-// placeholder snackbar in v1).
+// See: docs/superpowers/specs/2026-04-11-mode-chip-home-design.md
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../models/feed_item.dart';
-import '../../../providers/feed_provider.dart';
-import '../../../providers/viewport_focus_provider.dart';
+import '../../../providers/tabs_provider.dart';
 import '../../../theme.dart';
 import 'atmosphere.dart';
-import 'cards/ai_nudge_card.dart';
-import 'cards/decision_card_hero.dart';
-import 'cards/decision_card_small.dart';
-import 'cards/dm_card.dart';
-import 'cards/focus_hero_card.dart';
-import 'cards/group_card.dart';
-import 'cards/itinerary_card.dart';
-import 'cards/memory_card.dart';
-import 'cards/settlement_card.dart';
-import 'cards/trip_card.dart';
-import 'feed_header.dart';
-import 'masonry_grid.dart';
-import 'search_compose_bar.dart';
-import 'sheets/decision_sheet.dart';
-import 'sheets/dm_sheet.dart';
-import 'sheets/group_sheet.dart';
+import 'bottom_bar.dart';
+import 'floating_avatar.dart';
+import 'pages/chats_page.dart';
+import 'pages/groups_page.dart';
+import 'pages/home_page.dart';
+import 'pages/plans_page.dart';
 import 'sheets/new_chat_sheet.dart';
 import 'sheets/search_sheet.dart';
-import 'sheets/settlement_sheet.dart';
 
 class DecisionBoardPage extends ConsumerStatefulWidget {
   const DecisionBoardPage({super.key});
@@ -43,153 +29,43 @@ class DecisionBoardPage extends ConsumerStatefulWidget {
 }
 
 class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
-    with AutomaticKeepAliveClientMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  late final TabController _tabController;
+
   @override
   bool get wantKeepAlive => true;
-
-  late final ScrollController _scrollController;
-  String? _lastCenteredId;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_updateCenteredFocus);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateCenteredFocus();
-    });
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_onTabChanged);
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_updateCenteredFocus);
-    _scrollController.dispose();
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
     super.dispose();
   }
 
-  /// Walks [cardKeyRegistry], finds which card's visual center is
-  /// closest to the viewport midline (44% of viewport height), and
-  /// writes the winner to [centeredFeedItemIdProvider]. Only writes
-  /// when the winner actually changes.
-  void _updateCenteredFocus() {
+  void _onTabChanged() {
     if (!mounted) return;
-    final viewportSize = MediaQuery.of(context).size;
-    final targetY = viewportSize.height * 0.44;
-
-    String? bestId;
-    double bestDistance = double.infinity;
-
-    cardKeyRegistry.forEach((id, key) {
-      final ctx = key.currentContext;
-      if (ctx == null) return;
-      final renderObject = ctx.findRenderObject();
-      if (renderObject is! RenderBox || !renderObject.attached) return;
-      final offset = renderObject.localToGlobal(Offset.zero);
-      final cardCenterY = offset.dy + renderObject.size.height / 2;
-      final distance = (cardCenterY - targetY).abs();
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestId = id;
-      }
-    });
-
-    if (bestId != _lastCenteredId) {
-      _lastCenteredId = bestId;
-      ref.read(centeredFeedItemIdProvider.notifier).state = bestId;
+    final index = _tabController.index;
+    final current = ref.read(activeTabIndexProvider);
+    if (index != current) {
+      ref.read(activeTabIndexProvider.notifier).state = index;
     }
   }
 
-  void _stubSnack(BuildContext ctx, String msg) {
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: HelloColors.recessed,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _openTripRoute(BuildContext ctx, String tripId) {
-    Navigator.of(ctx).push(
-      MaterialPageRoute<void>(
-        builder: (_) => Scaffold(
-          backgroundColor: HelloColors.voidBg,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            iconTheme: const IconThemeData(color: HelloColors.inkPrimary),
-          ),
-          body: Center(
-            child: Text(
-              'Trip · $tripId\n\nComing in v1.1',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 20,
-                fontWeight: FontWeight.w300,
-                color: HelloColors.inkSecondary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCard(BuildContext ctx, FeedItem item) {
-    return switch (item) {
-      DmFeedItem() => DmCard(
-          item: item,
-          onTap: () => openDmSheet(ctx, item),
-        ),
-      GroupFeedItem() => GroupCard(
-          item: item,
-          onTap: () => openGroupSheet(ctx, item),
-        ),
-      DecisionSmallFeedItem() => DecisionCardSmall(
-          item: item,
-          onTap: () => openDecisionSheet(ctx, item),
-        ),
-      DecisionHeroFeedItem() => DecisionCardHero(
-          item: item,
-          onTap: () => openDecisionSheet(ctx, item),
-        ),
-      TripFeedItem() => TripCard(
-          item: item,
-          onTap: () => _openTripRoute(ctx, item.trip.id),
-        ),
-      SettlementFeedItem() => SettlementCard(
-          item: item,
-          onTap: () => openSettlementSheet(ctx, item),
-        ),
-      ItineraryFeedItem() => ItineraryCard(
-          item: item,
-          onTap: () =>
-              _stubSnack(ctx, 'Itinerary detail — coming in v1.1'),
-        ),
-      MemoryFeedItem() => MemoryCard(
-          item: item,
-          onTap: () => _stubSnack(ctx, 'Memory detail — coming in v1.1'),
-        ),
-      AiNudgeFeedItem() => AiNudgeCard(
-          item: item,
-          onTap: () => _stubSnack(ctx, '@hello nudge — coming in v1.1'),
-        ),
-      FocusHeroFeedItem() => const SizedBox.shrink(),
-    };
+  void _switchToTab(int index) {
+    if (!mounted) return;
+    _tabController.animateTo(index);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final feed = ref.watch(feedProvider);
-
-    // Split the feed: FocusHero renders in its own sliver; everything
-    // else flows into the masonry grid.
-    final focusItems = feed.whereType<FocusHeroFeedItem>().toList();
-    final focusItem = focusItems.isEmpty ? null : focusItems.first;
-    final rest = feed.where((i) => i is! FocusHeroFeedItem).toList();
-
     return Scaffold(
       backgroundColor: HelloColors.voidBg,
       body: Stack(
@@ -197,46 +73,28 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
         children: [
           const Positioned.fill(child: AmbientMesh()),
           SafeArea(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (_) {
-                _updateCenteredFocus();
-                return false;
-              },
-              child: CustomScrollView(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  const SliverToBoxAdapter(child: FeedHeader()),
-                  if (focusItem != null)
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      sliver: SliverToBoxAdapter(
-                        child: FocusHeroCard(
-                          item: focusItem,
-                          onTap: () =>
-                              _openTripRoute(context, focusItem.trip.id),
-                        ),
-                      ),
-                    ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                    sliver: MasonryFeedGrid(
-                      itemCount: rest.length,
-                      itemBuilder: (ctx, i) => _buildCard(ctx, rest[i]),
-                    ),
-                  ),
-                ],
-              ),
+            child: TabBarView(
+              controller: _tabController,
+              physics: const BouncingScrollPhysics(),
+              children: const [
+                HomePage(),
+                ChatsPage(),
+                GroupsPage(),
+                PlansPage(),
+              ],
             ),
           ),
-          // Floating iMessage-style escape hatch — `+` opens the
-          // New Chat/Group/Event slider, the send arrow triggers
-          // search. Always visible at the bottom of the home screen.
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 12,
+            left: 20,
+            child: const FloatingAvatar(),
+          ),
           Align(
             alignment: Alignment.bottomCenter,
-            child: SearchComposeBar(
-              onPlusTap: () => openNewChatSheet(context),
-              onSend: () => openSearchSheet(context),
+            child: BottomBar(
+              onTabSelected: _switchToTab,
+              onSearchSubmit: () => openSearchSheet(context),
+              onComposeTap: () => openNewChatSheet(context),
             ),
           ),
         ],
