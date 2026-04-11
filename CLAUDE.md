@@ -64,7 +64,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 ```bash
 # engine
-cd engine && flutter test             # 35 test files, 10 categories (crypto/, discovery/, transport/, etc.)
+cd engine && flutter test             # 33 test files, 10 categories (crypto/, discovery/, transport/, etc.)
 cd engine && dart analyze
 cd engine && dart run build_runner build --delete-conflicting-outputs
 

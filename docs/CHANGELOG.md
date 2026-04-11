@@ -13,7 +13,7 @@
 
 **Why:** The Alignment Audit (Phase 3) found that the codebase was compliant with its own rules but the guardrail oracles had degraded — `engine/CLAUDE.md` denied the existence of `updatePushToken` (which is declared on the abstract class), `algo/CLAUDE.md` documented `DEFAULT_SPACE_CONFIG.allowSelfReaction` as `false` when it's actually `true` (literal opposite), `web/CLAUDE.md` referenced `web/src/lib/theme.ts` in two places including the bootstrap reading list but the file didn't exist, and the root `CLAUDE.md` + `CHANGELOG.md` had 6 self-contradictions inherited from the Track 2 baseline. Fresh agents loading the guardrails were being misled. This remediation fixes the oracle so the `docs/hooks/update-guardrails.sh` auto-librarian has a clean baseline going forward.
 
-**Commit range:** (this commit)
+**Commit range:** `5a089ad` (initial remediation) + follow-up commit covering 2 residuals surfaced by post-commit verification sweep (root `CLAUDE.md:67` Commands section `35 test` → `33 test` — Phase 4 fixed the other 2 occurrences but missed the Commands comment; plus this `**Commit range:**` placeholder backfill).
 
 **Executive decisions applied:**
 - **U1 (NotForMe agreement score):** Code is the source of truth — `NotForMe` IS counted in the agreement percentage, consistent across algo and web port. Removed the "behavioral divergence" framing from root `CLAUDE.md` line 452; the weightedScore (ranking signal) and agreementScore (consensus participation signal) are separate computations.
