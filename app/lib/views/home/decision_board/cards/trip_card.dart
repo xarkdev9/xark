@@ -59,13 +59,12 @@ class TripCard extends StatelessWidget {
                 );
               },
             ),
-            ColoredBox(color: Colors.black.withValues(alpha: 0.30)),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x00000000), Color(0xCC000000)],
+                  colors: [Color(0x00FFFFFF), Color(0xE6FFFFFF)],
                   stops: [0.45, 1.0],
                 ),
               ),
@@ -113,7 +112,7 @@ class TripCard extends StatelessWidget {
                       fontSize: 22,
                       fontWeight: FontWeight.w400,
                       height: 1.1,
-                      color: Color(0xFFF0EFF4),
+                      color: Color(0xFF1A1A1A),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -123,7 +122,7 @@ class TripCard extends StatelessWidget {
                       fontFamily: 'Inter',
                       fontSize: 12,
                       fontWeight: FontWeight.w300,
-                      color: const Color(0xFFF0EFF4).withValues(alpha: 0.80),
+                      color: const Color(0xFF1A1A1A).withValues(alpha: 0.80),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -136,7 +135,7 @@ class TripCard extends StatelessWidget {
                           fontSize: 10,
                           fontWeight: FontWeight.w400,
                           letterSpacing: 0.3,
-                          color: Color(0xFFF0EFF4),
+                          color: Color(0xFF1A1A1A),
                         ),
                       ),
                       const Spacer(),

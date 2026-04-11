@@ -38,13 +38,12 @@ class DecisionCardHero extends StatelessWidget {
                 return const ColoredBox(color: HelloColors.surfaceDeep);
               },
             ),
-            const ColoredBox(color: Color(0x55000000)),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x00000000), Color(0xCC000000)],
+                  colors: [Color(0x00FFFFFF), Color(0xE6FFFFFF)],
                   stops: [0.45, 1.0],
                 ),
               ),
@@ -89,7 +88,7 @@ class DecisionCardHero extends StatelessWidget {
                       fontSize: 20,
                       fontWeight: FontWeight.w400,
                       height: 1.15,
-                      color: Color(0xFFF0EFF4),
+                      color: Color(0xFF1A1A1A),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -101,7 +100,7 @@ class DecisionCardHero extends StatelessWidget {
                       fontFamily: 'Inter',
                       fontSize: 12,
                       fontWeight: FontWeight.w300,
-                      color: const Color(0xFFF0EFF4).withValues(alpha: 0.75),
+                      color: const Color(0xFF1A1A1A).withValues(alpha: 0.75),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -114,7 +113,7 @@ class DecisionCardHero extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w400,
                       letterSpacing: 0.3,
-                      color: Color(0xFFF0EFF4),
+                      color: Color(0xFF1A1A1A),
                     ),
                   ),
                   const SizedBox(height: 6),
