@@ -36,6 +36,9 @@ class GroupCard extends StatelessWidget {
         : 'G';
 
     return CardShell(
+      id: item.id,
+      kindOverlay: CardKindGradients.group,
+      ambientPulse: isUnread,
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,17 +82,26 @@ class GroupCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      _eyebrow(),
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 9,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 1.5,
-                        color: isUnread
-                            ? HelloColors.accent
-                            : HelloColors.inkTertiary,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _eyebrow(),
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 9,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 1.5,
+                            color: isUnread
+                                ? HelloColors.accent
+                                : HelloColors.inkTertiary,
+                          ),
+                        ),
+                        if (item.typingCount > 0) ...[
+                          const SizedBox(width: 8),
+                          const _TypingDots(),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -130,6 +142,62 @@ class GroupCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final phase = (_controller.value + i * 0.16) % 1.0;
+            final a = 0.24 +
+                (0.76 *
+                    (phase < 0.5 ? phase * 2 : (1 - phase) * 2).clamp(0.0, 1.0));
+            return Padding(
+              padding: EdgeInsets.only(right: i < 2 ? 3 : 0),
+              child: Container(
+                width: 3,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: HelloColors.accent.withValues(alpha: a),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }

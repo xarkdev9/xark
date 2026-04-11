@@ -35,6 +35,9 @@ class DmCard extends StatelessWidget {
     final initial = _displayName()[0].toUpperCase();
 
     return CardShell(
+      id: item.id,
+      kindOverlay: CardKindGradients.dm,
+      ambientPulse: isUnread,
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
