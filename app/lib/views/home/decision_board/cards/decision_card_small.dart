@@ -65,13 +65,13 @@ class _DecisionCardSmallState extends State<DecisionCardSmall> {
                 active: _myVote == 'love_it',
                 onTap: () => setState(() => _myVote = 'love_it'),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               _VoteButton(
                 label: '✓',
                 active: _myVote == 'works_for_me',
                 onTap: () => setState(() => _myVote = 'works_for_me'),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               _VoteButton(
                 label: '✗',
                 active: _myVote == 'not_for_me',
