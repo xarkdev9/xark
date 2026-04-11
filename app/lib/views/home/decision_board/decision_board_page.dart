@@ -1,22 +1,36 @@
-// Decision board — the hello app's home screen.
+// The V10 live-surface home screen.
 //
-// A 3-card peek stack (Chats, Groups, Decisions) consuming live
-// engine streams via Riverpod providers. State persists via
-// AutomaticKeepAliveClientMixin + homeActiveCardIndexProvider.
+// A masonry feed of 10 card types sourced from `feedProvider` and
+// sorted by time desc with the focus trip pinned at index 0. Every
+// card opens a full-screen modal sheet on tap, except TripCard
+// (which navigates) and Memory/Itinerary/AiNudge (which show a
+// placeholder snackbar in v1).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../providers/home_state_provider.dart';
+import '../../../models/feed_item.dart';
+import '../../../providers/feed_provider.dart';
+import '../../../providers/focus_provider.dart';
 import '../../../theme.dart';
 import 'atmosphere.dart';
-import 'cards/chats_card.dart';
-import 'cards/decisions_card.dart';
-import 'cards/groups_card.dart';
-import 'peek_stack.dart';
+import 'cards/ai_nudge_card.dart';
+import 'cards/decision_card_hero.dart';
+import 'cards/decision_card_small.dart';
+import 'cards/dm_card.dart';
+import 'cards/focus_hero_card.dart';
+import 'cards/group_card.dart';
+import 'cards/itinerary_card.dart';
+import 'cards/memory_card.dart';
+import 'cards/settlement_card.dart';
+import 'cards/trip_card.dart';
+import 'feed_header.dart';
+import 'masonry_grid.dart';
+import 'sheets/decision_sheet.dart';
+import 'sheets/dm_sheet.dart';
+import 'sheets/group_sheet.dart';
+import 'sheets/settlement_sheet.dart';
 
-/// The home screen: a 3-card peek stack (Chats, Groups, Decisions)
-/// consuming live engine streams via Riverpod providers.
 class DecisionBoardPage extends ConsumerStatefulWidget {
   const DecisionBoardPage({super.key});
 
@@ -30,43 +44,97 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
   @override
   bool get wantKeepAlive => true;
 
-  void _openChatList() {
-    // v1: stub — detail screens will be wired in a follow-up spec.
-    debugPrint('[DecisionBoardPage] open full chat list');
+  void _stubSnack(BuildContext ctx, String msg) {
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: HelloColors.recessed,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
-  void _openGroupList() {
-    debugPrint('[DecisionBoardPage] open full group list');
+  void _openTripRoute(BuildContext ctx, String tripId) {
+    Navigator.of(ctx).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          backgroundColor: HelloColors.voidBg,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: HelloColors.inkPrimary),
+          ),
+          body: Center(
+            child: Text(
+              'Trip · $tripId\n\nComing in v1.1',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 20,
+                fontWeight: FontWeight.w300,
+                color: HelloColors.inkSecondary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  void _openDecisionList() {
-    debugPrint('[DecisionBoardPage] open full decision list');
-  }
-
-  void _openConversation(String id) {
-    debugPrint('[DecisionBoardPage] open conversation $id');
-  }
-
-  void _openDecision(String id) {
-    debugPrint('[DecisionBoardPage] open decision $id');
-  }
-
-  void _startChat() {
-    debugPrint('[DecisionBoardPage] start chat');
-  }
-
-  void _createGroup() {
-    debugPrint('[DecisionBoardPage] create group');
-  }
-
-  void _startDecision() {
-    debugPrint('[DecisionBoardPage] start decision');
+  Widget _buildCard(BuildContext ctx, FeedItem item) {
+    return switch (item) {
+      DmFeedItem() => DmCard(
+          item: item,
+          onTap: () => openDmSheet(ctx, item),
+        ),
+      GroupFeedItem() => GroupCard(
+          item: item,
+          onTap: () => openGroupSheet(ctx, item),
+        ),
+      DecisionSmallFeedItem() => DecisionCardSmall(
+          item: item,
+          onTap: () => openDecisionSheet(ctx, item),
+        ),
+      DecisionHeroFeedItem() => DecisionCardHero(
+          item: item,
+          onTap: () => openDecisionSheet(ctx, item),
+        ),
+      TripFeedItem() => TripCard(
+          item: item,
+          onTap: () => _openTripRoute(ctx, item.trip.id),
+        ),
+      SettlementFeedItem() => SettlementCard(
+          item: item,
+          onTap: () => openSettlementSheet(ctx, item),
+        ),
+      ItineraryFeedItem() => ItineraryCard(
+          item: item,
+          onTap: () =>
+              _stubSnack(ctx, 'Itinerary detail — coming in v1.1'),
+        ),
+      MemoryFeedItem() => MemoryCard(
+          item: item,
+          onTap: () => _stubSnack(ctx, 'Memory detail — coming in v1.1'),
+        ),
+      AiNudgeFeedItem() => AiNudgeCard(
+          item: item,
+          onTap: () => _stubSnack(ctx, '@hello nudge — coming in v1.1'),
+        ),
+      FocusHeroFeedItem() => const SizedBox.shrink(),
+    };
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // required by AutomaticKeepAliveClientMixin
-    final initialIndex = ref.watch(homeActiveCardIndexProvider);
+    super.build(context);
+    final feed = ref.watch(feedProvider);
+    final focus = ref.watch(focusTripProvider);
+
+    // Split the feed: FocusHero renders in its own sliver; everything
+    // else flows into the masonry grid.
+    final focusItems = feed.whereType<FocusHeroFeedItem>().toList();
+    final focusItem = focusItems.isEmpty ? null : focusItems.first;
+    final rest = feed.where((i) => i is! FocusHeroFeedItem).toList();
 
     return Scaffold(
       backgroundColor: HelloColors.voidBg,
@@ -75,26 +143,27 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
         children: [
           const Positioned.fill(child: AmbientMesh()),
           SafeArea(
-            child: PeekStackPageView(
-              initialIndex: initialIndex,
-              onIndexChanged: (idx) {
-                ref.read(homeActiveCardIndexProvider.notifier).state = idx;
-              },
-              children: [
-                ChatsCard(
-                  onHeaderTap: _openChatList,
-                  onRowTap: _openConversation,
-                  onEmptyCtaTap: _startChat,
-                ),
-                GroupsCard(
-                  onHeaderTap: _openGroupList,
-                  onRowTap: _openConversation,
-                  onEmptyCtaTap: _createGroup,
-                ),
-                DecisionsCard(
-                  onHeaderTap: _openDecisionList,
-                  onRowTap: _openDecision,
-                  onEmptyCtaTap: _startDecision,
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(child: FeedHeader(focus: focus)),
+                if (focusItem != null)
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    sliver: SliverToBoxAdapter(
+                      child: FocusHeroCard(
+                        item: focusItem,
+                        onTap: () =>
+                            _openTripRoute(context, focusItem.trip.id),
+                      ),
+                    ),
+                  ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  sliver: MasonryFeedGrid(
+                    itemCount: rest.length,
+                    itemBuilder: (ctx, i) => _buildCard(ctx, rest[i]),
+                  ),
                 ),
               ],
             ),
