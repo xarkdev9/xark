@@ -148,8 +148,14 @@ class _ChatBubbleState extends State<ChatBubble>
   @override
   Widget build(BuildContext context) {
     final bubbleColor = widget.isOutbound
-        ? HelloColors.accent
+        ? Colors.white
         : HelloColors.recessed;
+    final bubbleBorder = widget.isOutbound
+        ? Border.all(
+            color: Colors.black.withValues(alpha: 0.08),
+            width: 1,
+          )
+        : null;
     final blurSigma = kIsWeb ? 0.0 : (widget.isOutbound ? 20.0 : 8.0);
     final showAvatar = !widget.isOutbound &&
         widget.isFirstInGroup &&
@@ -260,6 +266,7 @@ class _ChatBubbleState extends State<ChatBubble>
                                   decoration: BoxDecoration(
                                     color: bubbleColor,
                                     borderRadius: _buildCornerRadii(),
+                                    border: bubbleBorder,
                                   ),
                                   child: widget.mediaChild != null
                                       ? ClipRRect(
@@ -364,13 +371,11 @@ class _ChatBubbleState extends State<ChatBubble>
   Widget _buildTextContent() {
     return Text(
       widget.text,
-      style: TextStyle(
+      style: const TextStyle(
         fontFamily: 'Inter',
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        color: widget.isOutbound
-            ? Colors.white
-            : HelloColors.inkPrimary,
+        color: HelloColors.inkPrimary,
         height: 1.35,
       ),
     );

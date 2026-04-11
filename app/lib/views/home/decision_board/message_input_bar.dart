@@ -81,10 +81,6 @@ class _MessageInputBarState extends State<MessageInputBar> {
         const SizedBox(width: 10),
         Expanded(
           child: Container(
-            constraints: const BoxConstraints(
-              minHeight: 36,
-              maxHeight: 120,
-            ),
             padding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 8,
@@ -102,7 +98,8 @@ class _MessageInputBarState extends State<MessageInputBar> {
               controller: _controller,
               focusNode: _focusNode,
               autofocus: widget.autofocus,
-              maxLines: null,
+              minLines: 1,
+              maxLines: 4,
               cursorColor: HelloColors.inkPrimary,
               cursorWidth: 1,
               style: const TextStyle(
