@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/focus_provider.dart';
 import '../../../providers/tabs_provider.dart';
 import '../../../theme.dart';
+import 'plasma/plasma.dart';
 import 'tab_chip.dart';
 import 'tab_popover.dart';
 
@@ -80,9 +81,7 @@ class _BottomBarState extends ConsumerState<BottomBar> {
   @override
   Widget build(BuildContext context) {
     final tab = ref.watch(activeTabProvider);
-    final focus = ref.watch(focusTripProvider);
-    final composeAccent = focus?.accentColor ?? HelloColors.accent;
-
+    ref.watch(focusTripProvider);
     return SafeArea(
       top: false,
       child: Padding(
@@ -160,11 +159,10 @@ class _BottomBarState extends ConsumerState<BottomBar> {
                       );
                     },
                     child: _hasText
-                        ? _CircleButton(
+                        ? _PlasmaCircleButton(
                             key: const ValueKey<String>('send'),
                             icon: Icons.arrow_upward_rounded,
                             onTap: _handleSend,
-                            background: composeAccent,
                             iconColor: const Color(0xFFF0EFF4),
                           )
                         : _CircleButton(
@@ -176,11 +174,10 @@ class _BottomBarState extends ConsumerState<BottomBar> {
                           ),
                   ),
                   const SizedBox(width: 8),
-                  _CircleButton(
+                  _PlasmaIconCircleButton(
                     icon: Icons.add,
                     onTap: widget.onComposeTap,
                     background: HelloColors.recessed,
-                    iconColor: composeAccent,
                   ),
                 ],
               ),
@@ -220,6 +217,67 @@ class _CircleButton extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: Icon(icon, size: 18, color: iconColor),
+      ),
+    );
+  }
+}
+
+/// 36x36 circle button whose fill is animated plasma. Used for the
+/// primary send arrow in the compose bar.
+class _PlasmaCircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color iconColor;
+
+  const _PlasmaCircleButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: PlasmaFill(
+        shape: BoxShape.circle,
+        width: 36,
+        height: 36,
+        child: Center(child: Icon(icon, size: 18, color: iconColor)),
+      ),
+    );
+  }
+}
+
+/// 36x36 circle button with a flat recessed background and a
+/// plasma-tinted icon. Used for the compose [+] button.
+class _PlasmaIconCircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color background;
+
+  const _PlasmaIconCircleButton({
+    required this.icon,
+    required this.onTap,
+    required this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: background,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: PlasmaTint(child: Icon(icon, size: 18)),
       ),
     );
   }

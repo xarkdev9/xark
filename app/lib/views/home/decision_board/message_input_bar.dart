@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme.dart';
+import 'plasma/plasma.dart';
 
 /// iMessage-style compose bar: circular `+` button on left, rounded
 /// text field in the middle, and a right-side button that morphs
@@ -14,7 +15,6 @@ class MessageInputBar extends StatefulWidget {
   final VoidCallback onPlusTap;
   final void Function(String) onSend;
   final VoidCallback? onMicTap;
-  final Color? accentColor;
   final bool autofocus;
 
   const MessageInputBar({
@@ -23,7 +23,6 @@ class MessageInputBar extends StatefulWidget {
     required this.onPlusTap,
     required this.onSend,
     this.onMicTap,
-    this.accentColor,
     this.autofocus = false,
   });
 
@@ -67,8 +66,6 @@ class _MessageInputBarState extends State<MessageInputBar> {
 
   @override
   Widget build(BuildContext context) {
-    final accent = widget.accentColor ?? HelloColors.accent;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -138,11 +135,10 @@ class _MessageInputBarState extends State<MessageInputBar> {
             );
           },
           child: _hasText
-              ? _CircleButton(
+              ? _PlasmaCircleButton(
                   key: const ValueKey<String>('send'),
                   icon: Icons.arrow_upward_rounded,
                   onTap: _handleSend,
-                  background: accent,
                   iconColor: const Color(0xFFF0EFF4),
                 )
               : _CircleButton(
@@ -174,7 +170,6 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isBrandFill = background == HelloColors.accent;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -184,15 +179,42 @@ class _CircleButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: background,
           shape: BoxShape.circle,
-          border: isBrandFill
-              ? null
-              : Border.all(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  width: 1,
-                ),
+          border: Border.all(
+            color: Colors.black.withValues(alpha: 0.08),
+            width: 1,
+          ),
         ),
         alignment: Alignment.center,
         child: Icon(icon, size: 18, color: iconColor),
+      ),
+    );
+  }
+}
+
+/// 32x32 circle button whose fill is animated plasma. Used for the
+/// primary send arrow inside message sheets.
+class _PlasmaCircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color iconColor;
+
+  const _PlasmaCircleButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: PlasmaFill(
+        shape: BoxShape.circle,
+        width: 32,
+        height: 32,
+        child: Center(child: Icon(icon, size: 18, color: iconColor)),
       ),
     );
   }
