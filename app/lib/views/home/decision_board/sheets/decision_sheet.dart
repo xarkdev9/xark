@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 
 Future<void> openDecisionSheet(BuildContext context, FeedItem item) {
   return showGeneralDialog<void>(
@@ -244,17 +245,9 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: data.score.clamp(0.0, 1.0),
-                        minHeight: 4,
-                        backgroundColor:
-                            HelloColors.inkPrimary.withValues(alpha: 0.06),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          HelloColors.accent,
-                        ),
-                      ),
+                    PlasmaProgressBar(
+                      value: data.score.clamp(0.0, 1.0),
+                      height: 4,
                     ),
                     const SizedBox(height: 28),
                     _BigVoteButton(
@@ -301,28 +294,46 @@ class _BigVoteButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: active
-              ? HelloColors.accent.withValues(alpha: 0.22)
-              : HelloColors.recessed,
-          borderRadius: BorderRadius.circular(12),
-          border: active
-              ? Border.all(color: HelloColors.accent, width: 1)
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-            color: active ? HelloColors.accent : HelloColors.inkPrimary,
-          ),
-        ),
-      ),
+      child: active
+          ? PlasmaStroke(
+              width: 1,
+              borderRadius: BorderRadius.circular(12),
+              child: PlasmaFill(
+                alpha: 0.22,
+                borderRadius: BorderRadius.circular(12),
+                height: 52,
+                child: Center(
+                  child: PlasmaTint(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white, // opaque for srcIn
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : Container(
+              height: 52,
+              decoration: BoxDecoration(
+                color: HelloColors.recessed,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: HelloColors.inkPrimary,
+                ),
+              ),
+            ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 import '_card_shell.dart';
 
 /// Tall 1-col hero decision card with photo background, scrim,
@@ -117,18 +118,12 @@ class DecisionCardHero extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      value: item.totalCount == 0
-                          ? 0
-                          : item.votedCount / item.totalCount,
-                      minHeight: 3,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        HelloColors.accent,
-                      ),
-                    ),
+                  PlasmaProgressBar(
+                    value: item.totalCount == 0
+                        ? 0
+                        : item.votedCount / item.totalCount,
+                    height: 3,
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                   ),
                 ],
               ),

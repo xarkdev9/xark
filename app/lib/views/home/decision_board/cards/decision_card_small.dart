@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 import '_card_shell.dart';
 
 /// 1-col decision card with inline vote buttons. React without
@@ -36,14 +37,16 @@ class _DecisionCardSmallState extends State<DecisionCardSmall> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.item.eyebrow != null)
-            Text(
-              widget.item.eyebrow!,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 9,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 1.5,
-                color: HelloColors.accent,
+            PlasmaTint(
+              child: Text(
+                widget.item.eyebrow!,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 9,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 1.5,
+                  color: Colors.white, // opaque for srcIn
+                ),
               ),
             ),
           const SizedBox(height: 8),
@@ -92,16 +95,9 @@ class _DecisionCardSmallState extends State<DecisionCardSmall> {
             ],
           ),
           const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: widget.item.item.agreementScore.clamp(0.0, 1.0),
-              minHeight: 3,
-              backgroundColor: HelloColors.inkPrimary.withValues(alpha: 0.06),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                HelloColors.accent,
-              ),
-            ),
+          PlasmaProgressBar(
+            value: widget.item.item.agreementScore.clamp(0.0, 1.0),
+            height: 3,
           ),
         ],
       ),
@@ -124,31 +120,48 @@ class _VoteButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 28,
-        decoration: BoxDecoration(
-          color: active
-              ? HelloColors.accent.withValues(alpha: 0.18)
-              : HelloColors.recessed,
-          borderRadius: BorderRadius.circular(6),
-          border: active
-              ? Border.all(color: HelloColors.accent, width: 1)
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: active
-                ? HelloColors.accent
-                : HelloColors.inkSecondary,
-          ),
-        ),
-      ),
+      child: active
+          ? PlasmaStroke(
+              width: 1,
+              borderRadius: BorderRadius.circular(6),
+              child: PlasmaFill(
+                alpha: 0.18,
+                borderRadius: BorderRadius.circular(6),
+                width: 36,
+                height: 28,
+                child: Center(
+                  child: PlasmaTint(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white, // opaque for srcIn
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : Container(
+              width: 36,
+              height: 28,
+              decoration: BoxDecoration(
+                color: HelloColors.recessed,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: HelloColors.inkSecondary,
+                ),
+              ),
+            ),
     );
   }
 }
