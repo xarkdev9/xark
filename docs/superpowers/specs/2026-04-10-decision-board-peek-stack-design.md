@@ -45,7 +45,7 @@ Confirmed content density model: **live previews** inside each card (iMessage/Wh
 |---|---|---|---|---|
 | 1 | **Chats** (1:1 DMs) | `conversationsProvider.where(isGroup == false)` | Unread first, then most recent | Avatar (44px circle) · Name · Last message preview · Timestamp · Unread badge |
 | 2 | **Groups** | `conversationsProvider.where(isGroup == true)` | Unread first, then most recent | Avatar stack (3×28px overlapping) · Group name · "[sender]: preview" · Timestamp · Unread badge |
-| 3 | **Decisions** | `decisionsProvider` (cross-group, active only) | Hot first (consensus ≥80%), then weighted score desc | Thumbnail (40px square, 0 radius) · Score (22px Geist Mono) · Title · Category · Consensus bar (2px hairline) |
+| 3 | **Decisions** | `decisionsProvider` (cross-group, active only) | Hot first (consensus ≥80%), then weighted score desc | Thumbnail (40px square, 0 radius) · Score (22px Geist Mono, left-anchored beside title) · Title · Category · Consensus bar **replaces the row's bottom separator** (2px, width proportional to score %, color hot/warm/cool) |
 
 ### Card header (shared across all 3)
 - Height: 56px
@@ -56,12 +56,13 @@ Confirmed content density model: **live previews** inside each card (iMessage/Wh
 ### Row content rules
 - **Chats card:** show last message preview text. `"are we doing the cruise?"` (no sender prefix — it's a DM, sender is implied)
 - **Groups card:** show sender + preview. `"Sarah: are we doing the cruise?"`
-- **Decisions card:** show score + title + category. `92 — Mt Batur sunrise trek — activity`
+- **Decisions card:** score is the **horizontal anchor** on the left of the title, not stacked vertically. Layout: `[thumb] [score] [title / category stacked] [optional: hot/fresh/locked badge]`. Consensus bar is the row's bottom separator (see §8 for exact dimensions). This avoids the visual crowding risk of stacking score + title + category + separator vertically in a 56px row.
 - All rows: tappable. Tapping a row navigates directly to that specific chat or decision (not the full list).
 
 ### Content cap per card
 - Show **up to 10 rows** in the card by default (fewer if the user has fewer items; never more)
 - If more than 10 items exist, the 10th visible row is replaced by a "See all N" row that navigates to the full list screen
+- **"See all" row aesthetic:** same height as normal rows (64px), no background, no border, no pill. Right-aligned text `See all 23 →` in 13px Satoshi weight 300, Ink Secondary color, trailing arrow glyph. Looks like a dimmed list row, not a button. Zero-Box doctrine preserved.
 - **Cards do not internally scroll** in v1. This is a deliberate constraint to avoid gesture conflict with the PageView paginate gesture and keep v1 simple. Scroll capability is deferred to v2 after the gesture resolution is validated.
 
 ## 4. Peek Stack Geometry
@@ -124,10 +125,19 @@ Viewport = usable screen height (below status bar, above bottom safe area)
 - **Action:** navigate to the full list screen for that card type
 - **Transition:** slide-from-right
 
-### Pull-to-refresh
-- **Trigger:** pull down from the top of the card body (not the header)
-- **Action:** trigger `ref.refresh(provider)` on the corresponding data provider
-- **Indicator:** iOS-style single-dot loading indicator in Ink Secondary color, appears in the 12px gap between header and first row
+### No pull-to-refresh in v1 (gesture conflict avoidance)
+Data is live-streamed via Riverpod `StreamProvider` from `engine.conversations` and the decisions provider. The UI auto-updates on every message/decision change. **Manual refresh is semantically unnecessary** and adding it would create a gesture ambiguity with the vertical paginate swipe (as flagged in the review). Since there's no functional benefit and a real risk, pull-to-refresh is removed from v1. In v2, when internal scrolling is added, pull-to-refresh can be re-evaluated with proper gesture isolation (e.g., `NestedScrollView` + sentinel-at-top detection).
+
+### State persistence during navigation
+The active card index and controller state must survive widget lifecycle events: navigation pushes (tapping a row → chat detail), engine provider rebuilds, and hot reloads.
+
+**Implementation:**
+- `homeActiveCardIndexProvider = StateProvider<int>((_) => 0)` — lives outside the widget tree, survives everything
+- `_DecisionBoardPageState.initState()` reads the provider and initializes `PageController(initialPage: ref.read(homeActiveCardIndexProvider))`
+- `onPageChanged` callback writes back: `ref.read(homeActiveCardIndexProvider.notifier).state = newIndex`
+- Secondary safeguard: `AutomaticKeepAliveClientMixin` on `DecisionBoardPage` so it isn't disposed when a detail screen pushes on top (standard Flutter pattern for tab/page preservation)
+
+**Result:** navigating from the Chats card into a specific chat and back returns you to the Chats card, not card 1. Same for engine provider rebuilds (auth re-init, token refresh).
 
 ### Focus dimming (while swiping between cards)
 As the user drags, opacity and scale interpolate smoothly:
@@ -238,9 +248,34 @@ Stream<List<DecryptedItemPayload>> activeDecisions(ActiveDecisionsRef ref) {
 - Hairlines: `rgba(240,239,244,0.06)`
 
 ### Row layout
-- Height: 64px (chats/groups), 56px (decisions — tighter because thumbnail replaces avatar)
+- Height: **64px for all three cards** (chats, groups, decisions). Decision rows were initially spec'd at 56px but bumped to 64 after density review flagged crowding risk of stacking score + title + category + separator in the smaller height. 64px matches chat/group row height for visual consistency across all three cards.
 - Horizontal padding: 24px (matches existing decision_board layout)
-- Hairline separator between rows: 1px at 6% Ink opacity, indented past avatar/thumb
+- **Standard separator** (chats, groups, and the last decision row): 1px at 6% Ink opacity, indented past avatar/thumb
+- **Decision rows special case:** the bottom separator is **replaced** by a 2px consensus bar. The bar width equals `consensusScore * rowContentWidth` (i.e., 100% = full width, 50% = half width). Color follows hot/warm/cool mapping (gold / accent / warning). The bar starts at the left padding edge (aligned with the thumbnail's left edge). This means the separator *is* the consensus bar for decision rows — zero extra vertical pixels added.
+
+### Decision row horizontal layout (fits in 64px)
+```
+┌────────────────────────────────────────────────────────┐
+│  [thumb]   92   Mt Batur sunrise trek                  │
+│  40×40     Geist  activity · 3 of 4 voted              │
+│           Mono22                                       │
+├════════════════════════════════════════════════════════┤  ← 2px consensus bar (width ∝ score, color by state)
+```
+- Thumb: 40×40px square, 0 radius, left-aligned
+- 12px gap
+- Score: 22px Geist Mono, right-aligned in a 40px wide column (tabular numbers)
+- 14px gap
+- Title + category: stacked vertically in remaining flex space. Title 15px Satoshi 400 on top, category 10px Micro Satoshi 400 Ink Tertiary below
+- Row vertical padding: 10px top + 10px bottom + 2px bar = 64px total
+- Content vertical: 44px available — thumbnail fits, title+category stacks in ~35px, centered against the thumbnail/score
+
+### Unread badge (avatar overlay)
+- Circle: 18px diameter, 2px Void inset ring to separate from avatar
+- Fill: Accent `#FF6B35` solid
+- **Outer glow:** 6px Gaussian blur at 20% Accent opacity to soften the hard edge against the Void background and prevent the "neon vibration" at small sizes
+- Numeral text: Void `#050507` (inverted for max contrast — 17:1 vs 4.7:1 for white-on-accent). This also removes the ambiguity of "white numeral on accent background" which is the WCAG-borderline case.
+- Font: Geist Mono 10px weight 400
+- Max displayed count: 99+ (if N > 99, render `99+`)
 
 ### Unread indicator (WhatsApp/iMessage clarity)
 - **Avatar ring** — 1.5px Accent border around unread chat avatars
@@ -362,31 +397,57 @@ DecisionBoardPage (existing, rewritten)
 
 **Phase 4: Integration** — Wire tap actions to real navigation routes (requires the existing `GroupChatPage` / `DirectMessagePage` to also be rewritten as real engine-consuming widgets, which is adjacent scope flagged below).
 
-### Adjacent scope (flag for user decision)
-This spec is **home screen only**. It does not include:
-- Rewriting `group_chat_page.dart` and `direct_message_page.dart` to consume the new providers
+### Scope: Home-only (locked 2026-04-10)
+This spec is **home screen only**. Reviewer rationale (adopted): "The Peek Stack is a foundational architectural change. If you attempt to build the detail screens simultaneously, you are effectively trying to build the engine and the car at the same time. Build the Home Screen first → get immediate visual feedback on the new interaction model → feel the physics before getting bogged down in E2EE message streams in detail views."
+
+**In scope:**
+- `PeekStackPageView` widget
+- 3 card widgets (Chats, Groups, Decisions)
+- `conversationsProvider`, `decisionsProvider` (live-streamed)
+- `homeActiveCardIndexProvider` (state persistence)
+- Empty state widgets for all 3 cards
+- Navigation routes (tap row / tap header / tap CTA) — route *targets* exist as stubs; this spec wires the routes but does not rewrite the detail screens
+
+**Explicitly out of scope (follow-up specs):**
+- Rewriting `group_chat_page.dart` and `direct_message_page.dart` as real engine consumers
 - Building `FullChatsListPage`, `FullGroupsListPage`, `FullDecisionsListPage`
-- Building detail navigation (tap row → chat screen) actually working end-to-end
-
-Without those, tap-through on rows navigates into the existing stub screens. Functional but unsatisfying. The user should decide:
-
-**(a) Home-only scope:** Build this spec. Tap-through lands on existing stubs. Ship the home, tackle detail screens in a follow-up spec.
-
-**(b) Home + chat detail scope:** Add rewriting `group_chat_page.dart` and `direct_message_page.dart` as real engine consumers to this spec. Doubles the scope but ships a working chat flow end-to-end.
-
-My recommendation: **(a) home-only**. Keeps this spec focused. Tap-through is stubbed but the home screen is real and ship-ready on real chat + decision data. Follow-up spec handles the detail screens.
+- The detail screens will land on existing stubs after tap-through. Functional-but-unsatisfying until the follow-up spec.
 
 ## 14. Open Questions
 
-**One, flagged for user decision (§13):**
-- **Scope:** does this spec cover home-only (recommended: `a`), or does it also include rewriting `group_chat_page.dart` and `direct_message_page.dart` as real engine consumers (option `b`)?
+**None.** All decisions explicit.
 
-Every other decision in this spec is explicit. If any additional question arises during implementation, it is a bug in this spec — return here and resolve it explicitly before coding.
+If any question arises during implementation, it is a bug in this spec — return here and resolve it explicitly before coding.
 
 ---
 
-**Approval required on:**
-1. The design as specified (peek stack, 78/18/4, hard stop, empty states, focus dimming)
-2. Content cap (10 rows + "See all", no internal scroll in v1)
-3. Scope choice: (a) home-only or (b) home + chat detail rewrite
-4. Removal of existing `swim_lane_rail.dart`, `decision_card.dart`, `world_tile.dart` files as noted in §10
+## 15. Pre-Implementation Checklist (reviewer-mandated)
+
+Addressed inline in this spec:
+
+| # | Item | Status | Where |
+|---|---|---|---|
+| 1 | Verify PageView snap physics against stiffness/damping | Spec'd | §5 — `stiffness: 400, damping: 30, mass: 1.0`, velocity threshold 500 px/s, drag commit at 30% of card height |
+| 2 | Confirm DecisionRow layout fits without text overlap | Spec'd | §8 — row bumped from 56px to 64px; horizontal layout with score as left-anchor; consensus bar replaces bottom separator (zero extra vertical px) |
+| 3 | Implement client-side merge for decisions as primary fallback | Spec'd | §7 — `activeDecisionsProvider` iterates `engine.conversations`, calls `getDecisionItems(groupId)` per group, merges + filters client-side. O(groups) work per refresh. |
+| 4 | Prioritize gesture resolution for Pull-to-Refresh vs Pagination | **Resolved by removal** | §5 — pull-to-refresh removed from v1. Data is live-streamed via Riverpod `StreamProvider`; manual refresh is semantically unnecessary and eliminates the gesture ambiguity entirely. |
+
+Additional implementation-phase validations:
+- Test on 390×844 (iPhone 15) AND 360×780 (small Android) AND 428×926 (iPhone 15 Pro Max) to verify peek percentages produce sensible pixel heights at each aspect ratio
+- Test with `prefers-reduced-motion` enabled — swap spring physics for 150ms ease-out curve
+- Contrast check: run automated WCAG AA validator on every text/background color pair from §8
+- Verify `AutomaticKeepAliveClientMixin` works across the app's actual navigation stack (not just a test harness)
+
+---
+
+**Approved 2026-04-10** with reviewer refinements incorporated:
+1. ✅ Design as specified (peek stack, 78/18/4, hard stop, empty states, focus dimming)
+2. ✅ Content cap: up to 10 rows + "See all" styled as a dimmed row (not a button)
+3. ✅ Scope: (a) home-only — locked
+4. ✅ File deletions (`swim_lane_rail.dart`, `decision_card.dart`, `world_tile.dart`, `models.dart`)
+5. ✅ Decision row density fix: 64px height, horizontal score-anchored layout, consensus-bar-as-separator
+6. ✅ Gesture conflict resolution: pull-to-refresh removed from v1
+7. ✅ State persistence: `homeActiveCardIndexProvider` + `AutomaticKeepAliveClientMixin`
+8. ✅ Unread badge contrast: Void numeral on Accent fill + 6px outer glow
+
+**Status: ready for implementation plan.**
