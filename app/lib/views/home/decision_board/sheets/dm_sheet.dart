@@ -80,7 +80,6 @@ class _DmSheet extends StatelessWidget {
     ];
 
     return _SheetShell(
-      eyebrow: 'DIRECT MESSAGE',
       title: name,
       avatarInitial: name.isNotEmpty ? name[0].toUpperCase() : '?',
       body: ListView.builder(
@@ -124,13 +123,11 @@ class _MockMessage {
 }
 
 class _SheetShell extends StatelessWidget {
-  final String eyebrow;
   final String title;
   final String? avatarInitial;
   final Widget body;
   final Widget? footer;
   const _SheetShell({
-    required this.eyebrow,
     required this.title,
     this.avatarInitial,
     required this.body,
@@ -200,31 +197,15 @@ class _SheetShell extends StatelessWidget {
                       const SizedBox(width: 12),
                     ],
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            eyebrow,
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 10,
-                              fontWeight: FontWeight.w400,
-                              letterSpacing: 1.5,
-                              color: HelloColors.inkTertiary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 24,
-                              fontWeight: FontWeight.w400,
-                              letterSpacing: -0.3,
-                              color: HelloColors.inkPrimary,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 24,
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: -0.3,
+                          color: HelloColors.inkPrimary,
+                        ),
                       ),
                     ),
                     GestureDetector(

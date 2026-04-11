@@ -109,7 +109,6 @@ class _GroupSheet extends StatelessWidget {
     ];
 
     return _GroupSheetShell(
-      eyebrow: 'GROUP CHAT',
       title: name,
       subtitle: '$memberCount members · $unread unread',
       avatarInitial: name.isNotEmpty ? name[0].toUpperCase() : '?',
@@ -164,14 +163,12 @@ class _GroupMessage {
 }
 
 class _GroupSheetShell extends StatelessWidget {
-  final String eyebrow;
   final String title;
   final String subtitle;
   final String? avatarInitial;
   final Widget body;
   final Widget? footer;
   const _GroupSheetShell({
-    required this.eyebrow,
     required this.title,
     required this.subtitle,
     this.avatarInitial,
@@ -245,17 +242,6 @@ class _GroupSheetShell extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            eyebrow,
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 10,
-                              fontWeight: FontWeight.w400,
-                              letterSpacing: 1.5,
-                              color: HelloColors.inkTertiary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
                           Text(
                             title,
                             style: const TextStyle(
