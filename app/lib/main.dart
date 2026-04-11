@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,6 +8,19 @@ import 'views/home/home_layout.dart';
 import 'views/auth/auth_flow_page.dart';
 import 'providers/engine_error_listener.dart';
 import 'theme.dart';
+
+/// Custom scroll behavior that enables horizontal drag gestures on
+/// all pointer device types — critical for TabBarView swipe to work
+/// on Flutter Web (mouse + trackpad) in addition to touch.
+class _DragEverywhereScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => <PointerDeviceKind>{
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
+}
 
 // ─── Global Providers ───────────────────────────────────────────────
 final engineProvider = Provider<ChatEngine>((ref) => throw UnimplementedError());
@@ -63,7 +77,11 @@ Future<void> initializeEngine({
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase init skipped: $e');
+  }
 
   _container = ProviderContainer();
 
@@ -122,13 +140,11 @@ class _HelloAppState extends ConsumerState<HelloApp> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    // Check if the user is already signed into Firebase
-    final isAuthenticated = fb.FirebaseAuth.instance.currentUser != null;
-
     return MaterialApp(
       navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'hello',
+      scrollBehavior: _DragEverywhereScrollBehavior(),
       theme: ThemeData(
         scaffoldBackgroundColor: HelloColors.voidBg,
         fontFamily: 'Inter',
@@ -145,7 +161,7 @@ class _HelloAppState extends ConsumerState<HelloApp> with WidgetsBindingObserver
         '/home': (context) => const HomeLayout(),
         '/auth': (context) => const AuthFlowPage(),
       },
-      home: isAuthenticated ? const _ResumeSession() : const AuthFlowPage(),
+      home: const HomeLayout(), // Decision board — Netflix-style decision rails
     );
   }
 }

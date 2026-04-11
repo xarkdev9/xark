@@ -50,3 +50,10 @@ final activeTabProvider = Provider<HomeTab>((ref) {
   final index = ref.watch(activeTabIndexProvider);
   return HomeTab.values[index.clamp(0, HomeTab.values.length - 1)];
 });
+
+/// Live fractional tab position (0.0 — 3.0) during a TabBarView
+/// drag. Updated on every frame by a listener on
+/// `TabController.animation` in decision_board_page.dart. Consumed
+/// by the atmosphere mesh to lerp its primary glow color smoothly
+/// across tab signature colors as the user swipes.
+final tabAnimationProvider = StateProvider<double>((ref) => 0.0);

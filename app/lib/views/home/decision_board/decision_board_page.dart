@@ -40,10 +40,12 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
+    _tabController.animation?.addListener(_onTabAnimationChanged);
   }
 
   @override
   void dispose() {
+    _tabController.animation?.removeListener(_onTabAnimationChanged);
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
@@ -56,6 +58,12 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
     if (index != current) {
       ref.read(activeTabIndexProvider.notifier).state = index;
     }
+  }
+
+  void _onTabAnimationChanged() {
+    if (!mounted) return;
+    final value = _tabController.animation?.value ?? 0.0;
+    ref.read(tabAnimationProvider.notifier).state = value;
   }
 
   void _switchToTab(int index) {
@@ -75,7 +83,6 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
           SafeArea(
             child: TabBarView(
               controller: _tabController,
-              physics: const BouncingScrollPhysics(),
               children: const [
                 HomePage(),
                 ChatsPage(),

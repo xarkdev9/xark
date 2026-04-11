@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/focus_provider.dart';
+import '../../../providers/tabs_provider.dart';
 import '../../../providers/viewport_focus_provider.dart';
 
 const Color _defaultPrimary = Color(0xFF7C3AED); // deep violet
@@ -32,6 +33,19 @@ Color? _primaryForKind(String? kind) {
     'ai' => const Color(0xFF4A90E2),
     _ => null,
   };
+}
+
+/// Lerps between the 4 tab signature colors based on the live
+/// fractional tab animation value (0.0 — 3.0). Gives a smooth
+/// color cross-fade as the user swipes between tabs.
+Color _primaryForTabAnimation(double value) {
+  final clamped = value.clamp(0.0, HomeTab.values.length - 1.0);
+  final lowerIndex = clamped.floor();
+  final upperIndex = (lowerIndex + 1).clamp(0, HomeTab.values.length - 1);
+  final t = clamped - lowerIndex;
+  final lower = HomeTab.values[lowerIndex].signatureColor;
+  final upper = HomeTab.values[upperIndex].signatureColor;
+  return Color.lerp(lower, upper, t) ?? lower;
 }
 
 class AmbientMesh extends ConsumerStatefulWidget {
@@ -64,9 +78,18 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
   Widget build(BuildContext context) {
     final focus = ref.watch(focusTripProvider);
     final centeredKind = ref.watch(centeredFeedItemKindProvider);
-    final primary = _primaryForKind(centeredKind) ??
-        focus?.accentColor ??
-        _defaultPrimary;
+    final tabAnimation = ref.watch(tabAnimationProvider);
+
+    // Tab animation lerp takes precedence so the background smoothly
+    // cross-fades as the user swipes between tabs. When idle on a
+    // single tab (fractional ≈ integer), fall back through centered
+    // kind → focus color → default violet.
+    final tabColor = _primaryForTabAnimation(tabAnimation);
+    final primary = tabColor != HomeTab.values[0].signatureColor
+        ? tabColor
+        : (_primaryForKind(centeredKind) ??
+            focus?.accentColor ??
+            _defaultPrimary);
 
     return AnimatedBuilder(
       animation: _controller,
