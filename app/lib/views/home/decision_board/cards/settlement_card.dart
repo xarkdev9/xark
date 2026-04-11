@@ -126,7 +126,7 @@ class _PayButton extends StatelessWidget {
             fontSize: 11,
             fontWeight: FontWeight.w400,
             letterSpacing: 2,
-            color: Color(0xFFF0EFF4),
+            color: Color(0xFFFFFFFF),
           ),
         ),
       ),
