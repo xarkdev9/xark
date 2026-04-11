@@ -9,12 +9,45 @@ Future<void> openSettlementSheet(
   BuildContext context,
   SettlementFeedItem item,
 ) {
-  return showModalBottomSheet<void>(
+  return showGeneralDialog<void>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => _SettlementSheet(item: item),
+    barrierDismissible: true,
+    barrierLabel: 'SettlementSheet',
+    barrierColor: Colors.black.withValues(alpha: 0.28),
+    transitionDuration: const Duration(milliseconds: 320),
+    pageBuilder: (_, __, ___) {
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: const SizedBox.expand(),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: _SettlementSheet(item: item),
+          ),
+        ],
+      );
+    },
+    transitionBuilder: (_, animation, __, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        ),
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.06),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          child: child,
+        ),
+      );
+    },
   );
 }
 
