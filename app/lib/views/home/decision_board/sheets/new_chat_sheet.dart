@@ -52,28 +52,22 @@ class _NewChatSheet extends StatelessWidget {
 
   static const _options = [
     (
-      'Direct message',
+      'New Chat',
       'Start a 1:1 conversation',
       Icons.chat_bubble_outline_rounded,
       0xFF8B5CF6,
     ),
     (
-      'Group',
+      'New Group',
       'Create a new group',
       Icons.people_outline_rounded,
       0xFFF97316,
     ),
     (
-      'Decision',
-      'Propose something to vote on',
-      Icons.lightbulb_outline_rounded,
+      'New Event',
+      'Plan something with your group',
+      Icons.calendar_today_rounded,
       0xFF10B981,
-    ),
-    (
-      'Trip',
-      'Plan a new trip',
-      Icons.map_outlined,
-      0xFF4A90E2,
     ),
   ];
 
