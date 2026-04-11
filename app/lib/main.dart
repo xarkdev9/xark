@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'views/home/home_layout.dart';
 import 'views/auth/auth_flow_page.dart';
+import 'views/home/decision_board/plasma/plasma.dart';
 import 'providers/engine_error_listener.dart';
 import 'theme.dart';
 
@@ -140,28 +141,30 @@ class _HelloAppState extends ConsumerState<HelloApp> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: appNavigatorKey,
-      debugShowCheckedModeBanner: false,
-      title: 'hello',
-      scrollBehavior: _DragEverywhereScrollBehavior(),
-      theme: ThemeData(
-        scaffoldBackgroundColor: HelloColors.voidBg,
-        fontFamily: 'Inter',
-        cardTheme: const CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+    return PlasmaClock(
+      child: MaterialApp(
+        navigatorKey: appNavigatorKey,
+        debugShowCheckedModeBanner: false,
+        title: 'hello',
+        scrollBehavior: _DragEverywhereScrollBehavior(),
+        theme: ThemeData(
+          scaffoldBackgroundColor: HelloColors.voidBg,
+          fontFamily: 'Inter',
+          cardTheme: const CardThemeData(
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          ),
+          appBarTheme: const AppBarTheme(
+            elevation: 0,
+            scrolledUnderElevation: 0,
+          ),
         ),
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          scrolledUnderElevation: 0,
-        ),
+        routes: {
+          '/home': (context) => const HomeLayout(),
+          '/auth': (context) => const AuthFlowPage(),
+        },
+        home: const HomeLayout(), // Decision board — Netflix-style decision rails
       ),
-      routes: {
-        '/home': (context) => const HomeLayout(),
-        '/auth': (context) => const AuthFlowPage(),
-      },
-      home: const HomeLayout(), // Decision board — Netflix-style decision rails
     );
   }
 }
