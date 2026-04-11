@@ -28,9 +28,10 @@ Per-package guidance for agents working exclusively in `app/`. Read the root
    the app is covered. Widget tests must wrap the widget under test in
    `PlasmaClock(child: ...)` or they will throw.
 
-5. **`engine_error_listener.dart::setupHeadlessErrorBus` has an empty body.**
-   It is called from `initializeEngine` in `main.dart` but does nothing yet.
-   Do not add logic there without also wiring a consumer.
+5. **`engine_error_listener.dart::setupHeadlessErrorBus` is dead code.**
+   The call was removed from `initializeEngine` in `main.dart`. The file
+   itself still defines the function but nothing invokes it. When a real
+   consumer is wired, re-add the call site.
 
 6. **No bundled Inter font.** `pubspec.yaml` has no `fonts:` section for Inter.
    `fontFamily: 'Inter'` in `ThemeData` and `HelloText` relies on system font
@@ -236,7 +237,7 @@ checks `kUseMockData` first (see Landmine #1).
 | `tabAnimationProvider` | `StateProvider<double>` | Raw `TabController.animation.value` — updated per-frame during swipe |
 | `centeredFeedItemIdProvider` | `StateProvider<String?>` | ID of the card currently centered in viewport |
 | `centeredFeedItemProvider` | derived | `FeedItem` for the centered card |
-| `centeredFeedItemKindProvider` | derived | `FeedItemKind` of the centered card |
+| `centeredFeedItemKindProvider` | derived | `String?` — kind label of the centered card (e.g. `"dm"`, `"group"`, `"decision"`, `"trip"`). There is no `FeedItemKind` enum; the provider returns a plain nullable string used by `atmosphere.dart` to pick a tint. |
 | `conversationsStreamProvider` | `StreamProvider` | Live conversations from engine |
 | `directMessagesProvider` | derived | DMs only |
 | `groupChatsProvider` | derived | Group chats only |
@@ -245,8 +246,9 @@ checks `kUseMockData` first (see Landmine #1).
 | `activeDecisionsProvider` | `FutureProvider` | Cross-group merged decision items |
 
 **`cardKeyRegistry`** — plain global `Map<String, GlobalKey>` (NOT a provider).
-Lives in the `_card_shell.dart` file. Used by `_CardShell` to register widget
-keys for scroll-to-card animations.
+Defined in `app/lib/providers/viewport_focus_provider.dart:21`, used by
+`_CardShell` (in `cards/_card_shell.dart`) to register widget keys for
+scroll-to-card animations.
 
 Provider files:
 `conversations_provider.dart`, `decisions_provider.dart`, `engine_error_listener.dart`,
@@ -294,7 +296,7 @@ Weights 500–900 are forbidden. See root `CLAUDE.md` for full policy.
 |--------|------|--------|
 | `_ResumeSession` | `main.dart` | Defined but not registered in route table. Dead. |
 | `homeActiveCardIndexProvider` | `home_state_provider.dart` | Stale 0–2 relic from pre-4-tab design. Not consumed. Delete when convenient. |
-| `setupHeadlessErrorBus` | `engine_error_listener.dart` | Called from `initializeEngine()` but body is empty. |
+| `setupHeadlessErrorBus` | `engine_error_listener.dart` | Defined but no longer called from `main.dart` (call removed 2026-04-11). Re-add call site when a real consumer is wired. |
 
 ---
 

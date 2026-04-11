@@ -7,7 +7,6 @@ import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'views/home/home_layout.dart';
 import 'views/auth/auth_flow_page.dart';
 import 'views/home/decision_board/plasma/plasma.dart';
-import 'providers/engine_error_listener.dart';
 import 'theme.dart';
 
 /// Custom scroll behavior that enables horizontal drag gestures on
@@ -72,8 +71,6 @@ Future<void> initializeEngine({
   _container.updateOverrides([
     engineProvider.overrideWithValue(engine),
   ]);
-
-  setupHeadlessErrorBus(_container);
 }
 
 void main() async {

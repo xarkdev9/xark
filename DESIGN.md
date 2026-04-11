@@ -53,7 +53,7 @@ Every action surface in the app breathes in unison. Send arrows, voting chips, u
 As the user swipes between tabs, the primary blob in the `AmbientMesh` background lerps between tab signature colors on every animation frame (`tabAnimationProvider` watches `TabController.animation`). HOME `#7C3AED` → CHATS `#8B5CF6` → GROUPS `#F97316` → PLANS `#4A90E2`. When settled on HOME, the atmosphere also responds to the centered feed item's kind and the focus trip's accent.
 
 ### Smart Corner Chat Bubbles
-Consecutive same-sender messages fuse visually. Inner corner radius drops to 4px for mid-group bubbles; outer corners stay at 18px. Last-in-group: `18/18/4/18` (outbound) or `18/18/18/4` (inbound). Isolated message: `18/18/18/18`. Bubbles use spring snap-back physics for swipe-to-reply.
+Consecutive same-sender messages fuse visually. Inner corner radius drops to 4px for mid-group bubbles; outer corners stay at 20px (`Radius.circular(20.0)` in `chat_bubble.dart:128`). Last-in-group: `20/20/4/20` (outbound) or `20/20/20/4` (inbound). Isolated message: `20/20/20/20`. Bubbles use spring snap-back physics for swipe-to-reply.
 
 ### Gold Burst on Consensus
 When a decision item reaches ≥80% agreement, 40 gold particles (`GoldBurstOverlay`) explode from the action card. Heavy haptic + notification haptic. Gold is earned — `#8B6914` on light background, never decorative.
@@ -136,9 +136,10 @@ The animated brand system. All 28 action surfaces animate from this 4-stop gradi
 |------|------|--------|
 | Outbound | `Colors.white` | `Colors.black @ 8%`, 1px |
 | Inbound | `#F0F0F0` (`recessed`) | `Colors.black @ 8%`, 1px |
-| @hello AI | `#F0F0F0` with top-edge specular | `Colors.black @ 6%`, 1px |
 
-Width cap: `min(available * 0.72, 360px)` — measured from the ListView cell's actual constraint via LayoutBuilder (NOT screen width).
+**Note:** `chat_bubble.dart` currently has no `@hello AI` branch — AI messages render through the standard inbound path. A distinct AI bubble treatment is a future enhancement (not yet implemented).
+
+Width cap: `(available * 0.72).clamp(180.0, 360.0)` — measured from the ListView cell's actual constraint via LayoutBuilder (NOT screen width). Floor of 180px prevents bubbles from collapsing to unreadable widths on very narrow columns; ceiling of 360px prevents long messages from stretching across wide viewports.
 
 DM inbound: no avatar gutter. Group inbound: 34px left gutter (28px avatar + 6px spacer) with cluster behavior (avatar shows only on last-in-group).
 
@@ -178,7 +179,7 @@ pointer-events: none;
 | Element | Radius |
 |---------|--------|
 | Feed items, lists | 0px (Zero-Box) |
-| Chat bubbles | 18px (smart corners: inner drops to 4px in consecutive groups) |
+| Chat bubbles | 20px (smart corners: inner drops to 4px in consecutive groups) |
 | Glass modals / sheets | 24px |
 | Plan / decision tiles | 16px |
 | Buttons (pill) | 9999px |
@@ -238,7 +239,7 @@ Still present, but with lower alpha than the dark era — the base surface is al
 | Animation | Where | Description |
 |-----------|-------|-------------|
 | Plasma sweep | All 28 action surfaces | 4-color diagonal gradient rotates on 5s cycle, all surfaces in unison |
-| Tab-color atmosphere lerp | AmbientMesh background | Primary blob lerps between tab signature colors per-frame during swipe, 600ms settle |
+| Tab-color atmosphere lerp | AmbientMesh background | Primary blob lerps between tab signature colors per-frame during swipe, 450ms settle (TweenAnimationBuilder in `atmosphere.dart:108-109`) |
 | Gold burst | Consensus lock ≥80% | 40 gold particles explode from action card |
 | Tile morph | Decision surface | Card expands from position to full-screen detail |
 | AmbientMesh drift | Full-screen background | 5 radial gradient blobs, 26-second sinusoidal drift cycle |

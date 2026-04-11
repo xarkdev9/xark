@@ -80,7 +80,7 @@ npx tsx web/tests/sdk-validation.ts  # 100-test standalone script (fragile — t
 | `/api/keys/otk` | POST | OTK batch upload (max 200) |
 | `/api/keys/fetch` | POST | Atomic key bundle fetch (FOR UPDATE SKIP LOCKED) |
 
-### Invite / Contacts (4)
+### Invite / Contacts (5)
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/invite` | POST | Generate 128-bit hex cryptographic invite link |
@@ -182,6 +182,8 @@ All API routes verify the JWT in-handler. `proxy.ts` only decodes `sub` claim fo
 | `postgres-pool.ts` | TCP connection pool singleton (globalThis, idle_timeout: 10s) |
 
 ### Crypto (src/lib/crypto/) — 28 files, client-side only
+(27 production modules + `crypto.test.ts`.)
+
 Core (documented previously): `encryption-service.ts`, `keystore.ts`, `encrypted-store.ts`,
 `x3dh.ts`, `double-ratchet.ts`, `sender-keys.ts`, `file-encryption.ts`, `mutex.ts`, `uuidv7.ts`
 
@@ -273,7 +275,6 @@ Backs all 8 `/api/discovery/*` routes. Entirely distinct from intelligence/.
 | `space-data.ts` | Group list fetching (batched 4-query pattern + RPC) |
 | `space-state.ts` | computeSpaceState() → empty/exploring/converging/ready/active/settled |
 | `ledger.ts` | Settlement math, Venmo/UPI deep links |
-| `theme.ts` | Global type scale, text sizes, color helpers (textColor, accentColor) |
 | `taste.ts` | User taste profile management |
 | `calendar.ts` | Calendar integration helpers |
 | `member-logistics.ts` | Member travel/logistics aggregation |
@@ -431,8 +432,7 @@ For a fresh agent entering `web/`:
 1. `~/hello/CLAUDE.md` — monorepo architecture, security boundary, terminology
 2. `~/hello/DESIGN.md` — visual law (no-bold, zero-box, glass rules). Read before ANY UI change.
 3. `web/src/app/globals.css` — CSS variable definitions, theme tokens, animations
-4. `web/src/lib/theme.ts` — type scale and color helpers
-5. `web/src/proxy.ts` — edge security layer (rate limiting, CSP, nonce injection)
-6. `web/CONSTITUTION.md` — visual and architectural law
-7. `web/GROUNDING_PROTOCOL.md` — @hello AI behavior spec
-8. `web/SECURITY.md` — E2EE architecture and privacy policy
+4. `web/src/proxy.ts` — edge security layer (rate limiting, CSP, nonce injection)
+5. `web/CONSTITUTION.md` — visual and architectural law
+6. `web/GROUNDING_PROTOCOL.md` — @hello AI behavior spec
+7. `web/SECURITY.md` — E2EE architecture and privacy policy

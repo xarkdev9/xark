@@ -6,7 +6,7 @@ import '../public_api/chat_engine.dart';
 /// Provides Heart-Sort ranking, reaction voting, and Green-Lock commitment.
 ///
 /// Usage:
-///   final engine = await ChatEngine.initialize(config);
+///   final engine = await ChatEngineImpl.initialize(config);
 ///   if (engine is ChatEngineDecisions) {
 ///     final items = await engine.getDecisionItems('group_123');
 ///     await engine.reactToItem('item_1', 'love_it');

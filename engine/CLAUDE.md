@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Testing
-flutter test                            # Run all 35 test files
+flutter test                            # Run all 33 test files
 flutter test test/crypto/               # Crypto tests only
 flutter test test/discovery/            # Discovery pipeline tests only
 flutter test test/crypto/ratchet_test.dart  # Single test file
@@ -125,6 +125,7 @@ abstract class ChatEngine {
   Stream<ChatEngineError> get errors;
 
   Future<List<ContactMatch>> discoverContacts(List<String> phoneHashes);
+  Future<void> updatePushToken(String newToken);      // FCM/APNs token rotation
   Future<UserProfile> getProfile(String userId);
   Future<void> updateProfile({String? displayName, String? photoUrl});
   Future<List<DeviceInfo>> getDevices();
@@ -146,7 +147,7 @@ abstract class ChatEngine {
 }
 ```
 
-**Note:** `updatePushToken` does NOT exist. Push token is provided at init time in `ChatEngineConfig.pushToken`.
+**Push token lifecycle:** The initial push token is provided at init time via `ChatEngineConfig.pushToken`. Host apps MUST call `engine.updatePushToken(newToken)` whenever FCM/APNs rotates the token (typically on app reinstall, OS update, or explicit refresh). Failing to call this method silently breaks push delivery — the engine will continue sending to a stale token.
 
 ### ChatSession (per-conversation handle)
 
@@ -246,7 +247,7 @@ engine/
 │       ├── sync/                 # SyncCoordinator, OutboxProcessor, GapDetector,
 │       │                         #   ConflictResolver, WatermarkSync
 │       └── transport/            # SupabaseClientWrapper, RealtimeListener, typing, receipts
-├── test/                         # 35 test files (see Test Infrastructure)
+├── test/                         # 33 test files (see Test Infrastructure)
 └── pubspec.yaml                  # name: e2ee_chat_sdk
 ```
 
@@ -270,30 +271,49 @@ Ranking is via `TasteRanker` + `TasteSignal` (implicit feedback loop). Caching v
 
 ### PQXDH Kyber-1024 — STUB
 
-`engine/lib/src/crypto/pqxdh/kyber.dart` re-exports `StubKyber` from `pqxdh.dart`.
+The actual `StubKyber` and `DeterministicStubKyber` classes are defined in `engine/lib/src/crypto/pqxdh/pqxdh.dart`. The file `engine/lib/src/crypto/pqxdh/kyber.dart` is a 14-line **re-export barrel** that gives callers a stable `kyber.dart` import path (`export 'pqxdh.dart' show KemAlgorithm, KemKeyPair, KemEncapsulation, StubKyber, DeterministicStubKyber;`). When a production Kyber-1024 library becomes available, add the real implementation either inline in `kyber.dart` or alongside the stubs in `pqxdh.dart`.
 
-From the source comments:
+Two stub classes are exported:
+- **`StubKyber`** — random-bytes stub for runtime protocol testing
+- **`DeterministicStubKyber`** — deterministic-output stub for reproducible unit tests
+
+From the source comments in `pqxdh.dart`:
 > "Stub Kyber-1024 implementation for protocol testing. Uses random bytes as a placeholder. In production, replace with a real Kyber-1024 implementation (e.g., via FFI to liboqs or a pure-Dart port). Real Kyber-1024 key sizes: 1568B public, 3168B secret, 1568B ciphertext. This stub uses 32-byte keys for simplicity."
 
-**Consequence:** The PQXDH protocol layer (combining DH + KEM via HKDF) is correctly implemented, but the KEM is not real. Any code that checks or persists key material sizes will break when a real Kyber-1024 library is swapped in. Do not ship post-quantum claims without a real Kyber implementation.
+**Consequence:** The PQXDH protocol layer (combining DH + KEM via HKDF) is correctly implemented, but the KEM is not real. Any code that checks or persists key material sizes will break when a real Kyber-1024 library is swapped in (32-byte stub keys → 1568-byte real keys). Do not ship post-quantum claims without a real Kyber implementation.
 
 ### MessageFranking — NO concrete implementation
 
 `engine/lib/src/crypto/franking/` defines an abstract `MessageFranking` interface. There is no concrete implementation in the engine. E2EE moderation via franking is not yet functional.
 
-### Interactive Notifications — STUB
+### Interactive Notifications — PARTIAL
 
-`notifications/interactive_actions.dart::DefaultInteractiveHandler` has empty method bodies. `registerCategories` and `handleAction` are stubs.
+`notifications/interactive_actions.dart::DefaultInteractiveHandler` is partially implemented:
+- `buildVoteActions({messageId, groupId, options})` — **fully implemented** (lines 55-66). Returns a `List<NotificationAction>` mapping each option string to a `NotificationAction` with a slugified `actionId`.
+- `registerCategories()` — **stub** (comment-only body). Will eventually register iOS `UNNotificationCategory` / Android `NotificationCompat.Action` categories via platform method channel.
+- `handleAction(NotificationAction)` — **stub** (comment-only body). Will eventually decrypt the message, parse options, record the vote locally in Drift, and queue it to the outbox.
+
+Only the two stub methods need to be completed before interactive notifications ship.
 
 ### DeviceRegistry / DeviceLinking — Interfaces only
 
 Both are abstract interfaces with no Supabase-backed concrete implementation. Multi-device fan-out is defined at the crypto layer (Sesame protocol) but is not end-to-end wired.
 
-### DatabaseFactory — CRITICAL: Web build is unencrypted
+### DatabaseFactory — CRITICAL: Web build hard-crashes at DB init
 
-`engine/lib/src/persistence/database/database_factory_stub.dart` (used when `dart.library.js_interop` is the compilation target, i.e., Web/WASM) returns an **unencrypted in-memory database**. The native implementation (`database_factory_native.dart`) correctly uses SQLCipher.
+`engine/lib/src/persistence/database/database_factory_stub.dart` (used when `dart.library.js_interop` is the compilation target, i.e., Web/WASM) **throws `UnsupportedError` on `createDatabase()`**:
 
-**This means the E2EE "at rest" guarantee does not hold on Web.** This is the "DatabaseFactory disabled" critical issue from the prior code review. Fix before any web deployment that claims at-rest encryption.
+```dart
+Future<AppDatabase> createDatabase({List<int>? encryptionKey}) {
+  throw UnsupportedError(
+    'Cannot create database on this platform without dart:io or dart:html',
+  );
+}
+```
+
+The native implementation (`database_factory_native.dart`) correctly uses SQLCipher via drift.
+
+**Consequence for Web:** The web build does NOT silently degrade to unencrypted storage — it hard-crashes at the first database access. `ChatEngineImpl.initialize()` will throw. Any web deployment that needs persistence must supply a custom `createDatabase` implementation (e.g. IndexedDB-backed via `drift/web.dart`) before this exception is reached. Do not assume the web build "just works without encryption."
 
 ### OnDeviceSLM — Regex fallback only
 
@@ -303,12 +323,12 @@ Both are abstract interfaces with no Supabase-backed concrete implementation. Mu
 
 ## Test Infrastructure
 
-35 test files across 10 categories. Run all with `flutter test` from `engine/`.
+33 test files across 10 categories. Run all with `flutter test` from `engine/`.
 
 | Category | Count | Path |
 |---|---|---|
 | crypto | 10 | `test/crypto/` |
-| discovery | 10 | `test/discovery/` |
+| discovery | 10 | `test/discovery/` (includes a `scenarios/` subdirectory with 4 pipeline/e2e/feedback/offline tests) |
 | transport | 4 | `test/transport/` |
 | domain | 2 | `test/domain/` |
 | interop | 2 | `test/interop/` |
@@ -317,6 +337,8 @@ Both are abstract interfaces with no Supabase-backed concrete implementation. Mu
 | persistence | 1 | `test/persistence/` |
 | sync | 1 | `test/sync/` |
 | root | 1 | `test/` (public_api_test.dart) |
+
+**Discovery test layout:** `test/discovery/` contains top-level cache/feedback/models/ranking tests PLUS a `scenarios/` subdirectory (`e2e_discovery_pipeline_test.dart`, `feedback_flow_test.dart`, `offline_cache_test.dart`, `personalized_feed_test.dart`) — there is no corresponding `scenarios/` source directory, these are integration scenarios that exercise the full discovery stack end-to-end. New e2e discovery tests go under `test/discovery/scenarios/`.
 
 ---
 

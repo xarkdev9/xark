@@ -3,7 +3,154 @@
 <!-- NEWEST ENTRIES ON TOP. Never edit or delete old entries — append only. -->
 <!-- Every major change (spec → plan → implementation cycle) gets one entry. -->
 <!-- Copy the template at the bottom of this file when adding a new entry. -->
-<!-- A future Stop-hook auto-librarian will append entries from the diff; until then, the controller writes entries manually at the end of each deploy. -->
+<!-- The Stop-hook auto-librarian at docs/hooks/update-guardrails.sh appends entries from the diff after every deploy; retroactive entries (for commits that predate the hook wiring) are added manually by the controller. -->
+
+---
+
+## 2026-04-11 — Phase 4 Remediation: Guardrail Re-Alignment
+
+**One-line:** Applied all 7 executive decisions from the Alignment Audit Report, fixing 8 high-severity drifts, 9 medium-severity drifts, 6 self-contradictions, 2 source-level stale comments, and 4 missing CHANGELOG entries — aligning every guardrail `.md` file with verified code reality.
+
+**Why:** The Alignment Audit (Phase 3) found that the codebase was compliant with its own rules but the guardrail oracles had degraded — `engine/CLAUDE.md` denied the existence of `updatePushToken` (which is declared on the abstract class), `algo/CLAUDE.md` documented `DEFAULT_SPACE_CONFIG.allowSelfReaction` as `false` when it's actually `true` (literal opposite), `web/CLAUDE.md` referenced `web/src/lib/theme.ts` in two places including the bootstrap reading list but the file didn't exist, and the root `CLAUDE.md` + `CHANGELOG.md` had 6 self-contradictions inherited from the Track 2 baseline. Fresh agents loading the guardrails were being misled. This remediation fixes the oracle so the `docs/hooks/update-guardrails.sh` auto-librarian has a clean baseline going forward.
+
+**Commit range:** (this commit)
+
+**Executive decisions applied:**
+- **U1 (NotForMe agreement score):** Code is the source of truth — `NotForMe` IS counted in the agreement percentage, consistent across algo and web port. Removed the "behavioral divergence" framing from root `CLAUDE.md` line 452; the weightedScore (ranking signal) and agreementScore (consensus participation signal) are separate computations.
+- **U2 (Chat bubble corner radius):** Code is correct at 20px — `chat_bubble.dart:128` uses `Radius.circular(20.0)`. Updated DESIGN.md lines 56 + 180 from "18px" to "20px".
+- **U3 (AmbientMesh settle duration):** Code is correct at 450ms — `atmosphere.dart:108-109` uses `Duration(milliseconds: 450)`. Updated DESIGN.md Signature Animations table from "600ms" to "450ms".
+- **U4 (Error bus removal):** Removed the `setupHeadlessErrorBus(_container)` call and its import from `app/lib/main.dart`. The function file itself remains for future use; `app/CLAUDE.md` dead code inventory updated to reflect "defined but not called".
+- **U5 (theme.ts removal):** `web/src/lib/theme.ts` does not exist. Removed both references from `web/CLAUDE.md` — the Key Modules table row AND the Bootstrap Reading List position 4.
+- **U6 (updatePushToken):** Code is correct — the method IS declared on the abstract `ChatEngine` class at `engine/lib/src/public_api/chat_engine.dart:41`. Added it to the API block in both `engine/CLAUDE.md` and root `CLAUDE.md`, and replaced the "does NOT exist" note with a push-token-lifecycle rule requiring hosts to call `updatePushToken` on FCM/APNs rotation.
+- **U7 (algo test counts):** Documented the missing `stress-test.test.ts` file (37 tests) in the `algo/CLAUDE.md` test inventory. Updated counts from "198 tests / 11 files" to "232 tests / 12 files" across the file.
+
+**Architecture corrections:**
+- **H2 (Web DB stub):** Both root `CLAUDE.md` and `engine/CLAUDE.md` previously described `database_factory_stub.dart` as "returns an unencrypted in-memory database" — the actual source throws `UnsupportedError` on `createDatabase()`. Severity inversion fixed: the web build hard-crashes at DB init, does NOT silently degrade. Any web deployment that needs persistence must supply a custom `createDatabase` implementation.
+- **H3 (Engine test count):** Both root and engine guardrails said "35 test files". Actual `find engine/test -name '*_test.dart' -type f` returns **33**. Fixed in 4 places (root Structure section, root Engine Architecture tests summary, engine/CLAUDE.md Commands comment, engine/CLAUDE.md Test Infrastructure section + module tree comment).
+- **H5/H6/H7 (algo type drift):** `algo/CLAUDE.md` described `DEFAULT_SPACE_CONFIG` as having "no self-reaction" (actual: `allowSelfReaction: true`), `DecisionItem` as carrying `spaceId` + `commitmentProof` (actual fields: `groupId`, `ciphertextPayload`, `commitmentCiphertext`/`commitmentNonce` on the `ObliviousDecisionItem` model), and referenced a `SpaceId` type that doesn't exist. Rewrote the Core Types section to match the current oblivious model + removed `SpaceId` references from ports and diagrams.
+- **M1/M2 (app provider drift):** `cardKeyRegistry` actually lives in `app/lib/providers/viewport_focus_provider.dart:21`, not in `_card_shell.dart` as claimed. `centeredFeedItemKindProvider` returns `String?`, not a `FeedItemKind` enum (which doesn't exist). Fixed both in `app/CLAUDE.md`.
+- **M6 (interactive_actions):** `engine/CLAUDE.md` described the whole `DefaultInteractiveHandler` class as stubs. Actual: `buildVoteActions` (lines 55-66) is fully implemented; only `registerCategories` and `handleAction` are stub bodies. Rewrote the Critical Stubs section to distinguish.
+- **M7/M8 (web counts):** Crypto section "28 files" was inconsistent with the body (27 production + `crypto.test.ts` = 28 total). Invite/Contacts section header "(4)" was actually 5 routes. Both fixed.
+
+**Self-contradictions resolved:**
+- **C1:** Root `CLAUDE.md` Landmine #4 + Structure bullet + Xpensly SDK section all claimed `xpensly/xpensly_ui/` was empty — it was restored in `2a1e66c` before these claims were written. All three references updated to reflect the restored state.
+- **C2:** Root `CLAUDE.md` Design System section claimed DESIGN.md was STALE — it was rewritten in `f0c01fd`. Removed the stale warning.
+- **C3:** Root `CLAUDE.md` mentioned `engine/CLAUDE.md` still used `hello_engine` — that file was rewritten in `f0c01fd`. Removed the stale warning.
+- **C4:** Root `CLAUDE.md` mentioned `web/CLAUDE.md` had a stale "23" route count — that file was rewritten in `f0c01fd` to "53". Removed the stale warning + expanded Key Documents to list all per-package CLAUDE.mds properly.
+- **C5:** CHANGELOG entry "Guardrail Refresh" had `**Commit range:** (this commit)` placeholder — filled in the actual SHA `b20b077`.
+- **C6:** CHANGELOG entry "Guardrail Refresh" had a 6-item "deferred" list that was already complete in subsequent commits. Struck through with DONE markers pointing at the actual commit SHAs.
+
+**Source-level stale comments:**
+- **S1:** `engine/lib/src/extensions/chat_engine_decisions.dart:9` docstring read `///   final engine = await ChatEngine.initialize(config);` — contradicted the central rule that `ChatEngine` is abstract and has no `initialize`. Changed to `ChatEngineImpl.initialize(config)`.
+- **S2:** `engine/lib/src/crypto/pqxdh/kyber.dart` comment was accurate but both root and engine CLAUDE.md claimed the file "contains StubKyber" when the class is actually defined in `pqxdh.dart`. Clarified the kyber.dart header comment to make the re-export relationship unambiguous + updated the engine/CLAUDE.md PQXDH section to explicitly state the class location.
+
+**Files touched (docs only, plus one code removal):**
+- MODIFIED: `CLAUDE.md` (root, 12 edits across landmines, structure, commands, SDK identity, engine API, engine architecture, signal system, design system, key documents)
+- MODIFIED: `DESIGN.md` (4 edits: corner radius 18→20, settle duration 600→450, width clamp docstring, removed speculative @hello AI bubble border row)
+- MODIFIED: `docs/CHANGELOG.md` (this entry + 3 retroactive entries below + C5/C6 fixes)
+- MODIFIED: `app/CLAUDE.md` (cardKeyRegistry location, centeredFeedItemKindProvider type, setupHeadlessErrorBus dead-code flag)
+- MODIFIED: `engine/CLAUDE.md` (updatePushToken addition, DB stub correction, test counts 35→33, interactive_actions partial, PQXDH kyber.dart clarification + DeterministicStubKyber, discovery test scenarios subdirectory)
+- MODIFIED: `web/CLAUDE.md` (removed theme.ts from module table + bootstrap list, fixed Invite/Contacts header count, clarified crypto 28 count)
+- MODIFIED: `algo/CLAUDE.md` (Core Types section rewritten for ObliviousDecisionItem model, DEFAULT_SPACE_CONFIG allowSelfReaction=true, removed SpaceId references, added PostgresPersistenceAdapter, full test inventory with 232 tests / 12 files + stress-test.test.ts documentation)
+- MODIFIED: `xpensly/CLAUDE.md` (clarified backup contents — no top-level widgets/ directory)
+- MODIFIED: `app/lib/main.dart` (removed `setupHeadlessErrorBus` call + `engine_error_listener.dart` import — U4 executive decision)
+- MODIFIED: `engine/lib/src/extensions/chat_engine_decisions.dart` (fixed stale docstring S1: `ChatEngine.initialize` → `ChatEngineImpl.initialize`)
+- MODIFIED: `engine/lib/src/crypto/pqxdh/kyber.dart` (clarifying comment S2: explicit "StubKyber lives in pqxdh.dart, this is a re-export barrel")
+
+**Out of scope (intentional):**
+- No `dart analyze` configuration changes
+- No test file additions — test debt remains
+- No new features or UI changes
+
+---
+
+## 2026-04-11 — Auto-Librarian Stop Hook: CLAUDE.md Documentation Entry
+
+**One-line:** Updated root `CLAUDE.md` to document the auto-librarian Stop hook — a 2-line addition to the Changelog section + a new entry in the Key Documents list pointing at `docs/hooks/`.
+
+**Why:** The hook script itself shipped in commit `8f5aa59`, but the root `CLAUDE.md` (which fresh agents auto-load) didn't describe the mechanism. Without this documentation, an agent that saw an unexpected `docs(guardrails)` commit in git log would not know what produced it. This follow-up commit closes the discoverability gap.
+
+**Commit range:** `8dd8144`
+
+**Architecture:**
+- Added a 2-line note under the "Changelog" section of root `CLAUDE.md` explaining that the Stop hook at `docs/hooks/update-guardrails.sh` auto-refreshes this file and `docs/CHANGELOG.md` after deploys. Points at `docs/hooks/README.md` for gates, debugging, and manual override (`touch /tmp/hello-librarian-skip`).
+- Added `docs/hooks/` to the Key Documents list.
+
+**Files:**
+- MODIFIED: `CLAUDE.md` (2 insertions)
+
+**Spec:** none
+**Plan:** none (discovery + documentation follow-up to `8f5aa59`)
+
+---
+
+## 2026-04-11 — Auto-Librarian Stop Hook: Implementation
+
+**One-line:** Shipped a `Stop` lifecycle hook at `docs/hooks/update-guardrails.sh` that auto-refreshes `CLAUDE.md` and `docs/CHANGELOG.md` after any Claude Code session ending with new source commits — closing the "guardrails drift" loop that prompted the original Phase 4 Remediation ask.
+
+**Why:** Fresh agents load `CLAUDE.md` before their first response. If the file is stale, the agent starts from an outdated mental model and makes confident-but-wrong decisions ("decide-first group UX with Netflix swim lanes" persisted as an agent landmine for ~24 hours after the 4-tab scaffold replaced it). Manual guardrail updates don't scale; the user wanted the system to self-heal. This hook watches for session ends, checks if any commits since the last guardrail touch were source (not docs) commits, and if so dispatches a headless `claude --print --bare` session with a locked librarian prompt that refreshes the guardrails surgically.
+
+**Commit range:** `8f5aa59`
+
+**Architecture:**
+- **Script:** `docs/hooks/update-guardrails.sh` — 7 gates in order: project-root check, manual `/tmp/hello-librarian-skip` bypass, 120s rate limit, atomic lockfile (auto-clears if stale >15 min), commit-gate (exit if no non-docs commits since last guardrail touch), prompt-file existence check, CLI-binary existence check. Always exits 0 — never blocks the parent session on librarian failure. Logs to `~/.hello-librarian.log`.
+- **Prompt:** `docs/hooks/update-guardrails-prompt.md` — locked librarian spec. Non-interactive (no `AskUserQuestion`), docs-only (cannot touch code/tests/specs/plans), append-only changelog, surgical CLAUDE.md edits (never rewrites philosophy), hard limits of 40 tool calls / 3 min wall-clock / 40 lines per CHANGELOG entry / 5 CLAUDE.md sections max per run.
+- **Recursion guard:** Dispatched librarian runs with `claude --print --bare` — the `--bare` flag skips ALL hooks inside the librarian's own session, preventing the Stop hook from re-firing recursively when the librarian yields.
+- **Settings wire-up:** `~/.claude/settings.json` has a new `Stop` hook entry pointing at `/Users/ramchitturi/hello/docs/hooks/update-guardrails.sh` with a 310-second timeout (slightly longer than the librarian's internal 300s cap). Pre-existing `PreCompact` and `SessionStart` hooks (for `lossless-context`) are untouched.
+- **README:** `docs/hooks/README.md` — design principles, gate list, testing procedure, debugging instructions, known limitations.
+
+**Files:**
+- NEW: `docs/hooks/update-guardrails.sh` (5770 bytes, executable)
+- NEW: `docs/hooks/update-guardrails-prompt.md` (7356 bytes)
+- NEW: `docs/hooks/README.md` (design + debugging doc)
+- MODIFIED: `~/.claude/settings.json` (Stop hook added, existing hooks preserved)
+
+**Spec:** none
+**Plan:** none (design described inline in `docs/hooks/README.md`)
+
+**Gotchas:**
+- The hook invokes `claude` via absolute path `/Users/ramchitturi/.local/bin/claude`. Hardcoded — this machine only.
+- The 120-second rate limit is coarse; two rapid legitimate deploys can leave the second un-documented until the rate limit expires.
+- The librarian cannot ask questions. Anything uncertain is skipped. Human review of auto-generated entries is recommended periodically.
+
+**Out of scope (intentional):**
+- Per-package CLAUDE.md files are NOT auto-updated (librarian only touches root `CLAUDE.md` + `docs/CHANGELOG.md`). Per-package files drift on their own cadence.
+- No pre-commit or post-commit git hooks — the Claude Code Stop event is the only trigger.
+
+---
+
+## 2026-04-11 — Guardrail Residuals: Per-Package CLAUDE.md Refresh + DESIGN.md Rewrite + xpensly_ui Restore
+
+**One-line:** Completed the Track 2 "deferred" list from the Guardrail Refresh entry below by rewriting all 4 per-package CLAUDE.md files, creating 2 new xpensly CLAUDE.md files, rewriting DESIGN.md end-to-end for the light theme + plasma era, and restoring the `xpensly/xpensly_ui/` package from backup.
+
+**Why:** The preceding Guardrail Refresh entry (the entry immediately below this one) shipped a clean root `CLAUDE.md` + `docs/CHANGELOG.md` but explicitly deferred 6 items: per-package CLAUDE.md rewrites for engine/web/algo/xpensly, DESIGN.md full rewrite, and the xpensly_ui directory restoration. This session completed all 6 via parallel multi-agent dispatch.
+
+**Commit range:** `2a1e66c..f0c01fd` (2 commits)
+
+**Method:** Dispatched 5 parallel `general-purpose` subagents to rewrite the per-package guardrails in one message:
+1. **engine/CLAUDE.md** rewrite (526 lines) — e2ee_chat_sdk package identity, public API contract, engine architecture with 18 `src/` subdirectories, critical stubs section (PQXDH Kyber, MessageFranking, DeviceRegistry, DatabaseFactory web stub, OnDeviceSLM), test infrastructure, security requirements, performance targets. Retained all doctrines from the prior version.
+2. **web/CLAUDE.md** rewrite (438 lines) — 3 landmines at top (Next.js 16 proxy.ts rename, CSS variable inversion, cyan alias), 53 API routes in 8 categorized tables, request flow diagram, full `src/lib/` inventory including 28 crypto modules + 18 intelligence modules + 7 discovery files, full CSS variable list, bootstrap reading list.
+3. **app/CLAUDE.md** — NEW (331 lines) per-package doc for the Flutter app covering entry flow, 4-tab scaffold, decision board file map, plasma system wiring, Riverpod provider table, theme tokens, dead code inventory.
+4. **xpensly/CLAUDE.md trio** — 3 NEW files (55 + 90 + 91 lines): top-level orchestration doc, `xpensly_core/CLAUDE.md` (pure Dart engine with ports/adapters), `xpensly_ui/CLAUDE.md` (9 themed widgets + theme + utils + restoration history callout).
+5. **DESIGN.md** rewrite (339 lines) — Cinematic Light + Liquid Plasma aesthetic, full light color palette, liquid plasma 4-color brand gradient, 4-tab scaffold layout, AmbientMesh atmosphere, chat bubble spec for light theme, glass treatment hierarchy for light theme, decisions log updated with 2026-04-11 entries. Removed all dead content: Aurora Bridge, Portal Transition, per-plan gradient worlds, cinematic dark references, Satoshi font reference (verified against `theme.dart` — it's Inter).
+
+**Additionally:** `xpensly/xpensly_ui/` was empty on disk (only `.dart_tool/` cache remained). Restored `lib/`, `test/`, `pubspec.yaml`, `analysis_options.yaml` from `ui_backup_2026-04-10/flutter/xpensly_ui/` via `cp -r`. Commit `2a1e66c` added 21 files including 9 widget files, 6 test files (16 widget tests), theme classes, and formatters. After restore, `cd xpensly/xpensly_ui && flutter test` now works.
+
+**Files:**
+- NEW: `app/CLAUDE.md`, `xpensly/CLAUDE.md`, `xpensly/xpensly_core/CLAUDE.md`, `xpensly/xpensly_ui/CLAUDE.md` (4 new CLAUDE.md files)
+- REWRITTEN: `engine/CLAUDE.md`, `web/CLAUDE.md`, `DESIGN.md` (3 file full rewrites)
+- RESTORED: `xpensly/xpensly_ui/{lib,test,pubspec.yaml,analysis_options.yaml}` (21 files from backup in commit `2a1e66c`)
+
+**Spec:** none (the Alignment Audit Report from a later session surfaced residual drift in these very files — see the next CHANGELOG entry)
+**Plan:** none (multi-agent parallel dispatch, not a spec→plan flow)
+
+**Gotchas:**
+- `xpensly/xpensly_ui/example/` only contains a `.dart_tool/chrome-device/` browser-automation cache — no Dart source. Not restored from backup in any meaningful way.
+- The 5 parallel subagents each wrote their own file; no cross-validation was done. Subsequent Phase 3 audit found drift in several of them (see next entry).
+
+**Out of scope (intentional):**
+- No code behavior changes beyond the xpensly_ui restore (which is a file-system copy, not a logic change)
+- DESIGN.md written "from scratch" based on the current plasma spec + app code — no attempt made to preserve prior dark-era decisions-log entries that were actually wrong
 
 ---
 
@@ -13,7 +160,7 @@
 
 **Why:** User asked how to stop guardrail files from drifting. Fresh agents read `CLAUDE.md` before their first response — when it's stale, they make confident decisions from an outdated mental model ("decide-first group UX with Netflix swim lanes" narrative persisted long after the 4-tab scaffold replaced it). This refresh establishes a clean baseline so a future auto-update hook can keep it clean going forward.
 
-**Commit range:** (this commit)
+**Commit range:** `b20b077` (single commit)
 
 **Method:** Dispatched 5 parallel `feature-dev:code-explorer` subagents, one per package (`app`, `engine`, `web`, `algo`, `xpensly`). Each returned a structured audit: what's actually true in source vs. what root `CLAUDE.md` claimed. Controller synthesized findings into a full root `CLAUDE.md` rewrite. Per-package CLAUDE.md files were NOT rewritten in this pass — deferred to a follow-up session because each deserves focused attention. Root is the highest-leverage file since fresh agents load it unconditionally.
 
@@ -42,13 +189,13 @@
 - Full Liquid Plasma Brand System section added (7 files, 5s cycle, reduced-motion handling, plasma-vs-trip-color rule)
 - DESIGN.md flagged as stale (still reads as dark-theme cinematic, pre-plasma)
 
-**Deferred to follow-up sessions (in priority order):**
-1. `engine/CLAUDE.md` rewrite — still uses old `hello_engine` package name, describes Phase 1 as current, missing entire `discovery/` and `intelligence/` subsystems
-2. `web/CLAUDE.md` rewrite — API route count in its own header (23) disagrees with its own table (24) disagrees with reality (33)
-3. `xpensly/CLAUDE.md`, `xpensly/xpensly_core/CLAUDE.md`, `xpensly/xpensly_ui/CLAUDE.md` — none exist
-4. `DESIGN.md` full rewrite — current file is pre-light-theme, pre-plasma. This is its own design session.
-5. Restore `xpensly/xpensly_ui/` from backup (not a doc task, but blocks the `flutter test` command working)
-6. Wire Track 1 auto-librarian (`Stop` hook → custom updater script, non-interactive, main-branch-friendly)
+**Deferred list (as-written at commit time — all 6 items were completed later in the same session; see subsequent CHANGELOG entries):**
+1. ~~`engine/CLAUDE.md` rewrite~~ — **DONE** in commit `f0c01fd`
+2. ~~`web/CLAUDE.md` rewrite~~ — **DONE** in commit `f0c01fd`
+3. ~~`xpensly/CLAUDE.md` + `xpensly/xpensly_core/CLAUDE.md` + `xpensly/xpensly_ui/CLAUDE.md`~~ — **DONE** in commit `f0c01fd`
+4. ~~`DESIGN.md` full rewrite~~ — **DONE** in commit `f0c01fd`
+5. ~~Restore `xpensly/xpensly_ui/` from backup~~ — **DONE** in commit `2a1e66c`
+6. ~~Wire Track 1 auto-librarian (`Stop` hook → custom updater script)~~ — **DONE** in commits `8f5aa59` + `8dd8144`
 
 **Out of scope (intentional):**
 - No code changes — this is a pure docs pass

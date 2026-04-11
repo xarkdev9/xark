@@ -52,4 +52,4 @@ web/api/xpensly  →  stateless calc + stateful trip REST handlers  (independent
 ```
 ui_backup_2026-04-10/flutter/xpensly_ui/
 ```
-If the directory goes empty again, that backup path is the recovery source. The backup contains `lib/`, `test/`, `pubspec.yaml`, `analysis_options.yaml`, `example/`, and `widgets/`.
+If the directory goes empty again, that backup path is the recovery source. The backup contains `lib/` (with `src/widgets/`, `src/theme/`, `src/utils/` subtrees + the `xpensly_ui.dart` barrel), `test/widgets/` (6 test files), `pubspec.yaml`, `analysis_options.yaml`, and `example/`. There is no top-level `widgets/` directory — widget sources live under `lib/src/widgets/`.

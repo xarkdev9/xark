@@ -1,8 +1,11 @@
-/// Kyber KEM types and stub implementation for PQXDH.
+/// Kyber KEM types — re-export barrel for PQXDH.
 ///
-/// Re-exports the KEM interface and stub from `pqxdh.dart`.
-/// When a production Kyber-1024 library becomes available in pure Dart,
-/// add the real implementation here alongside the stub.
+/// NOTE: The concrete `StubKyber` and `DeterministicStubKyber` classes
+/// are **defined in `pqxdh.dart`**, not here. This file exists solely
+/// to provide a stable `kyber.dart` import path for callers. When a
+/// production Kyber-1024 library becomes available in pure Dart, add
+/// the real implementation either inline here or alongside the stubs
+/// in `pqxdh.dart` and export it from this barrel.
 library;
 
 export 'pqxdh.dart'

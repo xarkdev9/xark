@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 3. **Engine bootstrap:** `ChatEngine.initialize(...)` does NOT exist on the abstract class. It is a static factory on `ChatEngineImpl`. Call `ChatEngineImpl.initialize(config)`. The barrel exports `ChatEngineImpl` explicitly for this reason. `deviceId` is `int`, not `String`.
 
-4. **`xpensly/xpensly_ui/` is empty** — only contains a `.dart_tool/` cache. The real UI package lives at `ui_backup_2026-04-10/flutter/xpensly_ui/`. `cd xpensly/xpensly_ui && flutter test` finds 0 tests. Needs to be restored from backup.
+4. **`xpensly/xpensly_ui/` is live** (restored 2026-04-11, commit `2a1e66c`). Contains 9 themed Flutter widgets, theme layer, formatters, and 16 widget tests across 6 files. `cd xpensly/xpensly_ui && flutter test` now works. Recovery path: `ui_backup_2026-04-10/flutter/xpensly_ui/` is retained as a backup if the live directory ever regresses.
 
 5. **PQXDH Kyber-1024 is STUBBED.** `crypto/pqxdh/kyber.dart` contains `StubKyber` using 32-byte random arrays, not real Kyber-1024 (1568-byte public keys). The PQXDH protocol layer is correct; the KEM isn't wired. Any code checking or persisting key sizes will break on real-Kyber swap.
 
@@ -26,17 +26,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Structure
 
-- **engine/** — Headless E2EE chat SDK (package: `e2ee_chat_sdk`). Barrel: `engine/lib/e2ee_chat.dart`. ~150 Dart source files in `engine/lib/src/`. 35 test files across 10 categories. Also contains an undocumented `discovery/` subsystem (taste-ranked feed pipeline).
+- **engine/** — Headless E2EE chat SDK (package: `e2ee_chat_sdk`). Barrel: `engine/lib/e2ee_chat.dart`. ~150 Dart source files in `engine/lib/src/`. 33 test files across 10 categories. Contains a `discovery/` subsystem (taste-ranked feed pipeline) in addition to crypto/transport/sync.
 - **app/** — Flutter app shell (package: `hello_app`, imports `e2ee_chat_sdk` via path). Light theme. 4-tab home scaffold. Liquid plasma brand system. `kUseMockData = true` hardcoded.
 - **web/** — Next.js 16 + React 19 web app. 53 API route handlers (33 non-xpensly + 20 xpensly). Rate limiting in `proxy.ts` (Next.js 16 middleware rename). Xpensly REST API under `api/xpensly/`.
 - **algo/** — Standalone TypeScript decision engine, hexagonal architecture, 232 tests (Vitest). Algorithms are **copy-ported** into `web/src/lib/heart-sort.ts` + `web/src/lib/state-flows.ts` — NOT imported as a live dependency.
-- **xpensly/** — Expense-splitting SDK. `xpensly_core/` (pure Dart, 30 source files, 69 tests) is live. `xpensly_ui/` (Flutter widgets, 9 components) is CURRENTLY BROKEN — real code lives in `ui_backup_2026-04-10/flutter/xpensly_ui/`.
+- **xpensly/** — Expense-splitting SDK. Both layers live: `xpensly_core/` (pure Dart, 30 source files, 69 tests) + `xpensly_ui/` (Flutter widgets, 9 components, 16 tests, restored 2026-04-11 from `ui_backup_2026-04-10/flutter/xpensly_ui/`).
 - **docs/** — Architecture specs, plans, test results, CHANGELOG, handoff docs.
 
 ---
 
 ## SDK Identity
-- **Package name:** `e2ee_chat_sdk` (renamed from `hello_engine`; old name still appears in stale `engine/CLAUDE.md`)
+- **Package name:** `e2ee_chat_sdk` (renamed from `hello_engine` — no remaining references in source or guardrails)
 - **Barrel file:** `engine/lib/e2ee_chat.dart` (backward-compat: `engine/lib/chat_engine.dart` re-exports)
 - **Bootstrap:** `ChatEngineImpl.initialize(ChatEngineConfig)` — NOT `ChatEngine.initialize`
 - **BrandConfig:** White-label via `BrandConfig(appName, aiName, aiEndpoint, pushChannelId)`
@@ -85,9 +85,9 @@ cd algo   && npm test                 # vitest run — 232 tests across 12 files
 cd xpensly/xpensly_core && dart test       # 69 tests
 cd xpensly/xpensly_core && dart analyze
 
-# xpensly_ui — CURRENTLY BROKEN: directory is empty, real code in backup
-# cd xpensly/xpensly_ui && flutter test    # Finds 0 tests — do not run
-# To restore: cp -r ui_backup_2026-04-10/flutter/xpensly_ui/{lib,test,pubspec.yaml} xpensly/xpensly_ui/
+# xpensly_ui (Flutter, restored 2026-04-11)
+cd xpensly/xpensly_ui && flutter test      # 16 widget tests across 6 files
+cd xpensly/xpensly_ui && flutter analyze
 ```
 
 **Known broken:** `app/test/discover/discovery_widgets_test.dart` imports from the deleted `app/lib/views/discover/` directory. Delete the file or rewrite against current UI. `dart analyze lib/` avoids it; `dart analyze` full project will show ~30 errors from this one file.
@@ -242,12 +242,13 @@ engine.connectionState         // Stream<EngineConnectionState>
 engine.totalUnreadCount        // Stream<int>
 engine.errors                  // Stream<ChatEngineError>
 
-// Profile / devices
+// Profile / devices / push
 engine.getProfile(userId)
 engine.updateProfile(displayName: ..., photoUrl: ...)
 engine.getDevices()                                 // List<DeviceInfo>
 engine.unlinkDevice(int deviceId)
 engine.getDisplayName(userId)                       // cached
+engine.updatePushToken(newToken)                    // REQUIRED on FCM/APNs token rotation
 
 // Groups / DMs / invites
 engine.createGroup(title: ..., atmosphere: ...)
@@ -333,12 +334,12 @@ Subdirectories:
 - `media/` — Background uploader, link unfurling
 - `notifications/` — `push_decryptor.dart` (working) + `interactive_actions.dart` (stub handler bodies)
 - `observer/` — ChatEngineObserver, E2EE metrics
-- `persistence/` — Drift ORM + SQLCipher, repositories, local feed. `DatabaseFactory` uses conditional imports: native is SQLCipher-encrypted; **web stub is unencrypted in-memory** (critical caveat from prior code review).
+- `persistence/` — Drift ORM + SQLCipher, repositories, local feed. `DatabaseFactory` uses conditional imports: `database_factory_native.dart` is SQLCipher-encrypted; **`database_factory_stub.dart` throws `UnsupportedError` on `createDatabase()`** — the web build hard-crashes at database init, not silently degrades. Any web deployment that needs persistence must provide a custom `createDatabase` implementation (e.g. IndexedDB-backed).
 - `ports/` — Transport interfaces (MessageGateway, RealtimeGateway, TransientQueue, PushAdapter, AIAdapter)
 - `sync/` — SyncCoordinator, OutboxWorker, WatermarkSync, ConflictResolver
 - `transport/` — SupabaseClientWrapper, RealtimeListener, typing indicators, realtime receipts
 
-**Tests:** 35 files across `test/crypto/` (10), `test/discovery/` (10), `test/transport/` (4), `test/domain/` (2), `test/interop/` (2), `test/integration/` (1), `test/media/` (1), `test/persistence/` (1), `test/sync/` (1), `test/` root (1).
+**Tests:** 33 files across `test/crypto/` (10), `test/discovery/` (10), `test/transport/` (4), `test/domain/` (2), `test/interop/` (2), `test/integration/` (1), `test/media/` (1), `test/persistence/` (1), `test/sync/` (1), `test/` root (1).
 
 ---
 
@@ -371,7 +372,7 @@ Signal Protocol implementation with post-quantum upgrade path:
 - `crypto/` — 24 TypeScript crypto modules (mutex, uuidv7, pqxdh, kyber, sk-recovery, streaming-aead, message-franking, device-registry, etc.)
 - `ports/` — Strangler Fig interfaces (MessageGateway, RealtimeGateway, TransientQueue)
 - `discovery/` — Taste-ranked discovery backend with provider registry and Gemini/Apify scraping adapters
-- `intelligence/` — 13 modules (orchestrator, async-queue, searchapi-client, flight-cache, ai-provider-factory, itinerary-generator, etc.)
+- `intelligence/` — 18 modules (orchestrator, async-queue, searchapi-client, flight-cache, ai-provider-factory, itinerary-generator, taste-intersection, deep-links, geospatial, conflict-resolver, search-cache, global-semaphore, etc.)
 - `proxy.ts` — Next.js 16 middleware entry point (renamed from `middleware.ts`). Rate limiting runs here.
 
 **API routes:** 53 total
@@ -397,19 +398,22 @@ Signal Protocol implementation with post-quantum upgrade path:
 
 ## Xpensly SDK (Expense Splitting)
 
-**Three-layer architecture — one layer is currently broken:**
+**Three-layer architecture — all layers live:**
 
 **`xpensly_core`** (pure Dart, live at `xpensly/xpensly_core/`) — 30 source files, 69 tests
 - Modules: `split_calculator`, `settlement_engine`, `debt_simplifier`, `currency_converter`, `recurrence_expander`, `trip_aggregator`
 - Ports: `XpenslyDataSource`, `XpenslyPaymentProvider`, `RateProvider`
-- Adapters: `InMemoryDataSource` (only live impl; `SupabaseDataSource` is NOT implemented — spec described it as a stub but no stub file exists)
+- Adapters: `InMemoryDataSource` (only live data source — `SupabaseDataSource` does NOT exist, not even as a stub file)
 - Payment providers: `VenmoPayment`, `UpiPayment`, `PaypalPayment`, `StripePayment`, `RazorpayPayment` (all live)
+- Rate provider: `FixedRateProvider`
 - Split modes: `equal`, `exact`, `percentage`, `shares`
 - Barrel: `lib/xpensly_core.dart`
 
-**`xpensly_ui`** — ⚠️ **BROKEN: directory is empty.** Real code lives in `ui_backup_2026-04-10/flutter/xpensly_ui/` (9 widgets + theme + 16 tests). Until restored, `cd xpensly/xpensly_ui && flutter test` finds 0 tests.
-- When restored: 9 themed widgets — `ExpenseEntry`, `SettlementCard`, `DebtCard`, `PaymentButton`, `ExpenseList`, `BalanceBar`, `TripSummaryWidget`, `SplitModeToggle`, `XpenslyDashboard`
-- Theme presets: `hello()` (dark/cyan), `material()` (M3), `minimal()`
+**`xpensly_ui`** (Flutter, live at `xpensly/xpensly_ui/`, restored 2026-04-11 from `ui_backup_2026-04-10/flutter/xpensly_ui/`) — 9 themed widgets, theme layer, formatters, 16 widget tests across 6 files.
+- Widgets: `ExpenseEntry`, `SettlementCard`, `DebtCard`, `PaymentButton`, `ExpenseList`, `BalanceBar`, `TripSummaryWidget`, `SplitModeToggle`, `XpenslyDashboard`
+- Theme: `XpenslyTheme` (InheritedWidget) + `XpenslyThemeData` with presets `hello()`, `material()`, `minimal()`
+- Utilities: `formatters.dart` (currency/date formatting)
+- Depends on `xpensly_core` via `path: ../xpensly_core`
 
 **REST API** (`web/src/app/api/xpensly/`) — 20 route handlers (10 stateless + 10 stateful) + 8 helper modules in `lib/`
 
@@ -449,7 +453,7 @@ Defined in `algo/src/models/types.ts`:
 - **NotForMe:** weight `-3`. Color: orange.
 - One reaction per user per item. Last reaction wins. Score can go negative.
 
-**⚠️ Behavioral divergence:** `NotForMe` is excluded from the agreement score in the algo source of truth (per stress test). The web port (`web/src/lib/heart-sort.ts`) has a comment saying all reactors including NotForMe count. One of the two is wrong. Flag before touching consensus logic.
+**Agreement score rule:** `NotForMe` **IS counted** in the agreement percentage. The agreement score is the fraction of group members who have ANY reaction on an item — all three reaction types (LoveIt, WorksForMe, NotForMe) contribute to the unique-reactor count that determines the percentage. This is consistent across the algo source of truth and the web port (see `web/src/lib/heart-sort.ts:178-179, 189-190` for the authoritative implementation comment). The `weightedScore` (ranking signal, uses the +5/+1/-3 weights) is a **separate** computation from the `agreementScore` (consensus signal, a participation count).
 
 ---
 
@@ -485,9 +489,9 @@ All theme tokens use `--hello-*` prefix, defined in `web/src/app/globals.css` `:
 ---
 
 ## Design System
-See `DESIGN.md`. **⚠️ STALE:** the current DESIGN.md still describes the old cinematic-dark theme with `#FF6B35` orange accent, aurora bridges, and per-plan gradient worlds. It does NOT reflect the light-theme migration or the liquid plasma brand system. A dedicated rewrite pass is pending. In the interim, trust this CLAUDE.md for current theme/brand state, not DESIGN.md.
+See `DESIGN.md` — refreshed 2026-04-11 to reflect the light theme + Liquid Plasma brand system. Covers aesthetic direction, light color tokens, plasma palette, focus trip + tab signature colors, chat bubble spec, AmbientMesh atmosphere, 4-tab layout, glass hierarchy, and motion/haptic rules. Read DESIGN.md before any visual/UI decision.
 
-**Enforcement rules (still valid):** No-Bold (max weight 400), Zero-Box (no card borders on content; glass only for functional containers), brand color restraint (~28 action surfaces only).
+**Enforcement rules (doctrines — non-negotiable):** No-Bold (max weight 400), Zero-Box (no card borders on content; glass only for functional containers), brand color restraint (~28 action surfaces only), plasma wins on action surfaces (overrides trip tint).
 
 ---
 
@@ -510,6 +514,8 @@ Project changelog lives at `docs/CHANGELOG.md`. **Append-only**, newest entries 
 - `PHASE_1_FRONTEND_MANIFEST.md` — Phase 1 UI completion state
 - `crypto.md` — 50-task engineering checklist
 - `docs/4PM_Goal.md` — 42-step planet-scale blueprint
-- `engine/CLAUDE.md` — Per-package engine guidance (⚠️ stale: still uses old `hello_engine` name)
-- `web/CLAUDE.md` — Per-package web guidance (API route count stale: claims 23, actual 33)
-- `algo/CLAUDE.md` — Per-package algo guidance (current)
+- `app/CLAUDE.md` — Per-package Flutter app guidance (entry flow, 4-tab scaffold, plasma wiring, providers, dead code inventory)
+- `engine/CLAUDE.md` — Per-package E2EE SDK guidance (public API, critical stubs, test infrastructure)
+- `web/CLAUDE.md` — Per-package Next.js 16 web guidance (full 53-route inventory, CSS variable inversion, request flow)
+- `algo/CLAUDE.md` — Per-package TypeScript decision engine guidance (hexagonal architecture, state flows, signal vocabulary)
+- `xpensly/CLAUDE.md`, `xpensly/xpensly_core/CLAUDE.md`, `xpensly/xpensly_ui/CLAUDE.md` — Per-package Xpensly SDK guidance
