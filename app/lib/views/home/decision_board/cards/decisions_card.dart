@@ -66,7 +66,7 @@ class DecisionsCard extends ConsumerWidget {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xFFFF6B35),
+                  color: Color(0xFFFF385C),
                 ),
               ),
             ),

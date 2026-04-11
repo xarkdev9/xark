@@ -50,13 +50,13 @@ class _AmbientMeshState extends State<AmbientMesh>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Orange glow — top left
+              // Rausch glow — top left
               Positioned(
                 left: -40 + dx1,
                 top: -60 + dy1,
                 width: 520,
                 height: 420,
-                child: const _BlurBlob(color: Color(0xFFFF6B35), opacity: 0.14),
+                child: const _BlurBlob(color: Color(0xFFFF385C), opacity: 0.14),
               ),
               // Teal glow — right mid
               Positioned(

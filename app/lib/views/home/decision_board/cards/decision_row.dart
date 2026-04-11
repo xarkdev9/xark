@@ -19,7 +19,7 @@ class DecisionRow extends StatelessWidget {
 
   Color _scoreColor() {
     if (item.agreementScore >= 0.80) return const Color(0xFFE8C86A); // gold
-    if (item.agreementScore >= 0.50) return const Color(0xFFFF9B6E); // accent-light
+    if (item.agreementScore >= 0.50) return const Color(0xFFFF7A8E); // rausch-light
     return const Color(0xFFFBBF24); // warning
   }
 

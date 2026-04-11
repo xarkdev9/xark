@@ -159,7 +159,7 @@ class _Avatar extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: isGroup
-                  ? const [Color(0xFFFF6B35), Color(0xFF14B8A6)]
+                  ? const [Color(0xFFFF385C), Color(0xFF14B8A6)]
                   : const [Color(0xFFF472B6), Color(0xFF9D174D)],
             ),
             border: isUnread
