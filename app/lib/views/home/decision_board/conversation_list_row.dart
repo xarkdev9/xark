@@ -59,15 +59,15 @@ class ConversationListRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        splashColor: Colors.white.withValues(alpha: 0.04),
-        highlightColor: Colors.white.withValues(alpha: 0.02),
+        splashColor: Colors.black.withValues(alpha: 0.04),
+        highlightColor: Colors.black.withValues(alpha: 0.02),
         child: Container(
           height: 74,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: Colors.white.withValues(alpha: 0.06),
+                color: Colors.black.withValues(alpha: 0.08),
                 width: 1,
               ),
             ),

@@ -93,7 +93,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
               color: HelloColors.recessed,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 width: 1,
               ),
             ),

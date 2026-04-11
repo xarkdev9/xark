@@ -70,21 +70,14 @@ class _TabPopoverCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withValues(alpha: 0.12),
-                Colors.white.withValues(alpha: 0.04),
-              ],
-            ),
+            color: Colors.white,
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.14),
+              color: Colors.black.withValues(alpha: 0.06),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.32),
+                color: Colors.black.withValues(alpha: 0.16),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
