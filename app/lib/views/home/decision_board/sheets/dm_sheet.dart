@@ -84,7 +84,7 @@ class _DmSheet extends StatelessWidget {
       title: name,
       avatarInitial: name.isNotEmpty ? name[0].toUpperCase() : '?',
       body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         itemCount: messages.length,
         itemBuilder: (_, i) {
           final msg = messages[i];

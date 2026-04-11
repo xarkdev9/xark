@@ -199,18 +199,19 @@ class _ChatBubbleState extends State<ChatBubble>
             ),
 
           // The bubble + reactions wrapped in a Row so inbound
-          // messages get an avatar on the far left.
+          // messages get an avatar on the far left. Horizontal
+          // edge spacing is owned by the parent ListView padding —
+          // this widget does NOT add its own outer padding, which
+          // would double-count.
           Transform.translate(
             offset: Offset(_dragOffset, 0),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: widget.isOutbound
-                    ? MainAxisAlignment.end
-                    : MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
+            child: Row(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: widget.isOutbound
+                  ? MainAxisAlignment.end
+                  : MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
                   if (!widget.isOutbound) ...[
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
@@ -365,7 +366,6 @@ class _ChatBubbleState extends State<ChatBubble>
                 ],
               ),
             ),
-          ),
         ],
       ),
     );
