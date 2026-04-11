@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../message_input_bar.dart';
+import 'attachment_sheet.dart';
 
 Future<void> openDmSheet(BuildContext context, DmFeedItem item) {
   return showGeneralDialog<void>(
@@ -85,7 +87,23 @@ class _DmSheet extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, i) => _MessageBubble(msg: messages[i]),
       ),
-      footer: _ReplyInput(hint: 'Reply to $name'),
+      footer: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: MessageInputBar(
+          hintText: 'Message $name',
+          onPlusTap: () => openAttachmentSheet(context),
+          onSend: (text) {
+            if (text.isEmpty) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Sent: $text'),
+                backgroundColor: HelloColors.recessed,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -123,57 +141,6 @@ class _MessageBubble extends StatelessWidget {
             color: HelloColors.inkPrimary,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ReplyInput extends StatelessWidget {
-  final String hint;
-  const _ReplyInput({required this.hint});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: HelloColors.recessed,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                hint,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w300,
-                  color: HelloColors.inkTertiary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: HelloColors.accent,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.arrow_upward_rounded,
-              size: 18,
-              color: Color(0xFFF0EFF4),
-            ),
-          ),
-        ],
       ),
     );
   }
