@@ -13,6 +13,7 @@ class MemoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CardShell(
+      id: item.id,
       onTap: onTap,
       padding: EdgeInsets.zero,
       child: Column(

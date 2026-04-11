@@ -47,6 +47,7 @@ class FocusHeroCard extends StatelessWidget {
     final days = _daysUntil();
 
     return CardShell(
+      id: item.id,
       onTap: onTap,
       accentColor: trip.accentColor,
       padding: EdgeInsets.zero,

@@ -25,6 +25,8 @@ class ItineraryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CardShell(
+      id: item.id,
+      kindOverlay: CardKindGradients.itinerary,
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

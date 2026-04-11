@@ -22,6 +22,8 @@ class SettlementCard extends StatelessWidget {
     final abs = s.amount.abs().toStringAsFixed(2);
     final prefix = s.currency == 'USD' ? '\$' : s.currency;
     return CardShell(
+      id: item.id,
+      kindOverlay: CardKindGradients.settlement,
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -37,6 +37,7 @@ class TripCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final trip = item.trip;
     return CardShell(
+      id: item.id,
       onTap: onTap,
       accentColor: trip.accentColor,
       padding: EdgeInsets.zero,
