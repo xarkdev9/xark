@@ -1,10 +1,10 @@
-// Home atmosphere — ambient mesh that shifts primary glow based on
-// the card the user is currently scrolling through. As each card
-// kind comes under the viewport midline, the primary blob lerps
-// to that kind's signature color over 450ms.
+// Home atmosphere — light focus-tinted wash.
 //
-// Fallback cascade: centered kind → focus trip accent → default
-// deep violet.
+// Off-white base (#FAFAFA) with a very faint radial wash in the
+// current focus trip's accent color. Lerps smoothly during tab
+// swipes via [tabAnimationProvider]. Preserves the "living field"
+// concept in a light-appropriate way: you feel the background
+// shift more than you see it.
 
 import 'dart:math' as math;
 
@@ -15,7 +15,8 @@ import '../../../providers/focus_provider.dart';
 import '../../../providers/tabs_provider.dart';
 import '../../../providers/viewport_focus_provider.dart';
 
-const Color _defaultPrimary = Color(0xFF7C3AED); // deep violet
+const Color _base = Color(0xFFFAFAFA);
+const Color _defaultPrimary = Color(0xFF7C3AED);
 const Color _teal = Color(0xFF14B8A6);
 const Color _rose = Color(0xFFD4536B);
 const Color _gold = Color(0xFFC8A84E);
@@ -35,9 +36,6 @@ Color? _primaryForKind(String? kind) {
   };
 }
 
-/// Lerps between the 4 tab signature colors based on the live
-/// fractional tab animation value (0.0 — 3.0). Gives a smooth
-/// color cross-fade as the user swipes between tabs.
 Color _primaryForTabAnimation(double value) {
   final clamped = value.clamp(0.0, HomeTab.values.length - 1.0);
   final lowerIndex = clamped.floor();
@@ -80,10 +78,6 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
     final centeredKind = ref.watch(centeredFeedItemKindProvider);
     final tabAnimation = ref.watch(tabAnimationProvider);
 
-    // Tab animation lerp takes precedence so the background smoothly
-    // cross-fades as the user swipes between tabs. When idle on a
-    // single tab (fractional ≈ integer), fall back through centered
-    // kind → focus color → default violet.
     final tabColor = _primaryForTabAnimation(tabAnimation);
     final primary = tabColor != HomeTab.values[0].signatureColor
         ? tabColor
@@ -104,20 +98,7 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(0, -0.4),
-                    radius: 1.5,
-                    colors: [
-                      Color(0xFF1A0F2E),
-                      Color(0xFF0A0814),
-                      Color(0xFF050507),
-                    ],
-                    stops: [0.0, 0.55, 1.0],
-                  ),
-                ),
-              ),
+              const ColoredBox(color: _base),
               Positioned(
                 left: -60 + dx1,
                 top: -80 + dy1,
@@ -128,9 +109,9 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
                   duration: const Duration(milliseconds: 450),
                   curve: Curves.easeOutCubic,
                   builder: (context, color, _) {
-                    return _BlurBlob(
+                    return _LightBlob(
                       color: color ?? primary,
-                      opacity: 0.22,
+                      opacity: 0.08,
                     );
                   },
                 ),
@@ -140,23 +121,32 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
                 top: 200 + dy2,
                 width: 500,
                 height: 460,
-                child: const _BlurBlob(color: _teal, opacity: 0.10),
+                child: const _LightBlob(color: _teal, opacity: 0.04),
               ),
               Positioned(
                 left: -100 - dx1,
                 bottom: -60 - dy1,
                 width: 520,
                 height: 420,
-                child: const _BlurBlob(color: _rose, opacity: 0.08),
+                child: const _LightBlob(color: _rose, opacity: 0.03),
               ),
               Positioned(
                 left: 40,
                 right: 40,
                 bottom: -140 + dy2.abs(),
                 height: 380,
-                child: const _BlurBlob(color: _gold, opacity: 0.06),
+                child: const _LightBlob(color: _gold, opacity: 0.025),
               ),
-              const _GrainLayer(),
+              const Positioned(
+                right: -80,
+                top: -80,
+                width: 400,
+                height: 400,
+                child: _LightBlob(
+                  color: Colors.white,
+                  opacity: 0.6,
+                ),
+              ),
             ],
           ),
         );
@@ -165,10 +155,10 @@ class _AmbientMeshState extends ConsumerState<AmbientMesh>
   }
 }
 
-class _BlurBlob extends StatelessWidget {
+class _LightBlob extends StatelessWidget {
   final Color color;
   final double opacity;
-  const _BlurBlob({required this.color, required this.opacity});
+  const _LightBlob({required this.color, required this.opacity});
 
   @override
   Widget build(BuildContext context) {
@@ -184,35 +174,4 @@ class _BlurBlob extends StatelessWidget {
       ),
     );
   }
-}
-
-class _GrainLayer extends StatelessWidget {
-  const _GrainLayer();
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size.infinite,
-      painter: _GrainPainter(),
-    );
-  }
-}
-
-class _GrainPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rng = math.Random(42);
-    final paint = Paint();
-    final count = (size.width * size.height / 420).round();
-    for (var i = 0; i < count; i++) {
-      final x = rng.nextDouble() * size.width;
-      final y = rng.nextDouble() * size.height;
-      final a = 0.015 + rng.nextDouble() * 0.02;
-      paint.color = const Color(0xFFFFFFFF).withValues(alpha: a);
-      canvas.drawCircle(Offset(x, y), 0.5, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
