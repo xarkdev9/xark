@@ -227,7 +227,12 @@ class _ChatBubbleState extends State<ChatBubble>
                   : MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                  if (!widget.isOutbound) ...[
+                  // Avatar gutter — ONLY for group chats (senderId != null).
+                  // DM has no avatar beside bubbles, so no gutter should be
+                  // reserved. In group chats the gutter is always 34px wide:
+                  // an avatar on first-in-group, empty placeholder on
+                  // consecutive messages (iMessage cluster pattern).
+                  if (!widget.isOutbound && widget.senderId != null) ...[
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
                       child: showAvatar
