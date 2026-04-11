@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../chat_bubble.dart';
 import '../message_input_bar.dart';
 import 'attachment_sheet.dart';
 
@@ -68,35 +69,62 @@ class _GroupSheet extends StatelessWidget {
     final memberCount = item.conversation.participantIds.length;
     final unread = item.conversation.unreadCount;
 
+    // Mock thread — showing avatars + sender names + cluster behavior
+    // across multiple senders (iMessage group chat pattern).
+    final messages = const <_GroupMessage>[
+      _GroupMessage(
+        text: 'yesssss just booked the villa 🏝️',
+        senderId: 'sarah',
+        firstInGroup: true,
+        lastInGroup: false,
+      ),
+      _GroupMessage(
+        text: 'Alila Ubud, pool villa',
+        senderId: 'sarah',
+        firstInGroup: false,
+        lastInGroup: true,
+      ),
+      _GroupMessage(
+        text: 'NICE! what dates?',
+        senderId: null,
+        fromMe: true,
+      ),
+      _GroupMessage(
+        text: 'OMG same dates we talked about?',
+        senderId: 'alex',
+        firstInGroup: true,
+        lastInGroup: true,
+      ),
+      _GroupMessage(
+        text: 'yep march 15-22',
+        senderId: 'sarah',
+        firstInGroup: true,
+        lastInGroup: true,
+      ),
+      _GroupMessage(
+        text: 'perfect, booking flights now',
+        senderId: null,
+        fromMe: true,
+      ),
+    ];
+
     return _GroupSheetShell(
       eyebrow: 'GROUP CHAT',
       title: name,
       subtitle: '$memberCount members · $unread unread',
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _StatChip(label: 'UNREAD', value: '$unread'),
-                const SizedBox(width: 12),
-                _StatChip(label: 'MEMBERS', value: '$memberCount'),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              item.conversation.lastMessageText ?? 'No activity yet',
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 15,
-                fontWeight: FontWeight.w300,
-                height: 1.5,
-                color: HelloColors.inkSecondary,
-              ),
-            ),
-          ],
-        ),
+      body: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        itemCount: messages.length,
+        itemBuilder: (_, i) {
+          final msg = messages[i];
+          return ChatBubble(
+            text: msg.text,
+            isOutbound: msg.fromMe,
+            isFirstInGroup: msg.firstInGroup,
+            isLastInGroup: msg.lastInGroup,
+            senderId: msg.senderId,
+          );
+        },
       ),
       footer: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -119,46 +147,19 @@ class _GroupSheet extends StatelessWidget {
   }
 }
 
-class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
-  const _StatChip({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: HelloColors.recessed,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 9,
-              fontWeight: FontWeight.w400,
-              letterSpacing: 1.5,
-              color: HelloColors.inkTertiary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 22,
-              fontWeight: FontWeight.w400,
-              color: HelloColors.inkPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+class _GroupMessage {
+  final String text;
+  final String? senderId; // null = outbound (from me)
+  final bool fromMe;
+  final bool firstInGroup;
+  final bool lastInGroup;
+  const _GroupMessage({
+    required this.text,
+    this.senderId,
+    this.fromMe = false,
+    this.firstInGroup = true,
+    this.lastInGroup = true,
+  });
 }
 
 class _GroupSheetShell extends StatelessWidget {

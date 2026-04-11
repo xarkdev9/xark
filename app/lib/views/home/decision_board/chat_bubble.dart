@@ -147,9 +147,13 @@ class _ChatBubbleState extends State<ChatBubble>
 
   @override
   Widget build(BuildContext context) {
-    // Asymmetric glassmorphism
-    final bubbleOpacity = widget.isOutbound ? 0.6 : 0.85;
+    final bubbleColor = widget.isOutbound
+        ? HelloColors.accent
+        : HelloColors.recessed;
     final blurSigma = kIsWeb ? 0.0 : (widget.isOutbound ? 20.0 : 8.0);
+    final showAvatar = !widget.isOutbound &&
+        widget.isFirstInGroup &&
+        widget.senderId != null;
 
     // Tighter vertical spacing for grouped messages
     final topMargin = widget.isFirstInGroup ? 8.0 : 2.0;
@@ -190,21 +194,39 @@ class _ChatBubbleState extends State<ChatBubble>
               ),
             ),
 
-          // The bubble + reactions
+          // The bubble + reactions wrapped in a Row so inbound
+          // messages get an avatar on the far left.
           Transform.translate(
             offset: Offset(_dragOffset, 0),
-            child: Align(
-              alignment: widget.isOutbound
-                  ? Alignment.centerRight
-                  : Alignment.centerLeft,
-              child: Transform.scale(
-                scale: _pressScale,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: widget.isOutbound
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.start,
-                  children: [
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: widget.isOutbound
+                    ? MainAxisAlignment.end
+                    : MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (!widget.isOutbound) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: showAvatar
+                          ? _BubbleAvatar(
+                              name: _displayName(widget.senderId),
+                            )
+                          : const SizedBox(width: 28),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: Transform.scale(
+                      scale: _pressScale,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: widget.isOutbound
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
+                        children: [
                     // Sender name for incoming group messages
                     if (!widget.isOutbound && widget.isFirstInGroup && widget.senderId != null)
                       Padding(
@@ -223,11 +245,7 @@ class _ChatBubbleState extends State<ChatBubble>
                     // Glass bubble (no inline avatars — iMessage style)
                     Flexible(
                           child: Padding(
-                            padding: EdgeInsets.only(
-                              top: topMargin,
-                              left: widget.isOutbound ? 48 : 16,
-                              right: widget.isOutbound ? 16 : 48,
-                            ),
+                            padding: EdgeInsets.only(top: topMargin),
                             child: ClipRRect(
                               borderRadius: _buildCornerRadii(),
                               child: BackdropFilter(
@@ -240,12 +258,8 @@ class _ChatBubbleState extends State<ChatBubble>
                                       ? EdgeInsets.zero
                                       : const EdgeInsets.fromLTRB(12, 8, 12, 8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: bubbleOpacity),
+                                    color: bubbleColor,
                                     borderRadius: _buildCornerRadii(),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.3),
-                                      width: 1,
-                                    ),
                                   ),
                                   child: widget.mediaChild != null
                                       ? ClipRRect(
@@ -334,8 +348,11 @@ class _ChatBubbleState extends State<ChatBubble>
                       ),
 
                     SizedBox(height: bottomMargin),
-                  ],
-                ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -345,15 +362,46 @@ class _ChatBubbleState extends State<ChatBubble>
   }
 
   Widget _buildTextContent() {
-    // Clean text only — no timestamp inside bubble (iMessage style)
     return Text(
       widget.text,
       style: TextStyle(
         fontFamily: 'Inter',
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        color: HelloColors.inkPrimary.withValues(alpha: 0.9),
+        color: widget.isOutbound
+            ? Colors.white
+            : HelloColors.inkPrimary,
         height: 1.35,
+      ),
+    );
+  }
+}
+
+/// iMessage-style avatar next to inbound first-in-group bubbles.
+/// 28px circle, recessed fill, single initial in inkSecondary.
+class _BubbleAvatar extends StatelessWidget {
+  final String name;
+  const _BubbleAvatar({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: const BoxDecoration(
+        color: HelloColors.recessed,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          color: HelloColors.inkSecondary,
+        ),
       ),
     );
   }

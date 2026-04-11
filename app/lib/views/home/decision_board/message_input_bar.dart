@@ -177,6 +177,7 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isBrandFill = background == HelloColors.accent;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -186,6 +187,12 @@ class _CircleButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: background,
           shape: BoxShape.circle,
+          border: isBrandFill
+              ? null
+              : Border.all(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  width: 1,
+                ),
         ),
         alignment: Alignment.center,
         child: Icon(icon, size: 18, color: iconColor),
