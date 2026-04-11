@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 import '_card_shell.dart';
 
 /// 1-col group card. Flat recessed avatar + group name + live eyebrow
@@ -85,18 +86,29 @@ class GroupCard extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          _eyebrow(),
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 9,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: 1.5,
-                            color: isUnread
-                                ? HelloColors.accent
-                                : HelloColors.inkTertiary,
-                          ),
-                        ),
+                        isUnread
+                            ? PlasmaTint(
+                                child: Text(
+                                  _eyebrow(),
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: 1.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                _eyebrow(),
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: 1.5,
+                                  color: HelloColors.inkTertiary,
+                                ),
+                              ),
                         if (item.typingCount > 0) ...[
                           const SizedBox(width: 8),
                           const _TypingDots(),
@@ -107,13 +119,10 @@ class GroupCard extends StatelessWidget {
                 ),
               ),
               if (isUnread)
-                Container(
+                const PlasmaFill(
+                  shape: BoxShape.circle,
                   width: 6,
                   height: 6,
-                  decoration: const BoxDecoration(
-                    color: HelloColors.accent,
-                    shape: BoxShape.circle,
-                  ),
                 ),
             ],
           ),
@@ -186,13 +195,11 @@ class _TypingDotsState extends State<_TypingDots>
                     (phase < 0.5 ? phase * 2 : (1 - phase) * 2).clamp(0.0, 1.0));
             return Padding(
               padding: EdgeInsets.only(right: i < 2 ? 3 : 0),
-              child: Container(
+              child: PlasmaFill(
+                shape: BoxShape.circle,
                 width: 3,
                 height: 3,
-                decoration: BoxDecoration(
-                  color: HelloColors.accent.withValues(alpha: a),
-                  shape: BoxShape.circle,
-                ),
+                alpha: a,
               ),
             );
           }),

@@ -9,6 +9,7 @@ import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'package:flutter/material.dart';
 
 import '../../../theme.dart';
+import 'plasma/plasma.dart';
 
 class ConversationListRow extends StatelessWidget {
   final Conversation conversation;
@@ -170,23 +171,22 @@ class _UnreadBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = count > 99 ? '99+' : '$count';
-    return Container(
-      constraints: const BoxConstraints(minWidth: 18),
-      height: 18,
+    return PlasmaFill(
+      borderRadius: BorderRadius.circular(9),
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(
-        color: HelloColors.accent,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 11,
-          fontWeight: FontWeight.w400,
-          height: 1,
-          color: Color(0xFFF0EFF4),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 18),
+        height: 18,
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 11,
+            fontWeight: FontWeight.w400,
+            height: 1,
+            color: Color(0xFFF0EFF4),
+          ),
         ),
       ),
     );

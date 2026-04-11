@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../models/feed_item.dart';
 import '../../../../providers/conversations_provider.dart';
 import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 import 'dm_sheet.dart';
 import 'group_sheet.dart';
 
@@ -190,13 +191,15 @@ class _SearchSheet extends ConsumerWidget {
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () => Navigator.of(context).pop(),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: HelloColors.accent,
+                      child: const PlasmaTint(
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -294,13 +297,10 @@ class _SearchSheet extends ConsumerWidget {
                               ),
                             ),
                             if (isUnread)
-                              Container(
+                              const PlasmaFill(
+                                shape: BoxShape.circle,
                                 width: 6,
                                 height: 6,
-                                decoration: const BoxDecoration(
-                                  color: HelloColors.accent,
-                                  shape: BoxShape.circle,
-                                ),
                               ),
                           ],
                         ),

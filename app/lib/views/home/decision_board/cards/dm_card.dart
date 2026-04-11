@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/feed_item.dart';
 import '../../../../theme.dart';
+import '../plasma/plasma.dart';
 import '_card_shell.dart';
 
 /// 1-col DM card. Flat recessed avatar + name + eyebrow + 2-line
@@ -93,13 +94,10 @@ class DmCard extends StatelessWidget {
                 ),
               ),
               if (isUnread)
-                Container(
+                const PlasmaFill(
+                  shape: BoxShape.circle,
                   width: 6,
                   height: 6,
-                  decoration: const BoxDecoration(
-                    color: HelloColors.accent,
-                    shape: BoxShape.circle,
-                  ),
                 ),
             ],
           ),
