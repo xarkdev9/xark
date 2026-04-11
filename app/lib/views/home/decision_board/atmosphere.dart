@@ -1,22 +1,29 @@
-// Home atmosphere — ambient mesh, grain.
+// Home atmosphere — ambient mesh that shifts with the current focus.
 //
-// These are atmospheric layers that give the screen depth without
-// creating any visible containers. Everything fades to transparent.
+// The primary blob color is driven by [focusTripProvider]. Swiss →
+// alpine blue, Goa → ocean teal, Bali → sunset amber, no focus →
+// default deep violet.
 
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Full-screen ambient mesh background — slowly drifts.
-/// Creates the "cinematic dark + mesh" feel from DESIGN.md.
-class AmbientMesh extends StatefulWidget {
+import '../../../providers/focus_provider.dart';
+
+const Color _defaultPrimary = Color(0xFF7C3AED); // deep violet
+const Color _teal = Color(0xFF14B8A6);
+const Color _rose = Color(0xFFD4536B);
+const Color _gold = Color(0xFFC8A84E);
+
+class AmbientMesh extends ConsumerStatefulWidget {
   const AmbientMesh({super.key});
 
   @override
-  State<AmbientMesh> createState() => _AmbientMeshState();
+  ConsumerState<AmbientMesh> createState() => _AmbientMeshState();
 }
 
-class _AmbientMeshState extends State<AmbientMesh>
+class _AmbientMeshState extends ConsumerState<AmbientMesh>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
@@ -25,7 +32,7 @@ class _AmbientMeshState extends State<AmbientMesh>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 22),
+      duration: const Duration(seconds: 26),
     )..repeat();
   }
 
@@ -37,50 +44,68 @@ class _AmbientMeshState extends State<AmbientMesh>
 
   @override
   Widget build(BuildContext context) {
+    final focus = ref.watch(focusTripProvider);
+    final primary = focus?.accentColor ?? _defaultPrimary;
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
         final t = _controller.value;
-        final dx1 = math.sin(t * 2 * math.pi) * 24;
-        final dy1 = math.cos(t * 2 * math.pi) * 32;
-        final dx2 = math.cos(t * 2 * math.pi) * 30;
-        final dy2 = math.sin(t * 2 * math.pi) * 22;
+        final dx1 = math.sin(t * 2 * math.pi) * 28;
+        final dy1 = math.cos(t * 2 * math.pi) * 36;
+        final dx2 = math.cos(t * 2 * math.pi) * 34;
+        final dy2 = math.sin(t * 2 * math.pi) * 26;
 
         return IgnorePointer(
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Rausch glow — top left
+              // Base wash — subtle violet undercoat
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(0, -0.4),
+                    radius: 1.5,
+                    colors: [
+                      Color(0xFF1A0F2E),
+                      Color(0xFF0A0814),
+                      Color(0xFF050507),
+                    ],
+                    stops: [0.0, 0.55, 1.0],
+                  ),
+                ),
+              ),
+              // Focus-tinted blob — top left
               Positioned(
-                left: -40 + dx1,
-                top: -60 + dy1,
+                left: -60 + dx1,
+                top: -80 + dy1,
+                width: 560,
+                height: 460,
+                child: _BlurBlob(color: primary, opacity: 0.22),
+              ),
+              // Teal accent — right mid
+              Positioned(
+                right: -80 + dx2,
+                top: 200 + dy2,
+                width: 500,
+                height: 460,
+                child: const _BlurBlob(color: _teal, opacity: 0.10),
+              ),
+              // Rose accent — bottom left
+              Positioned(
+                left: -100 - dx1,
+                bottom: -60 - dy1,
                 width: 520,
                 height: 420,
-                child: const _BlurBlob(color: Color(0xFFFF385C), opacity: 0.14),
+                child: const _BlurBlob(color: _rose, opacity: 0.08),
               ),
-              // Teal glow — right mid
-              Positioned(
-                right: -60 + dx2,
-                top: 180 + dy2,
-                width: 460,
-                height: 420,
-                child: const _BlurBlob(color: Color(0xFF14B8A6), opacity: 0.09),
-              ),
-              // Pink glow — bottom left
-              Positioned(
-                left: -80 - dx1,
-                bottom: -40 - dy1,
-                width: 500,
-                height: 400,
-                child: const _BlurBlob(color: Color(0xFFF472B6), opacity: 0.06),
-              ),
-              // Gold glow — center bottom
+              // Gold accent — center bottom
               Positioned(
                 left: 40,
                 right: 40,
-                bottom: -120 + dy2.abs(),
+                bottom: -140 + dy2.abs(),
                 height: 380,
-                child: const _BlurBlob(color: Color(0xFFC8A84E), opacity: 0.07),
+                child: const _BlurBlob(color: _gold, opacity: 0.06),
               ),
               // Grain overlay
               const _GrainLayer(),
@@ -113,7 +138,6 @@ class _BlurBlob extends StatelessWidget {
   }
 }
 
-/// Grain texture painted with a noise-ish pattern.
 class _GrainLayer extends StatelessWidget {
   const _GrainLayer();
 
@@ -129,7 +153,7 @@ class _GrainLayer extends StatelessWidget {
 class _GrainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final rng = math.Random(42); // deterministic
+    final rng = math.Random(42);
     final paint = Paint();
     final count = (size.width * size.height / 420).round();
     for (var i = 0; i < count; i++) {
@@ -144,5 +168,3 @@ class _GrainPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-
