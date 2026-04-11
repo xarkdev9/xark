@@ -1,0 +1,195 @@
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+
+import '../../../../models/feed_item.dart';
+import '../../../../theme.dart';
+
+Future<void> openSettlementSheet(
+  BuildContext context,
+  SettlementFeedItem item,
+) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _SettlementSheet(item: item),
+  );
+}
+
+class _SettlementSheet extends StatelessWidget {
+  final SettlementFeedItem item;
+  const _SettlementSheet({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = item.settlement;
+    final height = MediaQuery.of(context).size.height * 0.82;
+    final abs = s.amount.abs().toStringAsFixed(2);
+    final prefix = s.currency == 'USD' ? '\$' : s.currency;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: HelloColors.voidBg.withValues(alpha: 0.72),
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        s.isOwedToYou ? 'OWED TO YOU' : 'YOU OWE',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: 1.5,
+                          color: s.isOwedToYou
+                              ? HelloColors.liveGreen
+                              : HelloColors.accent,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          color: HelloColors.recessed,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: HelloColors.inkSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: Text(
+                            prefix,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 24,
+                              fontWeight: FontWeight.w400,
+                              color: HelloColors.inkPrimary
+                                  .withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          abs,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 72,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: -2,
+                            height: 1,
+                            color: HelloColors.inkPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      s.isOwedToYou
+                          ? 'from ${s.counterpartyName}'
+                          : 'to ${s.counterpartyName}',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: HelloColors.inkSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      s.reason,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w300,
+                        color: HelloColors.inkTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: s.isOwedToYou
+                          ? HelloColors.recessed
+                          : HelloColors.accent,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      s.isOwedToYou ? 'REMIND' : 'PAY NOW',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 2.5,
+                        color: s.isOwedToYou
+                            ? HelloColors.inkPrimary
+                            : const Color(0xFFF0EFF4),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
