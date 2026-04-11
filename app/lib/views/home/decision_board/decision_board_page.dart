@@ -229,14 +229,14 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
               ),
             ),
           ),
-          // Floating iMessage-style escape hatch — search any chat
-          // or start a new one. Always visible at the bottom of the
-          // home screen.
+          // Floating iMessage-style escape hatch — `+` opens the
+          // New Chat/Group/Event slider, the send arrow triggers
+          // search. Always visible at the bottom of the home screen.
           Align(
             alignment: Alignment.bottomCenter,
             child: SearchComposeBar(
-              onSearchTap: () => openSearchSheet(context),
-              onComposeTap: () => openNewChatSheet(context),
+              onPlusTap: () => openNewChatSheet(context),
+              onSend: () => openSearchSheet(context),
             ),
           ),
         ],
