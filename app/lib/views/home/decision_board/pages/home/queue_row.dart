@@ -103,7 +103,14 @@ class QueuePromotionAvatar extends StatelessWidget {
         if (rewardController.phase != RewardPhase.ascending) {
           return const SizedBox.shrink();
         }
-        final p = rewardController.ascentProgress;
+        // Clamp ascentProgress defensively before feeding the curve —
+        // protects Curves.easeOutBack's own assert(t in [0,1]) from
+        // any floating-point edge overshoot.
+        final p = rewardController.ascentProgress.clamp(0.0, 1.0);
+        // easeOutBack intentionally overshoots above 1.0 near the end
+        // (spring effect). We keep the overshoot on size + yOffset —
+        // that's what makes the avatar arrive with a subtle spring —
+        // but clamp it for Opacity, which asserts 0 <= opacity <= 1.
         final eased = Curves.easeOutBack.transform(p);
         final size = 48.0 + (140.0 - 48.0) * eased;
         // Starts at +travelDistance (at queue row Y), ends at 0
@@ -114,7 +121,7 @@ class QueuePromotionAvatar extends StatelessWidget {
           child: Transform.translate(
             offset: Offset(0, yOffset),
             child: Opacity(
-              opacity: eased,
+              opacity: eased.clamp(0.0, 1.0),
               child: HologramAvatar(
                 avatarPath: getAvatarImagePath(sender.name),
                 size: size,
