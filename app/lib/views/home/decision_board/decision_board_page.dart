@@ -10,15 +10,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/tabs_provider.dart';
 import '../../../theme.dart';
-import 'atmosphere.dart';
-import 'bottom_bar.dart';
+import 'chromatic_atmosphere.dart';
+import 'consensus_watcher.dart';
+import 'liquid_intent_handle.dart';
 import 'pages/chats_page.dart';
 import 'pages/groups_page.dart';
 import 'pages/home_page.dart';
 import 'pages/plans_page.dart';
 import 'tab_header.dart';
-import 'sheets/new_chat_sheet.dart';
-import 'sheets/search_sheet.dart';
 
 class DecisionBoardPage extends ConsumerStatefulWidget {
   const DecisionBoardPage({super.key});
@@ -66,45 +65,36 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
     ref.read(tabAnimationProvider.notifier).state = value;
   }
 
-  void _switchToTab(int index) {
-    if (!mounted) return;
-    _tabController.animateTo(index);
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      backgroundColor: HelloColors.voidBg,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const Positioned.fill(child: AmbientMesh()),
-          SafeArea(
-            child: TabBarView(
-              controller: _tabController,
-              children: const [
-                HomePage(),
-                ChatsPage(),
-                GroupsPage(),
-                PlansPage(),
-              ],
+    return ConsensusWatcher(
+      child: Scaffold(
+        backgroundColor: HelloColors.voidBg,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            const Positioned.fill(child: ChromaticAtmosphere()),
+            SafeArea(
+              child: LiquidIntentLayer(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: const [
+                    HomePage(),
+                    ChatsPage(),
+                    GroupsPage(),
+                    PlansPage(),
+                  ],
+                ),
+              ),
             ),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 20,
-            child: const TabHeader(),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: BottomBar(
-              onTabSelected: _switchToTab,
-              onSearchSubmit: () => openSearchSheet(context),
-              onComposeTap: () => openNewChatSheet(context),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              left: 20,
+              child: const TabHeader(),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
