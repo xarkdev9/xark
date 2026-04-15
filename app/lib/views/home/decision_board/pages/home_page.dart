@@ -276,6 +276,22 @@ class _HomePageState extends ConsumerState<HomePage>
                   ),
                 ),
 
+              // Queue promotion — visible only during ascending phase,
+              // rises into the foreground slot as the previous avatar
+              // drifts up (v2-review Patch #5a)
+              if (_rewardController.isAnimating &&
+                  _rewardController.phase == RewardPhase.ascending &&
+                  (_rewardController.lockedQueue?.isNotEmpty ?? false))
+                Positioned(
+                  top: h * 0.18,
+                  left: 0,
+                  right: 0,
+                  child: QueuePromotionAvatar(
+                    sender: _rewardController.lockedQueue!.first,
+                    rewardController: _rewardController,
+                  ),
+                ),
+
               // Ambient layer — context label + queue
               AnimatedOpacity(
                 opacity: isExpanded ? 0.0 : 1.0,
@@ -301,6 +317,7 @@ class _HomePageState extends ConsumerState<HomePage>
                           child: QueueRow(
                             senders: queue,
                             onTap: _onAvatarTap,
+                            rewardController: _rewardController,
                           ),
                         ),
                       ),

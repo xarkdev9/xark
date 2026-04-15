@@ -2,50 +2,127 @@ import 'package:flutter/material.dart';
 
 import '../../avatar_utils.dart';
 import 'cosmos_sender_model.dart';
+import 'reward_controller.dart';
 
 /// Horizontal row of up to 6 face-only avatars at 48px.
 ///
-/// Render order: left → right by recency (fresher on the left).
-/// Renders fewer than 6 when the queue is shorter; never pads with
-/// placeholders.
-///
-/// Zero-box: just HologramAvatars in a Row with gaps. No container,
-/// no ring, no shadow, no background fill.
-///
-/// Phase 6 (Task 20) will add ghost-opacity during the ascending
-/// reward phase to preserve row width while queue[0] is promoted.
+/// When a RewardController is in the ascending phase, queue[0] is
+/// being promoted to the foreground (via QueuePromotionAvatar below).
+/// To keep the row's width stable and prevent sibling snap-shift,
+/// queue[0] is rendered here at **opacity 0.0** — the space it
+/// occupied stays reserved; remaining avatars do not re-center.
+/// When the reward completes at t=1700ms and the provider re-emits
+/// without queue[0], the row smoothly re-centers in the normal
+/// layout pass (v2-review Patch #5b).
 class QueueRow extends StatelessWidget {
-  /// Up to 6 pending senders, already recency-sorted.
   final List<PendingSender> senders;
-
-  /// Invoked when a queue avatar is tapped. Receives the sender.
   final ValueChanged<PendingSender>? onTap;
+  final RewardController? rewardController;
 
   const QueueRow({
     super.key,
     required this.senders,
     this.onTap,
+    this.rewardController,
   });
 
   @override
   Widget build(BuildContext context) {
     if (senders.isEmpty) return const SizedBox.shrink();
+    if (rewardController == null) {
+      return _buildRow(senders, ghostFirst: false);
+    }
+    return ListenableBuilder(
+      listenable: rewardController!,
+      builder: (ctx, _) {
+        final isAscending =
+            rewardController!.phase == RewardPhase.ascending;
+        return _buildRow(senders, ghostFirst: isAscending);
+      },
+    );
+  }
 
+  Widget _buildRow(List<PendingSender> list, {required bool ghostFirst}) {
+    if (list.isEmpty) return const SizedBox.shrink();
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        for (int i = 0; i < senders.length; i++) ...[
+        for (int i = 0; i < list.length; i++) ...[
           if (i > 0) const SizedBox(width: 12),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onTap == null ? null : () => onTap!(senders[i]),
-            child: HologramAvatar(
-              avatarPath: getAvatarImagePath(senders[i].name),
-              size: 48,
+          Opacity(
+            opacity: ghostFirst && i == 0 ? 0.0 : 1.0,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: (onTap == null || (ghostFirst && i == 0))
+                  ? null
+                  : () => onTap!(list[i]),
+              child: HologramAvatar(
+                avatarPath: getAvatarImagePath(list[i].name),
+                size: 48,
+              ),
             ),
           ),
         ],
       ],
+    );
+  }
+}
+
+/// The rising-into-foreground widget for queue[0] during the
+/// ascending phase. Rendered by home_page.dart in the foreground
+/// position (top = h * 0.18) — the Transform.translate below
+/// handles the physical travel from the queue row's Y (204pt below
+/// the foreground anchor) up to 0 as the ascent progresses.
+///
+/// Without the Transform.translate the avatar would teleport
+/// instantly from queue row to foreground slot (scaling but not
+/// moving vertically). That shatters the spatial illusion
+/// (v2-review Patch #5a).
+class QueuePromotionAvatar extends StatelessWidget {
+  final PendingSender sender;
+  final RewardController rewardController;
+
+  /// Vertical distance the avatar travels: computed as
+  /// (foreground.height + label gap + label height + queue gap)
+  /// = 140 + 12 + 20 + 32 = 204 per the layout in home_page.dart.
+  /// If home_page layout constants change, update this.
+  final double travelDistance;
+
+  const QueuePromotionAvatar({
+    super.key,
+    required this.sender,
+    required this.rewardController,
+    this.travelDistance = 204.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: rewardController,
+      builder: (ctx, _) {
+        if (rewardController.phase != RewardPhase.ascending) {
+          return const SizedBox.shrink();
+        }
+        final p = rewardController.ascentProgress;
+        final eased = Curves.easeOutBack.transform(p);
+        final size = 48.0 + (140.0 - 48.0) * eased;
+        // Starts at +travelDistance (at queue row Y), ends at 0
+        // (at foreground Y). Positive = down in Flutter.
+        final yOffset = travelDistance * (1.0 - eased);
+
+        return Center(
+          child: Transform.translate(
+            offset: Offset(0, yOffset),
+            child: Opacity(
+              opacity: eased,
+              child: HologramAvatar(
+                avatarPath: getAvatarImagePath(sender.name),
+                size: size,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
