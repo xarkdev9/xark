@@ -22,6 +22,100 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 7. **`--hello-white = #111111` (dark near-black) and `--hello-void = #FAFAFA` (light near-white).** CSS variable names in `web/src/app/globals.css` are semantically inverted from their values. Confusing. Read the actual hex, not the name.
 
+8. **WebGL Context Loss (OOM limit):** CanvasKit WebGL will fatally crash if `BackdropFilter` sigmas exceed heavy loads on deep lists. **Never use a blur radius > 30px** inside scrolling or transitioning views (legacy screens had 100px and crashed the browser instantly).
+
+9. **Stack Index Differencing Bug:** Never use `if (condition) Positioned(...)` dynamically inside a Flutter Stack wrapped around custom gesture recognizers (e.g. `LiquidIntentLayer`). It shifts child indices, forcing Flutter to unmount the widget and destroying internal AnimationControllers. Always render `Positioned` and return `SizedBox.shrink()` internally instead.
+
+10. **`ChromaticAtmosphere` sigma cap.** The atmosphere itself uses `whisperSigma = 14` internally. **Never wrap it in a `BackdropFilter` with sigma > 24.** Stacking additional blur above the atmosphere compounds into the WebGL OOM ceiling (see landmine #8) and will fatal-crash CanvasKit.
+
+11. **Palette extraction MUST run on the main isolate.** `PaletteExtractor` uses `palette_generator` which relies on `dart:ui` objects (`Image`, `ImageProvider`) that **cannot cross isolate boundaries**. Never `compute()` or `Isolate.spawn` a `PaletteGenerator` call — it will throw at send-port boundary. The extractor already downscales via `ResizeImage(100×100)` so main-isolate cost is bounded.
+
+12. **Detail pages MUST pass `routeAnimation` to `FocusSource`.** Push `FocusSource(..., routeAnimation: ModalRoute.of(context)?.animation)` when pushing routes onto the focus stack. Without it, iOS swipe-back interruption snaps the ambient palette instead of cross-fading back to the parent context. The stack listens to `routeAnimation.status` to reverse gracefully.
+
+13. **Atmosphere NEVER fires haptics.** Haptics originate at tap sites (user intent — see `HelloHaptic` in `app/lib/utils/haptics.dart`), not in the atmosphere system. Palette changes are ambient, not event-ful. Adding haptics to `ChromaticAtmosphere` or its providers will mis-fire during passive scroll-driven palette shifts.
+
+14. **Signature palettes use Oklch, not HSL.** HSL has non-uniform perceived brightness across hues — yellow HSL(60) reads brighter than blue HSL(240) at the same "L" value. `app/lib/services/oklch.dart` provides the Oklch↔RGB conversion used by `signature_color.dart`. Do not substitute `HSLColor` from `dart:ui` for signature generation.
+
+15. **Dither noise PNG opacity is locked at 0.015 (1.5%).** `assets/textures/dither_noise.png` is overlaid on the atmosphere to prevent OLED banding. **Any higher than 1.5% becomes visible stippling; any lower fails to dither.** Regenerating the noise (via `scripts/generate_dither_noise.dart`) must keep the asset itself neutral — tune opacity only at the composite site in `ChromaticAtmosphere`. The atmosphere's pulse signal (2026-04-14, cosmos-home) bumps this to 0.025 briefly during a `Maybe` reward — that's intentional and bounded.
+
+16. **Cosmos Home uses in-place state expansion, NOT `OpenContainer`.** Tapping an avatar on Home must NOT push a `ModalRoute` — it cross-fades Home's own `Stack` via `AnimatedOpacity`. A pushed route traps the queue + atmosphere underneath and shatters the 1700ms reward choreography. See `docs/superpowers/specs/2026-04-14-cosmos-home-design.md` Principle 8.
+
+17. **Plasma infusion on `HologramAvatar` uses `BlendMode.srcATop`, NEVER `BlendMode.srcIn`.** `srcIn` discards destination pixels and leaves a faceless plasma blob where the photo was. `srcATop` overlays color on top of existing pixels only where the PNG has alpha — face features stay intact. Also: never wrap `HologramAvatar` in a second `ShaderMask` — that's a double `saveLayer` and tanks frame rate over the 120fps atmosphere. Use `ColorFiltered` for the transient infusion layer. `PlasmaTint` still uses `srcIn` but only on Text — that's the correct use case (letters fill with plasma gradient).
+
+18. **Home's foreground + queue are locked on a snapshot during reward animations.** `_HomePageState.build()` reads from `_rewardController.lockedForeground / lockedQueue` when the reward phase is not idle. Both providers (`freshestPendingSenderProvider`, `pendingSendersQueueProvider`) remain watched unconditionally (Riverpod subscription lifecycle), but displayed values branch on the lock. Reading directly from the providers' current values during the 1700ms reward sequence flashes the next person mid-animation — the optimistic mutation already re-emitted. Lock releases at t=1700ms.
+
+19. **`RewardController` is vsynced via `Ticker`, not `Timer.periodic`.** On 120Hz ProMotion (8.33ms refresh), an event-loop Timer guarantees micro-stutters and frame tearing. `_HomePageState` mixes in `SingleTickerProviderStateMixin` and passes `vsync: this` to `RewardController`'s constructor. Never replace with a Timer.
+
+---
+
+## Chromatic Atmosphere System (Night Shift #3, 2026-04-14)
+
+**What it is:** A global content-responsive ambient color system. Every screen breathes with whatever content is in focus — card, detail page, route transition, or default tab signature — by resolving a priority-sorted focus stack into a single `AmbientPalette` that drives the full-bleed renderer. **Replaces** the older `AmbientMesh` in `atmosphere.dart`.
+
+**Architecture:**
+- `ambientPaletteProvider` (`Provider<AmbientPalette>`) — single source of truth; read by `ChromaticAtmosphere` and adaptive surfaces.
+- `focusSourcesProvider` (`StateNotifierProvider<FocusSourceStack, List<FocusSource>>`) — priority-sorted stack of current focus contributors (card in viewport, pushed detail route, default tab). Priority convention: 100=sheet, 50=detail page, 20=Home foreground, 10=tab feed, 1=tab fallback.
+- `ambientSurfaceTierProvider` (`Provider<AmbientSurfaceTier>`) — derives adaptive card surface from current palette luminance (WCAG-aware) and platform brightness.
+- `ambientPalettePulseProvider` (new 2026-04-14 cosmos-home) — transient 800ms reward modulation: `affirm` (saturation +15%), `negate` (saturation -15% + brightness -10%), `hesitate` (dither 0.015 → 0.025), `none` (base).
+- `ChromaticAtmosphere` widget — full-bleed renderer with slow drift, cross-fade between palettes, idle sleep (pause animation when no focus change), OLED-dither noise overlay at 1.5% opacity, consumes pulse signal.
+- `PaletteExtractor` service — main-isolate extraction via `palette_generator` + `ResizeImage(100×100)` downscale. Asset-manifest lookup falls through to a network LRU cache (`shared_preferences`-backed).
+- `Oklch` color space — perceptually uniform signature generation (NOT HSL — see landmine #14).
+
+**Files:**
+- `app/lib/models/ambient_palette.dart` — `AmbientPalette` immutable model
+- `app/lib/services/oklch.dart` — Oklch↔RGB conversion
+- `app/lib/services/signature_color.dart` — deterministic signature from string seed (IDs, kinds)
+- `app/lib/services/palette_extractor.dart` — main-isolate palette extraction + caching
+- `app/lib/providers/focus_sources_provider.dart` — `FocusSource` + `FocusSourceStack` notifier
+- `app/lib/providers/ambient_palette_provider.dart` — `ambientPaletteProvider` + `ambientSurfaceTierProvider` + `ambientPalettePulseProvider`
+- `app/lib/views/home/decision_board/chromatic_atmosphere.dart` — renderer widget (replaces `AmbientMesh`)
+- `app/assets/textures/dither_noise.png` — 1.5%-opacity noise PNG (locked — see landmine #15)
+- `app/assets/palettes.json` — precomputed palettes for shipped asset images (speeds cold-start)
+- `scripts/generate_dither_noise.dart` — regenerates the dither PNG
+- `scripts/precompute_palettes.dart` — regenerates `palettes.json` from `app/assets/images/`
+
+**Dependencies added:** `palette_generator ^0.3.3+4`, `crclib ^3.0.0`, `shared_preferences ^2.2.0`, `image ^4.1.0` (dev-only, for the scripts).
+
+**Rules:**
+- Atmosphere sigma is effectively `whisperSigma` (14). Never stack `BackdropFilter > 24` above it (landmine #10).
+- Palette extraction is main-isolate only (landmine #11).
+- Detail pages MUST pass `routeAnimation` (landmine #12).
+- Atmosphere is silent — no haptics (landmine #13).
+- Signature generation uses Oklch (landmine #14).
+- Dither PNG stays at 0.015 opacity (landmine #15).
+
+---
+
+## Cosmos Home System (2026-04-14)
+
+**What it is:** Home replaces the old masonry-of-decisions grid with a floating-avatar surface. Transparent-PNG avatars (built via `app/apply_rembg.py`) hover in the chromatic atmosphere, one foreground at 140px + a recency-sorted queue of 6 × 48px. Tapping any avatar cross-fades in-place to a text-action surface. Action taps trigger a 1700ms vsynced reward sequence.
+
+**Architecture:**
+- `pages/home_page.dart` — cosmos Stack orchestrator with Ambient/Expanded/Rewarding state machine
+- `pages/home/cosmos_sender_model.dart` — `PendingSender` + `MessageKind` + `pendingSenderFromFeedItem` extractor
+- `pages/home/foreground_avatar.dart` — 140×140 with reward-aware levitation + plasma infusion (ColorFiltered srcATop) + ascent guillotine flip
+- `pages/home/queue_row.dart` — horizontal 6×48px row + `QueuePromotionAvatar` (Transform.translate from queue Y to foreground Y)
+- `pages/home/context_label.dart` — `Message · "subject"` (DM) or `{group} · "subject"` (group)
+- `pages/home/action_word.dart` — single text-as-action (no container, transparent-fill Container for full-slot hit zone)
+- `pages/home/action_words_row.dart` — shape-adaptive: `Yes/No/Maybe`, `Love/Works/Pass`, `Pay now/Later`, reply TextField
+- `pages/home/reward_controller.dart` — vsynced `Ticker` (NOT `Timer.periodic`) driving 1700ms timeline
+
+**Providers (in `filtered_feed_providers.dart`):**
+- `freshestPendingSenderProvider` — newest pending item's sender (foreground)
+- `pendingSendersQueueProvider` — next 6 by recency, queue excludes foreground
+
+**Principles:**
+- Zero-box (no container chrome on any widget)
+- No counts on Home (counts create obligation/stress, not dopamine)
+- Floating feel (transparent PNGs only, no rings/halos/discs/shadows)
+- Text IS the action (no glyph-buttons — `Love/Works/Pass`, not `♥/✓/✗`)
+- 3-second rule (who/where/what readable without memory work — no DM exceptions)
+- One-tap to action (tap avatar → inflate → tap word)
+- Every tap rewards (levitation + plasma infusion + atmosphere pulse + ascent + handoff)
+
+**Spec:** `docs/superpowers/specs/2026-04-14-cosmos-home-design.md`
+**Plan:** `docs/superpowers/plans/2026-04-14-cosmos-home-plan.md`
+
 ---
 
 ## Structure
