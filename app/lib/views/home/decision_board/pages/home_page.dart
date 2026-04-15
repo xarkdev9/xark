@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../providers/ambient_palette_provider.dart';
 import '../../../../providers/filtered_feed_providers.dart';
 import '../../../../providers/focus_sources_provider.dart';
 import '../../../../services/palette_extractor.dart';
@@ -11,21 +12,20 @@ import 'home/context_label.dart';
 import 'home/cosmos_sender_model.dart';
 import 'home/foreground_avatar.dart';
 import 'home/queue_row.dart';
+import 'home/reward_controller.dart';
 
-/// Cosmos Home — floating avatar surface.
+/// Cosmos Home — floating avatar surface with vsynced reward sequence.
 ///
-/// Ambient state: atmosphere + foreground avatar + context label +
-/// queue row (or "all caught up" empty state).
+/// Ambient state: atmosphere + foreground avatar + context label + queue.
+/// Expanded state: tap avatar → cross-fade to full message + actions.
+/// Rewarding state: tap action → 1700ms reward plays on locked snapshot
+///   (levitation + plasma infusion + atmosphere pulse + ascent + handoff),
+///   Expanded layer dismisses after 500ms so ActionWord plasma reaches full.
 ///
-/// Expanded state: tap any avatar (foreground or queue) → queue +
-/// label cross-fade out (180ms), full message text + ActionWordsRow
-/// cross-fade in. Tap-outside dismisses. All in-place — NO route push.
-///
-/// Action taps in this task STUB to dismissal. Task 19 replaces the
-/// stubs with the 1700ms reward sequence (levitation + plasma
-/// infusion + atmosphere pulse + ascent + handoff) + 500ms delay
-/// before the Expanded collapse so the ActionWord's plasma sweep
-/// completes visibly.
+/// Patches embedded:
+/// - v2 #1: ref.watch unconditional (subscriptions preserved during reward)
+/// - v2 #3: SingleTickerProviderStateMixin → RewardController.vsync
+/// - v2 #4: async _onActionTap with 500ms delay before Expanded collapse
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -34,27 +34,24 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   @override
   bool get wantKeepAlive => true;
 
-  /// Captured at initState to survive Riverpod 3's dispose-before-
-  /// state-dispose ordering.
   FocusSourceStack? _focusStack;
   String? _pushedSourceId;
 
-  /// The sender whose action surface is currently expanded in-place.
-  /// Null = Ambient state (queue + context label visible).
   PendingSender? _focusedSender;
-
-  /// Controller for the open-DM reply field (only populated when the
-  /// focused sender has MessageKind.openText).
   final TextEditingController _replyController = TextEditingController();
+
+  late final RewardController _rewardController;
 
   @override
   void initState() {
     super.initState();
     _focusStack = ref.read(focusSourcesProvider.notifier);
+    _rewardController = RewardController(vsync: this);
+    _rewardController.addListener(_onRewardTick);
   }
 
   @override
@@ -63,7 +60,13 @@ class _HomePageState extends ConsumerState<HomePage>
       _focusStack?.pop(_pushedSourceId!);
     }
     _replyController.dispose();
+    _rewardController.removeListener(_onRewardTick);
+    _rewardController.dispose();
     super.dispose();
+  }
+
+  void _onRewardTick() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _syncForegroundPalette(PendingSender? sender) async {
@@ -110,19 +113,80 @@ class _HomePageState extends ConsumerState<HomePage>
     });
   }
 
-  /// STUB — Task 19 replaces with reward-sequence firing + 500ms delay.
-  void _onActionTap(String word) {
-    _dismissExpansion();
+  bool _isAffirmative(String word) {
+    return word == 'Yes' ||
+        word == 'Love' ||
+        word == 'Works' ||
+        word == 'Pay now';
   }
 
-  /// STUB — Task 19 replaces with engine call + reward sequence.
-  void _onReplySubmit() {
-    _dismissExpansion();
+  AmbientPalettePulse _pulseFor(String word) {
+    if (_isAffirmative(word)) return AmbientPalettePulse.affirm;
+    if (word == 'Maybe') return AmbientPalettePulse.hesitate;
+    return AmbientPalettePulse.negate;
   }
 
-  /// Full message text shown in the Expanded state (where the
-  /// context label was). For now uses the sender's subject. Task 19's
-  /// Great Wiring fetches the real recent inbound for DMs.
+  /// Stub for engine mutation — Great Wiring pass routes this to
+  /// session.vote / session.sendText / settlement.pay.
+  void _applyAction(PendingSender sender, String word) {}
+
+  Future<void> _onActionTap(String word) async {
+    final sender = _focusedSender;
+    if (sender == null) return;
+
+    // Fire atmosphere pulse (fire-and-forget 800ms)
+    ref.read(ambientPalettePulseProvider.notifier).pulse(_pulseFor(word));
+
+    // Fire engine mutation in parallel (stubbed — Great Wiring)
+    _applyAction(sender, word);
+
+    // Start the reward-sequence animation against a snapshot.
+    // The acted-on sender is what levitates + dissolves; queue
+    // excludes them.
+    final liveQueue = ref.read(pendingSendersQueueProvider);
+    _rewardController.start(
+      foreground: sender,
+      queue: liveQueue.where((s) => s != sender).toList(),
+    );
+
+    // CRITICAL (v2-review Patch #4): wait for ActionWord's 500ms
+    // plasma sweep to finish before collapsing the Expanded layer.
+    // Collapsing in 180ms (AnimatedOpacity) would fade the word
+    // to invisible before its own reward plays — user never sees it.
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    setState(() {
+      _focusedSender = null;
+      _replyController.clear();
+    });
+  }
+
+  Future<void> _onReplySubmit() async {
+    final sender = _focusedSender;
+    if (sender == null) return;
+    final text = _replyController.text.trim();
+    if (text.isEmpty) return;
+
+    ref
+        .read(ambientPalettePulseProvider.notifier)
+        .pulse(AmbientPalettePulse.affirm);
+
+    _applyAction(sender, text);
+
+    final liveQueue = ref.read(pendingSendersQueueProvider);
+    _rewardController.start(
+      foreground: sender,
+      queue: liveQueue.where((s) => s != sender).toList(),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    setState(() {
+      _focusedSender = null;
+      _replyController.clear();
+    });
+  }
+
   String _expandedMessageText(PendingSender sender) {
     return sender.subject.isEmpty ? '(no message content)' : sender.subject;
   }
@@ -131,15 +195,32 @@ class _HomePageState extends ConsumerState<HomePage>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final foreground = ref.watch(freshestPendingSenderProvider);
-    final queue = ref.watch(pendingSendersQueueProvider);
+    // v2-review Patch #1: unconditional ref.watch. Skipping the watch
+    // based on _rewardController.isAnimating would unsubscribe the
+    // widget from the providers and (if autoDispose / eviction heuristics)
+    // destroy cached state. Watch always; branch on the value.
+    final liveForeground = ref.watch(freshestPendingSenderProvider);
+    final liveQueue = ref.watch(pendingSendersQueueProvider);
+
+    // Animation lock: during the reward, prefer the locked snapshot
+    // (captured at reward.start()) so the UI doesn't flash the next
+    // person mid-sequence. Subscription above still holds.
+    final foreground = _rewardController.isAnimating
+        ? _rewardController.lockedForeground
+        : liveForeground;
+    final queue = _rewardController.isAnimating
+        ? (_rewardController.lockedQueue ?? const <PendingSender>[])
+        : liveQueue;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncForegroundPalette(_focusedSender ?? foreground);
     });
 
-    // Empty state: no pending items at all.
-    if (foreground == null && queue.isEmpty && _focusedSender == null) {
+    // Empty state: no pending items at all (not during reward).
+    if (foreground == null &&
+        queue.isEmpty &&
+        _focusedSender == null &&
+        !_rewardController.isAnimating) {
       return AtmosphereDensityScope(
         density: AtmosphereDensity.focus,
         child: Center(
@@ -167,10 +248,7 @@ class _HomePageState extends ConsumerState<HomePage>
 
           return Stack(
             children: [
-              // Dismiss layer — always rendered, gated by IgnorePointer
-              // (landmine #9: never use `if (cond) Positioned(...)` inside
-              // a Stack with gesture recognizers; toggle hit behavior
-              // instead of mounting/unmounting).
+              // Dismiss layer — tap-outside dismisses Expanded
               Positioned.fill(
                 child: IgnorePointer(
                   ignoring: !isExpanded,
@@ -181,7 +259,7 @@ class _HomePageState extends ConsumerState<HomePage>
                 ),
               ),
 
-              // Foreground avatar — always rendered when a sender exists.
+              // Foreground avatar — reward-aware now
               if (displayedSender != null)
                 Positioned(
                   top: h * 0.18,
@@ -190,6 +268,7 @@ class _HomePageState extends ConsumerState<HomePage>
                   child: Center(
                     child: ForegroundAvatar(
                       sender: displayedSender,
+                      rewardController: _rewardController,
                       onTap: isExpanded
                           ? null
                           : () => _onAvatarTap(displayedSender),
@@ -197,8 +276,7 @@ class _HomePageState extends ConsumerState<HomePage>
                   ),
                 ),
 
-              // Ambient layer — context label + queue row.
-              // Cross-fades OUT (180ms) when _focusedSender is set.
+              // Ambient layer — context label + queue
               AnimatedOpacity(
                 opacity: isExpanded ? 0.0 : 1.0,
                 duration: const Duration(milliseconds: 180),
@@ -231,8 +309,7 @@ class _HomePageState extends ConsumerState<HomePage>
                 ),
               ),
 
-              // Expanded layer — full message text + action words row.
-              // Cross-fades IN (180ms) when _focusedSender is set.
+              // Expanded layer — full message + action words
               AnimatedOpacity(
                 opacity: isExpanded ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 180),
@@ -242,8 +319,6 @@ class _HomePageState extends ConsumerState<HomePage>
                       ? const SizedBox.shrink()
                       : Stack(
                           children: [
-                            // Full message text — where the context
-                            // label was.
                             Positioned(
                               top: h * 0.18 + 140 + 12,
                               left: 24,
@@ -262,7 +337,6 @@ class _HomePageState extends ConsumerState<HomePage>
                                 ),
                               ),
                             ),
-                            // Action words row — where the queue row was.
                             Positioned(
                               top: h * 0.18 + 140 + 12 + 130 + 32,
                               left: 32,
