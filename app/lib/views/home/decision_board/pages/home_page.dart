@@ -6,6 +6,7 @@ import '../../../../providers/focus_sources_provider.dart';
 import '../../../../services/palette_extractor.dart';
 import '../../../../theme.dart';
 import '../chromatic_atmosphere.dart';
+import 'home/action_words_row.dart';
 import 'home/context_label.dart';
 import 'home/cosmos_sender_model.dart';
 import 'home/foreground_avatar.dart';
@@ -14,9 +15,17 @@ import 'home/queue_row.dart';
 /// Cosmos Home — floating avatar surface.
 ///
 /// Ambient state: atmosphere + foreground avatar + context label +
-/// queue row (or "all caught up" empty state). Tapping an avatar
-/// will open the Expanded state in Phase 5 (Task 15); this task
-/// only builds the Ambient layer.
+/// queue row (or "all caught up" empty state).
+///
+/// Expanded state: tap any avatar (foreground or queue) → queue +
+/// label cross-fade out (180ms), full message text + ActionWordsRow
+/// cross-fade in. Tap-outside dismisses. All in-place — NO route push.
+///
+/// Action taps in this task STUB to dismissal. Task 19 replaces the
+/// stubs with the 1700ms reward sequence (levitation + plasma
+/// infusion + atmosphere pulse + ascent + handoff) + 500ms delay
+/// before the Expanded collapse so the ActionWord's plasma sweep
+/// completes visibly.
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -30,9 +39,17 @@ class _HomePageState extends ConsumerState<HomePage>
   bool get wantKeepAlive => true;
 
   /// Captured at initState to survive Riverpod 3's dispose-before-
-  /// state-dispose ordering (see root CLAUDE.md landmine #12 ancestry).
+  /// state-dispose ordering.
   FocusSourceStack? _focusStack;
   String? _pushedSourceId;
+
+  /// The sender whose action surface is currently expanded in-place.
+  /// Null = Ambient state (queue + context label visible).
+  PendingSender? _focusedSender;
+
+  /// Controller for the open-DM reply field (only populated when the
+  /// focused sender has MessageKind.openText).
+  final TextEditingController _replyController = TextEditingController();
 
   @override
   void initState() {
@@ -45,12 +62,10 @@ class _HomePageState extends ConsumerState<HomePage>
     if (_pushedSourceId != null) {
       _focusStack?.pop(_pushedSourceId!);
     }
+    _replyController.dispose();
     super.dispose();
   }
 
-  /// Push the foreground sender's signature palette into the focus
-  /// source stack at priority 20 (above tab fallback 10, below
-  /// detail-route 50 — per spec).
   Future<void> _syncForegroundPalette(PendingSender? sender) async {
     final stack = _focusStack;
     if (stack == null) return;
@@ -64,7 +79,7 @@ class _HomePageState extends ConsumerState<HomePage>
     }
 
     final id = 'home_fg_${sender.id}';
-    if (_pushedSourceId == id) return; // unchanged
+    if (_pushedSourceId == id) return;
 
     final palette = await PaletteExtractor.resolve(
       ContentRef(signatureId: sender.name, kind: 'dm'),
@@ -81,6 +96,37 @@ class _HomePageState extends ConsumerState<HomePage>
     _pushedSourceId = id;
   }
 
+  void _onAvatarTap(PendingSender sender) {
+    setState(() {
+      _focusedSender = sender;
+      _replyController.clear();
+    });
+  }
+
+  void _dismissExpansion() {
+    setState(() {
+      _focusedSender = null;
+      _replyController.clear();
+    });
+  }
+
+  /// STUB — Task 19 replaces with reward-sequence firing + 500ms delay.
+  void _onActionTap(String word) {
+    _dismissExpansion();
+  }
+
+  /// STUB — Task 19 replaces with engine call + reward sequence.
+  void _onReplySubmit() {
+    _dismissExpansion();
+  }
+
+  /// Full message text shown in the Expanded state (where the
+  /// context label was). For now uses the sender's subject. Task 19's
+  /// Great Wiring fetches the real recent inbound for DMs.
+  String _expandedMessageText(PendingSender sender) {
+    return sender.subject.isEmpty ? '(no message content)' : sender.subject;
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -88,14 +134,12 @@ class _HomePageState extends ConsumerState<HomePage>
     final foreground = ref.watch(freshestPendingSenderProvider);
     final queue = ref.watch(pendingSendersQueueProvider);
 
-    // Side-effect: keep the focus stack in sync with the foreground
-    // sender. Uses post-frame to avoid ref writes during build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncForegroundPalette(foreground);
+      _syncForegroundPalette(_focusedSender ?? foreground);
     });
 
     // Empty state: no pending items at all.
-    if (foreground == null && queue.isEmpty) {
+    if (foreground == null && queue.isEmpty && _focusedSender == null) {
       return AtmosphereDensityScope(
         density: AtmosphereDensity.focus,
         child: Center(
@@ -112,6 +156,9 @@ class _HomePageState extends ConsumerState<HomePage>
       );
     }
 
+    final isExpanded = _focusedSender != null;
+    final displayedSender = _focusedSender ?? foreground;
+
     return AtmosphereDensityScope(
       density: AtmosphereDensity.focus,
       child: LayoutBuilder(
@@ -120,32 +167,116 @@ class _HomePageState extends ConsumerState<HomePage>
 
           return Stack(
             children: [
-              // Foreground avatar — upper-third, centered
-              if (foreground != null)
+              // Dismiss layer — always rendered, gated by IgnorePointer
+              // (landmine #9: never use `if (cond) Positioned(...)` inside
+              // a Stack with gesture recognizers; toggle hit behavior
+              // instead of mounting/unmounting).
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: !isExpanded,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _dismissExpansion,
+                  ),
+                ),
+              ),
+
+              // Foreground avatar — always rendered when a sender exists.
+              if (displayedSender != null)
                 Positioned(
                   top: h * 0.18,
                   left: 0,
                   right: 0,
                   child: Center(
-                    child: ForegroundAvatar(sender: foreground),
+                    child: ForegroundAvatar(
+                      sender: displayedSender,
+                      onTap: isExpanded
+                          ? null
+                          : () => _onAvatarTap(displayedSender),
+                    ),
                   ),
                 ),
 
-              // Context label — 12pt below foreground (~140 + 12 from anchor)
-              if (foreground != null)
-                Positioned(
-                  top: h * 0.18 + 140 + 12,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: ContextLabel(sender: foreground)),
+              // Ambient layer — context label + queue row.
+              // Cross-fades OUT (180ms) when _focusedSender is set.
+              AnimatedOpacity(
+                opacity: isExpanded ? 0.0 : 1.0,
+                duration: const Duration(milliseconds: 180),
+                child: IgnorePointer(
+                  ignoring: isExpanded,
+                  child: Stack(
+                    children: [
+                      if (foreground != null)
+                        Positioned(
+                          top: h * 0.18 + 140 + 12,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: ContextLabel(sender: foreground),
+                          ),
+                        ),
+                      Positioned(
+                        top: h * 0.18 + 140 + 12 + 20 + 32,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: QueueRow(
+                            senders: queue,
+                            onTap: _onAvatarTap,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ),
 
-              // Queue row — 32pt below context label (~14pt label text + 32 gap)
-              Positioned(
-                top: h * 0.18 + 140 + 12 + 20 + 32,
-                left: 0,
-                right: 0,
-                child: Center(child: QueueRow(senders: queue)),
+              // Expanded layer — full message text + action words row.
+              // Cross-fades IN (180ms) when _focusedSender is set.
+              AnimatedOpacity(
+                opacity: isExpanded ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 180),
+                child: IgnorePointer(
+                  ignoring: !isExpanded,
+                  child: displayedSender == null || !isExpanded
+                      ? const SizedBox.shrink()
+                      : Stack(
+                          children: [
+                            // Full message text — where the context
+                            // label was.
+                            Positioned(
+                              top: h * 0.18 + 140 + 12,
+                              left: 24,
+                              right: 24,
+                              child: Text(
+                                _expandedMessageText(displayedSender),
+                                textAlign: TextAlign.center,
+                                maxLines: 5,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w400,
+                                  color: HelloColors.inkPrimary,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                            // Action words row — where the queue row was.
+                            Positioned(
+                              top: h * 0.18 + 140 + 12 + 130 + 32,
+                              left: 32,
+                              right: 32,
+                              child: ActionWordsRow(
+                                kind: displayedSender.messageKind,
+                                onAction: _onActionTap,
+                                replyController: _replyController,
+                                onReplySubmit: _onReplySubmit,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
             ],
           );
