@@ -19,13 +19,21 @@ class TriageDemoPage extends StatelessWidget {
 
 enum TriageKind { rsvp, pay, reply, vote, call, none }
 
+class TriageOption {
+  final String title;
+  final String subtitle;
+  final Color ambientColor;
+  const TriageOption({required this.title, required this.subtitle, required this.ambientColor});
+}
+
 class TriagePulse {
   final String title;
   final String subtitle;
   final TriageKind kind;
   final Color ambientColor;
+  final List<TriageOption> options;
   final dynamic payload;
-  const TriagePulse(this.title, this.subtitle, this.kind, this.ambientColor, [this.payload]);
+  const TriagePulse(this.title, this.subtitle, this.kind, this.ambientColor, {this.options = const [], this.payload});
 }
 
 class _ZItem {
@@ -48,9 +56,13 @@ class _ZStackRolodexDemoState extends State<ZStackRolodexDemo> {
   int _currentIndex = 0;
 
   final List<TriagePulse> _pulses = [
-    const TriagePulse('Vote Tokyo', '3 options available', TriageKind.vote, Color(0xFF5E2B66)),
+    TriagePulse('Vote Tokyo', '3 options available', TriageKind.vote, const Color(0xFF5E2B66), options: [
+      TriageOption(title: 'Option A: Nov 14', subtitle: 'Cherry Blossoms • \$400', ambientColor: Colors.purple.shade700),
+      TriageOption(title: 'Option B: Dec 2', subtitle: 'Winter Festival • \$450', ambientColor: Colors.pink.shade800),
+      TriageOption(title: 'Option C: Jan 10', subtitle: 'New Years • \$500', ambientColor: Colors.indigo.shade900),
+    ]),
     const TriagePulse('Pay Ram', '\$45.00', TriageKind.pay, Color(0xFFD94B2B)),
-    const TriagePulse('RSVP Dinner', 'Tomorrow at 7 PM', TriageKind.rsvp, Color(0xFF104D36), ['CAN\'T MAKE IT', 'IM IN']),
+    const TriagePulse('RSVP Dinner', 'Tomorrow at 7 PM', TriageKind.rsvp, Color(0xFF104D36), payload: ['CAN\'T MAKE IT', 'IM IN']),
     const TriagePulse('Reply Jake', '2 unread', TriageKind.reply, Color(0xFF263B6E)),
     const TriagePulse('Call Sarah', 'Missed Audio', TriageKind.call, Color(0xFF9E7B1A)),
     const TriagePulse('Sign Lease', 'Due Today', TriageKind.none, Color(0xFF2D2D2D)),
@@ -151,38 +163,35 @@ class _ZStackRolodexDemoState extends State<ZStackRolodexDemo> {
     );
   }
 
+  // ... (TriageOption definitions are inserted above the state class) ...
+
   Widget _buildMorphCard(_ZItem item) {
-    // Apple Wallet Spatial Y-Axis Math
     double translationY;
     if (item.offset == 0) {
       translationY = 0; 
     } else if (item.offset > 0) {
-      // Future queue: Space identically rendered cards upwards
-      translationY = -(item.offset * 90); 
+      translationY = -(item.offset * 64); 
     } else {
-      // Past items: Track finger 1:1 downwards into abyss (PageView height is 520)
       translationY = item.distance * 520;
     }
 
-    final double scale = (1 - (item.distance * 0.04)).clamp(0.85, 1.0); // Slight 3D inward depth
+    final double scale = (1 - (item.distance * 0.04)).clamp(0.85, 1.0);
     final double opacity = item.distance < 0.2 ? 1.0 : (1 - (item.distance * 0.15)).clamp(0.4, 1.0);
 
     final transform = Matrix4.identity()
       ..translate(0.0, translationY, 0.0)
       ..scale(scale);
 
-    // Apple Wallet Stack requires ALL cards to maintain structural dimensions
-    // so they physically occlude the cards behind them perfectly.
+    // Unified Outer Shell (Never breaks, prevents vertical 'hairline' bleeding)
     Widget content = Align(
       alignment: Alignment.bottomCenter,
       child: Container(
-        width: MediaQuery.of(context).size.width - 72, // Narrowed from 40 for a much vertically-taller squircle proportion
-        height: 380, // Reduced from 480 to leave room for the top stack
+        width: MediaQuery.of(context).size.width - 72,
+        height: 380,
         decoration: BoxDecoration(
-           color: item.pulse.ambientColor.withValues(alpha: 0.95), // Thicker color for occlusion
+           color: item.pulse.ambientColor.withValues(alpha: 0.95), 
            borderRadius: BorderRadius.circular(44),
            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-           // Project shadow upwards instead of downwards, giving thick volume to the stack
            boxShadow: [
              BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 30, offset: const Offset(0, -15))
            ],
@@ -192,52 +201,109 @@ class _ZStackRolodexDemoState extends State<ZStackRolodexDemo> {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 28, 28, 28),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                // Fills the spatial bounds
                 children: [
-                  // Top Edge Title (This precisely peeks out from behind the active card)
+                  // STATIC TOP HEADER (Always Contextually Locked)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(item.pulse.title, style: HelloText.display.copyWith(fontSize: 28, color: Colors.white, height: 1.1), overflow: TextOverflow.ellipsis),
+                      Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.2)),
+                        alignment: Alignment.center,
+                        child: Text(item.pulse.title.isNotEmpty ? item.pulse.title[0] : 'U', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Opacity(
-                          opacity: (1 - (item.distance * 2)).clamp(0.0, 1.0),
-                          child: Text(item.pulse.subtitle, style: HelloText.caption.copyWith(color: Colors.white.withValues(alpha: 0.7)), overflow: TextOverflow.ellipsis, textAlign: TextAlign.right),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              item.pulse.title, 
+                              style: HelloText.title.copyWith(fontSize: 17, color: Colors.white, fontWeight: FontWeight.w600, height: 1.2), 
+                              maxLines: 2, 
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Opacity(
+                              opacity: 0.75,
+                              child: Text(
+                                item.pulse.subtitle, 
+                                style: HelloText.caption.copyWith(color: Colors.white, fontSize: 13), 
+                                maxLines: 1, 
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                   
-                  // Internal Content: Smoothly fades in/out as it slides between Active/Queue states
+                  // INTERNAL DYNAMIC PAYLOAD
                   Expanded(
                     child: Opacity(
                       opacity: (1 - (item.distance * 1.5)).clamp(0.0, 1.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Spacer(),
-                          // Rich Icon suspending in the center void
-                          Center(
-                            child: Icon(
-                              item.pulse.kind == TriageKind.pay ? Icons.apple 
-                              : item.pulse.kind == TriageKind.call ? Icons.phone 
-                              : Icons.dashboard_customize_outlined,
-                              color: Colors.white.withValues(alpha: 0.15),
-                              size: 96,
+                      child: item.pulse.options.isNotEmpty
+                          // MULTI-OPTION NESTED RAIL (Card inside Card)
+                          ? LayoutBuilder(
+                              builder: (context, constraints) {
+                                return PageView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(),
+                                  // Slight peek visibility of next option to indicate scrollability natively
+                                  controller: PageController(viewportFraction: 0.88),
+                                  padEnds: false, // Start flush left
+                                  itemCount: item.pulse.options.length,
+                                  itemBuilder: (context, idx) {
+                                    final opt = item.pulse.options[idx];
+                                    return Container(
+                                      margin: EdgeInsets.only(right: 12, top: 20, bottom: 8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(32),
+                                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Column(
+                                            children: [
+                                              Text(opt.title, style: HelloText.title.copyWith(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600)),
+                                              const SizedBox(height: 4),
+                                              Text(opt.subtitle, style: HelloText.caption.copyWith(color: Colors.white70)),
+                                            ],
+                                          ),
+                                          _buildPill('VOTE', true),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                );
+                              }
+                            )
+                          // SINGLE SINGLE-ACTION CONTENT
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Spacer(),
+                                Center(
+                                  child: Icon(
+                                    item.pulse.kind == TriageKind.pay ? Icons.apple 
+                                    : item.pulse.kind == TriageKind.call ? Icons.phone 
+                                    : Icons.dashboard_customize_outlined,
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    size: 96,
+                                  ),
+                                ),
+                                const Spacer(),
+                                _buildActionPills(item.pulse),
+                              ],
                             ),
-                          ),
-                          const Spacer(),
-
-                          // ACTION BOUNDARY: Perfectly locked to bottom margin for thumb physics
-                          _buildActionPills(item.pulse),
-                        ],
-                      ),
                     ),
                   ),
                 ],

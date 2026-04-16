@@ -46,6 +46,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 19. **`RewardController` is vsynced via `Ticker`, not `Timer.periodic`.** On 120Hz ProMotion (8.33ms refresh), an event-loop Timer guarantees micro-stutters and frame tearing. `_HomePageState` mixes in `SingleTickerProviderStateMixin` and passes `vsync: this` to `RewardController`'s constructor. Never replace with a Timer.
 
+20. **NEVER run `git filter-repo` without first running `git stash push --include-untracked`.** Historically `app/lib/` contained untracked source files that `filter-repo --force` permanently destroyed (see the April 15 incident report at `apr15_claude_stupidity.md`). Even now that `app/lib/` is fully tracked, any future addition of untracked files (assets, demo scripts, scratch files) is at risk. The correct sequence is: (1) `git stash push --include-untracked -m "pre-filter-repo"`, (2) verify the stash actually captured working-tree contents (`git stash show -p | head`), (3) run `filter-repo`, (4) `git stash pop`. Never skip steps 1 or 2.
+
 ---
 
 ## Chromatic Atmosphere System (Night Shift #3, 2026-04-14)
@@ -626,6 +628,3 @@ Project changelog lives at `docs/CHANGELOG.md`. **Append-only**, newest entries 
 - `web/CLAUDE.md` — Per-package Next.js 16 web guidance (full 53-route inventory, CSS variable inversion, request flow)
 - `algo/CLAUDE.md` — Per-package TypeScript decision engine guidance (hexagonal architecture, state flows, signal vocabulary)
 - `xpensly/CLAUDE.md`, `xpensly/xpensly_core/CLAUDE.md`, `xpensly/xpensly_ui/CLAUDE.md` — Per-package Xpensly SDK guidance
-
-## CRITICAL LANDMINE
-NEVER run `git filter-repo` without first running `git stash push --include-untracked`. The app/lib/ directory contains untracked files that will be permanently destroyed by git tree resets.

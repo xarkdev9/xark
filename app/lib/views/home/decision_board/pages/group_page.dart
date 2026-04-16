@@ -141,8 +141,6 @@ class _GroupPageState extends ConsumerState<GroupPage> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     final name = _displayName();
-    final memberCount = widget.item.conversation.participantIds.length;
-    final unread = widget.item.conversation.unreadCount;
     return AtmosphereDensityScope(
       density: AtmosphereDensity.focus,
       child: Scaffold(

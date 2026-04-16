@@ -687,5 +687,26 @@ class _StubActionCard extends StatelessWidget {
   _StubActionCard({this.item});
   final dynamic item;
   @override
-  Widget build(BuildContext context) => SizedBox.shrink();
+  Widget build(BuildContext context) {
+    return Container(
+      height: 160,
+      decoration: BoxDecoration(
+        color: Colors.redAccent.withValues(alpha: 0.12),
+        border: Border.all(color: Colors.redAccent, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        '[ MISSING ACTION CARD: NEEDS REBUILD ]',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+          letterSpacing: 1.2,
+          color: Colors.redAccent,
+        ),
+      ),
+    );
+  }
 }
