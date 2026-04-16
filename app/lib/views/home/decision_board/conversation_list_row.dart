@@ -64,7 +64,7 @@ class ConversationListRow extends StatelessWidget {
         highlightColor: Colors.black.withValues(alpha: 0.02),
         child: Container(
           height: 74,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
@@ -78,14 +78,14 @@ class ConversationListRow extends StatelessWidget {
               Container(
                 width: 50,
                 height: 50,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: HelloColors.recessed,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   initial,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 18,
                     fontWeight: FontWeight.w400,
@@ -104,7 +104,7 @@ class ConversationListRow extends StatelessWidget {
                         Expanded(
                           child: Text(
                             name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 16,
                               fontWeight: FontWeight.w400,
@@ -118,7 +118,7 @@ class ConversationListRow extends StatelessWidget {
                         const SizedBox(width: 10),
                         Text(
                           _timestampText(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
@@ -134,7 +134,7 @@ class ConversationListRow extends StatelessWidget {
                         Expanded(
                           child: Text(
                             subtitleText,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 14,
                               fontWeight: FontWeight.w300,
@@ -173,14 +173,14 @@ class _UnreadBadge extends StatelessWidget {
     final text = count > 99 ? '99+' : '$count';
     return PlasmaFill(
       borderRadius: BorderRadius.circular(9),
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: EdgeInsets.symmetric(horizontal: 6),
       child: Container(
         constraints: const BoxConstraints(minWidth: 18),
         height: 18,
         alignment: Alignment.center,
         child: Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 11,
             fontWeight: FontWeight.w400,

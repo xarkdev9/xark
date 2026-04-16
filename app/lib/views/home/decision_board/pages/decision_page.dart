@@ -140,14 +140,14 @@ class _DecisionPageState extends ConsumerState<_DecisionPage> {
           children: [
             // Top bar with back button and eyebrow
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+              padding: EdgeInsets.fromLTRB(8, 8, 20, 0),
               child: Row(
                 children: [
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => Navigator.of(context).pop(),
                     child: Padding(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8),
                       child: Icon(
                         Icons.arrow_back_ios_new_rounded,
                         size: 20,
@@ -175,12 +175,12 @@ class _DecisionPageState extends ConsumerState<_DecisionPage> {
             // Scrollable content
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                padding: EdgeInsets.fromLTRB(20, 20, 20, 40),
                 children: [
                   // Photo
                   if (data.photoUrl != null)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
+                      padding: EdgeInsets.only(bottom: 16),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: AspectRatio(
@@ -333,7 +333,7 @@ class _VoteButton extends StatelessWidget {
                   child: PlasmaTint(
                     child: Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 16,
                         fontWeight: FontWeight.w400,

@@ -86,5 +86,36 @@ class _SettlementPageState extends ConsumerState<_SettlementPage> {
           children: [
             // Top bar with back button and eyebrow
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+              padding: EdgeInsets.fromLTRB(8, 8, 20, 0),
               child: Row(
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: HelloColors.inkPrimary),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Settlement',
+                    style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w400, letterSpacing: 1.5, color: HelloColors.inkTertiary),
+                  ),
+                ],
+              ),
+            ),
+            // NOTE: settlement_page.dart was truncated during recovery.
+            // Content below the top bar needs to be rebuilt from spec.
+            Expanded(
+              child: Center(
+                child: Text('Settlement details — rebuilding', style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w400, color: HelloColors.inkTertiary)),
+              ),
+            ),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+}

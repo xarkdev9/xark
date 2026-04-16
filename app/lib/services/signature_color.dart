@@ -1,4 +1,4 @@
-import 'package:crclib/crclib.dart';
+import 'package:crclib/catalog.dart';
 import 'package:flutter/material.dart';
 
 import '../models/ambient_palette.dart';
@@ -12,7 +12,7 @@ import 'oklch.dart';
 /// IMPORTANT (landmine #14): uses Oklch, NOT HSL. HSL has
 /// non-uniform perceived brightness across hues.
 AmbientPalette signaturePalette(String seed) {
-  final crc = Crc32().convert(seed.codeUnits).toBigInt().toInt();
+  final crc = Crc32().convert(seed.codeUnits).toInt();
 
   // Base hue from CRC, distributed across full circle
   final baseHue = (crc % 360).toDouble();

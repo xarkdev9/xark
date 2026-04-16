@@ -234,7 +234,7 @@ class _ChatBubbleState extends State<ChatBubble>
                   // consecutive messages (iMessage cluster pattern).
                   if (!widget.isOutbound && widget.senderId != null) ...[
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: EdgeInsets.only(bottom: 6),
                       child: showAvatar
                           ? _BubbleAvatar(
                               name: _displayName(widget.senderId),
@@ -254,10 +254,10 @@ class _ChatBubbleState extends State<ChatBubble>
                     // Sender name for incoming group messages
                     if (!widget.isOutbound && widget.isFirstInGroup && widget.senderId != null)
                       Padding(
-                        padding: const EdgeInsets.only(left: 20, bottom: 3),
+                        padding: EdgeInsets.only(left: 20, bottom: 3),
                         child: Text(
                           _displayName(widget.senderId),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 11,
                             fontWeight: FontWeight.w300,
@@ -282,7 +282,7 @@ class _ChatBubbleState extends State<ChatBubble>
                             ),
                             padding: widget.mediaChild != null
                                 ? EdgeInsets.zero
-                                : const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                                : EdgeInsets.fromLTRB(12, 8, 12, 8),
                             decoration: BoxDecoration(
                               color: bubbleColor,
                               borderRadius: _buildCornerRadii(),
@@ -299,7 +299,7 @@ class _ChatBubbleState extends State<ChatBubble>
                                         widget.mediaChild!,
                                         if (widget.text.isNotEmpty)
                                           Padding(
-                                            padding: const EdgeInsets.fromLTRB(
+                                            padding: EdgeInsets.fromLTRB(
                                               12,
                                               6,
                                               12,
@@ -325,7 +325,7 @@ class _ChatBubbleState extends State<ChatBubble>
                         child: Transform.translate(
                           offset: const Offset(0, -6),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
@@ -336,7 +336,7 @@ class _ChatBubbleState extends State<ChatBubble>
                                 ),
                               ],
                             ),
-                            child: Text(_reaction!, style: const TextStyle(fontSize: 16)),
+                            child: Text(_reaction!, style: TextStyle(fontSize: 16)),
                           ),
                         ),
                       ),
@@ -344,9 +344,9 @@ class _ChatBubbleState extends State<ChatBubble>
                     // Reaction picker (floating emoji row on long press)
                     if (_showReactionPicker)
                       Padding(
-                        padding: const EdgeInsets.only(top: 4, bottom: 4),
+                        padding: EdgeInsets.only(top: 4, bottom: 4),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
@@ -370,8 +370,8 @@ class _ChatBubbleState extends State<ChatBubble>
                                   });
                                 },
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                                  padding: EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text(emoji, style: TextStyle(fontSize: 24)),
                                 ),
                               ),
                             ).toList(),
@@ -396,7 +396,7 @@ class _ChatBubbleState extends State<ChatBubble>
   Widget _buildTextContent() {
     return Text(
       widget.text,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'Inter',
         fontSize: 16,
         fontWeight: FontWeight.w400,
@@ -419,14 +419,14 @@ class _BubbleAvatar extends StatelessWidget {
     return Container(
       width: 28,
       height: 28,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: HelloColors.recessed,
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
       child: Text(
         initial,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 12,
           fontWeight: FontWeight.w400,

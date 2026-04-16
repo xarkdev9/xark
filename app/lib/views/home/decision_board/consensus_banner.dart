@@ -107,7 +107,7 @@ class _ConsensusBannerState extends State<ConsensusBanner> with SingleTickerProv
                   ],
                 ),
               ),
-            ),,
+            ),
         );
       },
     );

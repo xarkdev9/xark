@@ -152,14 +152,14 @@ class _SearchSheet extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
                     Expanded(
                       child: Container(
                         height: 44,
                         padding:
-                            const EdgeInsets.symmetric(horizontal: 16),
+                            EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
                           color: HelloColors.recessed,
                           borderRadius: BorderRadius.circular(22),
@@ -241,7 +241,7 @@ class _SearchSheet extends ConsumerWidget {
                       behavior: HitTestBehavior.opaque,
                       onTap: () => _jumpTo(rowContext, entry),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 10,
                         ),
@@ -250,14 +250,14 @@ class _SearchSheet extends ConsumerWidget {
                             Container(
                               width: 40,
                               height: 40,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: HelloColors.recessed,
                                 shape: BoxShape.circle,
                               ),
                               alignment: Alignment.center,
                               child: Text(
                                 initial,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 15,
                                   fontWeight: FontWeight.w400,
@@ -273,7 +273,7 @@ class _SearchSheet extends ConsumerWidget {
                                 children: [
                                   Text(
                                     name,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Inter',
                                       fontSize: 15,
                                       fontWeight: FontWeight.w400,
@@ -285,7 +285,7 @@ class _SearchSheet extends ConsumerWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     _eyebrow(entry),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Inter',
                                       fontSize: 10,
                                       fontWeight: FontWeight.w400,

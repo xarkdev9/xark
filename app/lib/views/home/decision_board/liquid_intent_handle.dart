@@ -256,7 +256,7 @@ class _ActiveContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
      return Padding(
-       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
        child: Row(
          crossAxisAlignment: CrossAxisAlignment.center,
          children: [
@@ -315,7 +315,7 @@ class _ActiveContent extends StatelessWidget {
                   BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: Offset(0, 2)),
                 ],
               ),
-              child: const Icon(Icons.add_rounded, size: 20, color: HelloColors.pulse),
+              child: Icon(Icons.add_rounded, size: 20, color: HelloColors.pulse),
             ),
          ],
        ),

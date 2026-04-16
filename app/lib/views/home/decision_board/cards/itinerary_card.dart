@@ -34,7 +34,7 @@ class ItineraryCard extends StatelessWidget {
         children: [
           Text(
             _countdown(),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 9,
               fontWeight: FontWeight.w400,
@@ -45,7 +45,7 @@ class ItineraryCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             item.event.title,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 17,
               fontWeight: FontWeight.w400,
@@ -58,7 +58,7 @@ class ItineraryCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             item.event.location,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
               fontWeight: FontWeight.w300,
@@ -70,7 +70,7 @@ class ItineraryCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             '${item.event.memberIds.length} attending',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 10,
               fontWeight: FontWeight.w400,

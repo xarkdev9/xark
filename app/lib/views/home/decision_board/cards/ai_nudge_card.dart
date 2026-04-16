@@ -26,7 +26,7 @@ class AiNudgeCard extends StatelessWidget {
               Container(
                 width: 6,
                 height: 6,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: HelloColors.focusAlpine,
                   shape: BoxShape.circle,
                 ),
@@ -47,7 +47,7 @@ class AiNudgeCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             item.message,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 14,
               fontWeight: FontWeight.w300,
@@ -63,7 +63,7 @@ class AiNudgeCard extends StatelessWidget {
               children: [
                 Text(
                   item.ctaLabel!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
@@ -71,7 +71,7 @@ class AiNudgeCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(
+                Icon(
                   Icons.arrow_forward_rounded,
                   size: 14,
                   color: HelloColors.focusAlpine,

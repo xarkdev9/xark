@@ -63,7 +63,7 @@ class DecisionCardHero extends StatelessWidget {
                         Container(
                           width: 6,
                           height: 6,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: HelloColors.liveGreen,
                             shape: BoxShape.circle,
                           ),
@@ -71,7 +71,7 @@ class DecisionCardHero extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           item.liveTag!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 9,
                             fontWeight: FontWeight.w400,
@@ -84,7 +84,7 @@ class DecisionCardHero extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     item.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 20,
                       fontWeight: FontWeight.w400,
@@ -109,7 +109,7 @@ class DecisionCardHero extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     '${item.votedCount} of ${item.totalCount} voted',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 10,
                       fontWeight: FontWeight.w400,

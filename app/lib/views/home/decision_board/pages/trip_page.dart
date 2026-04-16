@@ -163,7 +163,7 @@ class _TripPageState extends ConsumerState<_TripPage> {
                         shape: BoxShape.circle,
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_back_ios_new_rounded,
                         size: 18,
                         color: Colors.white,
@@ -178,7 +178,7 @@ class _TripPageState extends ConsumerState<_TripPage> {
           // Trip details
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+              padding: EdgeInsets.fromLTRB(20, 24, 20, 40),
               children: [
                 // Phase badge
                 Row(

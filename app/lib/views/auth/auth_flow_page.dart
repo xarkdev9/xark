@@ -216,7 +216,7 @@ class _AuthFlowPageState extends ConsumerState<AuthFlowPage> {
       backgroundColor: HelloColors.voidBg,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          padding: EdgeInsets.symmetric(horizontal: 32.0),
           child: Column(
             children: [
               Expanded(
@@ -255,7 +255,7 @@ class _AuthFlowPageState extends ConsumerState<AuthFlowPage> {
               ),
               if (authState.error != null)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 32.0),
+                  padding: EdgeInsets.only(bottom: 32.0),
                   child: Text(
                     authState.error!,
                     style: HelloTypography.body.copyWith(

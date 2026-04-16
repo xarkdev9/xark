@@ -38,14 +38,14 @@ class MemoryCard extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   item.eyebrow,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 9,
                     fontWeight: FontWeight.w400,
@@ -56,7 +56,7 @@ class MemoryCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   item.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
@@ -67,7 +67,7 @@ class MemoryCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   item.body,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 12,
                     fontWeight: FontWeight.w300,

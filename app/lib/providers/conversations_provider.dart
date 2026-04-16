@@ -1,37 +1,27 @@
 import 'package:e2ee_chat_sdk/e2ee_chat.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../main.dart' show engineProvider;
-import 'mock_data.dart';
-
-/// Safely resolves the engine, returning null if not yet initialized.
-/// The global engineProvider throws UnimplementedError until auth
-/// completes — this helper converts that into a nullable so the
-/// home screen can render an empty / loading state gracefully.
-ChatEngine? _engineOrNull(Ref ref) {
-  try {
-    return ref.watch(engineProvider);
-  } catch (_) {
-    return null;
-  }
-}
+import 'engine_helpers.dart';
 
 /// Live stream of all conversations from the engine. Emits an
 /// empty list while the engine is uninitialized.
-///
-/// When [kUseMockData] is `true`, short-circuits to the static
-/// list from `mock_data.dart` so the home screen can be reviewed
-/// visually without auth.
 final conversationsStreamProvider =
     StreamProvider<List<Conversation>>((ref) {
-  if (kUseMockData) {
-    return Stream<List<Conversation>>.value(mockConversations);
-  }
-  final engine = _engineOrNull(ref);
+  final engine = engineOrNull(ref);
   if (engine == null) {
     return Stream<List<Conversation>>.value(const <Conversation>[]);
   }
   return engine.conversations;
+});
+
+/// Per-conversation message controller (family provider).
+final conversationControllerProvider =
+    StreamProvider.family<List<Message>, String>((ref, conversationId) {
+  final engine = engineOrNull(ref);
+  if (engine == null) {
+    return Stream<List<Message>>.value(const <Message>[]);
+  }
+  return engine.getSession(conversationId).messages;
 });
 
 int _unreadFirstThenRecent(Conversation a, Conversation b) {

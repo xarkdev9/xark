@@ -92,7 +92,7 @@ class _AttachmentSheet extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
                     const Expanded(
@@ -113,12 +113,12 @@ class _AttachmentSheet extends StatelessWidget {
                       child: Container(
                         width: 32,
                         height: 32,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: HelloColors.recessed,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(
+                        child: Icon(
                           Icons.close_rounded,
                           size: 18,
                           color: HelloColors.inkSecondary,
@@ -131,7 +131,7 @@ class _AttachmentSheet extends StatelessWidget {
               const SizedBox(height: 24),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: 20),
                   child: GridView.count(
                     crossAxisCount: 3,
                     mainAxisSpacing: 16,
@@ -171,7 +171,7 @@ class _AttachmentSheet extends StatelessWidget {
                                 const SizedBox(height: 10),
                                 Text(
                                   label,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 12,
                                     fontWeight: FontWeight.w400,

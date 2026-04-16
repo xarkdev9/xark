@@ -104,7 +104,7 @@ class _NewChatSheet extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
                     const Expanded(
@@ -141,12 +141,12 @@ class _NewChatSheet extends StatelessWidget {
                       child: Container(
                         width: 32,
                         height: 32,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: HelloColors.recessed,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(
+                        child: Icon(
                           Icons.close_rounded,
                           size: 18,
                           color: HelloColors.inkSecondary,
@@ -159,7 +159,7 @@ class _NewChatSheet extends StatelessWidget {
               const SizedBox(height: 20),
               Expanded(
                 child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: 20),
                   itemCount: _options.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, i) {
@@ -169,7 +169,7 @@ class _NewChatSheet extends StatelessWidget {
                       behavior: HitTestBehavior.opaque,
                       onTap: () => Navigator.of(context).pop(),
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: HelloColors.recessed,
                           borderRadius: BorderRadius.circular(16),
@@ -202,7 +202,7 @@ class _NewChatSheet extends StatelessWidget {
                                 children: [
                                   Text(
                                     title,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Inter',
                                       fontSize: 15,
                                       fontWeight: FontWeight.w400,
@@ -212,7 +212,7 @@ class _NewChatSheet extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     subtitle,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Inter',
                                       fontSize: 12,
                                       fontWeight: FontWeight.w300,
@@ -222,7 +222,7 @@ class _NewChatSheet extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const Icon(
+                            Icon(
                               Icons.arrow_forward_rounded,
                               size: 16,
                               color: HelloColors.inkTertiary,

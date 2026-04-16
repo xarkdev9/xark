@@ -137,7 +137,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                   onTap: _submit,
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
                       color: HelloColors.accent,
                       borderRadius: BorderRadius.circular(20),
@@ -148,7 +148,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                         fontFamily: 'Inter',
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: HelloColors.chrome,
+                        color: HelloColors.surfaceDeep,
                       ),
                     ),
                   ),

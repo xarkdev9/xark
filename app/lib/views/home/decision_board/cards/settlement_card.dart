@@ -69,7 +69,7 @@ class SettlementCard extends StatelessWidget {
               const SizedBox(width: 2),
               Text(
                 abs,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 28,
                   fontWeight: FontWeight.w400,
@@ -84,7 +84,7 @@ class SettlementCard extends StatelessWidget {
             s.isOwedToYou
                 ? 'from ${s.counterpartyName}'
                 : 'to ${s.counterpartyName}',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 13,
               fontWeight: FontWeight.w400,
@@ -94,7 +94,7 @@ class SettlementCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             s.reason,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 11,
               fontWeight: FontWeight.w300,

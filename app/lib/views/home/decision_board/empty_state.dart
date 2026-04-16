@@ -20,7 +20,7 @@ class HelloEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        padding: EdgeInsets.symmetric(horizontal: 40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

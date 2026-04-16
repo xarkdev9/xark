@@ -18,19 +18,23 @@ class ConsensusWatcher extends ConsumerStatefulWidget {
 }
 
 class _ConsensusWatcherState extends ConsumerState<ConsensusWatcher> {
-  String? _lockedItemId;
+  bool _showBanner = false;
+  String _bannerText = 'Consensus Reached';
   Timer? _dismissTimer;
 
   @override
   void initState() {
     super.initState();
     ref.listenManual(playgroundConsensusEventProvider, (_, next) {
-      final itemId = next.valueOrNull;
-      if (itemId != null && itemId != _lockedItemId) {
-        setState(() => _lockedItemId = itemId);
+      final itemId = next.value;
+      if (itemId != null) {
+        setState(() {
+          _showBanner = true;
+          _bannerText = 'Consensus reached!';
+        });
         _dismissTimer?.cancel();
         _dismissTimer = Timer(const Duration(seconds: 4), () {
-          if (mounted) setState(() => _lockedItemId = null);
+          if (mounted) setState(() => _showBanner = false);
         });
       }
     });
@@ -48,16 +52,15 @@ class _ConsensusWatcherState extends ConsumerState<ConsensusWatcher> {
       fit: StackFit.expand,
       children: [
         Positioned.fill(child: widget.child),
-        if (_lockedItemId != null)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 16,
-            right: 16,
-            child: ConsensusBanner(
-              itemId: _lockedItemId!,
-              onDismiss: () => setState(() => _lockedItemId = null),
-            ),
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 8,
+          left: 16,
+          right: 16,
+          child: ConsensusBanner(
+            isVisible: _showBanner,
+            text: _bannerText,
           ),
+        ),
       ],
     );
   }

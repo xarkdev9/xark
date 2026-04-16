@@ -93,14 +93,14 @@ class _SettlementSheet extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
                     Expanded(
                       child: s.isOwedToYou
                           ? Text(
                               'OWED TO YOU',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 10,
                                 fontWeight: FontWeight.w400,
@@ -127,12 +127,12 @@ class _SettlementSheet extends StatelessWidget {
                       child: Container(
                         width: 32,
                         height: 32,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: HelloColors.recessed,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(
+                        child: Icon(
                           Icons.close_rounded,
                           size: 18,
                           color: HelloColors.inkSecondary,
@@ -144,7 +144,7 @@ class _SettlementSheet extends StatelessWidget {
               ),
               const SizedBox(height: 28),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
                     Row(
@@ -152,7 +152,7 @@ class _SettlementSheet extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
+                          padding: EdgeInsets.only(bottom: 14),
                           child: Text(
                             prefix,
                             style: TextStyle(
@@ -167,7 +167,7 @@ class _SettlementSheet extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           abs,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 72,
                             fontWeight: FontWeight.w400,
@@ -183,7 +183,7 @@ class _SettlementSheet extends StatelessWidget {
                       s.isOwedToYou
                           ? 'from ${s.counterpartyName}'
                           : 'to ${s.counterpartyName}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 16,
                         fontWeight: FontWeight.w400,
@@ -193,7 +193,7 @@ class _SettlementSheet extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       s.reason,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 13,
                         fontWeight: FontWeight.w300,
@@ -205,7 +205,7 @@ class _SettlementSheet extends StatelessWidget {
               ),
               const Spacer(),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 24),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => Navigator.of(context).pop(),
@@ -230,7 +230,7 @@ class _SettlementSheet extends StatelessWidget {
                         )
                       : PlasmaFill(
                           borderRadius: BorderRadius.circular(14),
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          padding: EdgeInsets.symmetric(horizontal: 20),
                           height: 56,
                           child: const Center(
                             child: Text(

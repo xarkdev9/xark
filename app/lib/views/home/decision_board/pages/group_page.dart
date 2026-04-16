@@ -200,7 +200,7 @@ class _GroupPageState extends ConsumerState<GroupPage> with SingleTickerProvider
                 children: [
                   const SizedBox(height: 10),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -208,7 +208,7 @@ class _GroupPageState extends ConsumerState<GroupPage> with SingleTickerProvider
                           behavior: HitTestBehavior.opaque,
                           onTap: () => Navigator.of(context).pop(),
                           child: Padding(
-                            padding: const EdgeInsets.only(right: 12, left: 4, top: 4, bottom: 4),
+                            padding: EdgeInsets.only(right: 12, left: 4, top: 4, bottom: 4),
                             child: Icon(
                               CupertinoIcons.back, 
                               size: 28, 
@@ -391,7 +391,7 @@ class _GroupPageState extends ConsumerState<GroupPage> with SingleTickerProvider
               ),
               error: (e, _) => Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(32),
+                  padding: EdgeInsets.all(32),
                   child: Text(
                     'Could not load messages',
                     style: TextStyle(

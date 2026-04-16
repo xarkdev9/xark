@@ -131,7 +131,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
               ),
               const SizedBox(height: 14),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
                     Expanded(
@@ -154,12 +154,12 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                       child: Container(
                         width: 32,
                         height: 32,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: HelloColors.recessed,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(
+                        child: Icon(
                           Icons.close_rounded,
                           size: 18,
                           color: HelloColors.inkSecondary,
@@ -171,7 +171,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, 16),
                   children: [
                     if (data.isLiveEvent)
                       _ConstellationHero(score: scorePct)
@@ -198,7 +198,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                     const SizedBox(height: 16),
                     Text(
                       data.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 26,
                         fontWeight: FontWeight.w400,
@@ -211,7 +211,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                       const SizedBox(height: 6),
                       Text(
                         data.subtitle!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 14,
                           fontWeight: FontWeight.w300,
@@ -224,7 +224,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                       children: [
                         Text(
                           '$scorePct%',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 36,
                             fontWeight: FontWeight.w400,
@@ -306,7 +306,7 @@ class _BigVoteButton extends StatelessWidget {
                   child: PlasmaTint(
                     child: Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 16,
                         fontWeight: FontWeight.w400,
@@ -326,7 +326,7 @@ class _BigVoteButton extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
@@ -396,7 +396,7 @@ class _ConstellationHero extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     '$score',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 72,
                       fontWeight: FontWeight.w400,
@@ -452,7 +452,7 @@ class _ConstellationNode extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 9,
             fontWeight: FontWeight.w400,

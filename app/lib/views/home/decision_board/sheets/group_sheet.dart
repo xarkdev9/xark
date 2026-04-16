@@ -113,7 +113,7 @@ class _GroupSheet extends StatelessWidget {
       subtitle: '$memberCount members · $unread unread',
       avatarInitial: name.isNotEmpty ? name[0].toUpperCase() : '?',
       body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         itemCount: messages.length,
         itemBuilder: (_, i) {
           final msg = messages[i];
@@ -127,7 +127,7 @@ class _GroupSheet extends StatelessWidget {
         },
       ),
       footer: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: MessageInputBar(
           hintText: 'Message $name',
           onPlusTap: () => openAttachmentSheet(context),
@@ -209,7 +209,7 @@ class _GroupSheetShell extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -228,7 +228,7 @@ class _GroupSheetShell extends StatelessWidget {
                         alignment: Alignment.center,
                         child: Text(
                           avatarInitial!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 18,
                             fontWeight: FontWeight.w400,
@@ -244,7 +244,7 @@ class _GroupSheetShell extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 24,
                               fontWeight: FontWeight.w400,
@@ -255,7 +255,7 @@ class _GroupSheetShell extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             subtitle,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 12,
                               fontWeight: FontWeight.w300,
@@ -271,12 +271,12 @@ class _GroupSheetShell extends StatelessWidget {
                       child: Container(
                         width: 32,
                         height: 32,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: HelloColors.recessed,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(
+                        child: Icon(
                           Icons.close_rounded,
                           size: 18,
                           color: HelloColors.inkSecondary,

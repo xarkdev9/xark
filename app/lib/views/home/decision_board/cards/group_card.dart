@@ -50,14 +50,14 @@ class GroupCard extends StatelessWidget {
               Container(
                 width: 36,
                 height: 36,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: HelloColors.recessed,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   initial,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
@@ -73,7 +73,7 @@ class GroupCard extends StatelessWidget {
                   children: [
                     Text(
                       _displayName(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -90,7 +90,7 @@ class GroupCard extends StatelessWidget {
                             ? PlasmaTint(
                                 child: Text(
                                   _eyebrow(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 9,
                                     fontWeight: FontWeight.w400,
@@ -101,7 +101,7 @@ class GroupCard extends StatelessWidget {
                               )
                             : Text(
                                 _eyebrow(),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 9,
                                   fontWeight: FontWeight.w400,
@@ -129,7 +129,7 @@ class GroupCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             preview.isEmpty ? 'No activity yet' : preview,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 13,
               fontWeight: FontWeight.w300,
@@ -142,7 +142,7 @@ class GroupCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             '$memberCount members',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 10,
               fontWeight: FontWeight.w400,

@@ -78,7 +78,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
         const SizedBox(width: 10),
         Expanded(
           child: Container(
-            padding: const EdgeInsets.symmetric(
+            padding: EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 8,
             ),
@@ -99,7 +99,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
               maxLines: 4,
               cursorColor: HelloColors.inkPrimary,
               cursorWidth: 1,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
@@ -108,7 +108,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
               ),
               decoration: InputDecoration(
                 hintText: widget.hintText,
-                hintStyle: const TextStyle(
+                hintStyle: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 15,
                   fontWeight: FontWeight.w300,

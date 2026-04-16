@@ -55,7 +55,7 @@ class DmCard extends StatelessWidget {
                   children: [
                     Text(
                       _displayName(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -80,7 +80,7 @@ class DmCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           _timestamp(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 9,
                             fontWeight: FontWeight.w400,
@@ -104,7 +104,7 @@ class DmCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             preview.isEmpty ? 'No messages yet' : preview,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 13,
               fontWeight: FontWeight.w300,
@@ -129,14 +129,14 @@ class _Avatar extends StatelessWidget {
     return Container(
       width: 36,
       height: 36,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: HelloColors.recessed,
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
       child: Text(
         initial,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 14,
           fontWeight: FontWeight.w400,

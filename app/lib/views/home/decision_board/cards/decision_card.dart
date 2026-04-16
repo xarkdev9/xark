@@ -41,7 +41,7 @@ class DecisionCard extends ConsumerWidget {
             PlasmaTint(
               child: Text(
                 item.liveTag!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 9,
                   fontWeight: FontWeight.w400,
@@ -165,7 +165,7 @@ class _VoteChip extends StatelessWidget {
                   child: PlasmaTint(
                     child: Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
