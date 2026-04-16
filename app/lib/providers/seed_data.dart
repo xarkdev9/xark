@@ -1,0 +1,50 @@
+  ),
+  DecisionItem(
+    id: 'sunday_dinner_italian_place',
+    groupId: 'family',
+    ciphertextPayload: 'mock',
+    nonce: 'mock',
+    state: 'proposed',
+    agreementScore: 0.67,
+    reactions: const {
+      'mom': 'works_for_me',
+      'dad': 'works_for_me',
+      'me': 'love_it',
+    },
+  ),
+  DecisionItem(
+    id: 'book_chapter7_discussion',
+    groupId: 'book_club',
+    ciphertextPayload: 'mock',
+    nonce: 'mock',
+    state: 'proposed',
+    agreementScore: 0.55,
+    reactions: const {
+      'zoe': 'works_for_me',
+      'lin': 'works_for_me',
+      'me': 'works_for_me',
+    },
+  ),
+  DecisionItem(
+    id: 'goa_hotel_zostel_vs_taj',
+    groupId: 'goa_group',
+    ciphertextPayload: 'mock',
+    nonce: 'mock',
+    state: 'proposed',
+    agreementScore: 0.48,
+    reactions: const {
+      'mike': 'works_for_me',
+      'chris': 'not_for_me',
+      'me': 'works_for_me',
+    },
+  ),
+
+  // ── Plans-view items (title in ciphertextPayload, event|category in nonce) ──
+  DecisionItem(
+    id: 'plan_hawaii_hotel_four_seasons',
+    groupId: 'swiss_jun_2026',
+    ciphertextPayload: 'Four Seasons Resort Maui',
+    nonce: 'Hawaii (Maui)|Hotels',
+    state: 'ranked',
+    weightedScore: 85,
+    agreementScore: 0.85,
