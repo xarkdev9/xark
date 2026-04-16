@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gravity Avalanche</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap');
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050507; overflow: hidden; font-family: 'Inter', sans-serif;}
+    
+    #void-canvas {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        opacity: 0; transform: translateY(-40px);
+        transition: opacity 1s ease, transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 1;
+    }
+    #void-canvas.active { opacity: 1; transform: translateY(0); }
+    .node { font-size: 24px; color: #D4536B; font-weight: 300; letter-spacing: 0.1em; margin: 24px 0; background: rgba(255,255,255,0.05); padding: 16px 32px; border-radius: 50px;}
+
+    .ui-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(180deg, #1A1A24 0%, #0A0A0E 100%);
+        z-index: 10; border: 2px solid rgba(255,255,255,0.05);
+        transition: transform 0.8s cubic-bezier(0.55, 0.085, 0.68, 0.53);
+        display: flex; flex-direction: column; padding: 60px 40px; box-sizing: border-box;
+    }
+    
+    .dropped .ui-layer { transform: translateY(120vh) rotate(-3deg); }
+
+    h1 { color: #ffffff; font-weight: 300; font-size: 42px; margin: 0 0 24px 0; }
+    p { color: rgba(255, 255, 255, 0.9); font-weight: 300; line-height: 1.6; font-size: 18px; max-width: 600px;}
+    .desktop-btn { margin-top: 40px; padding: 16px 32px; background: #D4536B; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; width: fit-content;}
+</style>
+</head>
+<body>
+
+    <div id="void-canvas">
+        <div class="node">Sarah</div>
+        <div class="node">Ram</div>
+        <div class="node">Swiss Trip</div>
+        <button class="desktop-btn" onclick="resetAvalanche()">Reset View</button>
+    </div>
+
+    <div class="ui-layer">
+        <h1>Active Feed</h1>
+        <p>If you have an accelerometer, shaking the phone drops this UI down to reveal the global void underneath.</p>
+        <button class="desktop-btn" onclick="triggerAvalanche()">Click to Simulate Hardware Drop</button>
+    </div>
+
+<script>
+    let dropped = false;
+
+    window.triggerAvalanche = function() {
+        dropped = true;
+        document.body.classList.add('dropped');
+        document.getElementById('void-canvas').classList.add('active');
+    };
+    
+    window.resetAvalanche = function() {
+        dropped = false;
+        document.body.classList.remove('dropped');
+        document.getElementById('void-canvas').classList.remove('active');
+    };
+
+    // Sensor wrapper for mobile tests
+    window.addEventListener('devicemotion', (event) => {
+        const acceleration = event.accelerationIncludingGravity;
+        if (!acceleration) return;
+        if (acceleration.y < -12 && !dropped) { window.triggerAvalanche(); }
+        if (acceleration.y > 8 && dropped) { window.resetAvalanche(); }
+    });
+</script>
+</body>
+</html>

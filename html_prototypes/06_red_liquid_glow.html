@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Red Liquid Glow Prototypes</title>
+<style>
+  @import url('https://api.fontshare.com/v2/css?f[]=satoshi@300,400&display=swap');
+
+  :root {
+    --void: #050507;
+    --glass: rgba(255, 255, 255, 0.04);
+    --glass-hover: rgba(255, 255, 255, 0.08);
+    --text-primary: #F0EFF4;
+    --text-muted: rgba(240, 239, 244, 0.55);
+
+    /* Crimson Matrix (Hyper-Vibrant Red) */
+    --c-matrix-deep: #4A001F;
+    --c-matrix-mid: #D4003C;
+    --c-matrix-high: #FF3366;
+
+    /* Liquid Rose (Xark OS V2 Default) */
+    --c-rose-deep: #7C1D3E;
+    --c-rose-mid: #D4636E;
+    --c-rose-high: #EF7C6E;
+
+    /* Magma (Pure Dopamine) */
+    --c-magma-deep: #8A0000;
+    --c-magma-mid: #E60000;
+    --c-magma-high: #FF5E00;
+  }
+
+  body {
+    margin: 0;
+    padding: 6em 2em;
+    background-color: var(--void);
+    color: var(--text-primary);
+    font-family: 'Satoshi', sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4em;
+    justify-content: center;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    background-blend-mode: overlay;
+  }
+
+  /* NO BOLD. NO ITALIC */
+  * {
+    font-weight: 400 !important;
+    font-style: normal !important;
+  }
+
+  .label {
+    font-weight: 300 !important;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    display: block;
+    text-align: center;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3em;
+    width: 340px;
+    padding: 2em;
+  }
+
+  /* TEXT GLOW */
+  .text-glow {
+    font-size: 38px;
+    background: linear-gradient(135deg, var(--deep), var(--mid), var(--high), var(--mid));
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: liquid 4s ease infinite;
+    position: relative;
+    letter-spacing: -0.02em;
+  }
+  .text-glow::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: -1;
+    background: linear-gradient(135deg, var(--deep), var(--mid), var(--high), var(--mid));
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: blur(14px);
+    opacity: 0.7;
+    animation: liquid 4s ease infinite;
+  }
+
+  /* ORB GLOW */
+  .orb {
+    width: 80px;
+    height: 80px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, var(--deep), var(--mid), var(--high));
+    box-shadow: 0 0 50px var(--mid), inset 0 0 20px var(--high);
+    animation: breath 3s ease-in-out infinite alternate;
+  }
+
+  /* GLASS CARD */
+  .glass-card {
+    width: 100%;
+    padding: 32px 24px;
+    border-radius: 16px;
+    background: var(--glass);
+    backdrop-filter: blur(40px) saturate(180%);
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+  }
+  
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 15%; right: 15%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--mid), transparent);
+    opacity: 0.6;
+  }
+  
+  .glass-card-glow {
+    position: absolute;
+    top: -80%; right: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle at 50% 0%, var(--deep) 0%, transparent 50%);
+    opacity: 0.35;
+    z-index: -1;
+    animation: rotate 12s linear infinite;
+  }
+
+  .title { font-size: 22px; text-shadow: 0 2px 10px rgba(0,0,0,0.5); letter-spacing: -0.01em; }
+  .desc { font-size: 15px; color: var(--text-muted); margin-top: 12px; line-height: 1.5; font-weight: 300 !important; }
+
+  /* BUTTON */
+  .glow-btn {
+    padding: 14px 28px;
+    border-radius: 9999px;
+    background: var(--glass);
+    color: var(--text-primary);
+    border: 1px solid rgba(255,255,255,0.05);
+    font-size: 15px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .glow-btn:hover {
+    transform: scale(1.03);
+    background: var(--glass-hover);
+  }
+  .glow-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 9999px;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--deep), var(--mid), var(--high));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+
+  /* THEMES */
+  .t-matrix { --deep: var(--c-matrix-deep); --mid: var(--c-matrix-mid); --high: var(--c-matrix-high); }
+  .t-rose { --deep: var(--c-rose-deep); --mid: var(--c-rose-mid); --high: var(--c-rose-high); }
+  .t-magma { --deep: var(--c-magma-deep); --mid: var(--c-magma-mid); --high: var(--c-magma-high); }
+
+  /* ANIMATIONS */
+  @keyframes liquid {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes breath {
+    0% { transform: scale(0.96); box-shadow: 0 0 30px var(--mid), inset 0 0 15px var(--high); }
+    100% { transform: scale(1.04); box-shadow: 0 0 50px var(--mid), inset 0 0 25px var(--high); filter: brightness(1.2); }
+  }
+  @keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+  
+  <div class="container t-matrix">
+    <span class="label">P01 // Crimson Matrix</span>
+    <div class="orb"></div>
+    <div class="text-glow" data-text="Liquid Matrix">Liquid Matrix</div>
+    <div class="glass-card">
+      <div class="glass-card-glow"></div>
+      <div class="title">Intense & Crisp</div>
+      <div class="desc">A sharp, neon-leaning red. Extremely high dopamine trigger. Perfect for urgency.</div>
+    </div>
+    <button class="glow-btn">Engage Pulse</button>
+  </div>
+
+  <div class="container t-rose">
+    <span class="label">P02 // Xark Deep Rose</span>
+    <div class="orb"></div>
+    <div class="text-glow" data-text="Xark OS Rose">Xark OS Rose</div>
+    <div class="glass-card">
+      <div class="glass-card-glow"></div>
+      <div class="title">Warm & Cinematic</div>
+      <div class="desc">The official brand gradient. Aesthetically pleasing, luxurious, and warm.</div>
+    </div>
+    <button class="glow-btn">Commit Decision</button>
+  </div>
+
+  <div class="container t-magma">
+    <span class="label">P03 // Magma Flow</span>
+    <div class="orb"></div>
+    <div class="text-glow" data-text="Magma Flow">Magma Flow</div>
+    <div class="glass-card">
+      <div class="glass-card-glow"></div>
+      <div class="title">Pure Dopamine</div>
+      <div class="desc">Transitions entirely into glowing orange. Fleshy, passionate, and magnetic.</div>
+    </div>
+    <button class="glow-btn">Ignite Space</button>
+  </div>
+
+</body>
+</html>

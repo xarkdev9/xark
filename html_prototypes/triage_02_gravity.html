@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gravitational Triage</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&display=swap');
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050507; overflow: hidden; font-family: 'Inter', sans-serif;}
+    
+    .container { padding: 40px 40px; display: flex; flex-direction: column; gap: 0px;}
+    
+    .stream-item {
+        color: #F0EFF4; margin-bottom: 12px; cursor: pointer; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex; gap: 16px; align-items: baseline;
+    }
+
+    /* Scaling based on urgency. Urgency = Size + Top position */
+    .urgency-high { font-size: 42px; font-weight: 300; letter-spacing: -0.04em; margin-bottom: 24px; color: #FFFFFF;}
+    .urgency-medium { font-size: 28px; font-weight: 300; letter-spacing: -0.02em; opacity: 0.8; margin-bottom: 16px;}
+    .urgency-low { font-size: 16px; font-weight: 300; opacity: 0.5; }
+    .urgency-dead { font-size: 12px; font-weight: 300; opacity: 0.2; letter-spacing: 0.05em; }
+
+    .tag { font-size: 12px; opacity: 0.4; letter-spacing: 0.1em; text-transform: uppercase;}
+
+    h1 { color: #ffffff; font-weight: 300; font-size: 14px; letter-spacing: 0.1em; opacity: 0.3; margin-bottom: 40px; text-transform: uppercase;}
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gravity Map</h1>
+
+        <!-- High Urgency: Huge and top of the stack -->
+        <div class="stream-item urgency-high" onclick="this.className='stream-item urgency-dead'">
+            Swiss Alps Trip <span class="tag">Vote</span>
+        </div>
+
+        <div class="stream-item urgency-high" onclick="this.className='stream-item urgency-low'">
+            Product Core <span class="tag">3 Unread</span>
+        </div>
+
+        <!-- Medium Urgency -->
+        <div class="stream-item urgency-medium">
+            Sarah Jenkins
+        </div>
+
+        <!-- Low Urgency -->
+        <div class="stream-item urgency-low">
+            Team Offsite <span class="tag">Locked</span>
+        </div>
+        
+        <!-- Dead weight sinks -->
+        <div class="stream-item urgency-dead">
+            David Kim
+        </div>
+        <div class="stream-item urgency-dead">
+            Book Club
+        </div>
+        
+        <div style="position: absolute; bottom: 40px; left: 40px; color: #D4536B; opacity: 0.4; font-size: 12px; letter-spacing: 0.1em;">CLICK LARGE ITEMS TO SIMULATE READING THEM</div>
+    </div>
+</body>
+</html>

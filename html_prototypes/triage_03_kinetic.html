@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kinetic Swarms</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&display=swap');
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050507; overflow: hidden; font-family: 'Inter', sans-serif;}
+    
+    .container { padding: 40px 40px; display: flex; flex-direction: column; gap: 40px;}
+    
+    .stream-node { position: relative; width: fit-content;}
+
+    .title { color: #F0EFF4; font-weight: 300; font-size: 28px; letter-spacing: -0.02em; position: relative; z-index: 2;}
+    
+    /* Particle Orbits */
+    .swarm { position: absolute; top: 50%; left: 50%; width: 0; height: 0; z-index: 1;}
+    .particle { position: absolute; border-radius: 50%; }
+
+    /* Amber Buzz (Voting) - Fast, chaotic */
+    .vote-particle { width: 4px; height: 4px; background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+    .vp1 { animation: orbit 1s linear infinite; transform-origin: 60px 20px; }
+    .vp2 { animation: orbit 2s linear infinite reverse; transform-origin: -40px 40px; }
+    .vp3 { animation: orbit 1.5s linear infinite; transform-origin: 80px -10px; }
+
+    /* White Pulse (Unread) - Slow, ambient */
+    .unread-particle { width: 6px; height: 6px; background: #fff; box-shadow: 0 0 12px #fff; opacity: 0.6;}
+    .up1 { animation: orbit 4s ease-in-out infinite alternate; transform-origin: -100px 0px; }
+
+    @keyframes orbit {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    h1 { color: #ffffff; font-weight: 300; font-size: 14px; letter-spacing: 0.1em; opacity: 0.3; margin-bottom: 24px; text-transform: uppercase;}
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kinetic Swarms</h1>
+
+        <!-- VOTE PENDING -->
+        <div class="stream-node">
+            <div class="title">Swiss Alps Trip</div>
+            <div class="swarm">
+                <div class="particle vote-particle vp1"></div>
+                <div class="particle vote-particle vp2"></div>
+                <div class="particle vote-particle vp3"></div>
+            </div>
+        </div>
+
+        <!-- UNREAD MESSAGE -->
+        <div class="stream-node">
+            <div class="title">Product Design Group</div>
+            <div class="swarm">
+                <div class="particle unread-particle up1"></div>
+            </div>
+        </div>
+
+        <!-- LOCKED/DEAD (No particles) -->
+        <div class="stream-node" style="opacity: 0.4;">
+            <div class="title">Dinner Tonight (Locked)</div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,51 @@
+/* Zero-box, Apple-Scale, Spatial UI Prototypes */
+.xark-prototype-container {
+  background-color: #0e0e0e;
+  color: #ffffff;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden; /* spatial canvas, no scrolling */
+  position: relative;
+}
+
+/* Concept 1: Refractive Dilation */
+.refract-void {
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease;
+  transform-origin: center;
+}
+.refract-active {
+  transform: scale(0.6);
+  opacity: 0.15;
+}
+
+/* Concept 3: Fluid Masking */
+.fluid-droplet {
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 4/5;
+  margin: 0 auto;
+  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  animation: droplet-morph 8s ease-in-out infinite alternate;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+.fluid-droplet img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes droplet-morph {
+  0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
+  100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+}
+
+/* Liquid Fire glow */
+.liquid-fire {
+  background: linear-gradient(135deg, #ff8b9c, #fe738b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(212, 83, 107, 0.4);
+}

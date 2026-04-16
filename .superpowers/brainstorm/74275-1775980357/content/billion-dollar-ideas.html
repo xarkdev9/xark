@@ -1,0 +1,753 @@
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0a; color: #fafafa; font-family: 'Inter', -apple-system, sans-serif; overflow-x: hidden; }
+
+  .intro {
+    max-width: 800px; margin: 60px auto 0; padding: 0 32px; text-align: center;
+  }
+  .intro h1 {
+    font-size: 42px; font-weight: 300; letter-spacing: -1.5px; line-height: 1.15;
+    background: linear-gradient(135deg, #FF0055, #FF4D00, #FF8C00);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+  .intro .core {
+    font-size: 17px; font-weight: 300; color: #aaa; line-height: 1.6; max-width: 600px; margin: 0 auto 8px;
+  }
+  .intro .insight {
+    font-size: 15px; font-weight: 400; color: #666; margin-top: 20px; letter-spacing: 0.5px;
+  }
+
+  .divider {
+    width: 60px; height: 1px; background: linear-gradient(90deg, transparent, #FF4D00, transparent);
+    margin: 48px auto;
+  }
+
+  /* ── Phone Frame ── */
+  .idea-section {
+    max-width: 900px; margin: 0 auto 80px; padding: 0 32px;
+  }
+  .idea-label {
+    font-size: 11px; font-weight: 400; letter-spacing: 3px; color: #FF4D00; margin-bottom: 8px;
+  }
+  .idea-title {
+    font-size: 32px; font-weight: 300; letter-spacing: -1px; margin-bottom: 10px;
+  }
+  .idea-subtitle {
+    font-size: 15px; font-weight: 300; color: #888; line-height: 1.6; max-width: 580px; margin-bottom: 32px;
+  }
+  .idea-subtitle strong { color: #ccc; font-weight: 400; }
+
+  .phone-row {
+    display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;
+  }
+  .phone-col {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .phone-col .state-label {
+    font-size: 11px; letter-spacing: 2px; color: #555; font-weight: 400;
+  }
+
+  .phone {
+    width: 260px; height: 520px;
+    border-radius: 32px;
+    background: #FAFAFA;
+    border: 2px solid #333;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .phone-screen {
+    width: 100%; height: 100%;
+    padding: 40px 12px 12px;
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+
+  /* ── Shared Card Styles (FocusCardWidget aesthetic) ── */
+  .glass-card {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.7);
+    border: 0.5px solid rgba(255,255,255,0.5);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: #e8e8e8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #6B6B78; flex-shrink: 0;
+  }
+  .card-avatar.sm { width: 24px; height: 24px; font-size: 11px; }
+  .card-name { font-size: 14px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.3px; }
+  .card-name.lg { font-size: 18px; }
+  .card-need {
+    font-size: 20px; font-weight: 400; color: #1A1A1A; line-height: 1.25; letter-spacing: -0.4px;
+  }
+  .card-need.sm { font-size: 14px; }
+  .card-meta { font-size: 10px; letter-spacing: 1.5px; color: #8A8A94; }
+  .card-reply {
+    height: 36px; border-radius: 18px; background: rgba(255,255,255,0.55);
+    display: flex; align-items: center; padding: 0 12px; gap: 8px;
+  }
+  .card-reply span { font-size: 13px; color: #8A8A94; }
+  .card-reply .send {
+    width: 26px; height: 26px; border-radius: 50%; background: #1A1A1A;
+    display: flex; align-items: center; justify-content: center; margin-left: auto;
+  }
+  .card-reply .send::after {
+    content: ''; width: 0; height: 0;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-bottom: 7px solid white; transform: translateY(-1px);
+  }
+  .plasma-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    flex-shrink: 0;
+  }
+  .plasma-badge {
+    font-size: 9px; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 10px;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    color: white;
+  }
+  .vote-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 12px; font-size: 11px;
+    background: rgba(255, 77, 0, 0.08); color: #FF4D00;
+  }
+
+  /* ── IDEA 1: Adaptive Mosaic ── */
+  .mosaic-1 { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .mosaic-hero {
+    flex: 1;
+    padding: 16px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .mosaic-pair { display: flex; gap: 8px; }
+  .mosaic-med {
+    flex: 1; padding: 12px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .mosaic-compact {
+    flex: 1; padding: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── IDEA 2: Orbital Stack ── */
+  .orbital-container {
+    flex: 1; position: relative;
+  }
+  .orbital-hero {
+    position: absolute; left: 12px; right: 12px; top: 30px; bottom: 120px;
+    padding: 16px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    z-index: 10;
+  }
+  .orbital-peek {
+    position: absolute;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.5);
+    border: 0.5px solid rgba(255,255,255,0.4);
+  }
+  .orbital-peek.p1 { left: 20px; right: 20px; bottom: 80px; height: 60px; z-index: 5; }
+  .orbital-peek.p2 { left: 28px; right: 28px; bottom: 60px; height: 60px; z-index: 4; opacity: 0.7; }
+  .orbital-peek.p3 { left: 36px; right: 36px; bottom: 44px; height: 60px; z-index: 3; opacity: 0.5; }
+  .orbital-count {
+    position: absolute; bottom: 16px; left: 0; right: 0; text-align: center;
+    font-size: 12px; color: #8A8A94; letter-spacing: 1px; z-index: 20;
+  }
+
+  /* ── IDEA 3: Gravity Ring ── */
+  .ring-container {
+    flex: 1; position: relative;
+  }
+  .ring-center {
+    position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%);
+    width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255,0,85,0.08), rgba(255,77,0,0.08));
+    border: 1px solid rgba(255,77,0,0.15);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; z-index: 2;
+  }
+  .ring-count { font-size: 28px; font-weight: 300; color: #1A1A1A; line-height: 1; }
+  .ring-word { font-size: 8px; letter-spacing: 2px; color: #8A8A94; margin-top: 2px; }
+  .ring-node {
+    position: absolute; z-index: 5;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .ring-node .card-avatar { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .ring-node-label { font-size: 9px; color: #6B6B78; letter-spacing: 0.3px; text-align: center; }
+  .ring-node-type { font-size: 8px; letter-spacing: 1px; }
+  .ring-node-type.reply { color: #FF4D00; }
+  .ring-node-type.vote { color: #7C3AED; }
+  .ring-node-type.pay { color: #047857; }
+
+  /* Atmosphere mock */
+  .atmo {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── Zero State ── */
+  .zero-state {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+  }
+  .zero-inner {
+    text-align: center;
+  }
+  .zero-check {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: linear-gradient(135deg, rgba(4,120,87,0.08), rgba(4,120,87,0.03));
+    border: 1px solid rgba(4,120,87,0.15);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px; font-size: 20px;
+  }
+  .zero-text { font-size: 14px; color: #8A8A94; font-weight: 300; }
+
+  /* Selection overlay */
+  .idea-section { cursor: pointer; transition: transform 0.2s; }
+
+  /* Voting section */
+  .vote-section {
+    max-width: 800px; margin: 40px auto 80px; padding: 0 32px; text-align: center;
+  }
+  .vote-section h2 {
+    font-size: 24px; font-weight: 300; letter-spacing: -0.5px; margin-bottom: 24px;
+  }
+  .vote-options { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .vote-opt {
+    padding: 16px 32px; border-radius: 16px;
+    border: 1px solid #333; background: #111;
+    cursor: pointer; transition: all 0.2s;
+    min-width: 180px;
+  }
+  .vote-opt:hover { border-color: #FF4D00; background: #1a1210; }
+  .vote-opt h3 { font-size: 15px; font-weight: 400; margin-bottom: 4px; }
+  .vote-opt p { font-size: 12px; color: #666; font-weight: 300; }
+</style>
+
+<div class="intro">
+  <h1>The screen IS your state.</h1>
+  <p class="core">
+    You open the app. In 0.5 seconds, before reading a single word, the <strong>visual density of the screen</strong> tells you your morning. Not a list. Not a dashboard. The screen itself mirrors your social obligations.
+  </p>
+  <p class="insight">3 approaches. Same principle. Different physics.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- IDEA 1: ADAPTIVE MOSAIC -->
+<!-- ════════════════════════════════════════════════════════ -->
+<div class="idea-section" data-choice="mosaic" onclick="toggleSelect(this)">
+  <div class="idea-label">IDEA 1</div>
+  <div class="idea-title">The Adaptive Mosaic</div>
+  <div class="idea-subtitle">
+    One screen. No scrolling. Cards <strong>reshape themselves</strong> based on how many things need you.
+    1 item = full-bleed hero. 3 items = hero + two medium. 6 items = dense mosaic. The layout IS the urgency signal. Open the app, glance, know your morning.
+  </div>
+
+  <div class="phone-row">
+    <!-- State: 1 item -->
+    <div class="phone-col">
+      <div class="state-label">1 NEEDS YOU</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo"></div>
+          <div class="mosaic-1">
+            <div class="glass-card mosaic-hero">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+                  <div class="card-avatar">S</div>
+                  <div class="card-name lg">Sarah</div>
+                  <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+                </div>
+                <div class="card-need">Reached? Swiss looks insane.</div>
+                <div class="card-meta" style="margin-top:8px">4 MIN AGO</div>
+              </div>
+              <div class="card-reply">
+                <span>Message Sarah...</span>
+                <div class="send"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State: 3 items -->
+    <div class="phone-col">
+      <div class="state-label">3 NEED YOU</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo"></div>
+          <div class="mosaic-1">
+            <div class="glass-card mosaic-hero" style="flex:1.4">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                  <div class="card-avatar">S</div>
+                  <div class="card-name lg">Sarah</div>
+                  <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+                </div>
+                <div class="card-need">Reached? Swiss looks insane.</div>
+                <div class="card-meta" style="margin-top:6px">4 MIN AGO</div>
+              </div>
+              <div class="card-reply">
+                <span>Message Sarah...</span>
+                <div class="send"></div>
+              </div>
+            </div>
+            <div class="mosaic-pair">
+              <div class="glass-card mosaic-med">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <div class="card-avatar sm">B</div>
+                  <div class="card-name">Bali Trip</div>
+                </div>
+                <div class="vote-chip">VOTE</div>
+                <div class="card-need sm" style="margin-top:6px">Villa Ubud 3BR</div>
+                <div class="card-meta" style="margin-top:4px">4/5 VOTED</div>
+              </div>
+              <div class="glass-card mosaic-med">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <div class="card-avatar sm">A</div>
+                  <div class="card-name">Alex</div>
+                </div>
+                <div class="plasma-badge" style="font-size:8px">REPLY</div>
+                <div class="card-need sm" style="margin-top:6px">lmk what you think</div>
+                <div class="card-meta" style="margin-top:4px">42 MIN AGO</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State: 6 items -->
+    <div class="phone-col">
+      <div class="state-label">6 NEED YOU</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo"></div>
+          <div class="mosaic-1">
+            <div class="glass-card mosaic-hero" style="flex:1">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                  <div class="card-avatar sm">S</div>
+                  <div class="card-name">Sarah</div>
+                  <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+                </div>
+                <div class="card-need sm">Reached? Swiss looks insane.</div>
+              </div>
+              <div class="card-reply" style="height:30px">
+                <span style="font-size:11px">Reply...</span>
+                <div class="send" style="width:22px;height:22px"></div>
+              </div>
+            </div>
+            <div class="mosaic-pair">
+              <div class="glass-card mosaic-compact" style="flex-direction:column;align-items:flex-start;gap:4px;padding:10px">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <div class="card-avatar sm">B</div>
+                  <div style="font-size:12px;color:#1A1A1A">Bali Trip</div>
+                </div>
+                <div class="vote-chip" style="font-size:9px;padding:2px 7px">VOTE</div>
+                <div style="font-size:11px;color:#1A1A1A">Villa Ubud</div>
+              </div>
+              <div class="glass-card mosaic-compact" style="flex-direction:column;align-items:flex-start;gap:4px;padding:10px">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <div class="card-avatar sm">A</div>
+                  <div style="font-size:12px;color:#1A1A1A">Alex</div>
+                </div>
+                <div class="plasma-badge" style="font-size:8px">REPLY</div>
+                <div style="font-size:11px;color:#1A1A1A">lmk what you think</div>
+              </div>
+            </div>
+            <div class="mosaic-pair">
+              <div class="glass-card mosaic-compact" style="flex-direction:column;align-items:flex-start;gap:4px;padding:10px">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <div class="card-avatar sm">F</div>
+                  <div style="font-size:12px;color:#1A1A1A">Family</div>
+                </div>
+                <div class="plasma-badge" style="font-size:8px">2 UNREAD</div>
+              </div>
+              <div class="glass-card mosaic-compact" style="flex-direction:column;align-items:flex-start;gap:4px;padding:10px">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <div class="card-avatar sm">G</div>
+                  <div style="font-size:12px;color:#1A1A1A">Goa Group</div>
+                </div>
+                <div class="vote-chip" style="font-size:9px;padding:2px 7px">VOTE</div>
+              </div>
+            </div>
+            <div class="mosaic-pair">
+              <div class="glass-card mosaic-compact" style="padding:10px">
+                <div class="card-avatar sm" style="background:linear-gradient(135deg,rgba(4,120,87,0.15),rgba(4,120,87,0.05))">$</div>
+                <div>
+                  <div style="font-size:12px;color:#1A1A1A">Sarah</div>
+                  <div style="font-size:10px;color:#047857">$42.50 owed</div>
+                </div>
+              </div>
+              <div class="glass-card mosaic-compact" style="padding:10px">
+                <div class="card-avatar sm">M</div>
+                <div>
+                  <div style="font-size:12px;color:#1A1A1A">Maya</div>
+                  <div class="card-meta">3 HRS AGO</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State: 0 items -->
+    <div class="phone-col">
+      <div class="state-label">0 NEED YOU</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo" style="background:radial-gradient(ellipse at 50% 50%, rgba(4,120,87,0.05) 0%, transparent 70%)"></div>
+          <div class="zero-state">
+            <div class="zero-inner">
+              <div class="zero-check" style="color:#047857">&#10003;</div>
+              <div class="zero-text">You're caught up</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- IDEA 2: FANNED DECK -->
+<!-- ════════════════════════════════════════════════════════ -->
+<div class="idea-section" data-choice="deck" onclick="toggleSelect(this)">
+  <div class="idea-label">IDEA 2</div>
+  <div class="idea-title">The Fanned Deck</div>
+  <div class="idea-subtitle">
+    The FocusCardWidget you love, but you can see the <strong>whole deck at once</strong>. Hero card is full — the rest peek out behind it, fanned like physical cards.
+    The stack height tells you how much needs you. Swipe to dismiss or act. As cards resolve, the deck thins. Work toward emptiness.
+  </div>
+
+  <div class="phone-row">
+    <!-- State: 1 item -->
+    <div class="phone-col">
+      <div class="state-label">1 NEEDS YOU</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo"></div>
+          <div class="orbital-container">
+            <div class="glass-card orbital-hero">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+                  <div class="card-avatar">S</div>
+                  <div class="card-name lg">Sarah</div>
+                  <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+                </div>
+                <div class="card-need">Reached? Swiss looks insane.</div>
+                <div class="card-meta" style="margin-top:8px">4 MIN AGO</div>
+              </div>
+              <div class="card-reply">
+                <span>Message Sarah...</span>
+                <div class="send"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State: 4 items -->
+    <div class="phone-col">
+      <div class="state-label">4 NEED YOU</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo"></div>
+          <div class="orbital-container">
+            <div class="orbital-peek p3">
+              <div style="padding:8px 16px;display:flex;align-items:center;gap:8px">
+                <div class="card-avatar sm">M</div>
+                <div style="font-size:11px;color:#6B6B78">Maya</div>
+              </div>
+            </div>
+            <div class="orbital-peek p2">
+              <div style="padding:8px 16px;display:flex;align-items:center;gap:8px">
+                <div class="card-avatar sm">G</div>
+                <div style="font-size:11px;color:#6B6B78">Goa Group</div>
+                <div class="vote-chip" style="font-size:8px;padding:2px 6px;margin-left:auto">VOTE</div>
+              </div>
+            </div>
+            <div class="orbital-peek p1">
+              <div style="padding:8px 16px;display:flex;align-items:center;gap:8px">
+                <div class="card-avatar sm">A</div>
+                <div style="font-size:11px;color:#6B6B78">Alex</div>
+                <div class="plasma-badge" style="font-size:8px;margin-left:auto">REPLY</div>
+              </div>
+            </div>
+            <div class="glass-card orbital-hero">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+                  <div class="card-avatar">S</div>
+                  <div class="card-name lg">Sarah</div>
+                  <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+                </div>
+                <div class="card-need">Reached? Swiss looks insane.</div>
+                <div class="card-meta" style="margin-top:8px">4 MIN AGO</div>
+              </div>
+              <div class="card-reply">
+                <span>Message Sarah...</span>
+                <div class="send"></div>
+              </div>
+            </div>
+            <div class="orbital-count">4 WAITING &middot; SWIPE TO RESOLVE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State: after resolving 2 -->
+    <div class="phone-col">
+      <div class="state-label">RESOLVING...</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo"></div>
+          <div class="orbital-container">
+            <div class="orbital-peek p1" style="opacity:0.6">
+              <div style="padding:8px 16px;display:flex;align-items:center;gap:8px">
+                <div class="card-avatar sm">M</div>
+                <div style="font-size:11px;color:#6B6B78">Maya</div>
+              </div>
+            </div>
+            <div class="glass-card orbital-hero">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+                  <div class="card-avatar">G</div>
+                  <div class="card-name lg">Goa Group</div>
+                  <div style="margin-left:auto"><div class="vote-chip">VOTE</div></div>
+                </div>
+                <div class="card-need">Zostel or Taj?</div>
+                <div class="card-meta" style="margin-top:8px">3/6 VOTED &middot; NEEDS YOU</div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:auto">
+                <div style="flex:1;padding:8px;border-radius:12px;background:rgba(255,77,0,0.06);text-align:center;font-size:12px;color:#FF4D00">Zostel</div>
+                <div style="flex:1;padding:8px;border-radius:12px;background:rgba(124,58,237,0.06);text-align:center;font-size:12px;color:#7C3AED">Taj</div>
+              </div>
+            </div>
+            <div class="orbital-count">2 LEFT</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State: 0 -->
+    <div class="phone-col">
+      <div class="state-label">ALL CLEAR</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo" style="background:radial-gradient(ellipse at 50% 50%, rgba(4,120,87,0.05) 0%, transparent 70%)"></div>
+          <div class="zero-state">
+            <div class="zero-inner">
+              <div class="zero-check" style="color:#047857">&#10003;</div>
+              <div class="zero-text">You're caught up</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- IDEA 3: HYBRID — MOSAIC + DECK -->
+<!-- ════════════════════════════════════════════════════════ -->
+<div class="idea-section" data-choice="hybrid" onclick="toggleSelect(this)">
+  <div class="idea-label">IDEA 3</div>
+  <div class="idea-title">The Living Mosaic + Resolve Deck</div>
+  <div class="idea-subtitle">
+    <strong>Combine them.</strong> You wake up → the Mosaic shows you everything at a glance (awareness). Tap any card → it expands into the full FocusCardWidget deck experience (action). Resolve and return to the mosaic, which re-adapts. The mosaic is your map. The deck is your weapon.
+  </div>
+
+  <div class="phone-row">
+    <!-- Mosaic overview -->
+    <div class="phone-col">
+      <div class="state-label">WAKE UP &middot; OVERVIEW</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo"></div>
+          <div class="mosaic-1">
+            <div class="glass-card mosaic-hero" style="flex:1.2">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                  <div class="card-avatar sm">S</div>
+                  <div class="card-name">Sarah</div>
+                  <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+                </div>
+                <div class="card-need sm">Reached? Swiss looks insane.</div>
+                <div class="card-meta" style="margin-top:4px">4 MIN AGO</div>
+              </div>
+              <div class="card-reply" style="height:32px;margin-top:auto">
+                <span style="font-size:12px">Reply...</span>
+                <div class="send" style="width:24px;height:24px"></div>
+              </div>
+            </div>
+            <div class="mosaic-pair">
+              <div class="glass-card mosaic-med">
+                <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+                  <div class="card-avatar sm">B</div>
+                  <span style="font-size:12px;color:#1A1A1A">Bali Trip</span>
+                </div>
+                <div class="vote-chip" style="font-size:9px;padding:2px 7px">VOTE</div>
+                <div style="font-size:12px;color:#1A1A1A;margin-top:4px">Villa Ubud</div>
+              </div>
+              <div class="glass-card mosaic-med">
+                <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+                  <div class="card-avatar sm">A</div>
+                  <span style="font-size:12px;color:#1A1A1A">Alex</span>
+                </div>
+                <div class="plasma-badge" style="font-size:8px">REPLY</div>
+                <div style="font-size:12px;color:#1A1A1A;margin-top:4px">lmk what you think</div>
+              </div>
+            </div>
+            <div class="mosaic-pair">
+              <div class="glass-card mosaic-compact" style="padding:10px">
+                <div class="card-avatar sm">F</div>
+                <div>
+                  <div style="font-size:11px;color:#1A1A1A">Family</div>
+                  <div class="card-meta">2 UNREAD</div>
+                </div>
+              </div>
+              <div class="glass-card mosaic-compact" style="padding:10px">
+                <div class="card-avatar sm" style="background:linear-gradient(135deg,rgba(4,120,87,0.15),rgba(4,120,87,0.05))">$</div>
+                <div>
+                  <div style="font-size:11px;color:#1A1A1A">Sarah</div>
+                  <div style="font-size:10px;color:#047857">$42.50</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div style="display:flex;align-items:center;font-size:32px;color:#333;padding:40px 0 0">&#8594;</div>
+
+    <!-- Tapped into Sarah card → full FocusCard deck -->
+    <div class="phone-col">
+      <div class="state-label">TAP SARAH &middot; RESOLVE</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo"></div>
+          <div class="orbital-container">
+            <div class="orbital-peek p2" style="opacity:0.5">
+              <div style="padding:8px 16px;display:flex;align-items:center;gap:8px">
+                <div class="card-avatar sm">F</div>
+                <div style="font-size:11px;color:#6B6B78">Family</div>
+              </div>
+            </div>
+            <div class="orbital-peek p1">
+              <div style="padding:8px 16px;display:flex;align-items:center;gap:8px">
+                <div class="card-avatar sm">A</div>
+                <div style="font-size:11px;color:#6B6B78">Alex</div>
+                <div class="plasma-badge" style="font-size:8px;margin-left:auto">REPLY</div>
+              </div>
+            </div>
+            <div class="glass-card orbital-hero">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+                  <div class="card-avatar">S</div>
+                  <div class="card-name lg">Sarah</div>
+                  <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+                </div>
+                <div class="card-need">Reached? Swiss looks insane.</div>
+                <div class="card-meta" style="margin-top:8px">4 MIN AGO &middot; DM</div>
+              </div>
+              <div class="card-reply">
+                <span>Message Sarah...</span>
+                <div class="send"></div>
+              </div>
+            </div>
+            <div class="orbital-count">TAP CARD OR SWIPE THROUGH</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div style="display:flex;align-items:center;font-size:32px;color:#333;padding:40px 0 0">&#8594;</div>
+
+    <!-- Back to mosaic, smaller now -->
+    <div class="phone-col">
+      <div class="state-label">BACK &middot; 3 LEFT</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="atmo"></div>
+          <div class="mosaic-1">
+            <div class="glass-card mosaic-hero" style="flex:1.4">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                  <div class="card-avatar">A</div>
+                  <div class="card-name lg">Alex</div>
+                  <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+                </div>
+                <div class="card-need">lmk what you think</div>
+                <div class="card-meta" style="margin-top:6px">42 MIN AGO</div>
+              </div>
+              <div class="card-reply">
+                <span>Message Alex...</span>
+                <div class="send"></div>
+              </div>
+            </div>
+            <div class="mosaic-pair">
+              <div class="glass-card mosaic-med">
+                <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+                  <div class="card-avatar sm">B</div>
+                  <span style="font-size:12px;color:#1A1A1A">Bali Trip</span>
+                </div>
+                <div class="vote-chip" style="font-size:9px;padding:2px 7px">VOTE</div>
+                <div style="font-size:12px;color:#1A1A1A;margin-top:4px">Villa Ubud</div>
+              </div>
+              <div class="glass-card mosaic-med">
+                <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+                  <div class="card-avatar sm">F</div>
+                  <span style="font-size:12px;color:#1A1A1A">Family</span>
+                </div>
+                <div class="plasma-badge" style="font-size:8px">2 UNREAD</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="vote-section">
+  <h2>Which direction?</h2>
+  <div class="vote-options">
+    <div class="vote-opt" data-choice="pick-mosaic" onclick="toggleSelect(this)">
+      <h3>Adaptive Mosaic</h3>
+      <p>See everything at once, act inline</p>
+    </div>
+    <div class="vote-opt" data-choice="pick-deck" onclick="toggleSelect(this)">
+      <h3>Fanned Deck</h3>
+      <p>One card at a time, stack shows depth</p>
+    </div>
+    <div class="vote-opt" data-choice="pick-hybrid" onclick="toggleSelect(this)">
+      <h3>Hybrid</h3>
+      <p>Mosaic for overview, deck for action</p>
+    </div>
+    <div class="vote-opt" data-choice="pick-none" onclick="toggleSelect(this)">
+      <h3>None / Rethink</h3>
+      <p>Tell me what's missing</p>
+    </div>
+  </div>
+</div>
+
+<div style="height:80px"></div>

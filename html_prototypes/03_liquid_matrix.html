@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Liquid Matrix</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap');
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050507; overflow: hidden; font-family: 'Inter', sans-serif; cursor: pointer; }
+    
+    #void-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: #050507; z-index: 1; opacity: 0;
+        display: flex; align-items: center; justify-content: center;
+        transition: opacity 2s ease;
+        color: #D4536B; font-weight: 300; font-size: 32px; letter-spacing: -0.02em;
+    }
+
+    #ui-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(135deg, #2A2A38 0%, #0A0A0E 100%);
+        z-index: 10; padding: 60px 40px; box-sizing: border-box;
+        filter: url(#water-ripple); transform-origin: center;
+        transition: opacity 1.5s ease;
+    }
+
+    h1 { color: #ffffff; font-weight: 300; font-size: 48px; margin: 0 0 24px 0; }
+    p { color: rgba(255, 255, 255, 0.9); font-weight: 300; line-height: 1.6; font-size: 20px;}
+    .desktop-hint { margin-top: 40px; background: rgba(255,255,255,0.1); padding: 16px 32px; border-radius: 8px; color: #fff;}
+</style>
+</head>
+<body>
+
+    <svg style="width:0;height:0;position:absolute;">
+      <filter id="water-ripple">
+        <feTurbulence type="fractalNoise" baseFrequency="0.0" numOctaves="2" result="noise" id="turb"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G" id="disp"/>
+      </filter>
+    </svg>
+
+    <div id="void-layer">
+        You are now in the Sanctuary.
+    </div>
+
+    <div id="ui-layer" id="trigger-zone">
+        <h1>Liquid Matrix</h1>
+        <p>The entire screen simulates physical water tension.</p>
+        <div class="desktop-hint"><b>DOUBLE-CLICK ANYWHERE</b> with your mouse (or 2-finger tap on mobile) to break the surface tension and dissolve this UI.</div>
+    </div>
+
+<script>
+    let isRippling = false;
+    let scale = 0; let freq = 0; let opacity = 1;
+
+    function startRipple() {
+        if (!isRippling) {
+            isRippling = true;
+            document.getElementById('void-layer').style.opacity = 1;
+            animateRipple();
+        }
+    }
+
+    // Desktop
+    document.addEventListener('dblclick', startRipple);
+
+    // Mobile
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) { startRipple(); }
+    });
+
+    function animateRipple() {
+        if(scale < 400) {
+            scale += 10;
+            freq = Math.min(freq + 0.002, 0.05);
+            opacity -= 0.02;
+            
+            document.getElementById('turb').setAttribute('baseFrequency', freq);
+            document.getElementById('disp').setAttribute('scale', scale);
+            document.getElementById('ui-layer').style.opacity = Math.max(0, opacity);
+            
+            requestAnimationFrame(animateRipple);
+        } else {
+            document.getElementById('ui-layer').style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>

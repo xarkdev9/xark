@@ -1,0 +1,788 @@
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0a; color: #fafafa; font-family: 'Inter', -apple-system, sans-serif; overflow-x: hidden; }
+
+  .section-header {
+    max-width: 860px; margin: 60px auto 0; padding: 0 32px; text-align: center;
+  }
+  .section-header h1 {
+    font-size: 38px; font-weight: 300; letter-spacing: -1.5px; line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .section-header .sub {
+    font-size: 16px; font-weight: 300; color: #888; line-height: 1.6; max-width: 620px; margin: 0 auto;
+  }
+  .section-header .sub strong { color: #ccc; font-weight: 400; }
+
+  .divider {
+    width: 60px; height: 1px; background: linear-gradient(90deg, transparent, #FF4D00, transparent);
+    margin: 48px auto;
+  }
+
+  .label-bar {
+    font-size: 11px; font-weight: 400; letter-spacing: 3px; color: #FF4D00;
+    max-width: 860px; margin: 0 auto 12px; padding: 0 32px;
+  }
+  .desc-block {
+    max-width: 860px; margin: 0 auto 28px; padding: 0 32px;
+    font-size: 15px; font-weight: 300; color: #888; line-height: 1.65;
+  }
+  .desc-block strong { color: #ccc; font-weight: 400; }
+
+  /* ── Phone Frame ── */
+  .phone-row {
+    display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;
+    max-width: 1100px; margin: 0 auto; padding: 0 16px;
+  }
+  .phone-col {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .state-label {
+    font-size: 10px; letter-spacing: 2.5px; color: #555; font-weight: 400;
+  }
+  .phone {
+    width: 280px; height: 560px;
+    border-radius: 36px;
+    background: #FAFAFA;
+    border: 2px solid #333;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .phone-screen {
+    width: 100%; height: 100%;
+    padding: 48px 14px 14px;
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+  .atmo {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 50% 25%, rgba(124,58,237,0.06) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .atmo-clear {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 50% 50%, rgba(4,120,87,0.04) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  /* ── Card System ── */
+  .glass-card {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.7);
+    border: 0.5px solid rgba(255,255,255,0.5);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: #e8e8e8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: #6B6B78; flex-shrink: 0;
+  }
+  .card-avatar.sm { width: 28px; height: 28px; font-size: 12px; }
+  .card-avatar.pay { background: linear-gradient(135deg, rgba(4,120,87,0.12), rgba(4,120,87,0.04)); color: #047857; font-size: 13px; }
+  .card-name { font-size: 15px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.3px; }
+  .card-name.lg { font-size: 20px; letter-spacing: -0.5px; }
+  .card-msg {
+    font-size: 22px; font-weight: 400; color: #1A1A1A; line-height: 1.25; letter-spacing: -0.5px;
+  }
+  .card-msg.sm { font-size: 15px; letter-spacing: -0.2px; }
+  .card-msg.xs { font-size: 13px; letter-spacing: 0; }
+  .card-meta { font-size: 10px; letter-spacing: 1.5px; color: #8A8A94; }
+  .card-reply {
+    height: 40px; border-radius: 20px; background: rgba(255,255,255,0.55);
+    display: flex; align-items: center; padding: 0 6px 0 14px; gap: 8px;
+  }
+  .card-reply span { font-size: 14px; color: #8A8A94; font-weight: 300; }
+  .card-reply .send {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    display: flex; align-items: center; justify-content: center; margin-left: auto;
+  }
+  .card-reply .send::after {
+    content: ''; width: 0; height: 0;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-bottom: 8px solid white; transform: translateY(-1px);
+  }
+  .card-reply.sm { height: 34px; }
+  .card-reply.sm span { font-size: 12px; }
+  .card-reply.sm .send { width: 26px; height: 26px; }
+
+  .plasma-badge {
+    font-size: 9px; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 10px;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    color: white; font-weight: 400;
+  }
+  .vote-badge {
+    font-size: 9px; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 10px;
+    background: rgba(124,58,237,0.1);
+    color: #7C3AED; font-weight: 400;
+  }
+  .pay-badge {
+    font-size: 9px; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 10px;
+    background: rgba(4,120,87,0.08);
+    color: #047857; font-weight: 400;
+  }
+
+  /* Mosaic layout */
+  .mosaic { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .mosaic-pair { display: flex; gap: 10px; }
+  .mosaic-hero {
+    flex: 1; padding: 18px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .mosaic-med {
+    flex: 1; padding: 14px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .mosaic-compact {
+    flex: 1; padding: 12px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+
+  /* Vote inline */
+  .vote-row {
+    display: flex; gap: 6px; margin-top: auto;
+  }
+  .vote-btn {
+    flex: 1; padding: 8px 4px; border-radius: 14px;
+    text-align: center; font-size: 12px; font-weight: 400;
+  }
+  .vote-btn.love { background: rgba(255,77,0,0.07); color: #FF4D00; }
+  .vote-btn.works { background: rgba(107,107,120,0.08); color: #6B6B78; }
+  .vote-btn.nah { background: rgba(255,155,110,0.08); color: #C43D08; }
+
+  /* Pay inline */
+  .pay-amount {
+    font-size: 28px; font-weight: 300; color: #047857; letter-spacing: -1px;
+  }
+  .pay-btn {
+    height: 40px; border-radius: 20px;
+    background: linear-gradient(135deg, #047857, #059669);
+    color: white; font-size: 13px; letter-spacing: 0.5px;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: auto;
+  }
+
+  /* Zero state */
+  .zero-state {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+  }
+  .zero-ring {
+    width: 80px; height: 80px; border-radius: 50%;
+    border: 1.5px solid rgba(4,120,87,0.2);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .zero-check { font-size: 28px; color: #047857; }
+  .zero-text { font-size: 15px; color: #8A8A94; font-weight: 300; text-align: center; }
+
+  /* Flow arrow */
+  .flow-arrow {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: #333; padding: 40px 0 0;
+  }
+
+  /* Expanded card overlay */
+  .expanded-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(250,250,250,0.85);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    display: flex; flex-direction: column;
+    padding: 48px 14px 14px;
+    z-index: 10;
+  }
+  .expanded-back {
+    font-size: 11px; letter-spacing: 2px; color: #8A8A94;
+    margin-bottom: 12px; cursor: pointer;
+  }
+  .expanded-card {
+    flex: 1;
+    padding: 20px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+
+  /* Bottom hint */
+  .tab-hint {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 44px; display: flex; align-items: center; justify-content: center;
+    gap: 24px; font-size: 10px; letter-spacing: 1.5px; color: #B0B0B0;
+  }
+  .tab-hint .active { color: #FF4D00; }
+
+  /* Narrative blocks */
+  .narrative {
+    max-width: 860px; margin: 0 auto 48px; padding: 0 32px;
+  }
+  .narrative h2 {
+    font-size: 28px; font-weight: 300; letter-spacing: -0.8px; margin-bottom: 16px;
+  }
+  .narrative p {
+    font-size: 15px; font-weight: 300; color: #888; line-height: 1.65; margin-bottom: 12px;
+  }
+  .narrative p strong { color: #ccc; font-weight: 400; }
+  .narrative .rule {
+    padding: 16px 20px; border-left: 2px solid #FF4D00;
+    background: rgba(255,77,0,0.03); margin: 20px 0;
+    font-size: 14px; color: #aaa; font-weight: 300; line-height: 1.6;
+  }
+  .narrative .rule strong { color: #FF4D00; font-weight: 400; }
+</style>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- HEADER -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="section-header">
+  <h1>The Needs-You Home</h1>
+  <div class="sub">
+    HOME tab shows <strong>only what needs you</strong>. Three categories, zero ambiguity. If it's not here, it can wait. The layout adapts to count. Each card has inline action. Work toward zero.
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- THE THREE CARD TYPES -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="label-bar">THE THREE CARD TYPES</div>
+<div class="desc-block">
+  Every card on the morning screen is one of exactly three types. Nothing else appears.
+</div>
+
+<div class="phone-row" style="margin-bottom:48px">
+  <!-- DM Reply Card -->
+  <div class="phone-col">
+    <div class="state-label">DM REPLY</div>
+    <div class="phone" style="height:320px;border-radius:28px">
+      <div class="phone-screen" style="padding:20px 14px 14px">
+        <div class="glass-card" style="flex:1;padding:18px;display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div class="card-avatar">S</div>
+              <div class="card-name lg">Sarah</div>
+              <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+            </div>
+            <div class="card-msg">Reached? Swiss looks insane.</div>
+            <div class="card-meta" style="margin-top:8px">4 MIN AGO</div>
+          </div>
+          <div class="card-reply">
+            <span>Message Sarah...</span>
+            <div class="send"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#555;max-width:220px;text-align:center;line-height:1.5">
+      Unread DM where you're not the last sender. Shows last message preview + inline reply.
+    </div>
+  </div>
+
+  <!-- Decision Vote Card -->
+  <div class="phone-col">
+    <div class="state-label">DECISION VOTE</div>
+    <div class="phone" style="height:320px;border-radius:28px">
+      <div class="phone-screen" style="padding:20px 14px 14px">
+        <div class="glass-card" style="flex:1;padding:18px;display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div class="card-avatar sm">B</div>
+              <div class="card-name">Bali Trip</div>
+              <div style="margin-left:auto" class="vote-badge">VOTE</div>
+            </div>
+            <div class="card-msg" style="font-size:18px">Villa Ubud &middot; 3BR seaview</div>
+            <div class="card-meta" style="margin-top:6px">4/5 VOTED &middot; WAITING ON YOU</div>
+          </div>
+          <div class="vote-row">
+            <div class="vote-btn love">Love it</div>
+            <div class="vote-btn works">Works</div>
+            <div class="vote-btn nah">Not for me</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#555;max-width:220px;text-align:center;line-height:1.5">
+      Decision in Decide stream where your reaction is missing. Inline vote buttons.
+    </div>
+  </div>
+
+  <!-- Settlement Card -->
+  <div class="phone-col">
+    <div class="state-label">SETTLEMENT</div>
+    <div class="phone" style="height:320px;border-radius:28px">
+      <div class="phone-screen" style="padding:20px 14px 14px">
+        <div class="glass-card" style="flex:1;padding:18px;display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div class="card-avatar pay">$</div>
+              <div class="card-name">Sarah</div>
+              <div style="margin-left:auto" class="pay-badge">SETTLE</div>
+            </div>
+            <div class="pay-amount">$42.50</div>
+            <div class="card-msg xs" style="margin-top:4px;color:#6B6B78">Alila villa deposit</div>
+          </div>
+          <div class="pay-btn">Settle up</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#555;max-width:220px;text-align:center;line-height:1.5">
+      Pending settlement from Xpensly. Shows amount + one-tap settle action.
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- ADAPTIVE LAYOUT — THE MOSAIC IN ACTION -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="label-bar">THE ADAPTIVE MOSAIC</div>
+<div class="desc-block">
+  The layout reshapes to match how many things need you. <strong>One screen, no scrolling.</strong> The visual density of the screen IS your morning signal.
+</div>
+
+<div class="phone-row" style="margin-bottom:48px">
+
+  <!-- 1 needs you -->
+  <div class="phone-col">
+    <div class="state-label">1 NEEDS YOU</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="atmo"></div>
+        <div class="mosaic">
+          <div class="glass-card mosaic-hero">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <div class="card-avatar">S</div>
+                <div class="card-name lg">Sarah</div>
+                <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+              </div>
+              <div class="card-msg">Reached? Swiss looks insane.</div>
+              <div class="card-meta" style="margin-top:8px">4 MIN AGO</div>
+            </div>
+            <div class="card-reply">
+              <span>Message Sarah...</span>
+              <div class="send"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-hint"><span class="active">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 need you -->
+  <div class="phone-col">
+    <div class="state-label">3 NEED YOU</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="atmo"></div>
+        <div class="mosaic">
+          <div class="glass-card mosaic-hero" style="flex:1.3">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                <div class="card-avatar">S</div>
+                <div class="card-name lg">Sarah</div>
+                <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+              </div>
+              <div class="card-msg" style="font-size:20px">Reached? Swiss looks insane.</div>
+              <div class="card-meta" style="margin-top:6px">4 MIN AGO</div>
+            </div>
+            <div class="card-reply sm">
+              <span>Reply...</span>
+              <div class="send"></div>
+            </div>
+          </div>
+          <div class="mosaic-pair" style="flex:0.9">
+            <div class="glass-card mosaic-med">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                <div class="card-avatar sm">B</div>
+                <div style="font-size:13px;color:#1A1A1A">Bali Trip</div>
+              </div>
+              <div class="vote-badge" style="align-self:flex-start;margin-bottom:4px">VOTE</div>
+              <div class="card-msg sm">Villa Ubud 3BR</div>
+              <div class="card-meta" style="margin-top:auto">4/5 VOTED</div>
+            </div>
+            <div class="glass-card mosaic-med">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                <div class="card-avatar sm">A</div>
+                <div style="font-size:13px;color:#1A1A1A">Alex</div>
+              </div>
+              <div class="plasma-badge" style="align-self:flex-start;margin-bottom:4px">REPLY</div>
+              <div class="card-msg sm">lmk what you think</div>
+              <div class="card-meta" style="margin-top:auto">42 MIN AGO</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-hint"><span class="active">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 need you -->
+  <div class="phone-col">
+    <div class="state-label">5 NEED YOU</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="atmo"></div>
+        <div class="mosaic">
+          <div class="glass-card" style="padding:14px;display:flex;flex-direction:column;gap:6px;flex:0.9">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="card-avatar sm">S</div>
+              <div style="font-size:14px;color:#1A1A1A">Sarah</div>
+              <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+            </div>
+            <div class="card-msg sm">Reached? Swiss looks insane.</div>
+            <div class="card-reply sm" style="margin-top:auto">
+              <span>Reply...</span>
+              <div class="send"></div>
+            </div>
+          </div>
+          <div class="mosaic-pair" style="flex:0.7">
+            <div class="glass-card mosaic-compact">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div class="card-avatar sm">B</div>
+                <span style="font-size:12px;color:#1A1A1A">Bali Trip</span>
+              </div>
+              <div class="vote-badge" style="align-self:flex-start;font-size:8px">VOTE</div>
+              <div style="font-size:12px;color:#1A1A1A;margin-top:2px">Villa Ubud</div>
+              <div class="card-meta" style="margin-top:auto">4/5</div>
+            </div>
+            <div class="glass-card mosaic-compact">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div class="card-avatar sm">A</div>
+                <span style="font-size:12px;color:#1A1A1A">Alex</span>
+              </div>
+              <div class="plasma-badge" style="align-self:flex-start;font-size:8px">REPLY</div>
+              <div style="font-size:12px;color:#1A1A1A;margin-top:2px">lmk what you...</div>
+            </div>
+          </div>
+          <div class="mosaic-pair" style="flex:0.7">
+            <div class="glass-card mosaic-compact">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div class="card-avatar sm">G</div>
+                <span style="font-size:12px;color:#1A1A1A">Goa Group</span>
+              </div>
+              <div class="vote-badge" style="align-self:flex-start;font-size:8px">VOTE</div>
+              <div style="font-size:12px;color:#1A1A1A;margin-top:2px">Zostel or Taj</div>
+              <div class="card-meta" style="margin-top:auto">3/6</div>
+            </div>
+            <div class="glass-card mosaic-compact">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div class="card-avatar pay" style="width:28px;height:28px;font-size:11px">$</div>
+                <span style="font-size:12px;color:#1A1A1A">Sarah</span>
+              </div>
+              <div class="pay-badge" style="align-self:flex-start;font-size:8px">SETTLE</div>
+              <div style="font-size:14px;color:#047857;margin-top:2px">$42.50</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-hint"><span class="active">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 0 need you -->
+  <div class="phone-col">
+    <div class="state-label">ZERO STATE</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="atmo-clear"></div>
+        <div class="zero-state">
+          <div>
+            <div class="zero-ring">
+              <div class="zero-check">&#10003;</div>
+            </div>
+            <div class="zero-text">Caught up</div>
+          </div>
+        </div>
+        <div class="tab-hint"><span class="active">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- TAP → EXPAND → RESOLVE FLOW -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="label-bar">TAP &rarr; EXPAND &rarr; RESOLVE</div>
+<div class="desc-block">
+  Tap any card in the mosaic &rarr; it hero-expands into the <strong>full FocusCardWidget</strong> experience. Act. Resolve. The card animates away. Back to the mosaic, which re-adapts with one fewer card.
+</div>
+
+<div class="phone-row" style="margin-bottom:48px">
+  <!-- Mosaic state -->
+  <div class="phone-col">
+    <div class="state-label">MOSAIC &middot; 3 NEED YOU</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="atmo"></div>
+        <div class="mosaic">
+          <div class="glass-card mosaic-hero" style="flex:1.3">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                <div class="card-avatar">S</div>
+                <div class="card-name lg">Sarah</div>
+                <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+              </div>
+              <div class="card-msg" style="font-size:20px">Reached? Swiss looks insane.</div>
+            </div>
+            <div class="card-reply sm">
+              <span>Reply...</span>
+              <div class="send"></div>
+            </div>
+          </div>
+          <div class="mosaic-pair" style="flex:0.9">
+            <div class="glass-card mosaic-med" style="border:1.5px solid rgba(124,58,237,0.3)">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                <div class="card-avatar sm">B</div>
+                <div style="font-size:13px;color:#1A1A1A">Bali Trip</div>
+              </div>
+              <div class="vote-badge" style="align-self:flex-start">VOTE</div>
+              <div class="card-msg sm" style="margin-top:4px">Villa Ubud</div>
+            </div>
+            <div class="glass-card mosaic-med">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                <div class="card-avatar sm">A</div>
+                <div style="font-size:13px;color:#1A1A1A">Alex</div>
+              </div>
+              <div class="plasma-badge" style="align-self:flex-start">REPLY</div>
+              <div class="card-msg sm" style="margin-top:4px">lmk what you...</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-hint"><span class="active">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-arrow">&rarr;</div>
+
+  <!-- Expanded vote card -->
+  <div class="phone-col">
+    <div class="state-label">TAP BALI &middot; EXPANDED</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="atmo" style="background:radial-gradient(ellipse at 50% 25%, rgba(124,58,237,0.08) 0%, transparent 60%)"></div>
+        <div style="flex:1;display:flex;flex-direction:column">
+          <div class="expanded-back">&larr; BACK</div>
+          <div class="glass-card expanded-card">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+                <div class="card-avatar">B</div>
+                <div>
+                  <div class="card-name lg">Bali Trip</div>
+                  <div class="card-meta" style="margin-top:2px">DECISION &middot; WAITING ON YOU</div>
+                </div>
+              </div>
+              <div class="card-msg">Villa Ubud &middot; 3BR seaview</div>
+              <div style="font-size:14px;color:#6B6B78;margin-top:8px;font-weight:300">$340/night &middot; 8 nights</div>
+              <div class="card-meta" style="margin-top:12px">4 OF 5 VOTED</div>
+              <!-- Avatar row -->
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <div style="width:24px;height:24px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6B6B78">S</div>
+                <div style="width:24px;height:24px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6B6B78">A</div>
+                <div style="width:24px;height:24px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6B6B78">M</div>
+                <div style="width:24px;height:24px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6B6B78">P</div>
+                <div style="width:24px;height:24px;border-radius:50%;background:rgba(124,58,237,0.1);border:1.5px dashed rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center;font-size:10px;color:#7C3AED">?</div>
+              </div>
+            </div>
+            <div class="vote-row" style="gap:8px">
+              <div class="vote-btn love" style="padding:12px;font-size:14px;border-radius:16px">Love it</div>
+              <div class="vote-btn works" style="padding:12px;font-size:14px;border-radius:16px">Works</div>
+              <div class="vote-btn nah" style="padding:12px;font-size:14px;border-radius:16px">Not for me</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-arrow">&rarr;</div>
+
+  <!-- After resolving, back to mosaic with 2 -->
+  <div class="phone-col">
+    <div class="state-label">VOTED &middot; 2 LEFT</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="atmo"></div>
+        <div class="mosaic">
+          <div class="glass-card mosaic-hero" style="flex:1.3">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <div class="card-avatar">S</div>
+                <div class="card-name lg">Sarah</div>
+                <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+              </div>
+              <div class="card-msg" style="font-size:20px">Reached? Swiss looks insane.</div>
+              <div class="card-meta" style="margin-top:8px">4 MIN AGO</div>
+            </div>
+            <div class="card-reply">
+              <span>Message Sarah...</span>
+              <div class="send"></div>
+            </div>
+          </div>
+          <div class="glass-card" style="padding:16px;display:flex;flex-direction:column;gap:8px;flex:0.7">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="card-avatar sm">A</div>
+              <div style="font-size:14px;color:#1A1A1A">Alex</div>
+              <div style="margin-left:auto" class="plasma-badge">REPLY</div>
+            </div>
+            <div class="card-msg sm">lmk what you think</div>
+            <div class="card-reply sm" style="margin-top:auto">
+              <span>Reply...</span>
+              <div class="send"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-hint"><span class="active">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- THE ELEVATE GESTURE -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="label-bar">THE MISSING PIECE &mdash; ELEVATE</div>
+<div class="desc-block">
+  The certainty contract only works if important group messages become decisions. <strong>"Elevate"</strong> is a one-tap gesture inside any group chat: long-press a message &rarr; it becomes a decision in the Decide stream &rarr; it surfaces on everyone's morning screen.
+</div>
+
+<div class="phone-row" style="margin-bottom:48px">
+  <!-- Group chat with banter -->
+  <div class="phone-col">
+    <div class="state-label">GROUP CHAT &middot; BANTER</div>
+    <div class="phone">
+      <div class="phone-screen" style="padding:48px 10px 10px;gap:6px;justify-content:flex-end">
+        <div style="align-self:flex-start;max-width:75%;padding:10px 14px;border-radius:16px 16px 16px 4px;background:rgba(0,0,0,0.04)">
+          <div style="font-size:10px;color:#8A8A94;margin-bottom:3px">Mike</div>
+          <div style="font-size:14px;color:#1A1A1A">bro that sunset pic was unreal</div>
+        </div>
+        <div style="align-self:flex-start;max-width:75%;padding:10px 14px;border-radius:16px 16px 16px 4px;background:rgba(0,0,0,0.04)">
+          <div style="font-size:10px;color:#8A8A94;margin-bottom:3px">Chris</div>
+          <div style="font-size:14px;color:#1A1A1A">lmaooo we need to go back</div>
+        </div>
+        <div style="align-self:flex-start;max-width:75%;padding:10px 14px;border-radius:16px 16px 16px 4px;background:rgba(0,0,0,0.04)">
+          <div style="font-size:10px;color:#8A8A94;margin-bottom:3px">Sara</div>
+          <div style="font-size:14px;color:#1A1A1A">wait actually can everyone vote on the hotel? zostel or taj, I need to book by Friday</div>
+        </div>
+        <div style="align-self:flex-start;max-width:75%;padding:10px 14px;border-radius:16px 16px 16px 4px;background:rgba(0,0,0,0.04)">
+          <div style="font-size:10px;color:#8A8A94;margin-bottom:3px">Dan</div>
+          <div style="font-size:14px;color:#1A1A1A">haha fr fr</div>
+        </div>
+        <div style="align-self:flex-start;max-width:75%;padding:10px 14px;border-radius:16px 16px 16px 4px;background:rgba(0,0,0,0.04)">
+          <div style="font-size:10px;color:#8A8A94;margin-bottom:3px">Mike</div>
+          <div style="font-size:14px;color:#1A1A1A">taj obviously</div>
+        </div>
+        <div style="align-self:flex-end;max-width:75%;padding:10px 14px;border-radius:16px 16px 4px 16px;background:#f0f0f0">
+          <div style="font-size:14px;color:#1A1A1A">lol you wish, zostel is the vibe</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#555;max-width:240px;text-align:center;line-height:1.5">
+      Sara's hotel question is buried in 47 messages of banter. Nobody sees it.
+    </div>
+  </div>
+
+  <div class="flow-arrow">&rarr;</div>
+
+  <!-- Long press → elevate -->
+  <div class="phone-col">
+    <div class="state-label">LONG-PRESS &rarr; ELEVATE</div>
+    <div class="phone">
+      <div class="phone-screen" style="padding:48px 10px 10px;gap:6px;justify-content:flex-end">
+        <div style="align-self:flex-start;max-width:75%;padding:10px 14px;border-radius:16px 16px 16px 4px;background:rgba(0,0,0,0.04)">
+          <div style="font-size:10px;color:#8A8A94;margin-bottom:3px">Chris</div>
+          <div style="font-size:14px;color:#1A1A1A">lmaooo we need to go back</div>
+        </div>
+        <!-- Elevated message -->
+        <div style="align-self:flex-start;max-width:85%;padding:12px 14px;border-radius:16px 16px 16px 4px;background:rgba(124,58,237,0.06);border:1.5px solid rgba(124,58,237,0.25)">
+          <div style="font-size:10px;color:#8A8A94;margin-bottom:3px">Sara</div>
+          <div style="font-size:14px;color:#1A1A1A">vote on the hotel? zostel or taj, I need to book by Friday</div>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <div style="padding:6px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(124,58,237,0.05));font-size:11px;color:#7C3AED;letter-spacing:0.5px">Elevate to Decision</div>
+          </div>
+        </div>
+        <div style="align-self:flex-start;max-width:75%;padding:10px 14px;border-radius:16px 16px 16px 4px;background:rgba(0,0,0,0.04)">
+          <div style="font-size:10px;color:#8A8A94;margin-bottom:3px">Dan</div>
+          <div style="font-size:14px;color:#1A1A1A">haha fr fr</div>
+        </div>
+        <div style="align-self:flex-start;max-width:75%;padding:10px 14px;border-radius:16px 16px 16px 4px;background:rgba(0,0,0,0.04)">
+          <div style="font-size:10px;color:#8A8A94;margin-bottom:3px">Mike</div>
+          <div style="font-size:14px;color:#1A1A1A">taj obviously</div>
+        </div>
+        <div style="align-self:flex-end;max-width:75%;padding:10px 14px;border-radius:16px 16px 4px 16px;background:#f0f0f0">
+          <div style="font-size:14px;color:#1A1A1A">lol you wish</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#555;max-width:240px;text-align:center;line-height:1.5">
+      Anyone can long-press Sara's message and tap "Elevate to Decision." One tap.
+    </div>
+  </div>
+
+  <div class="flow-arrow">&rarr;</div>
+
+  <!-- Now it appears on everyone's morning screen -->
+  <div class="phone-col">
+    <div class="state-label">EVERYONE'S MORNING</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="atmo"></div>
+        <div class="mosaic">
+          <div class="glass-card mosaic-hero">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                <div class="card-avatar">G</div>
+                <div>
+                  <div class="card-name lg">Goa Group</div>
+                  <div class="card-meta" style="margin-top:2px">SARA ELEVATED &middot; FRIDAY DEADLINE</div>
+                </div>
+              </div>
+              <div class="card-msg" style="font-size:20px">Zostel or Taj?</div>
+              <div style="font-size:13px;color:#6B6B78;margin-top:6px;font-weight:300">Book by Friday &middot; 1 of 6 voted</div>
+            </div>
+            <div class="vote-row" style="gap:8px">
+              <div class="vote-btn love" style="padding:10px;border-radius:14px">Zostel</div>
+              <div class="vote-btn works" style="padding:10px;border-radius:14px">Taj</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-hint"><span class="active">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#555;max-width:240px;text-align:center;line-height:1.5">
+      Now it's on everyone's HOME tab. No one misses it. The contract holds.
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- THE CONTRACT -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="narrative">
+  <h2>The Contract</h2>
+  <div class="rule">
+    <strong>If it needs you, it's on this screen.</strong><br>
+    <strong>If it's not on this screen, it can wait.</strong>
+  </div>
+  <p>
+    Three sources of truth. Zero ambiguity.
+  </p>
+  <p style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px">
+    <span class="plasma-badge" style="font-size:10px;padding:5px 12px">DM &mdash; unread + last sender &ne; me</span>
+    <span class="vote-badge" style="font-size:10px;padding:5px 12px">DECIDE &mdash; my reaction missing</span>
+    <span class="pay-badge" style="font-size:10px;padding:5px 12px">SETTLE &mdash; payment pending</span>
+  </p>
+</div>
+
+<div style="height:80px"></div>

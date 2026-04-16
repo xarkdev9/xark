@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Whisper Ghosting</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&display=swap');
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050507; overflow: hidden; font-family: 'Inter', sans-serif;}
+    
+    #ui-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(135deg, #1A1A24 0%, #0A0A0E 100%);
+        z-index: 10; padding: 60px 40px; box-sizing: border-box;
+        transition: opacity 0.2s ease; cursor: pointer;
+    }
+    
+    #void-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        opacity: 0; transition: opacity 0.4s ease;
+    }
+
+    h1 { color: #ffffff; font-weight: 300; font-size: 42px; margin: 0 0 24px 0; }
+    p { color: rgba(255, 255, 255, 0.9); font-weight: 300; line-height: 1.6; font-size: 18px; max-width: 600px;}
+    .desktop-hint { margin-top: 40px; background: rgba(255,255,255,0.1); padding: 16px 32px; border-radius: 8px; color: #fff;}
+
+    #typing-text { font-family: 'Inter', sans-serif; font-weight: 200; font-size: 56px; color: #D4536B; text-align: center; margin-bottom: 40px;}
+    .cursor { font-weight: 200; font-size: 56px; color: #D4536B; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #results { display: flex; flex-direction: column; gap: 24px; opacity: 0; transition: opacity 0.6s ease; }
+    .result-node { color: #F0EFF4; font-weight: 300; font-size: 24px; background: rgba(255,255,255,0.08); padding: 20px 40px; border-radius: 99px; }
+    
+    #progress-bar { position: absolute; bottom: 0; left: 0; height: 6px; background: #D4536B; width: 0%; transition: width 0.7s linear;}
+</style>
+</head>
+<body>
+    <div id="void-layer">
+        <div id="typing-text"><span id="live-text"></span><span class="cursor">|</span></div>
+        <div id="results">
+            <div class="result-node">Sarah Jenkins</div>
+            <div class="result-node">Sam (Swiss Trip)</div>
+            <div class="result-node">Create: "S..."</div>
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <h1>Whisper Ghosting</h1>
+        <p>Total UX Subtraction.</p>
+        <div class="desktop-hint">
+            <b>CLICK AND HOLD</b> exactly anywhere on this screen for 700ms.<br><br>The UI will snap out of existence. Once in the pure black void, press the letter <b>'S'</b> on your keyboard to instantly summon nodes.
+        </div>
+        <div id="progress-bar"></div>
+    </div>
+
+<script>
+    let timer; let ghosted = false;
+    let uiLayer = document.getElementById('ui-layer');
+    let voidLayer = document.getElementById('void-layer');
+    let progressBar = document.getElementById('progress-bar');
+    let liveText = document.getElementById('live-text');
+    let results = document.getElementById('results');
+
+    function startPress() {
+        if (ghosted) return;
+        progressBar.style.transition = 'width 0.7s linear';
+        progressBar.style.width = '100%';
+        
+        timer = setTimeout(() => {
+            ghosted = true;
+            uiLayer.style.opacity = '0';
+            setTimeout(() => {
+                uiLayer.style.display = 'none';
+                voidLayer.style.opacity = '1';
+            }, 200);
+        }, 700);
+    }
+
+    function cancelPress() {
+        clearTimeout(timer);
+        progressBar.style.transition = 'width 0.1s ease';
+        progressBar.style.width = '0%';
+    }
+
+    // Mount Handlers
+    document.addEventListener('mousedown', startPress);
+    document.addEventListener('mouseup', cancelPress);
+    document.addEventListener('touchstart', startPress);
+    document.addEventListener('touchend', cancelPress);
+    document.addEventListener('touchmove', cancelPress);
+
+    // Keyboard capture exactly as requested
+    document.addEventListener('keydown', (e) => {
+        if (!ghosted) return;
+        if (e.key === 's' || e.key === 'S') {
+            liveText.innerText = 'S';
+            results.style.opacity = '1';
+        }
+        if (e.key === 'Backspace') {
+            liveText.innerText = '';
+            results.style.opacity = '0';
+        }
+    });
+</script>
+</body>
+</html>

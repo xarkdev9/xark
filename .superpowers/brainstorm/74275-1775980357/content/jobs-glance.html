@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #080808; color: #fafafa; font-family: 'Inter', sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 40px 20px 80px;
+  }
+
+  .title { font-size: 28px; font-weight: 200; letter-spacing: -0.8px; margin-bottom: 6px; text-align: center; }
+  .subtitle { font-size: 13px; color: #444; font-weight: 300; text-align: center; margin-bottom: 48px; max-width: 500px; line-height: 1.6; }
+
+  .phones { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; }
+
+  .phone-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .phone-label { font-size: 9px; letter-spacing: 2.5px; color: #333; }
+
+  /* ── Phone ── */
+  .phone {
+    width: 320px; height: 692px;
+    border-radius: 48px;
+    background: #FAFAFA;
+    border: 1.5px solid #1a1a1a;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+  }
+  .screen { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+  /* ── Atmosphere ── */
+  .atmosphere {
+    position: absolute; inset: 0; pointer-events: none;
+    transition: opacity 1.5s ease;
+  }
+  .atm-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0;
+    animation: blobBreathe 6s ease-in-out infinite;
+  }
+
+  @keyframes blobBreathe {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.15); opacity: 0.7; }
+  }
+
+  /* ── Status bar ── */
+  .status-bar {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 16px 28px 0;
+    display: flex; justify-content: space-between;
+    font-size: 12px; font-weight: 400; color: rgba(26,26,26,0.3);
+    letter-spacing: 0.5px; z-index: 50;
+  }
+
+  /* ── Floating Names ── */
+  .names-layer {
+    position: absolute;
+    top: 100px; left: 0; right: 0; bottom: 60px;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .name-entry {
+    position: relative;
+    padding: 14px 36px;
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .name-entry:hover { transform: translateX(4px); }
+  .name-entry:active { transform: scale(0.98); }
+
+  /* The glow — atmospheric light behind the name */
+  .name-glow {
+    position: absolute;
+    top: 50%; left: 20px;
+    width: 120px; height: 40px;
+    border-radius: 50%;
+    filter: blur(30px);
+    transform: translateY(-50%);
+    opacity: 0.35;
+    transition: opacity 0.6s ease, width 0.6s ease;
+  }
+  .name-entry:hover .name-glow {
+    opacity: 0.55;
+    width: 160px;
+  }
+
+  .name-primary {
+    font-size: 32px;
+    font-weight: 400;
+    color: #1A1A1A;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    position: relative;
+    z-index: 2;
+  }
+  .name-context {
+    font-size: 14px;
+    font-weight: 300;
+    color: #8A8A94;
+    letter-spacing: -0.2px;
+    margin-top: 3px;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Staggered entrance */
+  .name-entry { opacity: 0; animation: nameFloat 0.8s ease forwards; }
+  .name-entry:nth-child(1) { animation-delay: 0.1s; }
+  .name-entry:nth-child(2) { animation-delay: 0.22s; }
+  .name-entry:nth-child(3) { animation-delay: 0.34s; }
+  .name-entry:nth-child(4) { animation-delay: 0.46s; }
+  .name-entry:nth-child(5) { animation-delay: 0.58s; }
+
+  @keyframes nameFloat {
+    0% { opacity: 0; transform: translateY(16px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Urgency sizing — most urgent = lower + larger ── */
+  .urgency-1 .name-primary { font-size: 34px; }
+  .urgency-2 .name-primary { font-size: 30px; }
+  .urgency-3 .name-primary { font-size: 28px; }
+  .urgency-4 .name-primary { font-size: 26px; color: rgba(26,26,26,0.8); }
+  .urgency-5 .name-primary { font-size: 24px; color: rgba(26,26,26,0.65); }
+
+  .urgency-4 .name-context,
+  .urgency-5 .name-context { color: rgba(138,138,148,0.6); }
+
+  /* ── Tabs ── */
+  .tab-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 40px;
+    display: flex; align-items: center; justify-content: center; gap: 28px;
+    font-size: 9px; letter-spacing: 1.5px; color: rgba(26,26,26,0.2);
+    z-index: 50;
+  }
+  .tab-bar .on { color: rgba(26,26,26,0.5); }
+
+  /* ── Zero state ── */
+  .zero-layer {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  .zero-text {
+    font-size: 28px; font-weight: 200; color: rgba(26,26,26,0.12);
+    letter-spacing: -0.5px;
+  }
+
+  /* ── FocusCard Expanded (shown as overlay on one phone) ── */
+  .focus-overlay {
+    position: absolute; inset: 0; z-index: 40;
+    background: rgba(250,250,250,0.6);
+    backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+    display: flex; flex-direction: column;
+    padding: 60px 20px 20px;
+    animation: focusFadeIn 0.5s ease;
+  }
+  @keyframes focusFadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  .focus-card {
+    flex: 1;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border: 0.5px solid rgba(255,255,255,0.5);
+    border-radius: 28px;
+    padding: 24px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 16px 50px rgba(0,0,0,0.06);
+  }
+  .focus-av {
+    width: 48px; height: 48px; border-radius: 50%; background: #e8e8e8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #6B6B78;
+  }
+  .focus-name {
+    font-size: 24px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.6px;
+  }
+  .focus-meta {
+    font-size: 10px; letter-spacing: 1.5px; color: #8A8A94; margin-top: 2px;
+  }
+  .focus-msg {
+    font-size: 28px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.8px; line-height: 1.2;
+  }
+  .focus-reply {
+    height: 52px; border-radius: 26px; background: rgba(255,255,255,0.5);
+    display: flex; align-items: center; padding: 0 8px 0 20px;
+    margin-top: auto;
+  }
+  .focus-reply span { font-size: 15px; color: #8A8A94; font-weight: 300; }
+  .focus-reply .snd {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    margin-left: auto;
+  }
+  .focus-back {
+    font-size: 10px; letter-spacing: 2px; color: #8A8A94;
+    margin-bottom: 16px;
+  }
+
+  /* ── Annotation ── */
+  .note {
+    max-width: 900px; margin: 48px auto 0; padding: 0 24px;
+    text-align: center;
+  }
+  .note h2 { font-size: 22px; font-weight: 200; margin-bottom: 12px; }
+  .note p { font-size: 13px; color: #444; font-weight: 300; line-height: 1.7; max-width: 600px; margin: 0 auto; }
+  .note p + p { margin-top: 10px; }
+  .sep { width: 40px; height: 1px; background: #222; margin: 40px auto; }
+</style>
+</head>
+<body>
+
+<div class="title">The Typographic Glance</div>
+<div class="subtitle">
+  Names in the atmosphere. Each name glows with its accent. The atmosphere breathes heavier when more things need you. Tap a name — the FocusCardWidget materializes around it.
+</div>
+
+<div class="phones">
+
+  <!-- ═══════════════════════════ -->
+  <!-- PHONE 1: 5 NEEDS YOU -->
+  <!-- ═══════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">5 NEED YOU</div>
+    <div class="phone">
+      <div class="screen">
+
+        <!-- Atmosphere — warm and active with 5 items -->
+        <div class="atmosphere">
+          <!-- Each blob is near its name, accent-colored -->
+          <div class="atm-blob" style="width:180px;height:180px;background:rgba(255,45,85,0.12);top:22%;left:-10%;animation-delay:0s"></div>
+          <div class="atm-blob" style="width:140px;height:140px;background:rgba(15,118,110,0.10);top:12%;right:5%;animation-delay:1.2s"></div>
+          <div class="atm-blob" style="width:160px;height:160px;background:rgba(37,99,235,0.08);top:42%;left:5%;animation-delay:2.4s"></div>
+          <div class="atm-blob" style="width:120px;height:120px;background:rgba(255,106,61,0.10);top:58%;right:-5%;animation-delay:0.8s"></div>
+          <div class="atm-blob" style="width:130px;height:130px;background:rgba(124,58,237,0.08);top:72%;left:15%;animation-delay:1.8s"></div>
+        </div>
+
+        <div class="status-bar"><span>9:41</span><span></span></div>
+
+        <div class="names-layer">
+          <div class="name-entry urgency-1">
+            <div class="name-glow" style="background:#ff2d55"></div>
+            <div class="name-primary">Sarah</div>
+            <div class="name-context">asked you a question &middot; 4m</div>
+          </div>
+          <div class="name-entry urgency-2">
+            <div class="name-glow" style="background:#0f766e"></div>
+            <div class="name-primary">Swiss Alps</div>
+            <div class="name-context">vote on Zurich flight &middot; 3 waiting</div>
+          </div>
+          <div class="name-entry urgency-3">
+            <div class="name-glow" style="background:#2563eb"></div>
+            <div class="name-primary">Family</div>
+            <div class="name-context">Mom elevated &middot; Sunday lunch</div>
+          </div>
+          <div class="name-entry urgency-4">
+            <div class="name-glow" style="background:#ff6a3d"></div>
+            <div class="name-primary">Bali Trip</div>
+            <div class="name-context">confirm villa deposit</div>
+          </div>
+          <div class="name-entry urgency-5">
+            <div class="name-glow" style="background:#7c3aed"></div>
+            <div class="name-primary">Goa Group</div>
+            <div class="name-context">break the hotel tie &middot; 3-3</div>
+          </div>
+        </div>
+
+        <div class="tab-bar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════ -->
+  <!-- PHONE 2: TAP → FOCUSCARD -->
+  <!-- ═══════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">TAP SARAH</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="atmosphere">
+          <div class="atm-blob" style="width:220px;height:220px;background:rgba(255,45,85,0.10);top:20%;left:10%;animation-delay:0s"></div>
+        </div>
+
+        <div class="focus-overlay">
+          <div class="focus-back">&larr; 4 MORE WAITING</div>
+          <div class="focus-card">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px">
+              <div class="focus-av">S</div>
+              <div>
+                <div class="focus-name">Sarah</div>
+                <div class="focus-meta">4 MIN AGO &middot; DM</div>
+              </div>
+            </div>
+            <div class="focus-msg">Reached? Swiss looks insane.</div>
+            <div style="flex:1"></div>
+            <div class="focus-reply">
+              <span>Message Sarah...</span>
+              <div class="snd"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-bar" style="z-index:60"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════ -->
+  <!-- PHONE 3: 2 NEEDS YOU -->
+  <!-- ═══════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">2 NEED YOU</div>
+    <div class="phone">
+      <div class="screen">
+
+        <!-- Atmosphere — calmer with just 2 items -->
+        <div class="atmosphere">
+          <div class="atm-blob" style="width:160px;height:160px;background:rgba(255,45,85,0.08);top:30%;left:5%;animation-delay:0s"></div>
+          <div class="atm-blob" style="width:130px;height:130px;background:rgba(15,118,110,0.07);top:45%;right:10%;animation-delay:1.5s"></div>
+        </div>
+
+        <div class="status-bar"><span>9:41</span><span></span></div>
+
+        <div class="names-layer">
+          <div class="name-entry urgency-1">
+            <div class="name-glow" style="background:#ff2d55"></div>
+            <div class="name-primary">Sarah</div>
+            <div class="name-context">asked you a question &middot; 4m</div>
+          </div>
+          <div class="name-entry urgency-2">
+            <div class="name-glow" style="background:#0f766e"></div>
+            <div class="name-primary">Swiss Alps</div>
+            <div class="name-context">vote on Zurich flight &middot; 3 waiting</div>
+          </div>
+        </div>
+
+        <div class="tab-bar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════ -->
+  <!-- PHONE 4: ZERO STATE -->
+  <!-- ═══════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">ZERO</div>
+    <div class="phone">
+      <div class="screen">
+        <!-- Atmosphere — still, barely there -->
+        <div class="atmosphere" style="opacity:0.3">
+          <div class="atm-blob" style="width:200px;height:200px;background:rgba(4,120,87,0.04);top:40%;left:20%;animation-delay:0s"></div>
+        </div>
+
+        <div class="status-bar"><span>9:41</span><span></span></div>
+
+        <div class="zero-layer">
+          <div class="zero-text">Caught up</div>
+        </div>
+
+        <div class="tab-bar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<div class="note">
+  <h2>What makes it not boring</h2>
+</div>
+
+<!-- Detail phones showing the alive-ness -->
+<div class="phones" style="margin-top:32px">
+
+  <!-- ═══════════════════════════ -->
+  <!-- PHONE 5: THE GLOW RESPONSE -->
+  <!-- ═══════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">HOVER / APPROACH</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="atmosphere">
+          <div class="atm-blob" style="width:180px;height:180px;background:rgba(255,45,85,0.12);top:22%;left:-10%;animation-delay:0s"></div>
+          <div class="atm-blob" style="width:140px;height:140px;background:rgba(15,118,110,0.10);top:12%;right:5%;animation-delay:1.2s"></div>
+          <div class="atm-blob" style="width:160px;height:160px;background:rgba(37,99,235,0.08);top:42%;left:5%;animation-delay:2.4s"></div>
+        </div>
+
+        <div class="status-bar"><span>9:41</span><span></span></div>
+
+        <div class="names-layer">
+          <!-- Sarah is being hovered — glow intensifies, name shifts -->
+          <div class="name-entry urgency-1" style="transform:translateX(6px)">
+            <div class="name-glow" style="background:#ff2d55;opacity:0.6;width:180px;filter:blur(35px)"></div>
+            <div class="name-primary" style="font-size:36px">Sarah</div>
+            <div class="name-context" style="color:#6B6B78">asked you a question &middot; 4m</div>
+          </div>
+          <!-- Others dim slightly when one is focused -->
+          <div class="name-entry urgency-2" style="opacity:0.5">
+            <div class="name-glow" style="background:#0f766e;opacity:0.15"></div>
+            <div class="name-primary">Swiss Alps</div>
+            <div class="name-context">vote on Zurich flight</div>
+          </div>
+          <div class="name-entry urgency-3" style="opacity:0.4">
+            <div class="name-glow" style="background:#2563eb;opacity:0.12"></div>
+            <div class="name-primary">Family</div>
+            <div class="name-context">Mom elevated &middot; Sunday lunch</div>
+          </div>
+        </div>
+
+        <div class="tab-bar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#444;max-width:260px;text-align:center;line-height:1.5;margin-top:4px">
+      Your finger approaches Sarah. Her glow intensifies. Others recede. The atmosphere warms around her name. She's responding to your intent before you've touched the screen.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════ -->
+  <!-- PHONE 6: PARALLAX TILT -->
+  <!-- ═══════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">GYRO PARALLAX</div>
+    <div class="phone">
+      <div class="screen" style="perspective:600px">
+        <div class="atmosphere">
+          <div class="atm-blob" style="width:180px;height:180px;background:rgba(255,45,85,0.12);top:18%;left:-5%;animation-delay:0s"></div>
+          <div class="atm-blob" style="width:140px;height:140px;background:rgba(15,118,110,0.10);top:10%;right:10%;animation-delay:1.2s"></div>
+          <div class="atm-blob" style="width:160px;height:160px;background:rgba(37,99,235,0.08);top:46%;left:10%;animation-delay:2.4s"></div>
+          <div class="atm-blob" style="width:120px;height:120px;background:rgba(255,106,61,0.10);top:60%;right:0%;animation-delay:0.8s"></div>
+          <div class="atm-blob" style="width:130px;height:130px;background:rgba(124,58,237,0.08);top:74%;left:20%;animation-delay:1.8s"></div>
+        </div>
+
+        <div class="status-bar"><span>9:41</span><span></span></div>
+
+        <!-- Names at different z-depths — tilted to show parallax effect -->
+        <div class="names-layer" style="transform:rotateY(3deg) rotateX(-1deg); transform-style:preserve-3d">
+          <div class="name-entry urgency-1" style="transform:translateZ(20px)">
+            <div class="name-glow" style="background:#ff2d55"></div>
+            <div class="name-primary">Sarah</div>
+            <div class="name-context">asked you a question &middot; 4m</div>
+          </div>
+          <div class="name-entry urgency-2" style="transform:translateZ(12px)">
+            <div class="name-glow" style="background:#0f766e"></div>
+            <div class="name-primary">Swiss Alps</div>
+            <div class="name-context">vote on Zurich flight &middot; 3 waiting</div>
+          </div>
+          <div class="name-entry urgency-3" style="transform:translateZ(6px)">
+            <div class="name-glow" style="background:#2563eb"></div>
+            <div class="name-primary">Family</div>
+            <div class="name-context">Mom elevated &middot; Sunday lunch</div>
+          </div>
+          <div class="name-entry urgency-4" style="transform:translateZ(3px)">
+            <div class="name-glow" style="background:#ff6a3d"></div>
+            <div class="name-primary">Bali Trip</div>
+            <div class="name-context">confirm villa deposit</div>
+          </div>
+          <div class="name-entry urgency-5" style="transform:translateZ(0px)">
+            <div class="name-glow" style="background:#7c3aed"></div>
+            <div class="name-primary">Goa Group</div>
+            <div class="name-context">break the hotel tie</div>
+          </div>
+        </div>
+
+        <div class="tab-bar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#444;max-width:260px;text-align:center;line-height:1.5;margin-top:4px">
+      Names float at different Z-depths. When you tilt your phone, they shift at different rates. The atmospheric blobs move behind them. It feels spatial. The text exists IN the atmosphere, not ON it.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════ -->
+  <!-- PHONE 7: THE DISSOLVE -->
+  <!-- ═══════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">AFTER RESOLVING SARAH</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="atmosphere">
+          <!-- Sarah's blob is dissolving (fading, expanding) -->
+          <div class="atm-blob" style="width:300px;height:300px;background:rgba(255,45,85,0.03);top:20%;left:0%;filter:blur(80px);animation:none;opacity:0.3"></div>
+          <div class="atm-blob" style="width:140px;height:140px;background:rgba(15,118,110,0.10);top:15%;right:5%;animation-delay:1.2s"></div>
+          <div class="atm-blob" style="width:160px;height:160px;background:rgba(37,99,235,0.08);top:38%;left:5%;animation-delay:2.4s"></div>
+          <div class="atm-blob" style="width:120px;height:120px;background:rgba(255,106,61,0.10);top:54%;right:0%;animation-delay:0.8s"></div>
+          <div class="atm-blob" style="width:130px;height:130px;background:rgba(124,58,237,0.08);top:68%;left:15%;animation-delay:1.8s"></div>
+        </div>
+
+        <div class="status-bar"><span>9:41</span><span></span></div>
+
+        <div class="names-layer">
+          <!-- Sarah is gone — her space is dissolving, others drift up -->
+          <div class="name-entry urgency-1" style="opacity:0.08">
+            <div class="name-glow" style="background:#ff2d55;opacity:0.05;width:200px;filter:blur(50px)"></div>
+            <div class="name-primary" style="filter:blur(3px)">Sarah</div>
+            <div class="name-context" style="filter:blur(3px)">done</div>
+          </div>
+          <div class="name-entry urgency-1">
+            <div class="name-glow" style="background:#0f766e"></div>
+            <div class="name-primary" style="font-size:34px">Swiss Alps</div>
+            <div class="name-context">vote on Zurich flight &middot; 3 waiting</div>
+          </div>
+          <div class="name-entry urgency-2">
+            <div class="name-glow" style="background:#2563eb"></div>
+            <div class="name-primary">Family</div>
+            <div class="name-context">Mom elevated &middot; Sunday lunch</div>
+          </div>
+          <div class="name-entry urgency-3">
+            <div class="name-glow" style="background:#ff6a3d"></div>
+            <div class="name-primary">Bali Trip</div>
+            <div class="name-context">confirm villa deposit</div>
+          </div>
+          <div class="name-entry urgency-4">
+            <div class="name-glow" style="background:#7c3aed"></div>
+            <div class="name-primary">Goa Group</div>
+            <div class="name-context">break the hotel tie</div>
+          </div>
+        </div>
+
+        <div class="tab-bar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#444;max-width:260px;text-align:center;line-height:1.5;margin-top:4px">
+      You replied to Sarah. Her name dissolves into the atmosphere — the glow expands and fades like smoke. The remaining names drift upward and grow. Swiss Alps inherits the top position. 4 left.
+    </div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<div class="note">
+  <h2>The Jobs details</h2>
+  <p>
+    <strong style="color:#888;font-weight:400">Staggered entrance.</strong>
+    Names don't appear all at once. They float in one by one, 120ms apart, each rising from nothing and settling. Like curtains opening to reveal who's waiting for you.
+  </p>
+  <p>
+    <strong style="color:#888;font-weight:400">Urgency = size.</strong>
+    Most urgent name is 34px. Least urgent is 24px with 65% opacity. Your eye reads priority before your brain processes text. Size IS the ranking.
+  </p>
+  <p>
+    <strong style="color:#888;font-weight:400">The glow responds to proximity.</strong>
+    Before you tap, as your finger approaches, the glow under that name blooms. Others recede. The atmosphere shifts toward that name's accent. The screen anticipates your intent.
+  </p>
+  <p>
+    <strong style="color:#888;font-weight:400">The morph.</strong>
+    Tap a name. The name GROWS. Glass materializes around it. The context line expands into the full message. The reply bar slides up. It's not a page transition — the name BECOMES the FocusCard. Same element. Continuous motion.
+  </p>
+  <p>
+    <strong style="color:#888;font-weight:400">Atmosphere = load.</strong>
+    5 names = 5 warm blobs in the mesh, active breathing. 1 name = 1 gentle glow. Zero names = nearly invisible cool wash. The background color temperature of the screen is the count before you read a word.
+  </p>
+</div>
+
+<div style="height:60px"></div>
+</body>
+</html>

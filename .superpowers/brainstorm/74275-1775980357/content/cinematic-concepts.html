@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cinematic Concepts</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #080808; color: #fafafa; font-family: 'Inter', sans-serif; }
+
+  .header { text-align: center; padding: 60px 24px 0; }
+  .header h1 { font-size: 32px; font-weight: 200; letter-spacing: -1px; }
+  .header p { font-size: 14px; color: #555; font-weight: 300; margin-top: 8px; max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+  .sep { width: 40px; height: 1px; background: #333; margin: 56px auto; }
+
+  .concept { max-width: 900px; margin: 0 auto 32px; padding: 0 24px; }
+  .concept-tag { font-size: 10px; letter-spacing: 3px; color: #FF4D00; margin-bottom: 6px; }
+  .concept-name { font-size: 26px; font-weight: 200; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .concept-desc { font-size: 14px; color: #555; font-weight: 300; line-height: 1.65; max-width: 520px; margin-bottom: 28px; }
+
+  .row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .col-label { font-size: 9px; letter-spacing: 2px; color: #333; }
+
+  /* Phone */
+  .ph {
+    width: 300px; height: 640px;
+    border-radius: 44px;
+    background: #FAFAFA;
+    border: 1.5px solid #222;
+    overflow: hidden; position: relative;
+    box-shadow: 0 30px 90px rgba(0,0,0,0.6);
+  }
+  .sc { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+  /* Atmosphere */
+  .atm {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 35%, rgba(124,58,237,0.05) 0%, transparent 55%);
+  }
+  .atm-busy {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse at 30% 25%, rgba(255,0,85,0.04) 0%, transparent 40%),
+      radial-gradient(ellipse at 70% 60%, rgba(124,58,237,0.04) 0%, transparent 40%),
+      radial-gradient(ellipse at 50% 85%, rgba(4,120,87,0.03) 0%, transparent 35%);
+  }
+
+  /* ═══════════════════════════════════════════ */
+  /* CONCEPT 1: THE LIVING DECK */
+  /* Cards physically stacked with real depth.  */
+  /* Hero is pulled forward. Others behind.     */
+  /* The EDGES of behind-cards peek out.        */
+  /* ═══════════════════════════════════════════ */
+
+  .deck-container {
+    position: absolute;
+    top: 56px; left: 16px; right: 16px; bottom: 50px;
+    perspective: 1200px;
+  }
+
+  /* Behind cards — only top edge visible */
+  .deck-behind {
+    position: absolute;
+    left: 0; right: 0;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 0.5px solid rgba(255,255,255,0.4);
+    overflow: hidden;
+  }
+  .deck-behind-inner {
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .deck-behind .av {
+    width: 28px; height: 28px; border-radius: 50%; background: #e8e8e8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #6B6B78;
+  }
+  .deck-behind .nm { font-size: 13px; color: #6B6B78; font-weight: 300; }
+  .deck-behind .dot {
+    width: 6px; height: 6px; border-radius: 50%; margin-left: auto;
+  }
+  .dot-reply { background: linear-gradient(135deg, #FF0055, #FF4D00); }
+  .dot-vote { background: #7C3AED; }
+  .dot-pay { background: #047857; }
+
+  /* Hero card — full, forward, sharp */
+  .deck-hero {
+    position: absolute;
+    left: 0; right: 0;
+    border-radius: 28px;
+    background: rgba(255,255,255,0.75);
+    backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+    border: 0.5px solid rgba(255,255,255,0.5);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  .deck-hero-inner {
+    padding: 22px;
+    height: 100%;
+    display: flex; flex-direction: column;
+  }
+  .hero-av {
+    width: 44px; height: 44px; border-radius: 50%; background: #e8e8e8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: #6B6B78;
+  }
+  .hero-name { font-size: 22px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.5px; }
+  .hero-msg {
+    font-size: 28px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.8px; line-height: 1.2;
+  }
+  .hero-meta { font-size: 10px; letter-spacing: 1.5px; color: #8A8A94; }
+  .hero-reply {
+    height: 48px; border-radius: 24px; background: rgba(255,255,255,0.5);
+    display: flex; align-items: center; padding: 0 8px 0 18px;
+  }
+  .hero-reply span { font-size: 15px; color: #8A8A94; font-weight: 300; }
+  .hero-reply .snd {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    margin-left: auto;
+  }
+
+  /* Vote variant */
+  .hero-votes {
+    display: flex; gap: 8px; margin-top: auto;
+  }
+  .hero-vote-btn {
+    flex: 1; padding: 14px 4px; border-radius: 16px;
+    text-align: center; font-size: 14px; font-weight: 400;
+  }
+  .hero-vote-btn.lo { background: rgba(255,77,0,0.06); color: #FF4D00; }
+  .hero-vote-btn.wk { background: rgba(107,107,120,0.06); color: #6B6B78; }
+  .hero-vote-btn.nah { background: rgba(196,61,8,0.05); color: #C43D08; }
+
+  /* 5-card deck positioning */
+  .deck5 .deck-behind:nth-child(1) { top: 0; height: 56px; z-index: 1; }
+  .deck5 .deck-behind:nth-child(2) { top: 48px; height: 56px; z-index: 2; }
+  .deck5 .deck-behind:nth-child(3) { top: 96px; height: 56px; z-index: 3; }
+  .deck5 .deck-behind:nth-child(4) { top: 144px; height: 56px; z-index: 4; }
+  .deck5 .deck-hero { top: 192px; bottom: 0; z-index: 5; }
+
+  /* 2-card deck */
+  .deck2 .deck-behind:nth-child(1) { top: 0; height: 60px; z-index: 1; }
+  .deck2 .deck-hero { top: 52px; bottom: 0; z-index: 2; }
+
+  /* Tab hint */
+  .tabs {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 32px;
+    display: flex; align-items: center; justify-content: center; gap: 28px;
+    font-size: 8px; letter-spacing: 1.5px; color: #ccc; z-index: 100;
+  }
+  .tabs .on { color: #FF4D00; }
+
+  /* ═══════════════════════════════════════════ */
+  /* CONCEPT 2: THE STORY STRIP */
+  /* Horizontal, each card is nearly full-screen */
+  /* You see the current + edge of next */
+  /* Like IG stories but for needs-you */
+  /* ═══════════════════════════════════════════ */
+
+  .strip-container {
+    position: absolute;
+    top: 56px; left: 0; right: 0; bottom: 50px;
+    display: flex;
+    overflow: hidden;
+  }
+  .strip-card {
+    flex-shrink: 0;
+    border-radius: 28px;
+    background: rgba(255,255,255,0.75);
+    backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+    border: 0.5px solid rgba(255,255,255,0.5);
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+  }
+  .strip-card-inner {
+    padding: 22px;
+    height: 100%;
+    display: flex; flex-direction: column;
+  }
+  /* Main visible card */
+  .strip5 .strip-card:nth-child(1) { width: 252px; margin-left: 16px; margin-right: 8px; }
+  .strip5 .strip-card:nth-child(2) { width: 252px; margin-right: 8px; }
+  .strip5 .strip-card:nth-child(3) { width: 252px; }
+  /* The peek of card 2 is visible because card 1 is < screen width */
+
+  .strip2 .strip-card:nth-child(1) { width: 260px; margin-left: 16px; margin-right: 8px; }
+  .strip2 .strip-card:nth-child(2) { width: 260px; }
+
+  /* Count pips — floating in the atmosphere, not in a container */
+  .pips {
+    position: absolute;
+    top: 48px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 6px;
+    z-index: 50;
+  }
+  .pip {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(26,26,26,0.15);
+  }
+  .pip.active { background: rgba(26,26,26,0.5); }
+
+  /* ═══════════════════════════════════════════ */
+  /* CONCEPT 3: THE ATMOSPHERE COUNT */
+  /* One full FocusCard. The count lives in the  */
+  /* atmosphere itself — large, typographic,     */
+  /* breathing. Not a badge. The number IS the   */
+  /* atmosphere.                                 */
+  /* ═══════════════════════════════════════════ */
+
+  .atm-count {
+    position: absolute;
+    top: 54px; left: 0; right: 0;
+    text-align: center;
+    z-index: 1;
+  }
+  .atm-number {
+    font-size: 120px;
+    font-weight: 200;
+    color: rgba(26,26,26,0.04);
+    line-height: 1;
+    letter-spacing: -8px;
+  }
+
+  .atm-card-container {
+    position: absolute;
+    top: 120px; left: 16px; right: 16px; bottom: 50px;
+    z-index: 10;
+  }
+  .atm-hero-card {
+    width: 100%; height: 100%;
+    border-radius: 28px;
+    background: rgba(255,255,255,0.75);
+    backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+    border: 0.5px solid rgba(255,255,255,0.5);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  .atm-hero-inner {
+    padding: 24px;
+    height: 100%;
+    display: flex; flex-direction: column;
+  }
+
+  /* Next-up strip — avatars floating below the hero */
+  .next-up {
+    position: absolute;
+    bottom: 56px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 16px;
+    z-index: 20;
+  }
+  .next-av {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: #6B6B78;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  }
+  .next-av .next-dot {
+    position: absolute; bottom: -2px; right: -2px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid #FAFAFA;
+  }
+
+  /* Zero state */
+  .zero-center {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 10px; z-index: 5;
+  }
+  .zero-ring {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 1px solid rgba(4,120,87,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: rgba(4,120,87,0.5);
+  }
+  .zero-text { font-size: 14px; color: #B0B0B0; font-weight: 300; }
+  .atm-zero {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 50%, rgba(4,120,87,0.03) 0%, transparent 50%);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Each card stays immersive.</h1>
+  <p>The count is communicated WITHOUT shrinking cards. Three different ways to say "5 things need you" while keeping each one cinematic.</p>
+</div>
+
+<div class="sep"></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- CONCEPT 1: THE LIVING DECK -->
+<!-- ══════════════════════════════════════════ -->
+<div class="concept">
+  <div class="concept-tag">CONCEPT A</div>
+  <div class="concept-name">The Living Deck</div>
+  <div class="concept-desc">
+    Physical card deck. The hero card is pulled forward — full FocusCardWidget, full immersion, full action area. Behind it, other cards peek their top edge — just avatar, name, and a colored dot. The stack of edges IS the count. Swipe the hero away, the next card rises into hero position.
+  </div>
+</div>
+
+<div class="row" style="margin-bottom: 56px">
+  <div class="col">
+    <div class="col-label">5 NEED YOU</div>
+    <div class="ph">
+      <div class="sc">
+        <div class="atm-busy"></div>
+        <div class="deck-container deck5">
+
+          <!-- Behind card 4 (deepest) -->
+          <div class="deck-behind">
+            <div class="deck-behind-inner">
+              <div class="av" style="background:linear-gradient(135deg,rgba(4,120,87,0.12),rgba(4,120,87,0.04));color:#047857">$</div>
+              <div class="nm">Sarah &middot; $42.50</div>
+              <div class="dot dot-pay"></div>
+            </div>
+          </div>
+
+          <!-- Behind card 3 -->
+          <div class="deck-behind">
+            <div class="deck-behind-inner">
+              <div class="av">G</div>
+              <div class="nm">Goa Group</div>
+              <div class="dot dot-vote"></div>
+            </div>
+          </div>
+
+          <!-- Behind card 2 -->
+          <div class="deck-behind">
+            <div class="deck-behind-inner">
+              <div class="av">A</div>
+              <div class="nm">Alex</div>
+              <div class="dot dot-reply"></div>
+            </div>
+          </div>
+
+          <!-- Behind card 1 -->
+          <div class="deck-behind">
+            <div class="deck-behind-inner">
+              <div class="av">B</div>
+              <div class="nm">Bali Trip</div>
+              <div class="dot dot-vote"></div>
+            </div>
+          </div>
+
+          <!-- HERO -->
+          <div class="deck-hero">
+            <div class="deck-hero-inner">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+                <div class="hero-av">S</div>
+                <div>
+                  <div class="hero-name">Sarah</div>
+                  <div class="hero-meta" style="margin-top:2px">4 MIN AGO</div>
+                </div>
+              </div>
+              <div class="hero-msg">Reached? Swiss looks insane.</div>
+              <div style="flex:1"></div>
+              <div class="hero-reply">
+                <span>Message Sarah...</span>
+                <div class="snd"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="tabs"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-label">2 NEED YOU</div>
+    <div class="ph">
+      <div class="sc">
+        <div class="atm"></div>
+        <div class="deck-container deck2">
+
+          <div class="deck-behind">
+            <div class="deck-behind-inner">
+              <div class="av">B</div>
+              <div class="nm">Bali Trip</div>
+              <div class="dot dot-vote"></div>
+            </div>
+          </div>
+
+          <div class="deck-hero">
+            <div class="deck-hero-inner">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+                <div class="hero-av">S</div>
+                <div>
+                  <div class="hero-name">Sarah</div>
+                  <div class="hero-meta" style="margin-top:2px">4 MIN AGO</div>
+                </div>
+              </div>
+              <div class="hero-msg">Reached? Swiss looks insane.</div>
+              <div style="flex:1"></div>
+              <div class="hero-reply">
+                <span>Message Sarah...</span>
+                <div class="snd"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="tabs"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-label">ZERO</div>
+    <div class="ph">
+      <div class="sc">
+        <div class="atm-zero"></div>
+        <div class="zero-center">
+          <div class="zero-ring">&#10003;</div>
+          <div class="zero-text">Caught up</div>
+        </div>
+        <div class="tabs"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- CONCEPT 2: STORY STRIP -->
+<!-- ══════════════════════════════════════════ -->
+<div class="concept">
+  <div class="concept-tag">CONCEPT B</div>
+  <div class="concept-name">The Story Strip</div>
+  <div class="concept-desc">
+    Full-height cards side by side, like holding a hand of cards fanned horizontally. You see the current card fully + the edge of the next one peeking. Swipe horizontally to move between. Each card is nearly full-screen. The edge-peek tells you more exist. Minimal pips in the atmosphere mark the total.
+  </div>
+</div>
+
+<div class="row" style="margin-bottom: 56px">
+  <div class="col">
+    <div class="col-label">5 NEED YOU &middot; CARD 1 OF 5</div>
+    <div class="ph">
+      <div class="sc">
+        <div class="atm-busy"></div>
+        <div class="pips">
+          <div class="pip active"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+        </div>
+        <div class="strip-container strip5">
+          <!-- Card 1: Sarah -->
+          <div class="strip-card">
+            <div class="strip-card-inner">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+                <div class="hero-av">S</div>
+                <div>
+                  <div class="hero-name" style="font-size:20px">Sarah</div>
+                  <div class="hero-meta" style="margin-top:2px">4 MIN AGO</div>
+                </div>
+              </div>
+              <div class="hero-msg" style="font-size:26px">Reached? Swiss looks insane.</div>
+              <div style="flex:1"></div>
+              <div class="hero-reply">
+                <span>Message Sarah...</span>
+                <div class="snd"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Card 2: Bali (peeking) -->
+          <div class="strip-card">
+            <div class="strip-card-inner">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+                <div class="hero-av">B</div>
+                <div>
+                  <div class="hero-name" style="font-size:20px">Bali Trip</div>
+                  <div class="hero-meta" style="margin-top:2px">VOTE</div>
+                </div>
+              </div>
+              <div class="hero-msg" style="font-size:26px">Villa Ubud &middot; 3BR seaview</div>
+              <div style="flex:1"></div>
+              <div class="hero-votes">
+                <div class="hero-vote-btn lo">Love it</div>
+                <div class="hero-vote-btn wk">Works</div>
+                <div class="hero-vote-btn nah">Nah</div>
+              </div>
+            </div>
+          </div>
+          <!-- Card 3 (offscreen, just for strip continuity) -->
+          <div class="strip-card">
+            <div class="strip-card-inner">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="hero-av">A</div>
+                <div><div class="hero-name" style="font-size:20px">Alex</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tabs"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-label">2 NEED YOU</div>
+    <div class="ph">
+      <div class="sc">
+        <div class="atm"></div>
+        <div class="pips">
+          <div class="pip active"></div>
+          <div class="pip"></div>
+        </div>
+        <div class="strip-container strip2">
+          <div class="strip-card">
+            <div class="strip-card-inner">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+                <div class="hero-av">S</div>
+                <div>
+                  <div class="hero-name" style="font-size:20px">Sarah</div>
+                  <div class="hero-meta" style="margin-top:2px">4 MIN AGO</div>
+                </div>
+              </div>
+              <div class="hero-msg" style="font-size:26px">Reached? Swiss looks insane.</div>
+              <div style="flex:1"></div>
+              <div class="hero-reply">
+                <span>Message Sarah...</span>
+                <div class="snd"></div>
+              </div>
+            </div>
+          </div>
+          <div class="strip-card">
+            <div class="strip-card-inner">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+                <div class="hero-av">B</div>
+                <div>
+                  <div class="hero-name" style="font-size:20px">Bali Trip</div>
+                  <div class="hero-meta" style="margin-top:2px">VOTE</div>
+                </div>
+              </div>
+              <div class="hero-msg" style="font-size:26px">Villa Ubud</div>
+            </div>
+          </div>
+        </div>
+        <div class="tabs"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- CONCEPT 3: ATMOSPHERE + FACES -->
+<!-- ══════════════════════════════════════════ -->
+<div class="concept">
+  <div class="concept-tag">CONCEPT C</div>
+  <div class="concept-name">Atmosphere + Faces</div>
+  <div class="concept-desc">
+    One full immersive FocusCardWidget. The count lives OUTSIDE the card — as floating avatar faces at the bottom, sitting in the atmosphere. Each face has a colored dot (reply / vote / settle). The faces ARE the awareness layer. The card IS the action layer. Tap a face to bring that card forward.
+  </div>
+</div>
+
+<div class="row" style="margin-bottom: 56px">
+  <div class="col">
+    <div class="col-label">5 NEED YOU</div>
+    <div class="ph">
+      <div class="sc">
+        <div class="atm-busy"></div>
+
+        <!-- The large atmospheric number — just texture, not UI -->
+        <div class="atm-count"><div class="atm-number">5</div></div>
+
+        <!-- Hero card -->
+        <div class="atm-card-container" style="bottom: 110px;">
+          <div class="atm-hero-card">
+            <div class="atm-hero-inner">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+                <div class="hero-av">S</div>
+                <div>
+                  <div class="hero-name">Sarah</div>
+                  <div class="hero-meta" style="margin-top:2px">4 MIN AGO</div>
+                </div>
+              </div>
+              <div class="hero-msg">Reached? Swiss looks insane.</div>
+              <div style="flex:1"></div>
+              <div class="hero-reply">
+                <span>Message Sarah...</span>
+                <div class="snd"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating faces -->
+        <div class="next-up">
+          <div class="next-av" style="opacity:0.5">
+            <div style="font-size:14px;color:#8A8A94">S</div>
+            <div class="next-dot dot-reply" style="opacity:0.4"></div>
+          </div>
+          <div class="next-av">
+            B
+            <div class="next-dot dot-vote"></div>
+          </div>
+          <div class="next-av">
+            A
+            <div class="next-dot dot-reply"></div>
+          </div>
+          <div class="next-av">
+            G
+            <div class="next-dot dot-vote"></div>
+          </div>
+          <div class="next-av">
+            <span style="color:#047857">$</span>
+            <div class="next-dot dot-pay"></div>
+          </div>
+        </div>
+
+        <div class="tabs"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-label">2 NEED YOU</div>
+    <div class="ph">
+      <div class="sc">
+        <div class="atm"></div>
+        <div class="atm-count"><div class="atm-number" style="color:rgba(26,26,26,0.025)">2</div></div>
+
+        <div class="atm-card-container" style="bottom: 110px;">
+          <div class="atm-hero-card">
+            <div class="atm-hero-inner">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+                <div class="hero-av">S</div>
+                <div>
+                  <div class="hero-name">Sarah</div>
+                  <div class="hero-meta" style="margin-top:2px">4 MIN AGO</div>
+                </div>
+              </div>
+              <div class="hero-msg">Reached? Swiss looks insane.</div>
+              <div style="flex:1"></div>
+              <div class="hero-reply">
+                <span>Message Sarah...</span>
+                <div class="snd"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="next-up">
+          <div class="next-av" style="opacity:0.5">
+            <div style="font-size:14px;color:#8A8A94">S</div>
+            <div class="next-dot dot-reply" style="opacity:0.4"></div>
+          </div>
+          <div class="next-av">
+            B
+            <div class="next-dot dot-vote"></div>
+          </div>
+        </div>
+
+        <div class="tabs"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-label">ZERO</div>
+    <div class="ph">
+      <div class="sc">
+        <div class="atm-zero"></div>
+        <div class="zero-center">
+          <div class="zero-ring">&#10003;</div>
+          <div class="zero-text">Caught up</div>
+        </div>
+        <div class="tabs"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sep"></div>
+<div style="height:60px"></div>
+
+</body>
+</html>

@@ -1,0 +1,450 @@
+{
+  "decide/sarah_cake.jpg": {
+    "dominant": "#ffdebe",
+    "vibrant": "#ffbf91",
+    "muted": "#a45f2a",
+    "lightAccent": "#fffbf6",
+    "darkAccent": "#6c2306"
+  },
+  "decide/sarah_carbone.jpg": {
+    "dominant": "#fffdfd",
+    "vibrant": "#ffb549",
+    "muted": "#ce7c3e",
+    "lightAccent": "#fffffd",
+    "darkAccent": "#864e1f"
+  },
+  "decide/family_italian.jpg": {
+    "dominant": "#070000",
+    "vibrant": "#ffcc92",
+    "muted": "#efa140",
+    "lightAccent": "#fffeff",
+    "darkAccent": "#6b4700"
+  },
+  "decide/family_photoshoot.jpg": {
+    "dominant": "#ffa951",
+    "vibrant": "#ffac59",
+    "muted": "#fd9332",
+    "lightAccent": "#ffd09c",
+    "darkAccent": "#871700"
+  },
+  "decide/sarah_concert.jpg": {
+    "dominant": "#ff9569",
+    "vibrant": "#ffa465",
+    "muted": "#f7f000",
+    "lightAccent": "#fffffd",
+    "darkAccent": "#740000"
+  },
+  "decide/tokyo_jiro.jpg": {
+    "dominant": "#040000",
+    "vibrant": "#f99f4b",
+    "muted": "#e78703",
+    "lightAccent": "#ffead7",
+    "darkAccent": "#7a3b00"
+  },
+  "decide/bali_locavore.jpg": {
+    "dominant": "#fffdfd",
+    "vibrant": "#ffb549",
+    "muted": "#ce7c3e",
+    "lightAccent": "#fffffd",
+    "darkAccent": "#864e1f"
+  },
+  "decide/family_grocery.jpg": {
+    "dominant": "#5c1b00",
+    "vibrant": "#ffdc50",
+    "muted": "#e39100",
+    "lightAccent": "#ffffd7",
+    "darkAccent": "#812800"
+  },
+  "decide/family_thanksgiving.jpg": {
+    "dominant": "#ff3d49",
+    "vibrant": "#ff6092",
+    "muted": "#ff3d17",
+    "lightAccent": "#ffcfa0",
+    "darkAccent": "#9dbb00"
+  },
+  "decide/bali_spa.jpg": {
+    "dominant": "#fafcff",
+    "vibrant": "#fce24b",
+    "muted": "#eedf3a",
+    "lightAccent": "#f8fffd",
+    "darkAccent": "#644c02"
+  },
+  "decide/tokyo_shibuya.jpg": {
+    "dominant": "#000a10",
+    "vibrant": "#ff9991",
+    "muted": "#ffa02a",
+    "lightAccent": "#ffe8ff",
+    "darkAccent": "#cb6f00"
+  },
+  "decide/tahoe_hike.jpg": {
+    "dominant": "#020000",
+    "vibrant": "#fc8b9d",
+    "muted": "#b6b823",
+    "lightAccent": "#f4f9ff",
+    "darkAccent": "#616600"
+  },
+  "decide/bali_warung.jpg": {
+    "dominant": "#ff3d49",
+    "vibrant": "#ff6092",
+    "muted": "#ff3d17",
+    "lightAccent": "#ffcfa0",
+    "darkAccent": "#9dbb00"
+  },
+  "decide/tokyo_hoshinoya.jpg": {
+    "dominant": "#649400",
+    "vibrant": "#ffd594",
+    "muted": "#00dad7",
+    "lightAccent": "#c2deff",
+    "darkAccent": "#00c7ac"
+  },
+  "decide/sarah_balthazar.jpg": {
+    "dominant": "#ffe2d8",
+    "vibrant": "#ffa956",
+    "muted": "#ffb718",
+    "lightAccent": "#ffece4",
+    "darkAccent": "#6f1b00"
+  },
+  "decide/hawaii_fish.jpg": {
+    "dominant": "#ff3d49",
+    "vibrant": "#ff6092",
+    "muted": "#ff3d17",
+    "lightAccent": "#ffcfa0",
+    "darkAccent": "#9dbb00"
+  },
+  "decide/bali_wbali.jpg": {
+    "dominant": "#c2cfff",
+    "vibrant": "#84a8ff",
+    "muted": "#fae800",
+    "lightAccent": "#e2e9ff",
+    "darkAccent": "#005194"
+  },
+  "decide/family_retirement.jpg": {
+    "dominant": "#ffd2a5",
+    "vibrant": "#ffbb8e",
+    "muted": "#ffe71d",
+    "lightAccent": "#ffeacf",
+    "darkAccent": "#0065ae"
+  },
+  "decide/demo_2.jpg": {
+    "dominant": "#ff9569",
+    "vibrant": "#ffa465",
+    "muted": "#f7f000",
+    "lightAccent": "#fffffd",
+    "darkAccent": "#740000"
+  },
+  "decide/family_renovation.jpg": {
+    "dominant": "#160500",
+    "vibrant": "#d9bfa4",
+    "muted": "#946d42",
+    "lightAccent": "#fffdf6",
+    "darkAccent": "#542915"
+  },
+  "decide/family_wedding.jpg": {
+    "dominant": "#0e3530",
+    "vibrant": "#d9aa96",
+    "muted": "#c5835f",
+    "lightAccent": "#e6d3c9",
+    "darkAccent": "#603924"
+  },
+  "decide/demo_3.jpg": {
+    "dominant": "#ff3d49",
+    "vibrant": "#ff6092",
+    "muted": "#ff3d17",
+    "lightAccent": "#ffcfa0",
+    "darkAccent": "#9dbb00"
+  },
+  "decide/bali_beach.jpg": {
+    "dominant": "#007c7c",
+    "vibrant": "#f6cb9d",
+    "muted": "#34a4ac",
+    "lightAccent": "#fee4ca",
+    "darkAccent": "#006c6e"
+  },
+  "decide/demo_1.jpg": {
+    "dominant": "#007c7c",
+    "vibrant": "#f6cb9d",
+    "muted": "#34a4ac",
+    "lightAccent": "#fee4ca",
+    "darkAccent": "#006c6e"
+  },
+  "decide/tahoe_kayak.jpg": {
+    "dominant": "#ebe6ff",
+    "vibrant": "#f7948d",
+    "muted": "#c79e5a",
+    "lightAccent": "#ebe9ff",
+    "darkAccent": "#523926"
+  },
+  "decide/bali_mulia.jpg": {
+    "dominant": "#649400",
+    "vibrant": "#ffd594",
+    "muted": "#00dad7",
+    "lightAccent": "#c2deff",
+    "darkAccent": "#00c7ac"
+  },
+  "decide/tokyo_kyoto.jpg": {
+    "dominant": "#004269",
+    "vibrant": "#ffda95",
+    "muted": "#ffa709",
+    "lightAccent": "#ffeacf",
+    "darkAccent": "#005b86"
+  },
+  "decide/hawaii_snorkel.jpg": {
+    "dominant": "#0071a9",
+    "vibrant": "#50c2f4",
+    "muted": "#00a8db",
+    "lightAccent": "#f0d9ab",
+    "darkAccent": "#006a98"
+  },
+  "decide/tokyo_teamlab.jpg": {
+    "dominant": "#006f9a",
+    "vibrant": "#ffd46a",
+    "muted": "#0895ff",
+    "lightAccent": "#ffb99b",
+    "darkAccent": "#0095b2"
+  },
+  "decide/hawaii_hotel2.jpg": {
+    "dominant": "#fffaf6",
+    "vibrant": "#ffc989",
+    "muted": "#a05d34",
+    "lightAccent": "#fffdfc",
+    "darkAccent": "#076d51"
+  },
+  "decide/bali_cruise.jpg": {
+    "dominant": "#0071a9",
+    "vibrant": "#50c2f4",
+    "muted": "#00a8db",
+    "lightAccent": "#f0d9ab",
+    "darkAccent": "#006a98"
+  },
+  "decide/hawaii_hotel1.jpg": {
+    "dominant": "#c2cfff",
+    "vibrant": "#84a8ff",
+    "muted": "#fae800",
+    "lightAccent": "#e2e9ff",
+    "darkAccent": "#005194"
+  },
+  "decide/family_vacation.jpg": {
+    "dominant": "#009ba3",
+    "vibrant": "#fff68d",
+    "muted": "#0063d4",
+    "lightAccent": "#fff2e7",
+    "darkAccent": "#009aa1"
+  },
+  "decide/sarah_aesop.jpg": {
+    "dominant": "#000015",
+    "vibrant": "#9cc4ad",
+    "muted": "#5f587e",
+    "lightAccent": "#f1ebf7",
+    "darkAccent": "#271e49"
+  },
+  "decide/bali_stregis.jpg": {
+    "dominant": "#fffeff",
+    "vibrant": "#ffb97f",
+    "muted": "#ff9924",
+    "lightAccent": "#fffdf3",
+    "darkAccent": "#b24100"
+  },
+  "decide/hawaii_luau.jpg": {
+    "dominant": "#f4b890",
+    "vibrant": "#f4b890",
+    "muted": "#c89665",
+    "lightAccent": "#f6e0c7",
+    "darkAccent": "#795632"
+  },
+  "decide/family_christmas.jpg": {
+    "dominant": "#020000",
+    "vibrant": "#ed9e95",
+    "muted": "#af241d",
+    "lightAccent": "#e2b8b8",
+    "darkAccent": "#8c020d"
+  },
+  "decide/tokyo_robot.jpg": {
+    "dominant": "#ffad80",
+    "vibrant": "#ff8f61",
+    "muted": "#f94e38",
+    "lightAccent": "#fff8ed",
+    "darkAccent": "#05697f"
+  },
+  "decide/tokyo_akihabara.jpg": {
+    "dominant": "#ffefb1",
+    "vibrant": "#ff5158",
+    "muted": "#cc0054",
+    "lightAccent": "#fff8ff",
+    "darkAccent": "#723600"
+  },
+  "decide/hawaii_hana.jpg": {
+    "dominant": "#005e66",
+    "vibrant": "#e8ef83",
+    "muted": "#adc736",
+    "lightAccent": "#fffdff",
+    "darkAccent": "#00626d"
+  },
+  "decide/tahoe_cabin1.jpg": {
+    "dominant": "#ffce5e",
+    "vibrant": "#ffde6d",
+    "muted": "#f98e26",
+    "lightAccent": "#fff09c",
+    "darkAccent": "#994918"
+  },
+  "decide/bali_ubud.jpg": {
+    "dominant": "#334d00",
+    "vibrant": "#cce468",
+    "muted": "#89a82b",
+    "lightAccent": "#f5f6ff",
+    "darkAccent": "#516b00"
+  },
+  "decide/bali_flight_ga.jpg": {
+    "dominant": "#ffc46b",
+    "vibrant": "#ffc578",
+    "muted": "#e3a54e",
+    "lightAccent": "#fff3ef",
+    "darkAccent": "#753c05"
+  },
+  "decide/tokyo_andaz.jpg": {
+    "dominant": "#130000",
+    "vibrant": "#ffc07f",
+    "muted": "#ea9e3c",
+    "lightAccent": "#ffe1a8",
+    "darkAccent": "#662e09"
+  },
+  "decide/bali_flight_sq.jpg": {
+    "dominant": "#fff0d3",
+    "vibrant": "#f7c8a0",
+    "muted": "#d49a5c",
+    "lightAccent": "#fff1da",
+    "darkAccent": "#0e305a"
+  },
+  "decide/bali_sardine.jpg": {
+    "dominant": "#001115",
+    "vibrant": "#ffee96",
+    "muted": "#fdac00",
+    "lightAccent": "#ffeddb",
+    "darkAccent": "#770800"
+  },
+  "decide/tahoe_cabin2.jpg": {
+    "dominant": "#effdff",
+    "vibrant": "#c4c381",
+    "muted": "#9a9d3e",
+    "lightAccent": "#f1fcff",
+    "darkAccent": "#645415"
+  },
+  "decide/tokyo_ichiran.jpg": {
+    "dominant": "#fff8b3",
+    "vibrant": "#fff098",
+    "muted": "#ffba1e",
+    "lightAccent": "#fff2d5",
+    "darkAccent": "#8c2700"
+  },
+  "decide/family_dinner.jpg": {
+    "dominant": "#360100",
+    "vibrant": "#fbb792",
+    "muted": "#e47549",
+    "lightAccent": "#ffd3a2",
+    "darkAccent": "#712d00"
+  },
+  "decide/sarah_bernardin.jpg": {
+    "dominant": "#9fe1ff",
+    "vibrant": "#ffbb7a",
+    "muted": "#ce7300",
+    "lightAccent": "#ffd2c0",
+    "darkAccent": "#005e79"
+  },
+  "decide/bali_batur.jpg": {
+    "dominant": "#fff4e8",
+    "vibrant": "#fcba8c",
+    "muted": "#b16528",
+    "lightAccent": "#ffeed8",
+    "darkAccent": "#856f25"
+  },
+  "decide/tokyo_parkhyatt.jpg": {
+    "dominant": "#005676",
+    "vibrant": "#ffa249",
+    "muted": "#f3000e",
+    "lightAccent": "#fffcff",
+    "darkAccent": "#005e78"
+  },
+  "memories/swiss_4.jpg": {
+    "dominant": "#a4ffd4",
+    "vibrant": "#85ffb1",
+    "muted": "#2c6abf",
+    "lightAccent": "#a5ffc7",
+    "darkAccent": "#1a4981"
+  },
+  "memories/swiss_1.jpg": {
+    "dominant": "#576000",
+    "vibrant": "#fdc594",
+    "muted": "#c0c119",
+    "lightAccent": "#ffeac9",
+    "darkAccent": "#5f6800"
+  },
+  "memories/swiss_3.jpg": {
+    "dominant": "#ffdcab",
+    "vibrant": "#ffbf8d",
+    "muted": "#c3735c",
+    "lightAccent": "#ffd9b8",
+    "darkAccent": "#1d2d4a"
+  },
+  "memories/swiss_2.jpg": {
+    "dominant": "#758700",
+    "vibrant": "#e3cb67",
+    "muted": "#dad307",
+    "lightAccent": "#fff1e6",
+    "darkAccent": "#526c00"
+  },
+  "memories/delhi_4.jpg": {
+    "dominant": "#008fa5",
+    "vibrant": "#6ad1e6",
+    "muted": "#06aec7",
+    "lightAccent": "#e9c8c2",
+    "darkAccent": "#00aabc"
+  },
+  "memories/delhi_1.jpg": {
+    "dominant": "#c89400",
+    "vibrant": "#fbd938",
+    "muted": "#cfa700",
+    "lightAccent": "#fccdb7",
+    "darkAccent": "#c17a00"
+  },
+  "memories/delhi_3.jpg": {
+    "dominant": "#070005",
+    "vibrant": "#ffc474",
+    "muted": "#d15404",
+    "lightAccent": "#fffdf6",
+    "darkAccent": "#921f00"
+  },
+  "memories/delhi_2.jpg": {
+    "dominant": "#0e0900",
+    "vibrant": "#a6c0ef",
+    "muted": "#cf1459",
+    "lightAccent": "#f2f0ff",
+    "darkAccent": "#365810"
+  },
+  "memories/sf_1.jpg": {
+    "dominant": "#fff4f2",
+    "vibrant": "#ff958e",
+    "muted": "#ea4e43",
+    "lightAccent": "#fff4f2",
+    "darkAccent": "#720f06"
+  },
+  "memories/sf_2.jpg": {
+    "dominant": "#006c79",
+    "vibrant": "#ffba8f",
+    "muted": "#ff6831",
+    "lightAccent": "#ffb4a3",
+    "darkAccent": "#00707c"
+  },
+  "memories/sf_3.jpg": {
+    "dominant": "#000202",
+    "vibrant": "#fdd099",
+    "muted": "#ff411c",
+    "lightAccent": "#ffdeb1",
+    "darkAccent": "#860a00"
+  },
+  "memories/sf_4.jpg": {
+    "dominant": "#010004",
+    "vibrant": "#ffb67e",
+    "muted": "#e07b4f",
+    "lightAccent": "#ffebdb",
+    "darkAccent": "#831430"
+  }
+}

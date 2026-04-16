@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: #060606; font-family: 'Inter', sans-serif; color: #fafafa; }
+
+  .page-head {
+    text-align: center; padding: 48px 20px 8px;
+  }
+  .page-head h1 { font-size: 26px; font-weight: 200; letter-spacing: -0.8px; }
+  .page-head p { font-size: 12px; color: #444; font-weight: 300; margin-top: 6px; max-width: 460px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+  .sep { width: 30px; height: 1px; background: #222; margin: 32px auto; }
+
+  .phones { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; padding: 0 16px 60px; }
+  .phone-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .phone-label { font-size: 9px; letter-spacing: 2.5px; color: #333; }
+  .phone-note { font-size: 10px; color: #333; max-width: 280px; text-align: center; line-height: 1.5; margin-top: 4px; }
+
+  /* ── Phone ── */
+  .phone {
+    width: 320px; height: 692px;
+    border-radius: 48px;
+    overflow: hidden; position: relative;
+    border: 1.5px solid #1a1a1a;
+    box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+  }
+  .screen {
+    width: 100%; height: 100%;
+    overflow-y: auto; overflow-x: hidden;
+    scroll-snap-type: y proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ── THE LANDSCAPE ── */
+  /* No cards. No containers. Just atmospheric zones with floating content. */
+
+  .zone {
+    position: relative;
+    width: 100%;
+    min-height: 230px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 28px 32px;
+    scroll-snap-align: start;
+  }
+  .zone:first-child { padding-top: 56px; min-height: 260px; }
+  .zone:last-child { padding-bottom: 56px; }
+
+  /* Each zone has its own atmospheric gradient */
+  .zone::before {
+    content: '';
+    position: absolute; inset: 0;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+
+  .zone-sarah::before {
+    background: linear-gradient(180deg,
+      #FAFAFA 0%,
+      #fdf2f4 20%,
+      #fce8ec 50%,
+      #fdf2f4 80%,
+      #FAFAFA 100%
+    );
+  }
+  .zone-swiss::before {
+    background: linear-gradient(180deg,
+      #FAFAFA 0%,
+      #eef6f5 20%,
+      #e4f0ee 50%,
+      #eef6f5 80%,
+      #FAFAFA 100%
+    );
+  }
+  .zone-family::before {
+    background: linear-gradient(180deg,
+      #FAFAFA 0%,
+      #eff2fb 20%,
+      #e6ebf9 50%,
+      #eff2fb 80%,
+      #FAFAFA 100%
+    );
+  }
+  .zone-bali::before {
+    background: linear-gradient(180deg,
+      #FAFAFA 0%,
+      #fef3ee 20%,
+      #fdeee5 50%,
+      #fef3ee 80%,
+      #FAFAFA 100%
+    );
+  }
+  .zone-goa::before {
+    background: linear-gradient(180deg,
+      #FAFAFA 0%,
+      #f3f0fb 20%,
+      #ece7f8 50%,
+      #f3f0fb 80%,
+      #FAFAFA 100%
+    );
+  }
+  .zone-zero::before {
+    background: #FAFAFA;
+  }
+
+  /* Zone content */
+  .z-content { position: relative; z-index: 2; }
+
+  .z-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: rgba(255,255,255,0.9);
+    margin-bottom: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+  .z-avatar.sm { width: 44px; height: 44px; font-size: 17px; margin-bottom: 10px; }
+
+  .z-name {
+    font-size: 28px; font-weight: 400; color: #1A1A1A;
+    letter-spacing: -0.8px; line-height: 1.1;
+  }
+  .z-ask {
+    font-size: 16px; font-weight: 300; color: #6B6B78;
+    letter-spacing: -0.2px; margin-top: 5px; line-height: 1.4;
+  }
+
+  /* Inline reply */
+  .z-reply {
+    margin-top: 16px;
+    height: 44px; border-radius: 22px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    display: flex; align-items: center;
+    padding: 0 6px 0 16px;
+    max-width: 280px;
+  }
+  .z-reply span { font-size: 14px; color: #8A8A94; font-weight: 300; }
+  .z-reply .snd {
+    width: 34px; height: 34px; border-radius: 50%;
+    margin-left: auto; flex-shrink: 0;
+  }
+
+  /* Inline vote */
+  .z-votes {
+    display: flex; gap: 8px; margin-top: 14px;
+    max-width: 300px;
+  }
+  .z-vote-btn {
+    flex: 1; padding: 10px 4px; border-radius: 14px;
+    text-align: center; font-size: 13px; font-weight: 400;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .z-vote-btn:active { transform: scale(0.96); }
+
+  /* Inline confirm */
+  .z-confirm {
+    margin-top: 14px;
+    height: 44px; border-radius: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 400; color: white;
+    max-width: 200px;
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .z-confirm:active { transform: scale(0.96); }
+
+  /* Zero zone */
+  .zone-zero {
+    min-height: 300px;
+    align-items: center;
+    text-align: center;
+  }
+  .zero-text {
+    font-size: 24px; font-weight: 200; color: rgba(26,26,26,0.1);
+    letter-spacing: -0.5px;
+  }
+
+  /* Status bar */
+  .sbar {
+    position: sticky; top: 0; left: 0; right: 0;
+    padding: 14px 28px 8px;
+    display: flex; justify-content: space-between;
+    font-size: 11px; font-weight: 400; color: rgba(26,26,26,0.25);
+    z-index: 50;
+    background: linear-gradient(180deg, #FAFAFA 60%, transparent);
+  }
+
+  /* Tab bar */
+  .tbar {
+    position: sticky; bottom: 0; left: 0; right: 0;
+    height: 36px;
+    display: flex; align-items: center; justify-content: center; gap: 28px;
+    font-size: 9px; letter-spacing: 1.5px; color: rgba(26,26,26,0.18);
+    background: linear-gradient(0deg, #FAFAFA 60%, transparent);
+    z-index: 50;
+  }
+  .tbar .on { color: rgba(26,26,26,0.45); }
+
+  /* ── Second concept: COMPACT ZONES ── */
+  .zone-c {
+    position: relative; width: 100%;
+    min-height: 140px;
+    display: flex; flex-direction: row;
+    align-items: center;
+    padding: 20px 28px;
+    gap: 16px;
+  }
+  .zone-c:first-child { padding-top: 52px; min-height: 170px; }
+  .zone-c::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.9;
+  }
+  .zc-text { position: relative; z-index: 2; flex: 1; }
+  .zc-action { position: relative; z-index: 2; flex-shrink: 0; }
+
+  .zc-name {
+    font-size: 22px; font-weight: 400; color: #1A1A1A;
+    letter-spacing: -0.5px;
+  }
+  .zc-ask {
+    font-size: 14px; font-weight: 300; color: #6B6B78;
+    margin-top: 3px;
+  }
+  .zc-act-btn {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 20px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .zc-act-btn:active { transform: scale(0.92); }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>The Atmospheric Landscape</h1>
+  <p>No cards. No containers. The atmosphere itself changes as you scroll. Each person who needs you is a zone of color. You move through colored air, not past rectangles.</p>
+</div>
+
+<div class="sep"></div>
+
+<div class="phones">
+
+  <!-- ══════════════════════════════ -->
+  <!-- PHONE 1: FULL ZONES — 5 items -->
+  <!-- ══════════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">5 NEED YOU &middot; SCROLL</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="sbar"><span>9:41</span><span></span></div>
+
+        <!-- Zone 1: Sarah — warm rose -->
+        <div class="zone zone-sarah">
+          <div class="z-content">
+            <div class="z-avatar" style="background:linear-gradient(135deg,#ff2d55,#ff6b81)">S</div>
+            <div class="z-name">Sarah</div>
+            <div class="z-ask">Reached? Swiss looks insane.</div>
+            <div class="z-reply">
+              <span>Reply...</span>
+              <div class="snd" style="background:linear-gradient(135deg,#ff2d55,#FF4D00)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone 2: Swiss Alps — cool teal -->
+        <div class="zone zone-swiss">
+          <div class="z-content">
+            <div class="z-avatar" style="background:linear-gradient(135deg,#0f766e,#14b8a6)">&#9992;</div>
+            <div class="z-name">Swiss Alps</div>
+            <div class="z-ask">Vote on Zurich flight &middot; 3 waiting</div>
+            <div class="z-votes">
+              <div class="z-vote-btn" style="background:rgba(15,118,110,0.08);color:#0f766e">Love it</div>
+              <div class="z-vote-btn" style="background:rgba(107,107,120,0.06);color:#6B6B78">Works</div>
+              <div class="z-vote-btn" style="background:rgba(196,61,8,0.05);color:#C43D08">Nah</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone 3: Family — soft blue -->
+        <div class="zone zone-family">
+          <div class="z-content">
+            <div class="z-avatar" style="background:linear-gradient(135deg,#2563eb,#60a5fa)">F</div>
+            <div class="z-name">Family</div>
+            <div class="z-ask">Mom elevated &middot; Sunday lunch?</div>
+            <div class="z-reply">
+              <span>Reply...</span>
+              <div class="snd" style="background:linear-gradient(135deg,#2563eb,#3b82f6)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone 4: Bali Trip — warm peach -->
+        <div class="zone zone-bali">
+          <div class="z-content">
+            <div class="z-avatar" style="background:linear-gradient(135deg,#ff6a3d,#ffA06B)">B</div>
+            <div class="z-name">Bali Trip</div>
+            <div class="z-ask">Confirm villa deposit &middot; 2 blocked</div>
+            <div class="z-confirm" style="background:linear-gradient(135deg,#ff6a3d,#FF4D00)">
+              Confirm
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone 5: Goa Group — soft purple -->
+        <div class="zone zone-goa">
+          <div class="z-content">
+            <div class="z-avatar" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">G</div>
+            <div class="z-name">Goa Group</div>
+            <div class="z-ask">Break the hotel tie &middot; 3-3 split</div>
+            <div class="z-votes">
+              <div class="z-vote-btn" style="background:rgba(124,58,237,0.08);color:#7c3aed">Zostel</div>
+              <div class="z-vote-btn" style="background:rgba(124,58,237,0.06);color:#7c3aed">Taj</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zero floor -->
+        <div class="zone zone-zero">
+          <div class="z-content" style="text-align:center">
+            <div class="zero-text">end</div>
+          </div>
+        </div>
+
+        <div class="tbar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+    <div class="phone-note">
+      Scroll through it. Each person is a zone of colored atmosphere. No edges. No borders. The color shifts as you move. You're walking through rooms, not scrolling a list.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ -->
+  <!-- PHONE 2: COMPACT — see all 5 -->
+  <!-- ══════════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">5 NEED YOU &middot; ALL VISIBLE</div>
+    <div class="phone">
+      <div class="screen" style="overflow:hidden">
+        <div class="sbar"><span>9:41</span><span></span></div>
+
+        <div class="zone-c zone-sarah" style="min-height:120px;padding-top:48px">
+          <div class="z-avatar sm" style="background:linear-gradient(135deg,#ff2d55,#ff6b81);position:relative;z-index:2">S</div>
+          <div class="zc-text">
+            <div class="zc-name">Sarah</div>
+            <div class="zc-ask">Asked you a question &middot; 4m</div>
+          </div>
+          <div class="zc-action">
+            <div class="zc-act-btn" style="background:linear-gradient(135deg,#ff2d55,#FF4D00)">&#8617;</div>
+          </div>
+        </div>
+
+        <div class="zone-c zone-swiss">
+          <div class="z-avatar sm" style="background:linear-gradient(135deg,#0f766e,#14b8a6);position:relative;z-index:2">&#9992;</div>
+          <div class="zc-text">
+            <div class="zc-name">Swiss Alps</div>
+            <div class="zc-ask">Vote on flight &middot; 3 waiting</div>
+          </div>
+          <div class="zc-action">
+            <div class="zc-act-btn" style="background:linear-gradient(135deg,#0f766e,#14b8a6)">&#10003;</div>
+          </div>
+        </div>
+
+        <div class="zone-c zone-family">
+          <div class="z-avatar sm" style="background:linear-gradient(135deg,#2563eb,#60a5fa);position:relative;z-index:2">F</div>
+          <div class="zc-text">
+            <div class="zc-name">Family</div>
+            <div class="zc-ask">Mom elevated &middot; Sunday lunch</div>
+          </div>
+          <div class="zc-action">
+            <div class="zc-act-btn" style="background:linear-gradient(135deg,#2563eb,#3b82f6)">&#8617;</div>
+          </div>
+        </div>
+
+        <div class="zone-c zone-bali">
+          <div class="z-avatar sm" style="background:linear-gradient(135deg,#ff6a3d,#ffA06B);position:relative;z-index:2">B</div>
+          <div class="zc-text">
+            <div class="zc-name">Bali Trip</div>
+            <div class="zc-ask">Confirm deposit &middot; 2 blocked</div>
+          </div>
+          <div class="zc-action">
+            <div class="zc-act-btn" style="background:linear-gradient(135deg,#ff6a3d,#FF4D00)">&#10003;</div>
+          </div>
+        </div>
+
+        <div class="zone-c zone-goa">
+          <div class="z-avatar sm" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);position:relative;z-index:2">G</div>
+          <div class="zc-text">
+            <div class="zc-name">Goa Group</div>
+            <div class="zc-ask">Break the tie &middot; 3-3</div>
+          </div>
+          <div class="zc-action">
+            <div class="zc-act-btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">&#10003;</div>
+          </div>
+        </div>
+
+        <div class="tbar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+    <div class="phone-note">
+      All 5 visible at once. Each zone's color bleeds into the next — no hard edges. The circular action button on each row is the ONE thing you can do. Tap avatar or name → FocusCardWidget opens.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ -->
+  <!-- PHONE 3: 2 items — spacious -->
+  <!-- ══════════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">2 NEED YOU</div>
+    <div class="phone">
+      <div class="screen" style="overflow:hidden">
+        <div class="sbar"><span>9:41</span><span></span></div>
+
+        <div class="zone zone-sarah" style="min-height:290px;padding-top:60px">
+          <div class="z-content">
+            <div class="z-avatar" style="background:linear-gradient(135deg,#ff2d55,#ff6b81);width:64px;height:64px;font-size:26px">S</div>
+            <div class="z-name" style="font-size:34px">Sarah</div>
+            <div class="z-ask" style="font-size:18px">Reached? Swiss looks insane.</div>
+            <div class="z-reply" style="height:48px;max-width:300px">
+              <span style="font-size:15px">Message Sarah...</span>
+              <div class="snd" style="background:linear-gradient(135deg,#ff2d55,#FF4D00);width:38px;height:38px"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="zone zone-swiss" style="min-height:290px">
+          <div class="z-content">
+            <div class="z-avatar" style="background:linear-gradient(135deg,#0f766e,#14b8a6);width:64px;height:64px;font-size:26px">&#9992;</div>
+            <div class="z-name" style="font-size:34px">Swiss Alps</div>
+            <div class="z-ask" style="font-size:18px">Vote on Zurich flight &middot; 3 waiting</div>
+            <div class="z-votes" style="max-width:320px">
+              <div class="z-vote-btn" style="background:rgba(15,118,110,0.08);color:#0f766e;padding:12px;font-size:14px">Love it</div>
+              <div class="z-vote-btn" style="background:rgba(107,107,120,0.06);color:#6B6B78;padding:12px;font-size:14px">Works</div>
+              <div class="z-vote-btn" style="background:rgba(196,61,8,0.05);color:#C43D08;padding:12px;font-size:14px">Nah</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tbar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+    <div class="phone-note">
+      Fewer items = more space per zone. Each zone breathes. The atmosphere is calmer — just two gentle color regions.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ -->
+  <!-- PHONE 4: Zero -->
+  <!-- ══════════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">ZERO</div>
+    <div class="phone">
+      <div class="screen" style="overflow:hidden;background:#FAFAFA">
+        <div class="sbar"><span>9:41</span><span></span></div>
+        <div class="zone zone-zero" style="min-height:620px">
+          <div class="z-content" style="text-align:center">
+            <div class="zero-text">Caught up</div>
+          </div>
+        </div>
+        <div class="tbar"><span class="on">HOME</span><span>CHATS</span><span>GROUPS</span><span>PLANS</span></div>
+      </div>
+    </div>
+    <div class="phone-note">
+      Nothing. Just #FAFAFA. The absence of color IS the message.
+    </div>
+  </div>
+
+</div>
+
+<div class="sep"></div>
+
+<div class="page-head" style="padding-top:0">
+  <h1>What's different</h1>
+  <p style="text-align:left;max-width:500px">
+    <strong style="color:#888;font-weight:400">iMessage:</strong> White rows. Gray text. Blue badge. Every conversation looks identical.<br><br>
+    <strong style="color:#888;font-weight:400">This:</strong> Each person IS a color. Sarah is rose. Swiss is teal. Family is blue. You don't READ the screen — you FEEL it. A warm screen = busy morning. A cool screen = light day. The color palette of the screen changes daily because YOUR morning changes daily.<br><br>
+    <strong style="color:#888;font-weight:400">The zones:</strong> No borders between them. Colors bleed into each other. It's not rows separated by lines — it's one continuous atmospheric gradient that shifts as you scroll. You're moving through colored light, not past rectangles.<br><br>
+    <strong style="color:#888;font-weight:400">Adaptive density:</strong> 5 items = compact zones, all visible. 2 items = luxurious, each zone takes half the screen. 1 item = full-screen FocusCardWidget. The SAME screen scales from overview to immersion based purely on count.
+  </p>
+</div>
+
+<div style="height:60px"></div>
+</body>
+</html>

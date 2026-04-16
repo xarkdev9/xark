@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Edge Smudge</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap');
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050507; overflow: hidden; font-family: 'Inter', sans-serif;}
+    
+    #void-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: #050507; z-index: 1; display: flex; align-items: center; justify-content: center;
+    }
+    
+    .cursor { font-weight: 300; font-size: 32px; color: #D4536B; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #ui-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(45deg, #1A1A24 0%, #0A0A0E 100%);
+        z-index: 10; padding: 60px 40px; box-sizing: border-box; cursor: grab;
+    }
+
+    h1 { color: #ffffff; font-weight: 300; font-size: 42px; margin: 0 0 24px 0; }
+    p { color: rgba(255, 255, 255, 0.9); font-weight: 300; line-height: 1.6; font-size: 18px; max-width: 600px;}
+    .desktop-hint { margin-top: 40px; background: rgba(255,255,255,0.1); padding: 16px 32px; border-radius: 8px; color: #fff;}
+</style>
+</head>
+<body>
+    <div id="void-layer">
+        <span class="cursor" style="font-size: 48px;">ask xark... |</span>
+    </div>
+
+    <!-- UI rendered simply. The magic happens dynamically -->
+    <div id="ui-layer" style="clip-path: circle(250% at 0% 100%); transition: clip-path 0.1s ease-out, opacity 1s;">
+        <h1>Edge Smudge</h1>
+        <p>The screen behaves like ferrofluid over a magnet.</p>
+        <div class="desktop-hint">
+            <b>CLICK AND DRAG</b> your mouse diagonally starting strictly from the bottom-left corner of the screen.<br><br>Watch the glass interface rip away towards your mouse.
+        </div>
+    </div>
+
+<script>
+    let isDragging = false;
+    let uiLayer = document.getElementById('ui-layer');
+
+    function startDrag(clientX, clientY) {
+        // Start if near bottom left corner (more forgiving on desktop: 200px)
+        if (clientX < 200 && clientY > window.innerHeight - 200) {
+            isDragging = true;
+            uiLayer.style.transition = 'none';
+        }
+    }
+
+    function doDrag(clientX, clientY) {
+        if (!isDragging) return;
+        const dist = Math.hypot(clientX, window.innerHeight - clientY);
+        // Magnetic smudge: Shrink radically as cursor pulls away from corner
+        const radius = Math.max(0, 150 - (dist / window.innerHeight) * 150);
+        uiLayer.style.clipPath = `circle(${radius}% at ${clientX}px ${clientY}px)`;
+        
+        if (radius <= 0) {
+            isDragging = false;
+            uiLayer.style.display = 'none';
+        }
+    }
+
+    function endDrag() {
+        if (isDragging) {
+            isDragging = false;
+            uiLayer.style.transition = 'clip-path 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+            uiLayer.style.clipPath = `circle(250% at 0% 100%)`;
+        }
+    }
+
+    // Touch Support
+    document.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientX, e.touches[0].clientY));
+    document.addEventListener('touchmove', (e) => doDrag(e.touches[0].clientX, e.touches[0].clientY));
+    document.addEventListener('touchend', endDrag);
+
+    // Mouse Support (Desktop)
+    document.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+    document.addEventListener('mousemove', (e) => doDrag(e.clientX, e.clientY));
+    document.addEventListener('mouseup', endDrag);
+</script>
+</body>
+</html>

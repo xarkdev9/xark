@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 Unique Red Glows</title>
+<style>
+  @import url('https://api.fontshare.com/v2/css?f[]=satoshi@300,400&display=swap');
+
+  :root {
+    --void: #030303;
+    --glass: rgba(255, 255, 255, 0.02);
+    --glass-border: rgba(255, 255, 255, 0.04);
+    --text-primary: #F4F4F5;
+    --text-muted: rgba(244, 244, 245, 0.5);
+  }
+
+  body {
+    margin: 0;
+    padding: 6em 2em;
+    background-color: var(--void);
+    color: var(--text-primary);
+    font-family: 'Satoshi', sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    background-blend-mode: overlay;
+  }
+
+  /* MANDATES */
+  * {
+    font-weight: 400 !important;
+    font-style: normal !important;
+  }
+
+  .header {
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto 5em;
+  }
+
+  .header h1 {
+    font-size: 32px;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5em;
+  }
+
+  .header p {
+    font-size: 16px;
+    color: var(--text-muted);
+    font-weight: 300 !important;
+    letter-spacing: 0.01em;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 4em 3em;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  .card-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5em;
+  }
+
+  .label-container {
+    text-align: center;
+  }
+
+  .number {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.2em;
+    font-weight: 300 !important;
+  }
+
+  .name {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .orb {
+    width: 60px;
+    height: 60px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, var(--deep), var(--mid), var(--high));
+    box-shadow: 0 0 40px var(--mid), inset 0 0 20px var(--high);
+    animation: breath 4s ease-in-out infinite alternate;
+  }
+
+  .card {
+    width: 100%;
+    padding: 24px;
+    border-radius: 12px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    position: relative;
+    overflow: hidden;
+    text-align: left;
+    backdrop-filter: blur(20px);
+  }
+
+  .card-glow {
+    position: absolute;
+    top: -50%; right: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle at 60% 0%, var(--deep) 0%, transparent 40%);
+    opacity: 0.4;
+    z-index: -1;
+    animation: rotate 15s linear infinite;
+  }
+
+  .desc {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    font-weight: 300 !important;
+  }
+
+  .text-highlight {
+    background: linear-gradient(135deg, var(--mid), var(--high));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* THEMES (NO AI, NO CORPORATE SAAS) */
+  .t-velvet  { --deep: #3A010D; --mid: #7F0019; --high: #BD0026; }
+  .t-kyoto   { --deep: #5C1500; --mid: #8B2500; --high: #D9381E; }
+  .t-toxic   { --deep: #2E000A; --mid: #75001C; --high: #DB003F; }
+  .t-carbon  { --deep: #1A0000; --mid: #660000; --high: #FF1A1A; }
+  .t-wine    { --deep: #20000B; --mid: #4A001F; --high: #8A0033; }
+  .t-infra   { --deep: #330018; --mid: #99004C; --high: #FF0062; }
+  .t-ash     { --deep: #3D1414; --mid: #8C3030; --high: #DF7373; }
+  .t-arcade  { --deep: #290000; --mid: #B30000; --high: #FF3333; }
+  .t-rust    { --deep: #4A1A00; --mid: #A62C00; --high: #E34A00; }
+  .t-flesh   { --deep: #330A14; --mid: #991433; --high: #FF3366; }
+
+  @keyframes breath {
+    0% { transform: scale(0.98); opacity: 0.8; }
+    100% { transform: scale(1.02); opacity: 1; }
+  }
+  @keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>10 Unique Red Aesthetics</h1>
+    <p>Zero AI cliches. Zero corporate SaaS combinations.<br>Focusing strictly on real-world analog analogies and visceral color reactions.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card-wrap t-velvet">
+      <div class="label-container"><div class="number">01</div><div class="name">Velvet Blood</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">Deep, theater velvet. Organic, <span class="text-highlight">luxurious</span>, and heavy. Avoids neon entirely for something richly tactile.</div>
+      </div>
+    </div>
+
+    <div class="card-wrap t-kyoto">
+      <div class="label-container"><div class="number">02</div><div class="name">Kyoto Vermilion</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">The exact orange-red of <span class="text-highlight">Japanese torii gates</span>. Extremely cultural, grounded, and striking without feeling digital.</div>
+      </div>
+    </div>
+
+    <div class="card-wrap t-toxic">
+      <div class="label-container"><div class="number">03</div><div class="name">Toxic Berry</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">A sour, acidic deep red that borders on boysenberry. A bit <span class="text-highlight">sinister, rebellious</span>, and very underground.</div>
+      </div>
+    </div>
+
+    <div class="card-wrap t-carbon">
+      <div class="label-container"><div class="number">04</div><div class="name">Hot Carbon</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">Like glowing coals or <span class="text-highlight">heated titanium</span>. Mostly dark void, with sudden intense streaks of red-hot heat. Very industrial.</div>
+      </div>
+    </div>
+
+    <div class="card-wrap t-wine">
+      <div class="label-container"><div class="number">05</div><div class="name">Wine Glass</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">Refracting light through a <span class="text-highlight">Cabernet glass</span>. Elegant darkness. It turns the entire UI into a late-night dinner table mood.</div>
+      </div>
+    </div>
+
+    <div class="card-wrap t-infra">
+      <div class="label-container"><div class="number">06</div><div class="name">Infrared Aerochrome</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">Mimicking the surreal pinkish-red foliage of <span class="text-highlight">Kodak Aerochrome</span> analog film. Extreme nostalgia but otherworldly.</div>
+      </div>
+    </div>
+
+    <div class="card-wrap t-ash">
+      <div class="label-container"><div class="number">07</div><div class="name">Sunset Ash</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">A dusty, muted <span class="text-highlight">terracotta red</span> mixed with smoke. Calmer, naturalistic, avoiding the screen-burn of pure saturated reds.</div>
+      </div>
+    </div>
+
+    <div class="card-wrap t-arcade">
+      <div class="label-container"><div class="number">08</div><div class="name">Retro Phosphor</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">The highly specific glowing pure red of an 8-bit <span class="text-highlight">arcade CRT</span> screen against true black. Unapologetic.</div>
+      </div>
+    </div>
+
+    <div class="card-wrap t-rust">
+      <div class="label-container"><div class="number">09</div><div class="name">Bioluminescent Rust</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">Oxidized copper met with rusty red. <span class="text-highlight">Grungy and tactile</span>, pulling from real-world decay blended with a light source.</div>
+      </div>
+    </div>
+
+    <div class="card-wrap t-flesh">
+      <div class="label-container"><div class="number">10</div><div class="name">Visceral Flora</div></div>
+      <div class="orb"></div>
+      <div class="card"><div class="card-glow"></div>
+        <div class="desc">Like a carnivorous plant. <span class="text-highlight">Slightly fleshy</span>, dangerously inviting. High dopamine generation from tapping primal human reactions.</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

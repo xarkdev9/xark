@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #080808; font-family: 'Inter', sans-serif; color: #fafafa; }
+
+  .phones { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; padding: 32px 16px 80px; }
+  .phone-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .phone-label { font-size: 9px; letter-spacing: 2.5px; color: #444; }
+  .phone-note { font-size: 10px; color: #333; max-width: 310px; text-align: center; line-height: 1.5; margin-top: 4px; }
+
+  .phone {
+    width: 350px; height: 758px;
+    border-radius: 48px;
+    overflow: hidden; position: relative;
+    border: 1.5px solid #1a1a1a;
+    box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+    background: #FAFAFA;
+  }
+  .screen {
+    width: 100%; height: 100%;
+    overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ── Status ── */
+  .top-area {
+    position: sticky; top: 0; z-index: 50;
+    padding: 14px 20px 6px;
+    background: linear-gradient(180deg, #FAFAFA 60%, transparent);
+  }
+  .av-r {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #e8e8e8; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #8A8A94;
+  }
+
+  /* ── Bottom bar ── */
+  .bbar {
+    position: sticky; bottom: 0; z-index: 50;
+    padding: 6px 14px 14px;
+    background: linear-gradient(0deg, #FAFAFA 60%, transparent);
+  }
+  .bpill {
+    height: 50px; border-radius: 25px;
+    background: rgba(255,255,255,0.92);
+    border: 0.5px solid rgba(0,0,0,0.06);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    display: flex; align-items: center;
+    padding: 0 8px 0 14px; gap: 6px;
+  }
+  .bchip { font-size: 12px; color: #1A1A1A; display: flex; align-items: center; gap: 3px; }
+  .bchip .arr { font-size: 7px; color: #8A8A94; }
+  .bsearch { flex: 1; font-size: 12px; color: #8A8A94; font-weight: 300; }
+  .bicon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #8A8A94; }
+  .bplus { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #FF0055, #FF4D00); display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; font-weight: 300; }
+
+  /* ── Squircle Grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 4px 12px 8px;
+  }
+
+  /* ═══════════════════════════════════════ */
+  /* THE APPLE SQUIRCLE                      */
+  /* ═══════════════════════════════════════ */
+  .sq {
+    width: 100%; aspect-ratio: 1 / 1;
+    position: relative;
+    overflow: hidden;
+    /* iOS continuous corner (superellipse approximation) */
+    border-radius: 28px;
+    /* Apple-style specular border */
+    border: 0.5px solid rgba(255,255,255,0.6);
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,0.04),
+      0 2px 8px rgba(0,0,0,0.06),
+      0 8px 24px rgba(0,0,0,0.04),
+      inset 0 1px 0 rgba(255,255,255,0.8),
+      inset 0 -1px 0 rgba(0,0,0,0.02);
+  }
+  /* Specular light catch — top-left shine */
+  .sq::before {
+    content: '';
+    position: absolute; top: -1px; left: -1px; right: -1px;
+    height: 50%;
+    border-radius: 28px 28px 0 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* ── Photo Squircle (trips, decisions) ── */
+  .sq-photo {
+    background-size: cover; background-position: center;
+  }
+  .sq-photo-grad {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.02) 30%, rgba(0,0,0,0.55) 100%);
+    z-index: 2;
+  }
+  .sq-photo-content {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 14px;
+    z-index: 5;
+  }
+  .sq-live {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 7px; font-weight: 800; letter-spacing: 1.5px;
+    margin-bottom: 3px;
+  }
+  .sq-live-dot { width: 4px; height: 4px; border-radius: 50%; }
+  .sq-title {
+    font-size: 14px; font-weight: 400; color: white; letter-spacing: -0.3px; line-height: 1.2;
+  }
+  .sq-sub {
+    font-size: 10px; color: rgba(255,255,255,0.7); font-weight: 300; margin-top: 2px;
+  }
+  .sq-votes-bar {
+    margin-top: 8px; display: flex; gap: 4px;
+  }
+  .sq-vote-pip {
+    flex: 1; height: 3px; border-radius: 2px;
+  }
+  .sq-focus-tag {
+    position: absolute; top: 10px; left: 12px; z-index: 5;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .sq-focus-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .sq-focus-text { font-size: 8px; font-weight: 800; letter-spacing: 1.5px; }
+
+  /* ── Chat Squircle (DM / Group) ── */
+  .sq-chat {
+    display: flex; flex-direction: column;
+  }
+  .sq-chat-grad {
+    position: absolute; inset: 0; z-index: 1;
+  }
+  /* Ghost initial */
+  .sq-ghost {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -55%);
+    font-size: 80px; font-weight: 200;
+    color: rgba(255,255,255,0.1);
+    z-index: 2; line-height: 1;
+    pointer-events: none;
+  }
+
+  /* Chat content: message preview area */
+  .sq-chat-top {
+    position: relative; z-index: 5;
+    padding: 12px 12px 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sq-chat-av {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: rgba(255,255,255,0.8);
+    flex-shrink: 0;
+  }
+  .sq-chat-name {
+    font-size: 13px; font-weight: 400; color: white; letter-spacing: -0.2px;
+  }
+  .sq-chat-time {
+    font-size: 9px; color: rgba(255,255,255,0.4); margin-left: auto;
+  }
+  .sq-unread-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    flex-shrink: 0;
+  }
+
+  /* Messages area — scrollable within squircle */
+  .sq-msgs {
+    position: relative; z-index: 5;
+    flex: 1;
+    padding: 8px 12px;
+    display: flex; flex-direction: column;
+    justify-content: flex-end;
+    gap: 4px;
+    overflow: hidden;
+  }
+  .sq-msg-them {
+    align-self: flex-start;
+    max-width: 85%;
+    padding: 6px 10px;
+    border-radius: 12px 12px 12px 4px;
+    background: rgba(255,255,255,0.2);
+    font-size: 12px; color: rgba(255,255,255,0.9);
+    font-weight: 300; line-height: 1.3;
+  }
+  .sq-msg-me {
+    align-self: flex-end;
+    max-width: 85%;
+    padding: 6px 10px;
+    border-radius: 12px 12px 4px 12px;
+    background: rgba(255,255,255,0.35);
+    font-size: 12px; color: white;
+    font-weight: 300; line-height: 1.3;
+  }
+
+  /* Mini reply bar */
+  .sq-reply {
+    position: relative; z-index: 5;
+    margin: 0 8px 8px;
+    height: 32px; border-radius: 16px;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center;
+    padding: 0 4px 0 10px;
+  }
+  .sq-reply span {
+    font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 300;
+  }
+  .sq-reply-send {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    margin-left: auto; flex-shrink: 0;
+  }
+
+  /* ── Vote Squircle ── */
+  .sq-vote-area {
+    position: relative; z-index: 5;
+    padding: 0 10px 10px;
+    display: flex; gap: 4px;
+  }
+  .sq-vote-btn {
+    flex: 1; padding: 7px 2px; border-radius: 10px;
+    text-align: center; font-size: 10px; font-weight: 400;
+    backdrop-filter: blur(8px); cursor: pointer;
+  }
+
+  /* ── Itinerary/Settlement ── */
+  .sq-glass {
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 16px;
+  }
+  .sq-glass-icon {
+    font-size: 28px; margin-bottom: 8px;
+  }
+  .sq-glass-title {
+    font-size: 14px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.2px;
+  }
+  .sq-glass-sub {
+    font-size: 11px; color: #8A8A94; font-weight: 300; margin-top: 3px;
+  }
+  .sq-glass-amount {
+    font-size: 24px; font-weight: 300; color: #047857; letter-spacing: -0.5px;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="phones">
+
+  <!-- ═════════════════════════════════════ -->
+  <!-- PHONE 1: FULL HOME — NEEDS YOU ONLY -->
+  <!-- ═════════════════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">HOME &middot; NEEDS YOU</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="top-area"><div class="av-r">R</div></div>
+
+        <div class="grid">
+
+          <!-- Sarah DM — rose gradient, inline chat -->
+          <div class="sq sq-chat" style="background:linear-gradient(145deg, #e8849a 0%, #c04d6a 50%, #a83d5a 100%)">
+            <div class="sq-ghost">S</div>
+            <div class="sq-chat-top">
+              <div class="sq-chat-av">S</div>
+              <div class="sq-chat-name">Sarah</div>
+              <div class="sq-chat-time">4m</div>
+              <div class="sq-unread-dot"></div>
+            </div>
+            <div class="sq-msgs">
+              <div class="sq-msg-me">heading to the airport now!</div>
+              <div class="sq-msg-them">Reached? Swiss looks insane.</div>
+            </div>
+            <div class="sq-reply">
+              <span>Reply...</span>
+              <div class="sq-reply-send"></div>
+            </div>
+          </div>
+
+          <!-- Zurich Flight — photo + vote -->
+          <div class="sq sq-photo" style="background-image:url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500&q=80')">
+            <div class="sq::before"></div>
+            <div class="sq-photo-grad"></div>
+            <div class="sq-photo-content">
+              <div class="sq-live" style="color:#FF4D00"><div class="sq-live-dot" style="background:#FF4D00"></div> LIVE EVENT</div>
+              <div class="sq-title">Zurich flight</div>
+              <div class="sq-sub">United 827 &middot; Direct ORD&rarr;ZRH</div>
+              <div class="sq-votes-bar">
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.8)"></div>
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.8)"></div>
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.8)"></div>
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.8)"></div>
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.8)"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Family Group — blue gradient, inline chat -->
+          <div class="sq sq-chat" style="background:linear-gradient(145deg, #7b96c4 0%, #506a94 50%, #3e567e 100%)">
+            <div class="sq-ghost">F</div>
+            <div class="sq-chat-top">
+              <div class="sq-chat-av">F</div>
+              <div class="sq-chat-name">Family</div>
+              <div class="sq-chat-time">2h</div>
+              <div class="sq-unread-dot"></div>
+            </div>
+            <div class="sq-msgs">
+              <div class="sq-msg-them" style="font-size:10px;padding:4px 8px"><span style="color:rgba(255,255,255,0.5)">Mom:</span> dinner sunday?</div>
+              <div class="sq-msg-them" style="font-size:10px;padding:4px 8px"><span style="color:rgba(255,255,255,0.5)">Dad:</span> works for me</div>
+            </div>
+            <div class="sq-reply">
+              <span>Reply...</span>
+              <div class="sq-reply-send"></div>
+            </div>
+          </div>
+
+          <!-- Villa Ubud — photo + vote -->
+          <div class="sq sq-photo" style="background-image:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&q=80')">
+            <div class="sq-photo-grad"></div>
+            <div class="sq-photo-content">
+              <div class="sq-title">Villa Ubud</div>
+              <div class="sq-sub">$340/night &middot; 3BR seaview</div>
+              <div class="sq-votes-bar">
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.8)"></div>
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.8)"></div>
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.8)"></div>
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.8)"></div>
+                <div class="sq-vote-pip" style="background:rgba(255,255,255,0.3)"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alex DM — slate gradient, inline chat -->
+          <div class="sq sq-chat" style="background:linear-gradient(145deg, #6e8cad 0%, #3a5c82 50%, #2d4a6e 100%)">
+            <div class="sq-ghost">A</div>
+            <div class="sq-chat-top">
+              <div class="sq-chat-av">A</div>
+              <div class="sq-chat-name">Alex</div>
+              <div class="sq-chat-time">42m</div>
+              <div class="sq-unread-dot"></div>
+            </div>
+            <div class="sq-msgs">
+              <div class="sq-msg-them">just dropped you the link — lmk what you think</div>
+            </div>
+            <div class="sq-reply">
+              <span>Reply...</span>
+              <div class="sq-reply-send"></div>
+            </div>
+          </div>
+
+          <!-- Goa Hotel — photo + inline vote -->
+          <div class="sq sq-photo" style="background-image:url('https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=500&q=80')">
+            <div class="sq-photo-grad"></div>
+            <div class="sq-photo-content">
+              <div class="sq-live" style="color:#FF4D00"><div class="sq-live-dot" style="background:#FF4D00"></div> LIVE</div>
+              <div class="sq-title">Goa hotel</div>
+              <div class="sq-sub">3-3 split &middot; your vote breaks it</div>
+            </div>
+            <div class="sq-vote-area">
+              <div class="sq-vote-btn" style="background:rgba(255,255,255,0.2);color:white">Zostel</div>
+              <div class="sq-vote-btn" style="background:rgba(255,255,255,0.2);color:white">Taj</div>
+            </div>
+          </div>
+
+          <!-- Settlement — glass -->
+          <div class="sq sq-glass">
+            <div class="sq-glass-icon">&#128176;</div>
+            <div class="sq-glass-title">Sarah</div>
+            <div class="sq-glass-sub">Alila villa deposit</div>
+            <div class="sq-glass-amount">$42.50</div>
+          </div>
+
+          <!-- Bali Trip Group — warm gradient, inline chat -->
+          <div class="sq sq-chat" style="background:linear-gradient(145deg, #e0936a 0%, #c47040 50%, #a85a30 100%)">
+            <div class="sq-ghost">B</div>
+            <div class="sq-chat-top">
+              <div class="sq-chat-av">B</div>
+              <div class="sq-chat-name">Bali Trip</div>
+              <div class="sq-chat-time">18m</div>
+              <div class="sq-unread-dot"></div>
+            </div>
+            <div class="sq-msgs">
+              <div class="sq-msg-them" style="font-size:10px;padding:4px 8px"><span style="color:rgba(255,255,255,0.5)">Sarah:</span> just booked!!</div>
+              <div class="sq-msg-them" style="font-size:10px;padding:4px 8px"><span style="color:rgba(255,255,255,0.5)">Alex:</span> LFG 🔥</div>
+            </div>
+            <div class="sq-reply">
+              <span>Reply...</span>
+              <div class="sq-reply-send"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="bbar">
+          <div class="bpill">
+            <div class="bchip">HOME <span class="arr">&#9650;</span></div>
+            <div class="bsearch">Search or a nam...</div>
+            <div class="bicon">&#127908;</div>
+            <div class="bplus">+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-note">
+      Uniform squircles. Apple lighting (specular top edge, soft shadow). Chat squircles have inline messages + reply bar. Photo squircles have image + vote pips. Scroll like Instagram. Glance like a home screen.
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════ -->
+  <!-- PHONE 2: SCROLLED — MORE ITEMS -->
+  <!-- ═════════════════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">SCROLLED DOWN</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="top-area"><div class="av-r">R</div></div>
+
+        <div class="grid">
+
+          <!-- Goa Group chat -->
+          <div class="sq sq-chat" style="background:linear-gradient(145deg, #9a7dc4 0%, #7054a0 50%, #5a4288 100%)">
+            <div class="sq-ghost">G</div>
+            <div class="sq-chat-top">
+              <div class="sq-chat-av">G</div>
+              <div class="sq-chat-name">Goa Group</div>
+              <div class="sq-chat-time">25m</div>
+              <div class="sq-unread-dot"></div>
+            </div>
+            <div class="sq-msgs">
+              <div class="sq-msg-them" style="font-size:10px;padding:4px 8px"><span style="color:rgba(255,255,255,0.5)">Mike:</span> taj obviously</div>
+              <div class="sq-msg-them" style="font-size:10px;padding:4px 8px"><span style="color:rgba(255,255,255,0.5)">Chris:</span> zostel is the vibe</div>
+              <div class="sq-msg-them" style="font-size:10px;padding:4px 8px"><span style="color:rgba(255,255,255,0.5)">Sara:</span> need to book by Fri!</div>
+            </div>
+            <div class="sq-reply">
+              <span>Reply...</span>
+              <div class="sq-reply-send"></div>
+            </div>
+          </div>
+
+          <!-- Swiss Alps trip — large photo -->
+          <div class="sq sq-photo" style="background-image:url('https://images.unsplash.com/photo-1527004013197-933c4bb611b3?w=500&q=80')">
+            <div class="sq-photo-grad"></div>
+            <div class="sq-focus-tag">
+              <div class="sq-focus-dot" style="background:#4A90E2"></div>
+              <div class="sq-focus-text" style="color:#4A90E2">FOCUS</div>
+            </div>
+            <div class="sq-photo-content">
+              <div class="sq-title">Swiss Alps</div>
+              <div class="sq-sub">Jun 12–20 &middot; 61 days</div>
+              <div class="sq-sub" style="color:#FF4D00;font-weight:800;letter-spacing:1px;font-size:8px;margin-top:4px">3 PENDING</div>
+            </div>
+          </div>
+
+          <!-- Maya DM — green gradient -->
+          <div class="sq sq-chat" style="background:linear-gradient(145deg, #8fb89a 0%, #549066 50%, #407a52 100%)">
+            <div class="sq-ghost">M</div>
+            <div class="sq-chat-top">
+              <div class="sq-chat-av">M</div>
+              <div class="sq-chat-name">Maya</div>
+              <div class="sq-chat-time">3h</div>
+            </div>
+            <div class="sq-msgs">
+              <div class="sq-msg-me">you should come to Goa</div>
+              <div class="sq-msg-them">lol yes!! that sounds amazing</div>
+            </div>
+            <div class="sq-reply">
+              <span>Reply...</span>
+              <div class="sq-reply-send"></div>
+            </div>
+          </div>
+
+          <!-- Book Club — subtle gradient -->
+          <div class="sq sq-chat" style="background:linear-gradient(145deg, #a89888 0%, #8a7a6a 50%, #6e5e4e 100%)">
+            <div class="sq-ghost" style="font-size:60px">BC</div>
+            <div class="sq-chat-top">
+              <div class="sq-chat-av">B</div>
+              <div class="sq-chat-name">Book Club</div>
+              <div class="sq-chat-time">1d</div>
+            </div>
+            <div class="sq-msgs">
+              <div class="sq-msg-them" style="font-size:10px;padding:4px 8px">chapter 7 discussion tonight @ 8</div>
+            </div>
+            <div class="sq-reply">
+              <span>Reply...</span>
+              <div class="sq-reply-send"></div>
+            </div>
+          </div>
+
+          <!-- Memory squircle -->
+          <div class="sq sq-photo" style="background-image:url('https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=500&q=60')">
+            <div class="sq-photo-grad" style="background:linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%)"></div>
+            <div class="sq-photo-content">
+              <div class="sq-sub" style="font-weight:800;letter-spacing:1.5px;font-size:8px;color:rgba(255,255,255,0.6)">A YEAR AGO</div>
+              <div class="sq-title">Alila Ubud</div>
+              <div class="sq-sub">The Bali crew chose this villa</div>
+            </div>
+          </div>
+
+          <!-- Itinerary -->
+          <div class="sq sq-glass">
+            <div class="sq-glass-icon">&#9992;</div>
+            <div class="sq-glass-title">Flight ZRH&rarr;ORD</div>
+            <div class="sq-glass-sub">Zurich Airport</div>
+            <div class="sq-glass-sub" style="color:#1A1A1A;font-weight:400;margin-top:6px">Jun 20 &middot; 2:30 PM</div>
+          </div>
+
+        </div>
+
+        <div class="bbar">
+          <div class="bpill">
+            <div class="bchip">HOME <span class="arr">&#9650;</span></div>
+            <div class="bsearch">Search or a nam...</div>
+            <div class="bicon">&#127908;</div>
+            <div class="bplus">+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-note">
+      More of the feed: Goa Group chat with recent banter visible. Swiss Alps trip squircle with FOCUS tag. Memory squircle. Itinerary. All same-sized squircles, scrollable.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #080808; font-family: 'Inter', sans-serif; color: #fafafa; }
+
+  .phones { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; padding: 40px 16px 80px; }
+  .phone-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .phone-label { font-size: 9px; letter-spacing: 2.5px; color: #444; }
+
+  /* ── Phone ── */
+  .phone {
+    width: 340px; height: 736px;
+    border-radius: 48px;
+    overflow: hidden; position: relative;
+    border: 1.5px solid #1a1a1a;
+    box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+    background: #FAFAFA;
+  }
+  .screen {
+    width: 100%; height: 100%;
+    overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ── Ambient Mesh (bleeds from centered card) ── */
+  .ambient {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Status area ── */
+  .status {
+    position: sticky; top: 0; z-index: 50;
+    padding: 14px 24px 6px;
+    background: linear-gradient(180deg, #FAFAFA 50%, transparent);
+  }
+  .avatar-r {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #e8e8e8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #8A8A94;
+  }
+
+  /* ── Bottom bar ── */
+  .bottom-bar {
+    position: sticky; bottom: 0; z-index: 50;
+    padding: 8px 16px 16px;
+    background: linear-gradient(0deg, #FAFAFA 60%, transparent);
+  }
+  .bar-pill {
+    height: 52px; border-radius: 26px;
+    background: rgba(255,255,255,0.92);
+    border: 0.5px solid rgba(0,0,0,0.06);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    display: flex; align-items: center;
+    padding: 0 8px 0 16px;
+    gap: 8px;
+  }
+  .bar-chip {
+    font-size: 12px; font-weight: 400; color: #1A1A1A;
+    letter-spacing: -0.2px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .bar-chip .arrow { font-size: 8px; color: #8A8A94; }
+  .bar-search {
+    flex: 1; font-size: 13px; color: #8A8A94; font-weight: 300;
+  }
+  .bar-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #8A8A94;
+  }
+  .bar-plus {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 20px; font-weight: 300;
+  }
+
+  /* ── Feed content area ── */
+  .feed { padding: 0 12px 8px; }
+
+  /* ── Squircle Cards (shared base) ── */
+  .sq {
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── Focus Hero ── */
+  .hero {
+    width: 100%;
+    height: 300px;
+    margin-bottom: 10px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+  }
+  .hero-grad {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.7) 100%);
+  }
+  .hero-focus {
+    position: absolute; top: 16px; left: 16px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .hero-focus-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #4A90E2;
+  }
+  .hero-focus-text {
+    font-size: 10px; font-weight: 800; letter-spacing: 2px;
+    color: #4A90E2;
+  }
+  .hero-bottom {
+    position: absolute; bottom: 16px; left: 16px; right: 16px;
+  }
+  .hero-dest {
+    font-size: 30px; font-weight: 700; color: white;
+    letter-spacing: -0.5px; line-height: 1.05;
+  }
+  .hero-dates {
+    font-size: 13px; font-weight: 300; color: rgba(255,255,255,0.85);
+    margin-top: 4px;
+  }
+  .hero-stats {
+    display: flex; gap: 14px; margin-top: 12px;
+    font-size: 10px; font-weight: 800; letter-spacing: 1.5px; color: white;
+  }
+  .hero-pending { color: #FF4D00; }
+
+  /* ── Masonry Grid ── */
+  .masonry {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .masonry .full { grid-column: 1 / -1; }
+
+  /* ── DM Card — THE ALBUM COVER ── */
+  .dm-card {
+    height: 180px;
+    position: relative;
+    display: flex; flex-direction: column;
+    justify-content: flex-end;
+    padding: 14px;
+  }
+  .dm-card.tall { height: 220px; }
+  .dm-grad {
+    position: absolute; inset: 0; border-radius: 20px;
+  }
+  /* Subtle noise/texture overlay for richness */
+  .dm-card::after {
+    content: '';
+    position: absolute; inset: 0; border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 40%, rgba(0,0,0,0.15) 100%);
+    pointer-events: none;
+  }
+  .dm-initial {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -60%);
+    font-size: 72px; font-weight: 200; color: rgba(255,255,255,0.15);
+    z-index: 1;
+    line-height: 1;
+  }
+  .dm-content { position: relative; z-index: 2; }
+  .dm-header {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  }
+  .dm-name {
+    font-size: 15px; font-weight: 400; color: white;
+    letter-spacing: -0.3px;
+  }
+  .dm-badge {
+    font-size: 8px; letter-spacing: 1px; color: rgba(255,255,255,0.7);
+    font-weight: 400;
+  }
+  .dm-time {
+    font-size: 10px; color: rgba(255,255,255,0.5);
+    margin-left: auto;
+  }
+  .dm-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF0055, #FF4D00);
+    margin-left: 4px;
+    flex-shrink: 0;
+  }
+  .dm-msg {
+    font-size: 14px; font-weight: 300; color: rgba(255,255,255,0.92);
+    line-height: 1.35; letter-spacing: -0.2px;
+  }
+
+  /* ── Decision Card (with photo) ── */
+  .dec-card {
+    height: 180px;
+    background-size: cover; background-position: center;
+    position: relative;
+    display: flex; flex-direction: column;
+    justify-content: flex-end;
+    padding: 12px;
+  }
+  .dec-card.tall { height: 220px; }
+  .dec-grad {
+    position: absolute; inset: 0; border-radius: 20px;
+    background: linear-gradient(180deg, transparent 20%, rgba(0,0,0,0.65) 100%);
+  }
+  .dec-content { position: relative; z-index: 2; }
+  .dec-live {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+    color: #FF4D00; margin-bottom: 4px;
+  }
+  .dec-live-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #FF4D00;
+  }
+  .dec-title {
+    font-size: 15px; font-weight: 400; color: white;
+    letter-spacing: -0.3px; line-height: 1.2;
+  }
+  .dec-sub {
+    font-size: 11px; color: rgba(255,255,255,0.7);
+    font-weight: 300; margin-top: 2px;
+  }
+  .dec-votes {
+    font-size: 9px; font-weight: 800; letter-spacing: 1px;
+    color: rgba(255,255,255,0.85); margin-top: 6px;
+  }
+
+  /* ── Group Card (with photo) ── */
+  .grp-card {
+    height: 150px;
+    background-size: cover; background-position: center;
+    position: relative;
+    display: flex; flex-direction: column;
+    justify-content: flex-end;
+    padding: 12px;
+  }
+  .grp-grad {
+    position: absolute; inset: 0; border-radius: 20px;
+    background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.6) 100%);
+  }
+  .grp-content { position: relative; z-index: 2; }
+  .grp-name {
+    font-size: 14px; font-weight: 400; color: white;
+    letter-spacing: -0.2px;
+  }
+  .grp-active {
+    font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+    color: #FF4D00; margin-top: 2px;
+  }
+  .grp-msg {
+    font-size: 12px; font-weight: 300; color: rgba(255,255,255,0.8);
+    margin-top: 3px; line-height: 1.3;
+  }
+  .grp-meta {
+    font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 4px;
+  }
+
+  /* ── Itinerary Card ── */
+  .itin-card {
+    height: 100px;
+    background: rgba(0,0,0,0.03);
+    backdrop-filter: blur(12px);
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 14px;
+  }
+  .itin-title { font-size: 14px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.2px; }
+  .itin-sub { font-size: 11px; color: #8A8A94; font-weight: 300; margin-top: 3px; }
+
+  /* Sarah's gradient */
+  .grad-sarah { background: linear-gradient(145deg, #e8849a 0%, #d4627c 35%, #c04d6a 60%, #a83d5a 100%); }
+  /* Alex's gradient */
+  .grad-alex { background: linear-gradient(145deg, #7ba0c9 0%, #5a82b5 35%, #4a6fa0 60%, #3d5e8a 100%); }
+  /* Maya's gradient */
+  .grad-maya { background: linear-gradient(145deg, #a8d4a0 0%, #7cb87a 35%, #5fa05e 60%, #4a8a4a 100%); }
+  /* Priya's gradient */
+  .grad-priya { background: linear-gradient(145deg, #c9a87b 0%, #b5925a 35%, #a07e4a 60%, #8a6a3d 100%); }
+  /* Jordan's gradient */
+  .grad-jordan { background: linear-gradient(145deg, #9a8abt 0%, #8577a8 35%, #6f6490 60%, #5a5278 100%); }
+
+  .phone-note { font-size: 10px; color: #333; max-width: 300px; text-align: center; line-height: 1.5; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="phones">
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- PHONE 1: FULL HOME SCREEN — TOP HALF -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">HOME &middot; TOP</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="status"><div class="avatar-r">R</div></div>
+
+        <div class="feed">
+          <!-- Focus Hero: Swiss Alps -->
+          <div class="sq hero" style="background-image: url('https://images.unsplash.com/photo-1527004013197-933c4bb611b3?w=800&q=80')">
+            <div class="hero-grad"></div>
+            <div class="hero-focus">
+              <div class="hero-focus-dot"></div>
+              <div class="hero-focus-text">YOUR FOCUS</div>
+            </div>
+            <div class="hero-bottom">
+              <div class="hero-dest">Swiss Alps</div>
+              <div class="hero-dates">Jun 12 – Jun 20</div>
+              <div class="hero-stats">
+                <span>61 DAYS</span>
+                <span>5 MEMBERS</span>
+                <span class="hero-pending">3 PENDING</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Masonry grid -->
+          <div class="masonry">
+
+            <!-- Sarah DM — Album Cover gradient -->
+            <div class="sq dm-card tall grad-sarah">
+              <div class="dm-initial">S</div>
+              <div class="dm-content">
+                <div class="dm-header">
+                  <div class="dm-name">Sarah</div>
+                  <div class="dm-badge">DIRECT</div>
+                  <div class="dm-time">4m</div>
+                  <div class="dm-dot"></div>
+                </div>
+                <div class="dm-msg">Reached? Swiss looks insane.</div>
+              </div>
+            </div>
+
+            <!-- Decision: Zurich Flight (photo card) -->
+            <div class="sq dec-card tall" style="background-image: url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&q=80')">
+              <div class="dec-grad"></div>
+              <div class="dec-content">
+                <div class="dec-live"><div class="dec-live-dot"></div> LIVE EVENT</div>
+                <div class="dec-title">Zurich flight &middot; United 827</div>
+                <div class="dec-sub">Direct ORD &rarr; ZRH &middot; 29h</div>
+                <div class="dec-votes">5 OF 5 VOTED</div>
+              </div>
+            </div>
+
+            <!-- Decision: Villa Ubud (photo card) -->
+            <div class="sq dec-card" style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=80')">
+              <div class="dec-grad"></div>
+              <div class="dec-content">
+                <div class="dec-title">Villa Ubud &middot; 3BR seaview</div>
+                <div class="dec-sub">$340/night &middot; 8 nights</div>
+                <div class="dec-votes">4 OF 5 VOTED</div>
+              </div>
+            </div>
+
+            <!-- Alex DM — Album Cover gradient -->
+            <div class="sq dm-card" style="background: linear-gradient(145deg, #6e8cad 0%, #4a6e96 35%, #3a5c82 60%, #2d4a6e 100%)">
+              <div class="dm-initial" style="font-size:64px">A</div>
+              <div class="dm-content">
+                <div class="dm-header">
+                  <div class="dm-name">Alex</div>
+                  <div class="dm-badge">DIRECT</div>
+                  <div class="dm-time">42m</div>
+                  <div class="dm-dot"></div>
+                </div>
+                <div class="dm-msg">lmk what you think</div>
+              </div>
+            </div>
+
+            <!-- Group: Bali Trip (photo card) -->
+            <div class="sq grp-card full" style="background-image: url('https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&q=80')">
+              <div class="grp-grad"></div>
+              <div class="grp-content">
+                <div class="grp-name">Bali Trip</div>
+                <div class="grp-active">ACTIVE</div>
+                <div class="grp-msg">just booked the villa!!</div>
+                <div class="grp-meta">5 members</div>
+              </div>
+            </div>
+
+            <!-- Decision: Goa hotel (photo card) -->
+            <div class="sq dec-card" style="background-image: url('https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=600&q=80')">
+              <div class="dec-grad"></div>
+              <div class="dec-content">
+                <div class="dec-live"><div class="dec-live-dot"></div> LIVE EVENT</div>
+                <div class="dec-title">Goa hotel &middot; Zostel or Taj?</div>
+                <div class="dec-sub">3 still deciding &middot; live</div>
+                <div class="dec-votes">3 OF 6 VOTED</div>
+              </div>
+            </div>
+
+            <!-- Maya DM — Album Cover gradient -->
+            <div class="sq dm-card" style="background: linear-gradient(145deg, #8fb89a 0%, #6a9e78 35%, #549066 60%, #407a52 100%)">
+              <div class="dm-initial" style="font-size:64px">M</div>
+              <div class="dm-content">
+                <div class="dm-header">
+                  <div class="dm-name">Maya</div>
+                  <div class="dm-badge">DIRECT</div>
+                  <div class="dm-time">3h</div>
+                </div>
+                <div class="dm-msg">lol yes!! that sounds amazing</div>
+              </div>
+            </div>
+
+            <!-- Group: Goa -->
+            <div class="sq grp-card" style="height:130px;background-image: url('https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400&q=60')">
+              <div class="grp-grad"></div>
+              <div class="grp-content">
+                <div class="grp-name">Goa Group</div>
+                <div class="grp-active">ACTIVE</div>
+                <div class="grp-msg">Location dropped. Hotel links everywhe...</div>
+                <div class="grp-meta">4 members</div>
+              </div>
+            </div>
+
+            <!-- Itinerary -->
+            <div class="sq itin-card">
+              <div class="itin-title">Dinner at Alila</div>
+              <div class="itin-sub">Ubud, Bali &middot; in 7 hours</div>
+            </div>
+
+            <!-- Family DM — Album Cover gradient -->
+            <div class="sq dm-card" style="background: linear-gradient(145deg, #8ba0c4 0%, #6680aa 35%, #506a94 60%, #3e567e 100%)">
+              <div class="dm-initial" style="font-size:64px">F</div>
+              <div class="dm-content">
+                <div class="dm-header">
+                  <div class="dm-name">Family</div>
+                  <div class="dm-badge">GROUP</div>
+                  <div class="dm-time">2h</div>
+                  <div class="dm-dot"></div>
+                </div>
+                <div class="dm-msg">dinner sunday?</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="bottom-bar">
+          <div class="bar-pill">
+            <div class="bar-chip">HOME <span class="arrow">&#9650;</span></div>
+            <div class="bar-search">Search or a nam...</div>
+            <div class="bar-icon">&#127908;</div>
+            <div class="bar-plus">+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-note">
+      The existing masonry grid. Photo cards for trips/decisions. DM cards use rich gradient "album covers" — each person has a unique color world. Large ghost initial. Message overlaid.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- PHONE 2: DM CARDS CLOSE-UP -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">DM CARDS &middot; DETAIL</div>
+    <div class="phone">
+      <div class="screen" style="background:#FAFAFA;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px">
+
+        <!-- Sarah — large -->
+        <div class="sq dm-card grad-sarah" style="width:280px;height:260px;padding:20px;flex-shrink:0">
+          <div class="dm-initial" style="font-size:100px;opacity:0.12">S</div>
+          <div class="dm-content">
+            <div class="dm-header" style="margin-bottom:8px">
+              <div class="dm-name" style="font-size:18px">Sarah</div>
+              <div class="dm-badge" style="font-size:9px">DIRECT &middot; 4m</div>
+              <div class="dm-dot" style="width:8px;height:8px"></div>
+            </div>
+            <div class="dm-msg" style="font-size:18px;line-height:1.3">Reached? Swiss looks insane.</div>
+          </div>
+        </div>
+
+        <!-- Alex — medium -->
+        <div class="sq dm-card" style="width:280px;height:200px;padding:18px;flex-shrink:0;background:linear-gradient(145deg, #6e8cad 0%, #4a6e96 35%, #3a5c82 60%, #2d4a6e 100%)">
+          <div class="dm-initial" style="font-size:88px;opacity:0.12">A</div>
+          <div class="dm-content">
+            <div class="dm-header" style="margin-bottom:8px">
+              <div class="dm-name" style="font-size:18px">Alex</div>
+              <div class="dm-badge" style="font-size:9px">DIRECT &middot; 42m</div>
+              <div class="dm-dot" style="width:8px;height:8px"></div>
+            </div>
+            <div class="dm-msg" style="font-size:16px">just dropped you the link — lmk what you think</div>
+          </div>
+        </div>
+
+        <!-- Maya — no unread -->
+        <div class="sq dm-card" style="width:280px;height:160px;padding:16px;flex-shrink:0;background:linear-gradient(145deg, #8fb89a 0%, #6a9e78 35%, #549066 60%, #407a52 100%)">
+          <div class="dm-initial" style="font-size:76px;opacity:0.12">M</div>
+          <div class="dm-content">
+            <div class="dm-header">
+              <div class="dm-name" style="font-size:16px">Maya</div>
+              <div class="dm-badge" style="font-size:9px">DIRECT &middot; 3h</div>
+            </div>
+            <div class="dm-msg" style="font-size:15px;opacity:0.8">lol yes!! that sounds amazing</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="phone-note">
+      Each person is a color world. Sarah = warm rose. Alex = cool slate. Maya = forest green. The large ghost initial gives the card visual weight without a photo. The gradient does what album art does — makes the content feel RICH.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- PHONE 3: ATMOSPHERE BLEED -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="phone-col">
+    <div class="phone-label">ATMOSPHERE BLEED</div>
+    <div class="phone">
+      <div class="screen" style="overflow:hidden">
+        <!-- Sarah's rose tinting the atmosphere -->
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 55%, rgba(212,98,124,0.12) 0%, transparent 50%);pointer-events:none;z-index:0"></div>
+
+        <div class="status" style="background:transparent"><div class="avatar-r">R</div></div>
+
+        <div class="feed" style="position:relative;z-index:1">
+          <div class="sq hero" style="height:260px;background-image:url('https://images.unsplash.com/photo-1527004013197-933c4bb611b3?w=800&q=80')">
+            <div class="hero-grad"></div>
+            <div class="hero-focus">
+              <div class="hero-focus-dot"></div>
+              <div class="hero-focus-text">YOUR FOCUS</div>
+            </div>
+            <div class="hero-bottom">
+              <div class="hero-dest" style="font-size:26px">Swiss Alps</div>
+              <div class="hero-dates">Jun 12 – Jun 20</div>
+              <div class="hero-stats">
+                <span>61 DAYS</span>
+                <span>5 MEMBERS</span>
+                <span class="hero-pending">3 PENDING</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="masonry">
+            <!-- Sarah — centered, her color bleeds -->
+            <div class="sq dm-card tall grad-sarah" style="box-shadow:0 8px 32px rgba(212,98,124,0.25)">
+              <div class="dm-initial">S</div>
+              <div class="dm-content">
+                <div class="dm-header">
+                  <div class="dm-name">Sarah</div>
+                  <div class="dm-badge">DIRECT</div>
+                  <div class="dm-time">4m</div>
+                  <div class="dm-dot"></div>
+                </div>
+                <div class="dm-msg">Reached? Swiss looks insane.</div>
+              </div>
+            </div>
+
+            <div class="sq dec-card tall" style="background-image:url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&q=80')">
+              <div class="dec-grad"></div>
+              <div class="dec-content">
+                <div class="dec-live"><div class="dec-live-dot"></div> LIVE EVENT</div>
+                <div class="dec-title">Zurich flight</div>
+                <div class="dec-sub">Direct ORD &rarr; ZRH</div>
+                <div class="dec-votes">5 OF 5 VOTED</div>
+              </div>
+            </div>
+
+            <div class="sq dec-card" style="background-image:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=80')">
+              <div class="dec-grad"></div>
+              <div class="dec-content">
+                <div class="dec-title">Villa Ubud</div>
+                <div class="dec-sub">$340/night</div>
+                <div class="dec-votes">4 OF 5 VOTED</div>
+              </div>
+            </div>
+
+            <div class="sq dm-card" style="background:linear-gradient(145deg, #6e8cad 0%, #4a6e96 35%, #3a5c82 60%, #2d4a6e 100%)">
+              <div class="dm-initial" style="font-size:64px">A</div>
+              <div class="dm-content">
+                <div class="dm-header">
+                  <div class="dm-name">Alex</div>
+                  <div class="dm-badge">DIRECT</div>
+                  <div class="dm-time">42m</div>
+                  <div class="dm-dot"></div>
+                </div>
+                <div class="dm-msg">lmk what you think</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-bar" style="background:transparent">
+          <div class="bar-pill">
+            <div class="bar-chip">HOME <span class="arrow">&#9650;</span></div>
+            <div class="bar-search">Search or a nam...</div>
+            <div class="bar-icon">&#127908;</div>
+            <div class="bar-plus">+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-note">
+      Sarah's card is centered in the viewport. Her warm rose BLEEDS into the AmbientMesh — a soft glow radiating from her card into the background. Scroll to Alex and the atmosphere shifts to cool blue. Each person colors your world.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

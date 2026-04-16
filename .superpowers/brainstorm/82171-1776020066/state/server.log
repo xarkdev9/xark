@@ -1,0 +1,4 @@
+{"type":"server-started","port":64813,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:64813","screen_dir":"/Users/ramchitturi/hello/.superpowers/brainstorm/82171-1776020066/content","state_dir":"/Users/ramchitturi/hello/.superpowers/brainstorm/82171-1776020066/state"}
+{"type":"screen-added","file":"/Users/ramchitturi/hello/.superpowers/brainstorm/82171-1776020066/content/squircle-grid.html"}
+{"type":"screen-added","file":"/Users/ramchitturi/hello/.superpowers/brainstorm/82171-1776020066/content/tall-squircles.html"}
+{"type":"server-stopped","reason":"idle timeout"}

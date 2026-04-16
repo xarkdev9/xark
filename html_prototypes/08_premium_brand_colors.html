@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>True Premium Colors</title>
+<style>
+  @import url('https://api.fontshare.com/v2/css?f[]=satoshi@300,400&display=swap');
+
+  :root {
+    --void: #050507;
+    --glass: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --text-primary: #F0EFF4;
+    --text-muted: rgba(240, 239, 244, 0.55);
+  }
+
+  body {
+    margin: 0;
+    padding: 4em 2em;
+    background-color: var(--void);
+    color: var(--text-primary);
+    font-family: 'Satoshi', sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    background-blend-mode: overlay;
+  }
+
+  /* NO BOLD. NO ITALIC */
+  * {
+    font-weight: 400 !important;
+    font-style: normal !important;
+  }
+
+  .header {
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto 4em;
+  }
+
+  .header h1 { font-size: 32px; letter-spacing: -0.02em; margin-bottom: 0.5em; }
+  .header p { font-size: 16px; color: var(--text-muted); font-weight: 300 !important; }
+
+  .section-title {
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 300 !important;
+    margin: 4em 0 2em;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 3em;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px;
+    border-radius: 20px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(40px) saturate(120%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .card:hover { transform: scale(1.02); }
+
+  .card-glow {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 250px; height: 150px;
+    background: var(--primary);
+    filter: blur(60px);
+    opacity: 0.25;
+    z-index: -1;
+    border-radius: 50%;
+    animation: drift 8s ease-in-out infinite alternate;
+  }
+
+  .orb {
+    width: 80px;
+    height: 80px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, var(--deep), var(--primary), var(--high));
+    box-shadow: 0 0 40px var(--primary), inset 0 0 20px var(--high);
+    margin-bottom: 24px;
+    animation: breath 3s ease-in-out infinite alternate;
+  }
+
+  .text-glow {
+    font-size: 28px;
+    background: linear-gradient(135deg, var(--deep), var(--primary), var(--high), var(--primary));
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: liquid 4s ease infinite;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .desc {
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    font-weight: 300 !important;
+    text-align: center;
+  }
+
+  .hex {
+    font-family: 'Geist Mono', inherit;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    padding: 6px 12px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    margin-top: 20px;
+    color: var(--primary);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  /* TRUE REDS */
+  .t-airbnb { --deep: #D41A3E; --primary: #FF385C; --high: #FF708C; }
+  .t-pinterest { --deep: #A60017; --primary: #E60023; --high: #FF3355; }
+  .t-ferrari { --deep: #B31C00; --primary: #FF2800; --high: #FF5E40; }
+
+  /* ALTERNATIVE SUGGESTIONS */
+  .t-amber { --deep: #CC7A00; --primary: #FF9900; --high: #FFC233; }
+  .t-cobalt { --deep: #001FCC; --primary: #003BFF; --high: #4D79FF; }
+  .t-jade { --deep: #00B25C; --primary: #00E676; --high: #33FF99; }
+
+  @keyframes breath {
+    0% { transform: scale(0.96); opacity: 0.8; }
+    100% { transform: scale(1.04); opacity: 1; }
+  }
+  @keyframes drift {
+    0% { transform: translate(-60%, -50%); opacity: 0.15; }
+    100% { transform: translate(-40%, -50%); opacity: 0.35; }
+  }
+  @keyframes liquid {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>True Reds & Social Dopamine Colors</h1>
+    <p>Zero magenta. Zero pink. Purely attractive, universally inviting social colors.</p>
+  </div>
+
+  <div class="section-title">The "True Red" Spectrum</div>
+  <div class="grid">
+    <div class="card t-airbnb">
+      <div class="card-glow"></div>
+      <div class="orb"></div>
+      <div class="text-glow">Nomad Coral</div>
+      <div class="desc">The exact color territory of Airbnb. It is incredibly warm, highly legible, and completely avoids the 'error message' anxiety of pure red.</div>
+      <div class="hex">#FF385C</div>
+    </div>
+    
+    <div class="card t-pinterest">
+      <div class="card-glow"></div>
+      <div class="orb"></div>
+      <div class="text-glow">Board Crimson</div>
+      <div class="desc">The Pinterest zone. It is a decisive, 'true' red that completely eliminates any pink/magenta bias. Highly engaging and confident.</div>
+      <div class="hex">#E60023</div>
+    </div>
+
+    <div class="card t-ferrari">
+      <div class="card-glow"></div>
+      <div class="orb"></div>
+      <div class="text-glow">Racing Scarlet</div>
+      <div class="desc">An adrenaline-focused red that leans slightly toward orange. It feels energetic, fast, and exciting without softening into coral.</div>
+      <div class="hex">#FF2800</div>
+    </div>
+  </div>
+
+  <div class="section-title">Premium Non-Red Alternatives</div>
+  <div class="grid">
+    <div class="card t-amber">
+      <div class="card-glow"></div>
+      <div class="orb"></div>
+      <div class="text-glow">Social Marigold</div>
+      <div class="desc">Like late-afternoon sun. Amber/Orange is deeply associated with sociability, enthusiasm, and warmth. It stands out drastically from standard tech UI.</div>
+      <div class="hex">#FF9900</div>
+    </div>
+
+    <div class="card t-cobalt">
+      <div class="card-glow"></div>
+      <div class="orb"></div>
+      <div class="text-glow">Liquid Cobalt</div>
+      <div class="desc">A much more saturated, electric blue than Facebook/Twitter. Feels like pure, deep sea energy. Incredibly premium on a cinematic dark background.</div>
+      <div class="hex">#003BFF</div>
+    </div>
+
+    <div class="card t-jade">
+      <div class="card-glow"></div>
+      <div class="orb"></div>
+      <div class="text-glow">Vibrant Jade</div>
+      <div class="desc">Fresh, alive, and energetic. A highly saturated green feels like growth and "go". Extremely striking against the void background.</div>
+      <div class="hex">#00E676</div>
+    </div>
+  </div>
+
+</body>
+</html>
