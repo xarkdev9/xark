@@ -225,7 +225,7 @@ class _HomePageState extends ConsumerState<HomePage>
         density: AtmosphereDensity.focus,
         child: Center(
           child: Text(
-            'all caught up',
+            'All Caught Up',
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 15,

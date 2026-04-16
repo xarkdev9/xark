@@ -1,9 +1,11 @@
-// The home screen — a 4-tab scaffold (HOME / CHATS / GROUPS / PLANS)
-// with a horizontal TabBarView, a single bottom BottomBar glass pill
-// containing the mode chip + search field + mic/send + compose,
-// and a floating user avatar in the top-left.
+// The home screen — a 3-tab scaffold (Home / Chats / Plans) with a
+// horizontal TabBarView, a scaffold-level LiquidIntentLayer (thin
+// plasma handle at idle, blooms to TextField + mic + +) wrapping the
+// TabBarView, a floating user avatar / title header in the top-left,
+// and a full-bleed ChromaticAtmosphere behind everything. Chats is
+// the iMessage-style merged DMs + Groups list as of 2026-04-15.
 //
-// See: docs/superpowers/specs/2026-04-11-mode-chip-home-design.md
+// See: docs/superpowers/specs/2026-04-14-cosmos-home-design.md
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,7 +16,6 @@ import 'chromatic_atmosphere.dart';
 import 'consensus_watcher.dart';
 import 'liquid_intent_handle.dart';
 import 'pages/chats_page.dart';
-import 'pages/groups_page.dart';
 import 'pages/home_page.dart';
 import 'pages/plans_page.dart';
 import 'tab_header.dart';
@@ -37,7 +38,7 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_onTabChanged);
     _tabController.animation?.addListener(_onTabAnimationChanged);
   }
@@ -82,7 +83,6 @@ class _DecisionBoardPageState extends ConsumerState<DecisionBoardPage>
                   children: const [
                     HomePage(),
                     ChatsPage(),
-                    GroupsPage(),
                     PlansPage(),
                   ],
                 ),

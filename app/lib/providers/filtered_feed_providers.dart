@@ -9,18 +9,17 @@ final homeFeedProvider = Provider<List<FeedItem>>((ref) {
   return ref.watch(feedProvider);
 });
 
-/// CHATS tab feed — only DmFeedItem, sorted by recency.
+/// Chats tab feed — iMessage-style unified list of DMs + Groups,
+/// sorted by recency. As of 2026-04-15 the separate Groups tab is
+/// gone; group conversations interleave with 1:1 DMs here.
 final chatsFeedProvider = Provider<List<FeedItem>>((ref) {
   final feed = ref.watch(feedProvider);
-  return feed.whereType<DmFeedItem>().cast<FeedItem>().toList()
-    ..sort((a, b) => b.sortKey.compareTo(a.sortKey));
-});
-
-/// GROUPS tab feed — only GroupFeedItem, sorted by recency.
-final groupsFeedProvider = Provider<List<FeedItem>>((ref) {
-  final feed = ref.watch(feedProvider);
-  return feed.whereType<GroupFeedItem>().cast<FeedItem>().toList()
-    ..sort((a, b) => b.sortKey.compareTo(a.sortKey));
+  final merged = <FeedItem>[
+    ...feed.whereType<DmFeedItem>(),
+    ...feed.whereType<GroupFeedItem>(),
+  ];
+  merged.sort((a, b) => b.sortKey.compareTo(a.sortKey));
+  return merged;
 });
 
 /// PLANS tab feed — focus hero + trips + itinerary events.

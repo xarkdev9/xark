@@ -2,43 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-enum HomeTab { home, chats, groups, plans }
+/// The app has three top-level tabs as of 2026-04-15:
+/// - Home  (cosmos floating-avatar surface)
+/// - Chats (iMessage-style merged DMs + Groups list)
+/// - Plans (focus trip + trip list)
+///
+/// The prior `groups` variant was removed when Chats absorbed
+/// Groups into a single unified conversation list.
+enum HomeTab { home, chats, plans }
 
 extension HomeTabDisplay on HomeTab {
+  /// Title-case display label. Used by ValueKeys + headers. Not
+  /// ALL-CAPS — Apple-style 2030 surfaces read Title Case across
+  /// nav chrome.
   String get label => switch (this) {
-    HomeTab.home => 'HOME',
-    HomeTab.chats => 'CHATS',
-    HomeTab.groups => 'GROUPS',
-    HomeTab.plans => 'PLANS',
-  };
+        HomeTab.home => 'Home',
+        HomeTab.chats => 'Chats',
+        HomeTab.plans => 'Plans',
+      };
 
-  String get titleCase => switch (this) {
-    HomeTab.home => 'Home',
-    HomeTab.chats => 'Chats',
-    HomeTab.groups => 'Groups',
-    HomeTab.plans => 'Plans',
-  };
+  /// Alias for [label] — kept for semantic sites that historically
+  /// used `titleCase` to distinguish from the older ALL-CAPS `label`.
+  String get titleCase => label;
 
   String get searchHint => switch (this) {
-    HomeTab.home => 'Search or a name…',
-    HomeTab.chats => 'Search chats or a name…',
-    HomeTab.groups => 'Search groups…',
-    HomeTab.plans => 'Search plans…',
-  };
+        HomeTab.home => 'Search or a name…',
+        HomeTab.chats => 'Search conversations…',
+        HomeTab.plans => 'Search plans…',
+      };
 
   Color get signatureColor => switch (this) {
-    HomeTab.home => const Color(0xFF7C3AED),
-    HomeTab.chats => const Color(0xFF8B5CF6),
-    HomeTab.groups => const Color(0xFFF97316),
-    HomeTab.plans => const Color(0xFF4A90E2),
-  };
+        HomeTab.home => const Color(0xFF7C3AED),
+        HomeTab.chats => const Color(0xFF8B5CF6),
+        HomeTab.plans => const Color(0xFF4A90E2),
+      };
 
   IconData get icon => switch (this) {
-    HomeTab.home => Icons.home_rounded,
-    HomeTab.chats => Icons.chat_bubble_outline_rounded,
-    HomeTab.groups => Icons.people_outline_rounded,
-    HomeTab.plans => Icons.map_outlined,
-  };
+        HomeTab.home => Icons.home_rounded,
+        HomeTab.chats => Icons.chat_bubble_outline_rounded,
+        HomeTab.plans => Icons.map_outlined,
+      };
 }
 
 /// The active tab index. Updated by a TabController listener in
@@ -51,9 +54,9 @@ final activeTabProvider = Provider<HomeTab>((ref) {
   return HomeTab.values[index.clamp(0, HomeTab.values.length - 1)];
 });
 
-/// Live fractional tab position (0.0 — 3.0) during a TabBarView
+/// Live fractional tab position (0.0 — 2.0) during a TabBarView
 /// drag. Updated on every frame by a listener on
 /// `TabController.animation` in decision_board_page.dart. Consumed
-/// by the atmosphere mesh to lerp its primary glow color smoothly
+/// by the atmosphere and the ghost-indicator to lerp smoothly
 /// across tab signature colors as the user swipes.
 final tabAnimationProvider = StateProvider<double>((ref) => 0.0);

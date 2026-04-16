@@ -333,11 +333,14 @@ class _GhostIndicator extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _GhostDot(label: 'inbox', isActive: animValue < 0.5),
+        _GhostDot(label: 'Home', isActive: animValue < 0.5),
         const SizedBox(width: 12),
-        _GhostDot(label: 'home', isActive: animValue >= 0.5 && animValue <= 1.5),
+        _GhostDot(
+          label: 'Chats',
+          isActive: animValue >= 0.5 && animValue <= 1.5,
+        ),
         const SizedBox(width: 12),
-        _GhostDot(label: 'plans', isActive: animValue > 1.5),
+        _GhostDot(label: 'Plans', isActive: animValue > 1.5),
       ],
     );
   }
