@@ -87,17 +87,17 @@ describe("RequestHandler", () => {
 
     it("POST /spaces/:id/items adds an item", async () => {
       const res = await request("POST", `/spaces/${groupId}/items`, {
-        title: "Hilton",
-        description: "Downtown",
-        category: "hotel",
+        ciphertextPayload: "Hilton",
+        nonce: "test-nonce",
       });
       expect(res.status).toBe(201);
-      expect((res.body as any).title).toBe("Hilton");
+      expect((res.body as any).ciphertextPayload).toBe("Hilton");
     });
 
     it("POST /items/:id/react adds a reaction", async () => {
       const item = await request("POST", `/spaces/${groupId}/items`, {
-        title: "Hilton",
+        ciphertextPayload: "Hilton",
+        nonce: "test-nonce",
       });
       const itemId = (item.body as any).id;
 
@@ -110,7 +110,8 @@ describe("RequestHandler", () => {
 
     it("DELETE /items/:id/react removes a reaction", async () => {
       const item = await request("POST", `/spaces/${groupId}/items`, {
-        title: "Hilton",
+        ciphertextPayload: "Hilton",
+        nonce: "test-nonce",
       });
       const itemId = (item.body as any).id;
 
@@ -125,10 +126,12 @@ describe("RequestHandler", () => {
 
     it("GET /spaces/:id/items/ranked returns sorted items", async () => {
       const a = await request("POST", `/spaces/${groupId}/items`, {
-        title: "A",
+        ciphertextPayload: "A",
+        nonce: "test-nonce",
       });
       const b = await request("POST", `/spaces/${groupId}/items`, {
-        title: "B",
+        ciphertextPayload: "B",
+        nonce: "test-nonce",
       });
 
       await request("POST", `/items/${(b.body as any).id}/react`, {
@@ -137,18 +140,19 @@ describe("RequestHandler", () => {
 
       const res = await request("GET", `/spaces/${groupId}/items/ranked`);
       expect(res.status).toBe(200);
-      expect((res.body as any)[0].title).toBe("B");
+      expect((res.body as any)[0].ciphertextPayload).toBe("B");
     });
 
     it("POST /items/:id/lock locks an item", async () => {
       const item = await request("POST", `/spaces/${groupId}/items`, {
-        title: "Hilton",
+        ciphertextPayload: "Hilton",
+        nonce: "test-nonce",
       });
       const itemId = (item.body as any).id;
 
       const res = await request("POST", `/items/${itemId}/lock`, {
-        proofType: "confirmation_number",
-        proofValue: "HILTON-99",
+        commitmentCiphertext: "HILTON-99",
+        commitmentNonce: "test-nonce",
       });
       expect(res.status).toBe(200);
       expect((res.body as any).state).toBe("locked");
@@ -156,12 +160,14 @@ describe("RequestHandler", () => {
 
     it("POST /items/:id/transfer transfers ownership", async () => {
       const item = await request("POST", `/spaces/${groupId}/items`, {
-        title: "Hilton",
+        ciphertextPayload: "Hilton",
+        nonce: "test-nonce",
       });
       const itemId = (item.body as any).id;
 
       await request("POST", `/items/${itemId}/lock`, {
-        proofValue: "X",
+        commitmentCiphertext: "X",
+        commitmentNonce: "test-nonce",
       });
 
       const res = await request("POST", `/items/${itemId}/transfer`, {
@@ -173,7 +179,8 @@ describe("RequestHandler", () => {
 
     it("GET /items/:id/signals returns signal breakdown", async () => {
       const item = await request("POST", `/spaces/${groupId}/items`, {
-        title: "Hilton",
+        ciphertextPayload: "Hilton",
+        nonce: "test-nonce",
       });
       const itemId = (item.body as any).id;
 
@@ -188,10 +195,11 @@ describe("RequestHandler", () => {
 
     it("GET /spaces/:id/items/locked returns locked items", async () => {
       const item = await request("POST", `/spaces/${groupId}/items`, {
-        title: "Hilton",
+        ciphertextPayload: "Hilton",
+        nonce: "test-nonce",
       });
       const itemId = (item.body as any).id;
-      await request("POST", `/items/${itemId}/lock`, { proofValue: "X" });
+      await request("POST", `/items/${itemId}/lock`, { commitmentCiphertext: "X", commitmentNonce: "test-nonce" });
 
       const res = await request("GET", `/spaces/${groupId}/items/locked`);
       expect(res.status).toBe(200);
@@ -199,8 +207,8 @@ describe("RequestHandler", () => {
     });
 
     it("GET /spaces/:id/items/active returns active items", async () => {
-      await request("POST", `/spaces/${groupId}/items`, { title: "A" });
-      await request("POST", `/spaces/${groupId}/items`, { title: "B" });
+      await request("POST", `/spaces/${groupId}/items`, { ciphertextPayload: "A", nonce: "nonce" });
+      await request("POST", `/spaces/${groupId}/items`, { ciphertextPayload: "B", nonce: "nonce" });
 
       const res = await request("GET", `/spaces/${groupId}/items/active`);
       expect(res.status).toBe(200);
@@ -314,11 +322,12 @@ describe("RequestHandler", () => {
       const groupId = (space.body as any).id;
 
       const item = await request("POST", `/spaces/${groupId}/items`, {
-        title: "Hotel",
+        ciphertextPayload: "Hotel",
+        nonce: "test-nonce",
       });
       const itemId = (item.body as any).id;
 
-      await request("POST", `/items/${itemId}/lock`, { proofValue: "X" });
+      await request("POST", `/items/${itemId}/lock`, { commitmentCiphertext: "X", commitmentNonce: "test-nonce" });
 
       const res = await request("POST", `/items/${itemId}/react`, {
         reactionType: "love_it",

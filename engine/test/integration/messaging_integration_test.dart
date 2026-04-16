@@ -4,13 +4,13 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/crypto.dart';
-import 'package:hello_engine/src/domain/domain.dart';
-import 'package:hello_engine/src/persistence/database/app_database.dart';
-import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository_impl.dart';
-import 'package:hello_engine/src/persistence/repositories/message_repository_impl.dart';
-import 'package:hello_engine/src/persistence/repositories/outbox_repository_impl.dart';
-import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:e2ee_chat_sdk/src/crypto/crypto.dart';
+import 'package:e2ee_chat_sdk/src/domain/domain.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/decrypted_message_repository_impl.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/message_repository_impl.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/outbox_repository_impl.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/message_envelope.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 

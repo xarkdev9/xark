@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:hello_engine/src/domain/models/message.dart';
-import 'package:hello_engine/src/domain/repositories/message_repository.dart';
-import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/message.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/message_repository.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
 import 'package:drift/drift.dart';
 
 /// Drift-backed implementation of [MessageRepository].
@@ -64,7 +64,7 @@ class MessageRepositoryImpl implements MessageRepository {
   static String _messageTypeToString(MessageType type) {
     return switch (type) {
       MessageType.e2ee => 'e2ee',
-      MessageType.xark => 'xark',
+      MessageType.ai => 'ai',
       MessageType.system => 'system',
       MessageType.legacy => 'legacy',
       MessageType.senderKeyDist => 'sender_key_dist',
@@ -76,7 +76,7 @@ class MessageRepositoryImpl implements MessageRepository {
   static MessageType _messageTypeFromString(String s) {
     return switch (s) {
       'e2ee' => MessageType.e2ee,
-      'xark' => MessageType.xark,
+      'ai' => MessageType.ai,
       'system' => MessageType.system,
       'legacy' => MessageType.legacy,
       'sender_key_dist' => MessageType.senderKeyDist,

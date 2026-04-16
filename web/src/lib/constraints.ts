@@ -1,4 +1,4 @@
-// XARK OS v2.0 — On-Device Constraint Detection
+// hello OS v2.0 — On-Device Constraint Detection
 // Bridges Layer 2 (encrypted messages) → Layer 3 (structured data).
 // Runs on sender's device only. Conservative allowlists, no open regex.
 

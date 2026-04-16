@@ -1,8 +1,62 @@
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/keys/ed25519_to_curve25519.dart';
-import 'package:hello_engine/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/ed25519_to_curve25519.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
 import 'package:cryptography/cryptography.dart';
+
+/// Base exception for X3DH protocol errors.
+class X3dhException implements Exception {
+  /// Creates an [X3dhException] with the given [message].
+  X3dhException(this.message);
+
+  /// Human-readable description of the error.
+  final String message;
+
+  @override
+  String toString() => 'X3dhException: $message';
+}
+
+/// Thrown when no one-time pre-keys are available.
+///
+/// This is informational — the protocol falls back to 3-DH
+/// (which is valid Signal behavior).
+class OtkExhaustedException extends X3dhException {
+  /// Creates an [OtkExhaustedException].
+  OtkExhaustedException()
+      : super('No one-time pre-keys available — falling back to 3-DH');
+}
+
+/// Thrown when the signed pre-key signature fails verification.
+///
+/// This may indicate a man-in-the-middle attack.
+class SignatureVerificationFailed extends X3dhException {
+  /// Creates a [SignatureVerificationFailed].
+  SignatureVerificationFailed()
+      : super(
+          'Signed pre-key signature verification failed — potential MITM',
+        );
+}
+
+/// Thrown when identity key in the bundle does not match expectations.
+///
+/// Typically means the cached bundle is stale or has been tampered with.
+class KeyMismatchError extends X3dhException {
+  /// Creates a [KeyMismatchError].
+  KeyMismatchError()
+      : super('Key bundle mismatch — cached bundle may be stale');
+}
+
+/// Warning exception for stale signed pre-keys (older than 7 days).
+///
+/// The protocol proceeds, but callers should log this condition.
+class StalePreKeyWarning extends X3dhException {
+  /// Creates a [StalePreKeyWarning] with the age in days.
+  StalePreKeyWarning(this.ageDays)
+      : super('Signed pre-key is $ageDays days old (rotation recommended)');
+
+  /// Age of the signed pre-key in days.
+  final int ageDays;
+}
 
 /// Extended Triple Diffie-Hellman (X3DH) key agreement.
 ///
@@ -39,9 +93,7 @@ class X3DH {
       ),
     );
     if (!sigValid) {
-      throw StateError(
-        'Signed pre-key signature verification failed',
-      );
+      throw SignatureVerificationFailed();
     }
 
     // 2. Convert their Ed25519 identity key to X25519.
@@ -109,6 +161,8 @@ class X3DH {
   /// Performs the X3DH key agreement as the responder (Bob).
   ///
   /// Mirror of [initiatorKeyAgreement] with swapped roles.
+  /// Validates that the ephemeral key is exactly 32 bytes (X25519 format)
+  /// before processing.
   static Future<X3DHResult> responderKeyAgreement({
     required IdentityKeyPair ourIdentity,
     required SignedPreKey ourSignedPreKey,
@@ -116,6 +170,29 @@ class X3DH {
     required Uint8List theirIdentityKey,
     required Uint8List theirEphemeralKey,
   }) async {
+    // Validate ephemeral key format: must be exactly 32 bytes for X25519.
+    if (theirEphemeralKey.length != 32 ||
+        theirEphemeralKey.every((b) => b == 0)) {
+      throw KeyMismatchError();
+    }
+
+    // Verify our signed pre-key signature against our own identity key
+    // to guard against corrupted local state.
+    final ed = Ed25519();
+    final spkSigValid = await ed.verify(
+      ourSignedPreKey.publicKey,
+      signature: Signature(
+        ourSignedPreKey.signature,
+        publicKey: SimplePublicKey(
+          ourIdentity.ed25519PublicKey,
+          type: KeyPairType.ed25519,
+        ),
+      ),
+    );
+    if (!spkSigValid) {
+      throw SignatureVerificationFailed();
+    }
+
     final theirX25519Pub = Ed25519ToCurve25519.convertPublicKey(
       theirIdentityKey,
     );

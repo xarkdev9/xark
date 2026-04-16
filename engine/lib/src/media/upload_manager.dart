@@ -1,12 +1,14 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/media/media_crypto.dart';
-import 'package:hello_engine/src/domain/models/media_metadata.dart';
-import 'package:hello_engine/src/domain/models/media_payload.dart';
-import 'package:hello_engine/src/media/upload_progress.dart';
-import 'package:hello_engine/src/observer/chat_engine_observer.dart';
-import 'package:hello_engine/src/transport/media_upload_client.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/media/media_crypto.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/media_metadata.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/media_payload.dart';
+import 'package:e2ee_chat_sdk/src/media/upload_progress.dart';
+import 'package:e2ee_chat_sdk/src/observer/chat_engine_observer.dart';
+import 'package:e2ee_chat_sdk/src/transport/media_upload_client.dart';
 import 'package:uuid/uuid.dart';
 
 /// Manages the encrypt-then-upload pipeline for media attachments.
@@ -53,7 +55,17 @@ class UploadManager {
     if (!_isActive(mediaId)) return;
 
     final mainKey = await MediaCrypto.generateMediaKey();
-    final encryptedMain = await MediaCrypto.encrypt(payload.bytes, mainKey);
+    // Run heavy symmetric encryption in a fire-and-forget isolate
+    // to keep the main thread free for UI work.
+    final mainKeyKey = mainKey.key;
+    final mainKeyIv = mainKey.iv;
+    final mainBytes = payload.bytes;
+    final encryptedMain = await Isolate.run(
+      () => MediaCrypto.encrypt(
+        mainBytes,
+        MediaKey(key: mainKeyKey, iv: mainKeyIv),
+      ),
+    );
     final mainHash = await MediaCrypto.computeSha256(encryptedMain);
 
     // Encrypt thumbnail if provided.
@@ -66,9 +78,12 @@ class UploadManager {
       final thumbnailMediaKey = await MediaCrypto.generateMediaKey();
       thumbKey = thumbnailMediaKey.key;
       thumbIv = thumbnailMediaKey.iv;
-      encryptedThumb = await MediaCrypto.encrypt(
-        payload.thumbnailBytes!,
-        thumbnailMediaKey,
+      final thumbBytes = payload.thumbnailBytes!;
+      encryptedThumb = await Isolate.run(
+        () => MediaCrypto.encrypt(
+          thumbBytes,
+          MediaKey(key: thumbKey!, iv: thumbIv!),
+        ),
       );
       inlineThumbnail = base64Encode(payload.thumbnailBytes!);
     }

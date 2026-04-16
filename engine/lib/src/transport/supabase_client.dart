@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/transport/dto/message_envelope.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/message_envelope.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -133,6 +133,23 @@ class SupabaseClientWrapper {
     });
   }
 
+  /// Batch-fetches key bundles for multiple devices of a single user.
+  ///
+  /// Fetches all bundles in parallel via [Future.wait] to minimize
+  /// round-trip latency. Each call atomically consumes one OTK.
+  Future<List<Map<String, dynamic>>> fetchKeyBundles({
+    required String userId,
+    required List<int> deviceIds,
+  }) async {
+    final futures = deviceIds.map(
+      (deviceId) => fetchPeerKeyBundle(
+        userId: userId,
+        deviceId: deviceId,
+      ),
+    );
+    return Future.wait(futures);
+  }
+
   /// Returns the number of remaining OTKs for a device via PostgREST.
   Future<int> getOTKCount({
     required String userId,
@@ -146,6 +163,19 @@ class SupabaseClientWrapper {
         .count(CountOption.exact);
 
     return response.count;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Devices
+  // ---------------------------------------------------------------------------
+
+  /// Fetch all active devices for a user (for fan-out encryption).
+  Future<List<Map<String, dynamic>>> getUserDevices(String userId) async {
+    final response = await _client
+        .rpc('get_user_devices', params: <String, dynamic>{
+      'p_user_id': userId,
+    });
+    return List<Map<String, dynamic>>.from(response as List<dynamic>);
   }
 
   // ---------------------------------------------------------------------------

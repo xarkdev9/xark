@@ -411,8 +411,7 @@ class _$MessageImpl implements _Message {
         (other.runtimeType == runtimeType &&
             other is _$MessageImpl &&
             (identical(other.id, id) || other.id == id) &&
-            (identical(other.groupId, groupId) ||
-                other.groupId == groupId) &&
+            (identical(other.groupId, groupId) || other.groupId == groupId) &&
             (identical(other.senderId, senderId) ||
                 other.senderId == senderId) &&
             (identical(other.senderDeviceId, senderDeviceId) ||

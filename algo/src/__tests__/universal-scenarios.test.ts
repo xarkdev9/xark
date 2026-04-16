@@ -39,12 +39,11 @@ describe("Universal Scenarios", () => {
       engine.setStateMachine("car_purchase", new StateMachine(PURCHASE_FLOW));
 
       // Propose options
-      const civic = engine.addItem("car_purchase", "Honda Civic 2025", "Reliable sedan", "sedan", "alice", 1000);
-      const camry = engine.addItem("car_purchase", "Toyota Camry 2025", "Comfortable sedan", "sedan", "alice", 1001);
-      const model3 = engine.addItem("car_purchase", "Tesla Model 3", "Electric", "ev", "alice", 1002);
+      const civic = engine.addItem("car_purchase", "Honda Civic 2025", "nonce", "alice", 1000);
+      const camry = engine.addItem("car_purchase", "Toyota Camry 2025", "nonce", "alice", 1001);
+      const model3 = engine.addItem("car_purchase", "Tesla Model 3", "nonce", "alice", 1002);
 
       expect(civic.state).toBe("researching");
-      expect(civic.category).toBe("sedan");
 
       // React to favorites
       engine.react(civic.id, "alice", ReactionType.LoveIt, 2000);
@@ -56,17 +55,12 @@ describe("Universal Scenarios", () => {
 
       // Sort order: Civic (5) > Camry (1) > Model 3 (0)
       const sorted = engine.getGroupItems("car_purchase");
-      expect(sorted[0]!.title).toBe("Honda Civic 2025");
-      expect(sorted[1]!.title).toBe("Toyota Camry 2025");
-      expect(sorted[2]!.title).toBe("Tesla Model 3");
+      expect(sorted[0]!.ciphertextPayload).toBe("Honda Civic 2025");
+      expect(sorted[1]!.ciphertextPayload).toBe("Toyota Camry 2025");
+      expect(sorted[2]!.ciphertextPayload).toBe("Tesla Model 3");
 
       // Purchase the Civic
-      const locked = engine.lock(civic.id, {
-        type: "receipt",
-        value: "HONDA-DEALER-78432",
-        submittedBy: "alice",
-        submittedAt: 3000,
-      });
+      const locked = engine.lock(civic.id, "receipt_ciphertext", "nonce", "alice", 3000);
 
       expect(locked.state).toBe("purchased");
       expect(locked.ownership!.ownerId).toBe("alice");
@@ -74,7 +68,7 @@ describe("Universal Scenarios", () => {
       // Verify locked vs active
       const lockedItems = engine.getLockedItems("car_purchase");
       expect(lockedItems).toHaveLength(1);
-      expect(lockedItems[0]!.title).toBe("Honda Civic 2025");
+      expect(lockedItems[0]!.ciphertextPayload).toBe("Honda Civic 2025");
 
       const activeItems = engine.getActiveItems("car_purchase");
       expect(activeItems).toHaveLength(2);
@@ -104,9 +98,9 @@ describe("Universal Scenarios", () => {
       engine.setStateMachine("wedding", new StateMachine(SIMPLE_VOTE_FLOW));
 
       // Propose venues
-      const garden = engine.addItem("wedding", "Rose Garden Estate", "Outdoor venue", "venue", "member_0", 1000);
-      const ballroom = engine.addItem("wedding", "Grand Ballroom", "Indoor, 500 cap", "venue", "member_0", 1001);
-      const beach = engine.addItem("wedding", "Sunset Beach Club", "Oceanfront", "venue", "member_0", 1002);
+      const garden = engine.addItem("wedding", "Rose Garden Estate", "nonce", "member_0", 1000);
+      const ballroom = engine.addItem("wedding", "Grand Ballroom", "nonce", "member_0", 1001);
+      const beach = engine.addItem("wedding", "Sunset Beach Club", "nonce", "member_0", 1002);
 
       expect(garden.state).toBe("nominated");
 
@@ -123,7 +117,7 @@ describe("Universal Scenarios", () => {
 
       // Garden should be ranked first with agreement > 60%
       const ranked = engine.getRankedItems("wedding");
-      expect(ranked[0]!.title).toBe("Rose Garden Estate");
+      expect(ranked[0]!.ciphertextPayload).toBe("Rose Garden Estate");
       expect(ranked[0]!.weightedScore).toBe(175); // 35 × 5
       expect(ranked[0]!.agreementScore).toBe(70); // 35/50 = 70%
       expect(ranked[0]!.isGroupFavorite).toBe(true); // >60% threshold
@@ -133,19 +127,14 @@ describe("Universal Scenarios", () => {
       expect(gardenAfter.state).toBe("ranked");
 
       // Choose the garden
-      const chosen = engine.lock(garden.id, {
-        type: "contract",
-        value: "ROSE-GARDEN-CONTRACT-2026",
-        submittedBy: "member_0",
-        submittedAt: 5000,
-      });
+      const chosen = engine.lock(garden.id, "contract_ciphertext", "nonce", "member_0", 5000);
 
       expect(chosen.state).toBe("chosen");
       expect(chosen.ownership!.ownerId).toBe("member_0");
 
       // Verify grounding prompt mentions the chosen venue
       const prompt = engine.getGroundingPrompt("wedding");
-      expect(prompt).toContain("Rose Garden Estate");
+      expect(prompt).toContain(garden.id);
       expect(prompt).toContain("GROUNDING CONSTRAINTS");
     });
   });
@@ -167,9 +156,9 @@ describe("Universal Scenarios", () => {
       engine.setStateMachine("dinner", new StateMachine(SIMPLE_VOTE_FLOW));
 
       // Nominate restaurants
-      const sushi = engine.addItem("dinner", "Sushi Ota", "Best sushi in town", "restaurant", "alex", 1000);
-      const tacos = engine.addItem("dinner", "Tacos El Gordo", "Street tacos", "restaurant", "beth", 1001);
-      const pizza = engine.addItem("dinner", "Pizzeria Luigi", "Wood-fired pizza", "restaurant", "cody", 1002);
+      const sushi = engine.addItem("dinner", "Sushi Ota", "nonce", "alex", 1000);
+      const tacos = engine.addItem("dinner", "Tacos El Gordo", "nonce", "beth", 1001);
+      const pizza = engine.addItem("dinner", "Pizzeria Luigi", "nonce", "cody", 1002);
 
       // Everyone loves sushi
       engine.react(sushi.id, "alex", ReactionType.LoveIt, 2000);
@@ -183,12 +172,7 @@ describe("Universal Scenarios", () => {
       expect(score.isGroupFavorite).toBe(true);
 
       // Choose sushi
-      const chosen = engine.lock(sushi.id, {
-        type: "verbal",
-        value: "Reservation at 7pm",
-        submittedBy: "alex",
-        submittedAt: 3000,
-      });
+      const chosen = engine.lock(sushi.id, "verbal_ciphertext", "nonce", "alex", 3000);
 
       expect(chosen.state).toBe("chosen");
 
@@ -214,8 +198,8 @@ describe("Universal Scenarios", () => {
       engine.setStateMachine("daycare", new StateMachine(SOLO_DECISION_FLOW));
 
       // Consider options
-      const sunshine = engine.addItem("daycare", "Sunshine Academy", "Montessori, $2k/mo", "daycare", "alice", 1000);
-      const happy = engine.addItem("daycare", "Happy Kids", "Play-based, $1.5k/mo", "daycare", "alice", 1001);
+      const sunshine = engine.addItem("daycare", "Sunshine Academy", "nonce", "alice", 1000);
+      const happy = engine.addItem("daycare", "Happy Kids", "nonce", "alice", 1001);
 
       expect(sunshine.state).toBe("considering");
 
@@ -225,12 +209,7 @@ describe("Universal Scenarios", () => {
       expect(sunshineAfter.state).toBe("leaning");
 
       // Decide
-      const decided = engine.lock(sunshine.id, {
-        type: "contract",
-        value: "SUNSHINE-ENROLLMENT-2026",
-        submittedBy: "alice",
-        submittedAt: 3000,
-      });
+      const decided = engine.lock(sunshine.id, "contract_ciphertext", "nonce", "alice", 3000);
 
       expect(decided.state).toBe("decided");
       expect(decided.ownership!.ownerId).toBe("alice");
@@ -263,8 +242,8 @@ describe("Universal Scenarios", () => {
       engine.setStateMachine("dinner", new StateMachine(SIMPLE_VOTE_FLOW));
 
       // Add items to each space
-      const civic = engine.addItem("car", "Honda Civic", "Sedan", "sedan", "alice", 1000);
-      const sushi = engine.addItem("dinner", "Sushi Place", "Good sushi", "restaurant", "alice", 1001);
+      const civic = engine.addItem("car", "Honda Civic", "nonce", "alice", 1000);
+      const sushi = engine.addItem("dinner", "Sushi Place", "nonce", "alice", 1001);
 
       // Items have different initial states based on their space's flow
       expect(civic.state).toBe("researching");
@@ -274,9 +253,9 @@ describe("Universal Scenarios", () => {
       const carItems = engine.getGroupItems("car");
       const dinnerItems = engine.getGroupItems("dinner");
       expect(carItems).toHaveLength(1);
-      expect(carItems[0]!.title).toBe("Honda Civic");
+      expect(carItems[0]!.ciphertextPayload).toBe("Honda Civic");
       expect(dinnerItems).toHaveLength(1);
-      expect(dinnerItems[0]!.title).toBe("Sushi Place");
+      expect(dinnerItems[0]!.ciphertextPayload).toBe("Sushi Place");
     });
   });
 
@@ -293,7 +272,7 @@ describe("Universal Scenarios", () => {
 
       // Add 10 items
       for (let i = 0; i < 10; i++) {
-        engine.proposeItem("g1", `Item ${i}`, "", "other", "alice", 1000 + i);
+        engine.proposeItem("g1", `Item ${i}`, "nonce", "alice", 1000 + i);
       }
 
       const page1 = engine.getGroupItems("g1", { offset: 0, limit: 3 });
@@ -331,7 +310,7 @@ describe("Universal Scenarios", () => {
       });
       engine.createSpace(space);
 
-      const item = engine.addItem("custom", "Test", "", "other", "alice", 1000);
+      const item = engine.addItem("custom", "Test", "nonce", "alice", 1000);
       const reacted = engine.react(item.id, "alice", ReactionType.LoveIt, 2000);
 
       // Should use custom weight of 10, not default of 5
@@ -351,15 +330,15 @@ describe("Universal Scenarios", () => {
       engine.registerGroup(group);
 
       // All of these should work — no enum restriction
-      const sedan = engine.proposeItem("g1", "Honda", "", "sedan", "alice", 1000);
-      const venue = engine.proposeItem("g1", "Rose Garden", "", "wedding_venue", "alice", 1001);
-      const daycare = engine.proposeItem("g1", "Sunshine", "", "daycare", "alice", 1002);
-      const insurance = engine.proposeItem("g1", "Geico", "", "insurance_plan", "alice", 1003);
+      const sedan = engine.proposeItem("g1", "Honda", "nonce", "alice", 1000);
+      const venue = engine.proposeItem("g1", "Rose Garden", "nonce", "alice", 1001);
+      const daycare = engine.proposeItem("g1", "Sunshine", "nonce", "alice", 1002);
+      const insurance = engine.proposeItem("g1", "Geico", "nonce", "alice", 1003);
 
-      expect(sedan.category).toBe("sedan");
-      expect(venue.category).toBe("wedding_venue");
-      expect(daycare.category).toBe("daycare");
-      expect(insurance.category).toBe("insurance_plan");
+      expect(sedan.nonce).toBe("nonce");
+      expect(venue.nonce).toBe("nonce");
+      expect(daycare.nonce).toBe("nonce");
+      expect(insurance.nonce).toBe("nonce");
     });
   });
 });

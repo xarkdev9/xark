@@ -1,4 +1,4 @@
-// XARK OS v2.0 — SPACE DATA LAYER
+// hello OS v2.0 — SPACE DATA LAYER
 // Unified data for Home + ControlCaret. Demo fallback when Supabase is unreachable.
 
 import { supabase } from "./supabase";
@@ -226,7 +226,7 @@ export async function fetchGroupList(userId?: string): Promise<GroupListItem[]> 
       return {
         id: space.id,
         title: space.title,
-        atmosphere: space.type ?? "",
+        atmosphere: (space as any).type ?? (space as any).groupType ?? "",
         members,
         decisionSummary: summary,
         lastMessage: lastMsgBySpace.get(space.id),

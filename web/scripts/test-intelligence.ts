@@ -147,7 +147,7 @@ interface TestResult {
 }
 
 async function runTests() {
-  console.log(`🚀 Starting Xark Intelligence Test Rig (${TEST_QUERIES.length} queries)`);
+  console.log(`🚀 Starting hello Intelligence Test Rig (${TEST_QUERIES.length} queries)`);
   console.log(`Running against environment: ${process.env.GEMINI_MODEL || "gemini-2.5-flash"}\n`);
 
   const results: TestResult[] = [];

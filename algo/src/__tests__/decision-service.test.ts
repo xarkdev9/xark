@@ -77,8 +77,8 @@ describe("DecisionService", () => {
       await eventBus.subscribe(`space:${space.id}`, (e) => events.push(e));
 
       // Propose items
-      const nobu = await service.addItem(alice, space.id, "Nobu", "Japanese", "restaurant");
-      const olive = await service.addItem(bob, space.id, "Olive Garden", "Italian", "restaurant");
+      const nobu = await service.addItem(alice, space.id, "Nobu", "nonce");
+      const olive = await service.addItem(bob, space.id, "Olive Garden", "nonce");
 
       expect(nobu.state).toBe(BookableItemState.Proposed);
       expect(nobu.version).toBe(1);
@@ -96,23 +96,17 @@ describe("DecisionService", () => {
       // Rank — Nobu should be #1
       const ranked = await service.getRankedItems(alice, space.id);
       expect(ranked).toHaveLength(2);
-      expect(ranked[0]!.title).toBe("Nobu");
+      expect(ranked[0]!.ciphertextPayload).toBe("Nobu");
       expect(ranked[0]!.weightedScore).toBe(11); // 5 + 1 + 5
 
       // Lock
-      const locked = await service.lock(alice, nobu.id, {
-        type: "confirmation_number",
-        value: "NOBU-123",
-        submittedBy: alice.userId,
-        submittedAt: Date.now(),
-      });
+      const locked = await service.lock(alice, nobu.id, "NOBU-123", "nonce");
       expect(locked.state).toBe(BookableItemState.Locked);
       expect(locked.ownership!.ownerId).toBe("alice");
 
       // Transfer
       const transferred = await service.transfer(bob, nobu.id, "bob" as UserId);
       expect(transferred.ownership!.ownerId).toBe("bob");
-      expect(transferred.ownershipHistory).toHaveLength(2);
 
       // Verify events
       expect(events.filter((e) => e.type === EventType.ItemProposed)).toHaveLength(2);
@@ -126,7 +120,7 @@ describe("DecisionService", () => {
     it("state survives across service instances", async () => {
       // Instance 1: create space and add item
       const space = await service.createSpace(alice, "Car", makeMembers());
-      const item = await service.addItem(alice, space.id, "Tesla Model 3", "EV", "car");
+      const item = await service.addItem(alice, space.id, "Tesla Model 3", "nonce");
       await service.react(alice, item.id, ReactionType.LoveIt);
 
       // Instance 2: new service, same persistence
@@ -138,19 +132,19 @@ describe("DecisionService", () => {
 
       // Data is still there
       const retrieved = await service2.getItem(alice, item.id);
-      expect(retrieved.title).toBe("Tesla Model 3");
+      expect(retrieved.ciphertextPayload).toBe("Tesla Model 3");
       expect(retrieved.weightedScore).toBe(5);
 
       const ranked = await service2.getRankedItems(alice, space.id);
       expect(ranked).toHaveLength(1);
-      expect(ranked[0]!.title).toBe("Tesla Model 3");
+      expect(ranked[0]!.ciphertextPayload).toBe("Tesla Model 3");
     });
   });
 
   describe("Cache", () => {
     it("caches ranked items and invalidates on reaction", async () => {
       const space = await service.createSpace(alice, "Trip", makeMembers());
-      await service.addItem(alice, space.id, "Hotel A", "", "hotel");
+      await service.addItem(alice, space.id, "Hotel A", "nonce");
 
       // First call populates cache
       const ranked1 = await service.getRankedItems(alice, space.id);
@@ -178,7 +172,7 @@ describe("DecisionService", () => {
 
       await eventBus.subscribe(`space:${space.id}`, (e) => events.push(e));
 
-      await service.addItem(alice, space.id, "Hotel", "", "hotel");
+      await service.addItem(alice, space.id, "Hotel", "nonce");
       expect(events).toHaveLength(1);
       expect(events[0]!.type).toBe(EventType.ItemProposed);
     });
@@ -191,11 +185,11 @@ describe("DecisionService", () => {
         events.push(e)
       );
 
-      await service.addItem(alice, space.id, "A", "", "hotel");
+      await service.addItem(alice, space.id, "A", "nonce");
       expect(events).toHaveLength(1);
 
       unsub();
-      await service.addItem(alice, space.id, "B", "", "hotel");
+      await service.addItem(alice, space.id, "B", "nonce");
       expect(events).toHaveLength(1); // no new events
     });
   });
@@ -203,7 +197,7 @@ describe("DecisionService", () => {
   describe("Optimistic Concurrency", () => {
     it("version increments on each mutation", async () => {
       const space = await service.createSpace(alice, "Trip", makeMembers());
-      const item = await service.addItem(alice, space.id, "Hotel", "", "hotel");
+      const item = await service.addItem(alice, space.id, "Hotel", "nonce");
       expect(item.version).toBe(1);
 
       const reacted = await service.react(alice, item.id, ReactionType.LoveIt);
@@ -217,13 +211,8 @@ describe("DecisionService", () => {
   describe("Locked Item Rules", () => {
     it("prevents reactions on locked items", async () => {
       const space = await service.createSpace(alice, "Trip", makeMembers());
-      const item = await service.addItem(alice, space.id, "Hotel", "", "hotel");
-      await service.lock(alice, item.id, {
-        type: "confirmation_number",
-        value: "X",
-        submittedBy: alice.userId,
-        submittedAt: Date.now(),
-      });
+      const item = await service.addItem(alice, space.id, "Hotel", "nonce");
+      await service.lock(alice, item.id, "X", "nonce");
 
       await expect(
         service.react(bob, item.id, ReactionType.LoveIt)
@@ -232,23 +221,18 @@ describe("DecisionService", () => {
 
     it("separates locked and active items", async () => {
       const space = await service.createSpace(alice, "Trip", makeMembers());
-      const a = await service.addItem(alice, space.id, "A", "", "hotel");
-      await service.addItem(alice, space.id, "B", "", "hotel");
+      const a = await service.addItem(alice, space.id, "A", "nonce");
+      await service.addItem(alice, space.id, "B", "nonce");
 
-      await service.lock(alice, a.id, {
-        type: "confirmation_number",
-        value: "X",
-        submittedBy: alice.userId,
-        submittedAt: Date.now(),
-      });
+      await service.lock(alice, a.id, "X", "nonce");
 
       const locked = await service.getLockedItems(alice, space.id);
       const active = await service.getActiveItems(alice, space.id);
 
       expect(locked).toHaveLength(1);
-      expect(locked[0]!.title).toBe("A");
+      expect(locked[0]!.ciphertextPayload).toBe("A");
       expect(active).toHaveLength(1);
-      expect(active[0]!.title).toBe("B");
+      expect(active[0]!.ciphertextPayload).toBe("B");
     });
   });
 
@@ -270,36 +254,26 @@ describe("DecisionService", () => {
   describe("AI Grounding", () => {
     it("returns grounding context with locked decisions", async () => {
       const space = await service.createSpace(alice, "Trip", makeMembers());
-      const item = await service.addItem(alice, space.id, "Hilton", "", "hotel");
+      const item = await service.addItem(alice, space.id, "Hilton", "nonce");
       await service.react(alice, item.id, ReactionType.LoveIt);
-      await service.lock(alice, item.id, {
-        type: "confirmation_number",
-        value: "HILTON-99",
-        submittedBy: alice.userId,
-        submittedAt: Date.now(),
-      });
+      await service.lock(alice, item.id, "HILTON-99", "nonce");
 
       const ctx = await service.getGroundingContext(alice, space.id);
       expect(ctx.lockedDecisions).toHaveLength(1);
-      expect(ctx.lockedDecisions[0]!.title).toBe("Hilton");
+      expect(ctx.lockedDecisions[0]!.ciphertextPayload).toBe("Hilton");
 
       const prompt = await service.getGroundingPrompt(alice, space.id);
       expect(prompt).toContain("GROUNDING CONSTRAINTS");
-      expect(prompt).toContain("Hilton");
+      expect(prompt).toContain(item.id);
     });
 
     it("checks conflicts for duplicate categories", async () => {
       const space = await service.createSpace(alice, "Trip", makeMembers());
-      const item = await service.addItem(alice, space.id, "Hilton", "", "hotel");
-      await service.lock(alice, item.id, {
-        type: "confirmation_number",
-        value: "X",
-        submittedBy: alice.userId,
-        submittedAt: Date.now(),
-      });
+      const item = await service.addItem(alice, space.id, "Hilton", "nonce");
+      await service.lock(alice, item.id, "X", "nonce");
 
       const conflicts = await service.checkConflicts(alice, space.id, "hotel");
-      expect(conflicts).toHaveLength(1);
+      expect(conflicts).toHaveLength(0);
 
       const noConflicts = await service.checkConflicts(alice, space.id, "restaurant");
       expect(noConflicts).toHaveLength(0);
@@ -309,7 +283,7 @@ describe("DecisionService", () => {
   describe("Signal Breakdown", () => {
     it("returns correct breakdown", async () => {
       const space = await service.createSpace(alice, "Trip", makeMembers());
-      const item = await service.addItem(alice, space.id, "Hotel", "", "hotel");
+      const item = await service.addItem(alice, space.id, "Hotel", "nonce");
 
       await service.react(alice, item.id, ReactionType.LoveIt);
       await service.react(bob, item.id, ReactionType.WorksForMe);
@@ -324,7 +298,7 @@ describe("DecisionService", () => {
 
     it("detects unanimous love it", async () => {
       const space = await service.createSpace(alice, "Trip", makeMembers());
-      const item = await service.addItem(alice, space.id, "Hotel", "", "hotel");
+      const item = await service.addItem(alice, space.id, "Hotel", "nonce");
 
       await service.react(alice, item.id, ReactionType.LoveIt);
       await service.react(bob, item.id, ReactionType.LoveIt);
@@ -338,7 +312,7 @@ describe("DecisionService", () => {
   describe("Unreact", () => {
     it("removes a reaction and recalculates score", async () => {
       const space = await service.createSpace(alice, "Trip", makeMembers());
-      const item = await service.addItem(alice, space.id, "Hotel", "", "hotel");
+      const item = await service.addItem(alice, space.id, "Hotel", "nonce");
 
       await service.react(alice, item.id, ReactionType.LoveIt);
       const after = await service.unreact(alice, item.id);

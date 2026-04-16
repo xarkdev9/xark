@@ -1,4 +1,4 @@
-// XARK OS v2.0 — E2EE Crypto Tests
+// hello OS v2.0 — E2EE Crypto Tests
 // Verifies: primitives, Double Ratchet, Sender Keys, X3DH, constraints, DM routing
 // Sprint coverage: P0-1 (non-extractable keys), P1-1 (header encryption),
 // BUG 7-16 fixes (serialization, skipped keys, input validation)
@@ -26,7 +26,7 @@ import {
   randomBytes,
   constantTimeEqual,
 } from "./primitives";
-import { x3dhInitiate, x3dhRespond } from "./x3dh";
+import { x3dhInitiate, x3dhRespond, SignatureVerificationError, OtkExhaustedError, KeyMismatchError } from "./x3dh";
 import {
   initSessionAsInitiator,
   initSessionAsResponder,
@@ -68,14 +68,14 @@ describe("Cryptographic Primitives", () => {
 
   it("signs and verifies messages", () => {
     const kp = generateSigningKeyPair();
-    const message = toBytes("hello xark");
+    const message = toBytes("hello hello");
     const sig = sign(message, kp.privateKey);
     expect(verify(sig, message, kp.publicKey)).toBe(true);
   });
 
   it("rejects invalid signatures", () => {
     const kp = generateSigningKeyPair();
-    const message = toBytes("hello xark");
+    const message = toBytes("hello hello");
     const sig = sign(message, kp.privateKey);
     const tampered = toBytes("hello hacker");
     expect(verify(sig, tampered, kp.publicKey)).toBe(false);
@@ -249,7 +249,93 @@ describe("X3DH Key Agreement", () => {
           preKeySig: fakeSig,
         }
       )
-    ).toThrow("Invalid signed pre-key signature");
+    ).toThrow(SignatureVerificationError);
+  });
+
+  // ── CRYPTO-01: X3DH edge case hardening ──
+
+  it("throws SignatureVerificationError on wrong identity key (CRYPTO-01)", () => {
+    const bobIdentity = generateIdentityKeyPair();
+    const imposter = generateIdentityKeyPair();
+    const bobSignedPreKey = generateDHKeyPair();
+    const bobSig = sign(bobSignedPreKey.publicKey, bobIdentity.ed25519.privateKey);
+    const aliceIdentity = generateIdentityKeyPair();
+
+    // Identity key is imposter's but signature was made by bobIdentity
+    expect(() =>
+      x3dhInitiate(
+        { publicKey: aliceIdentity.curve25519Public, privateKey: aliceIdentity.curve25519Private },
+        {
+          identityKey: imposter.ed25519.publicKey, // wrong identity key
+          signedPreKey: bobSignedPreKey.publicKey,
+          signedPreKeyId: 1,
+          preKeySig: bobSig, // signed by bob, not imposter
+        }
+      )
+    ).toThrow(SignatureVerificationError);
+  });
+
+  it("3-DH and 4-DH produce different shared secrets (CRYPTO-01)", () => {
+    const bobIdentity = generateIdentityKeyPair();
+    const bobSignedPreKey = generateDHKeyPair();
+    const bobOTK = generateDHKeyPair();
+    const bobSig = sign(bobSignedPreKey.publicKey, bobIdentity.ed25519.privateKey);
+    const aliceIdentity = generateIdentityKeyPair();
+
+    // With OTK (4-DH)
+    const { sharedSecret: secretWith } = x3dhInitiate(
+      { publicKey: aliceIdentity.curve25519Public, privateKey: aliceIdentity.curve25519Private },
+      {
+        identityKey: bobIdentity.ed25519.publicKey,
+        signedPreKey: bobSignedPreKey.publicKey,
+        signedPreKeyId: 1,
+        preKeySig: bobSig,
+        oneTimePreKey: bobOTK.publicKey,
+      }
+    );
+
+    // Without OTK (3-DH)
+    const { sharedSecret: secretWithout } = x3dhInitiate(
+      { publicKey: aliceIdentity.curve25519Public, privateKey: aliceIdentity.curve25519Private },
+      {
+        identityKey: bobIdentity.ed25519.publicKey,
+        signedPreKey: bobSignedPreKey.publicKey,
+        signedPreKeyId: 1,
+        preKeySig: bobSig,
+      }
+    );
+
+    // OTK adds entropy — secrets must differ
+    expect(constantTimeEqual(secretWith, secretWithout)).toBe(false);
+  });
+
+  it("falls back to 3-DH and both sides match when no OTK (CRYPTO-01)", () => {
+    const bobIdentity = generateIdentityKeyPair();
+    const bobSignedPreKey = generateDHKeyPair();
+    const bobSig = sign(bobSignedPreKey.publicKey, bobIdentity.ed25519.privateKey);
+    const aliceIdentity = generateIdentityKeyPair();
+
+    const { sharedSecret: aliceSecret, ephemeralKey } = x3dhInitiate(
+      { publicKey: aliceIdentity.curve25519Public, privateKey: aliceIdentity.curve25519Private },
+      {
+        identityKey: bobIdentity.ed25519.publicKey,
+        signedPreKey: bobSignedPreKey.publicKey,
+        signedPreKeyId: 1,
+        preKeySig: bobSig,
+        // no oneTimePreKey — 3-DH fallback
+      }
+    );
+
+    const aliceCurve25519Pk = ed25519PkToCurve25519(aliceIdentity.ed25519.publicKey);
+    const bobSecret = x3dhRespond(
+      { publicKey: bobIdentity.curve25519Public, privateKey: bobIdentity.curve25519Private },
+      bobSignedPreKey,
+      null,
+      aliceCurve25519Pk,
+      ephemeralKey.publicKey
+    );
+
+    expect(constantTimeEqual(aliceSecret, bobSecret)).toBe(true);
   });
 
   // ── BUG 11/13: X3DH input validation hardening ──

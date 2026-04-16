@@ -1,4 +1,4 @@
-import 'package:hello_engine/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
 
 /// Abstract repository for the offline outbox queue.
 ///

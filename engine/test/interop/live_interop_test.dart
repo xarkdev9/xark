@@ -8,8 +8,8 @@
 // to the REAL Supabase project. It writes real rows to your database.
 //
 // Prerequisites:
-// 1. xark9 dev server running on localhost:3000 (for JWT via dev-auto-login)
-// 2. Seed users exist in Supabase (run: cd ~/xark9 && npx tsx src/lib/seed.ts)
+// 1. hello dev server running on localhost:3000 (for JWT via dev-auto-login)
+// 2. Seed users exist in Supabase (run: cd ~/hello && npx tsx src/lib/seed.ts)
 // 3. A 1:1 space exists between the two test users
 //
 // Fill in the constants below before running.
@@ -22,7 +22,7 @@ import 'package:http/http.dart' as http;
 
 void main() {
   // -------------------------------------------------------------------------
-  // CONFIG — fill these from ~/xark9/.env.local and your test setup
+  // CONFIG — fill these from ~/hello/.env.local and your test setup
   // -------------------------------------------------------------------------
 
   // Read from env vars or hardcode for local testing.
@@ -32,7 +32,7 @@ void main() {
   final devServerUrl =
       Platform.environment['INTEROP_DEV_SERVER'] ?? 'http://localhost:3000';
 
-  // Test users from ~/xark9/src/lib/seed.ts.
+  // Test users from ~/hello/src/lib/seed.ts.
   const userA = 'ram'; // name_ram
   const userB = 'myna'; // name_myna
   const passwordA = 'myna';
@@ -71,7 +71,7 @@ void main() {
         expect(response.statusCode, lessThan(500));
       } catch (e) {
         fail('Dev server not running at $devServerUrl. '
-            'Start it with: cd ~/xark9 && npm run dev\n$e');
+            'Start it with: cd ~/hello && npm run dev\n$e');
       }
     },
         skip: supabaseUrl.isEmpty

@@ -1,4 +1,4 @@
-// XARK OS v2.0 — E2EE Media Pipeline Stress Test
+// hello OS v2.0 — E2EE Media Pipeline Stress Test
 // Verifies the full Symmetric-Blob lifecycle:
 //   Sender picks file → encryptFile → upload encrypted blob → send AES key via E2EE →
 //   Receiver fetches blob → decryptFile → blurry thumbnail → sharp image
@@ -71,9 +71,9 @@ async function navigateToSpace(page: Page, spaceId: string, username: string): P
 
 /** Count message bubbles in the chat (excludes system messages) */
 async function countMessageBubbles(page: Page): Promise<number> {
-  // Message bubbles use the xark-bubble-sent/received CSS variables as background
+  // Message bubbles use the hello-bubble-sent/received CSS variables as background
   // They are divs with borderRadius containing message content
-  return page.locator('[style*="xark-bubble"]').count();
+  return page.locator('[style*="hello-bubble"]').count();
 }
 
 /** Wait for a specific number of media images to appear (blurry or sharp) */
@@ -81,7 +81,7 @@ async function waitForMediaImages(page: Page, expectedCount: number, timeout = 3
   // Media messages render EncryptedMediaRenderer which produces <img> tags inside bubbles
   // We look for images that are either thumbnails (data: src) or decrypted blobs (blob: src)
   await expect(async () => {
-    const mediaImages = page.locator('[style*="xark-bubble"] img');
+    const mediaImages = page.locator('[style*="hello-bubble"] img');
     const count = await mediaImages.count();
     expect(count).toBeGreaterThanOrEqual(expectedCount);
   }).toPass({ timeout });
@@ -121,12 +121,12 @@ test.describe('E2EE Media Pipeline Stress Test', () => {
 
     // Enable console log forwarding for debugging
     pageA.on('console', msg => {
-      if (msg.type() === 'error' || msg.text().includes('[xark-e2ee]') || msg.text().includes('[encrypted-media]')) {
+      if (msg.type() === 'error' || msg.text().includes('[hello-e2ee]') || msg.text().includes('[encrypted-media]')) {
         console.log(`[SENDER] ${msg.text()}`);
       }
     });
     pageB.on('console', msg => {
-      if (msg.type() === 'error' || msg.text().includes('[xark-e2ee]') || msg.text().includes('[encrypted-media]')) {
+      if (msg.type() === 'error' || msg.text().includes('[hello-e2ee]') || msg.text().includes('[encrypted-media]')) {
         console.log(`[RECEIVER] ${msg.text()}`);
       }
     });
@@ -183,7 +183,7 @@ test.describe('E2EE Media Pipeline Stress Test', () => {
     await waitForMediaImages(pageB, IMAGE_COUNT, 60000);
 
     // Check each media image goes through the lifecycle
-    const mediaImages = pageB.locator('[style*="xark-bubble"] img');
+    const mediaImages = pageB.locator('[style*="hello-bubble"] img');
     const count = await mediaImages.count();
 
     console.log(`[TEST] Receiver sees ${count} media images`);
@@ -218,7 +218,7 @@ test.describe('E2EE Media Pipeline Stress Test', () => {
     // Wait for messages to load from cache / server
     await pageB.waitForTimeout(5000);
 
-    const mediaImages = pageB.locator('[style*="xark-bubble"] img');
+    const mediaImages = pageB.locator('[style*="hello-bubble"] img');
     const count = await mediaImages.count();
 
     if (count === 0) {
@@ -250,7 +250,7 @@ test.describe('E2EE Media Pipeline Stress Test', () => {
 
     // Re-check: after waiting, at least some should be sharp blobs
     let finalBlobCount = 0;
-    const finalImages = pageB.locator('[style*="xark-bubble"] img');
+    const finalImages = pageB.locator('[style*="hello-bubble"] img');
     const finalCount = await finalImages.count();
 
     for (let i = 0; i < finalCount; i++) {
@@ -272,7 +272,7 @@ test.describe('E2EE Media Pipeline Stress Test', () => {
     await pageA.waitForTimeout(5000);
 
     // Sender's own media should be cached (saveDecryptedMedia on send)
-    const mediaImages = pageA.locator('[style*="xark-bubble"] img');
+    const mediaImages = pageA.locator('[style*="hello-bubble"] img');
     const count = await mediaImages.count();
 
     console.log(`[TEST] Sender sees ${count} media images after reload`);
@@ -293,7 +293,7 @@ test.describe('E2EE Media Pipeline Stress Test', () => {
     await pageB.waitForTimeout(5000);
 
     // New images should be loading fresh (not using stale revoked URLs)
-    const mediaImages = pageB.locator('[style*="xark-bubble"] img');
+    const mediaImages = pageB.locator('[style*="hello-bubble"] img');
     const count = await mediaImages.count();
 
     // Verify no images have revoked blob: URLs (would show as broken)

@@ -1,9 +1,9 @@
-// XARK OS v2.0 — Local-First Message Cache
+// hello OS v2.0 — Local-First Message Cache
 // Separate IndexedDB from xark-keystore to avoid version contention.
 // Stores already-decrypted plaintext for instant rendering on app open.
 // Same security model as decrypted-messages in keystore — device-local only.
 
-const DB_NAME = 'xark-message-cache';
+const DB_NAME = 'hello-message-cache';
 const DB_VERSION = 1;
 const STORE_NAME = 'messages';
 const MAX_PER_SPACE = 200;

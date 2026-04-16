@@ -1,4 +1,4 @@
-// XARK OS v2.0 — HEART-SORT ENGINE (SSOT)
+// hello OS v2.0 — HEART-SORT ENGINE (SSOT)
 // The single source of truth for decision ranking.
 // All UI components must reflect this logic.
 // Full engine ported from /Users/ramchitturi/algo/src/engine/heart-sort.ts

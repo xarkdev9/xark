@@ -1,8 +1,8 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/keys/key_types.dart';
-import 'package:hello_engine/src/crypto/sender_keys/sender_key_store.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/sender_keys/sender_key_store.dart';
 import 'package:cryptography/cryptography.dart';
 
 /// Group cipher using the Sender Keys protocol.

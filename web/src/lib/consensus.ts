@@ -1,4 +1,4 @@
-// XARK OS v2.0 — HANDSHAKE PROTOCOL
+// hello OS v2.0 — HANDSHAKE PROTOCOL
 // Two-step commitment for BOOKING_FLOW:
 //   Step 1 (this): consensus lock — sets is_locked=true, state="locked", NO owner.
 //   Step 2 (ClaimSheet): someone claims it — stamps owner.

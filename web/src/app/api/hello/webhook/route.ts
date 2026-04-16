@@ -1,27 +1,44 @@
-// XARK OS v2.0 — Apify Async Webhook Receiver
+// hello OS v2.0 — Apify Async Webhook Receiver
 // Receives completion callbacks from Apify actors started asynchronously.
 // Inserts search results as decision_items and updates the phantom receipt.
 
 export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { checkRateLimitAsync } from "@/lib/rate-limit";
 import type { ApifyResult } from "@/lib/intelligence/apify-client";
 import { normalizeApifyDataset } from "@/lib/intelligence/apify-client";
 
 export async function POST(req: NextRequest) {
   try {
+    // ── HMAC-SHA256 webhook signature verification ──
+    const secret = process.env.APIFY_WEBHOOK_SECRET;
+    if (!secret) {
+      return NextResponse.json({ error: "webhook not configured" }, { status: 500 });
+    }
+
+    const signature = req.headers.get("x-apify-signature");
+    const body = await req.text();
+    const expected = createHmac("sha256", secret).update(body).digest("hex");
+
+    if (
+      !signature ||
+      !timingSafeEqual(
+        Buffer.from(signature, "utf8"),
+        Buffer.from(expected, "utf8"),
+      )
+    ) {
+      return NextResponse.json({ error: "invalid signature" }, { status: 403 });
+    }
+
+    const data = JSON.parse(body); // parse AFTER verification
+
     if (!supabaseAdmin) {
       return NextResponse.json({ error: "server not configured" }, { status: 500 });
     }
 
-    // ── Rate limit by IP ──
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const allowed = await checkRateLimitAsync(`webhook:${ip}`, 30, 60);
-    if (!allowed) {
-      return NextResponse.json({ error: "rate limited" }, { status: 429 });
-    }
+    // Rate limiting moved to edge proxy (BACKEND-03)
 
     // ── Extract groupId and msgId from query params ──
     const { searchParams } = new URL(req.url);
@@ -48,11 +65,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "invalid msgId or space mismatch" }, { status: 404 });
     }
 
-    // ── Parse Apify webhook payload ──
-    // Apify webhooks POST the run object. We need to fetch results from the dataset.
-    const body = await req.json();
-    const datasetId = body?.resource?.defaultDatasetId;
-    const runStatus = body?.resource?.status;
+    // ── Parse Apify webhook payload (already verified + parsed above) ──
+    const datasetId = data?.resource?.defaultDatasetId;
+    const runStatus = data?.resource?.status;
 
     if (runStatus !== "SUCCEEDED" || !datasetId) {
       // Actor failed or no dataset — update receipt with failure message

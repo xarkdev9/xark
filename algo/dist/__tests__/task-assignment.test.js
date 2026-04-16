@@ -7,7 +7,7 @@ beforeEach(() => {
 describe("createTask", () => {
     it("creates a task in 'created' state", () => {
         const task = createTask("g1", "Bring snacks", "Trail mix and chips", "u1", 1000);
-        expect(task.id).toBe("task_1");
+        expect(task.id).toMatch(/^task_/);
         expect(task.groupId).toBe("g1");
         expect(task.title).toBe("Bring snacks");
         expect(task.state).toBe(TaskState.Created);
@@ -15,11 +15,12 @@ describe("createTask", () => {
         expect(task.assignee).toBeNull();
         expect(task.assignedAt).toBeNull();
     });
-    it("increments task IDs", () => {
+    it("generates unique task IDs", () => {
         const t1 = createTask("g1", "Task 1", "", "u1", 1000);
         const t2 = createTask("g1", "Task 2", "", "u1", 2000);
-        expect(t1.id).toBe("task_1");
-        expect(t2.id).toBe("task_2");
+        expect(t1.id).toMatch(/^task_/);
+        expect(t2.id).toMatch(/^task_/);
+        expect(t1.id).not.toBe(t2.id);
     });
 });
 describe("assignTask", () => {

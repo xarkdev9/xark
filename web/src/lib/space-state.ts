@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Emergent Space State
+// hello OS v2.0 — Emergent Space State
 // Pure function. No DB calls. Computed from items array.
 
 export type GroupState =

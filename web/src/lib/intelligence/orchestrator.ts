@@ -1,32 +1,20 @@
-// XARK OS v2.0 — @hello Intelligence Orchestrator
+// hello OS v2.0 — @hello Intelligence Orchestrator
 // Gemini parses intent → routes to Apify tool → synthesizes response.
 // Stateless. No state stored. Reads grounding context + last 15 messages.
 // Native JSON mode (responseMimeType), chain-of-thought (_thought_process),
 // self-healing retry, context-aware synthesis. Anti-cringe voice.
 
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, type GenerativeModel } from "@google/generative-ai";
 import { getTool, listTools, getFunctionDeclarations } from "./tool-registry";
 import { runActor, startActorAsync, type ApifyResult } from "./apify-client";
+import { searchFlightsFli } from "./fli-client";
+import { getAIProvider } from "./ai-provider-factory";
+import { getCachedSearch, setCachedSearch } from "./search-cache";
+import { acquireSlot, releaseSlot } from "./global-semaphore";
 import { buildTastePromptInjection } from "@/lib/taste";
 
-const genAI = process.env.GEMINI_API_KEY
-  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-  : null;
-
-const GEMINI_TIMEOUT_MS = 45_000;
 const MAX_RESPONSE_LENGTH = 500;
 
-// ── Timeout wrapper — prevents Gemini from hanging indefinitely ──
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("gemini timeout")), ms)
-    ),
-  ]);
-}
-
-// ── Response quality gate — reject Gemini garbage before it reaches the user ──
+// ── Response quality gate — reject garbage before it reaches the user ──
 export function isGarbageResponse(text: string): boolean {
   if (!text || text.trim().length === 0) return true;
   if (text.length > MAX_RESPONSE_LENGTH) return true;
@@ -90,103 +78,60 @@ export interface OrchestratorResult {
   _debug?: Record<string, unknown>;
 }
 
-/** Fast local search — direct Gemini knowledge (no Google Search tool, ~3-5s) */
-async function geminiLocalSearch(
-  model: GenerativeModel,
-  query: string,
-  spaceTitle: string
-): Promise<Array<{ title: string; description: string; url?: string; phone?: string; address?: string }>> {
-  const location = spaceTitle || "the area";
+// geminiLocalSearch and geminiSearchGrounded moved to ai-provider.ts (GeminiProvider.localSearch / groundedSearch)
 
-  try {
-    const result = await withTimeout(
-      model.generateContent({
-        contents: [{ role: "user", parts: [{ text: `You are a local guide for ${location}. Return 5-8 real, well-known places for: "${query}".
+// ── Choreographed progress — makes the wait feel like a feature ──
+function createProgressChoreography(onProgress?: (text: string) => Promise<void>) {
+  const startTime = Date.now();
+  let lastStage = "";
 
-RULES:
-- ONLY return places you are confident actually exist. no made-up names.
-- include the neighborhood/area in the description.
-- if you're not sure about a place, skip it. fewer accurate results > many guesses.
-
-Return ONLY a JSON array:
-[{"title":"Place Name","description":"Brief description with neighborhood","address":"approximate address or area"}]` }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-        },
-      }),
-      GEMINI_TIMEOUT_MS
-    );
-
-    const responseText = result.response.text();
-    if (!responseText) return [];
-
-    const parsed = JSON.parse(responseText);
-    const items = Array.isArray(parsed) ? parsed : [];
-    return items.map((item: Record<string, unknown>) => ({
-      title: String(item.title || ""),
-      description: String(item.description || ""),
-      url: item.url ? String(item.url) : undefined,
-      phone: item.phone ? String(item.phone) : undefined,
-      address: item.address ? String(item.address) : undefined,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-/** Call Gemini with Google Search grounding for knowledge queries */
-async function geminiSearchGrounded(
-  model: GenerativeModel,
-  query: string,
-  spaceTitle: string
-): Promise<Array<{ title: string; description: string; url?: string; phone?: string; address?: string }>> {
-  const contextualQuery = spaceTitle ? `${query} near ${spaceTitle}` : query;
-
-  try {
-    const result = await withTimeout(
-      model.generateContent({
-        contents: [{ role: "user", parts: [{ text: `Find real places for: ${contextualQuery}. Return a JSON array of objects with fields: title, description, url, phone, address. Return ONLY the JSON array, no other text.` }] }],
-        tools: [{ googleSearch: {} }] as any,
-      }),
-      GEMINI_TIMEOUT_MS
-    );
-
-    const responseText = result.response.text();
-    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((item: Record<string, unknown>) => ({
-      title: String(item.title || ""),
-      description: String(item.description || ""),
-      url: item.url ? String(item.url) : undefined,
-      phone: item.phone ? String(item.phone) : undefined,
-      address: item.address ? String(item.address) : undefined,
-    }));
-  } catch {
-    return [];
-  }
+  return {
+    /** Emit a stage update. Skips if same stage or if request is fast (<1s total). */
+    async stage(text: string, minElapsedMs: number = 0) {
+      if (!onProgress || text === lastStage) return;
+      const elapsed = Date.now() - startTime;
+      // Skip intermediate stages if request is very fast (cache hit)
+      if (minElapsedMs > 0 && elapsed < minElapsedMs) return;
+      lastStage = text;
+      onProgress(text).catch(() => {});
+    },
+    /** Schedule a future stage — only fires if the request is still running */
+    scheduleLate(text: string, delayMs: number) {
+      if (!onProgress) return;
+      setTimeout(() => {
+        if (Date.now() - startTime >= delayMs) {
+          onProgress(text).catch(() => {});
+        }
+      }, delayMs);
+    },
+    elapsed() { return Date.now() - startTime; },
+  };
 }
 
 export async function orchestrate(input: OrchestratorInput): Promise<OrchestratorResult> {
-  if (!genAI) {
+  const provider = getAIProvider();
+  if (!provider) {
     return { response: "not configured yet. someone needs to set up the api key." };
   }
 
-  const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const progress = createProgressChoreography(input.onProgress);
+  await progress.stage("reading your vibe...");
+  // Schedule late-stage updates (only fire if still running)
+  progress.scheduleLate("filtering for the best spots...", 5000);
+  progress.scheduleLate("polishing your plan...", 8000);
 
-  // ── PRIORITY 3: systemInstruction — persona rules processed at deeper level ──
-  const model = genAI.getGenerativeModel({
-    model: modelName,
-    systemInstruction: buildStaticPrompt(),
-    safetySettings: [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-    ],
-  });
+  // ── Global concurrency guard — prevents thundering herd across all lambdas ──
+  const slot = await acquireSlot();
+  if (!slot.acquired) {
+    return {
+      response: "we're experiencing high demand. your plan will be ready in about 30 seconds.",
+      action: "reason",
+      _debug: { concurrency: slot.currentCount, rejected: true },
+    };
+  }
+
+  // Ensure slot is always released, even on errors
+  try {
 
   // ── HELLO PANEL DETERMINISTIC BYPASS ──
   // confidence 1.0 = locked intent chip → skip Gemini, go directly to SearchApi
@@ -196,9 +141,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     const { intent, params } = input.slotPayload;
     console.log(`[@hello] Deterministic bypass: intent=${intent}, params=${JSON.stringify(params)}`);
 
-    if (input.onProgress) {
-      input.onProgress(`searching ${params.location || params.query || "..."}...`).catch(() => {});
-    }
+    await progress.stage(`searching ${params.location || params.query || "..."}...`);
 
     const tool = getTool(intent);
     if (tool && tool.tier === "searchapi") {
@@ -239,7 +182,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
   const conversationHistory = input.recentMessages
     .filter((m) => m.content && m.content.trim().length > 0)
     .map((m) => ({
-      role: m.role === "xark" ? "model" as const : "user" as const,
+      role: m.role === "hello" ? "model" as const : "user" as const,
       parts: [{ text: `${m.sender_name ? m.sender_name + ": " : ""}${m.content}` }],
     }));
 
@@ -247,35 +190,25 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
   const dynamicContext = buildDynamicPrompt(input);
 
   try {
-    const result = await withTimeout(
-      model.generateContent({
-        contents: [
-          ...conversationHistory,
-          { role: "user", parts: [{ text: dynamicContext }] },
-        ],
-        tools: [{ functionDeclarations: getFunctionDeclarations() as any }],
-      }),
-      GEMINI_TIMEOUT_MS
-    );
+    const intentResult = await provider.parseIntent({
+      systemPrompt: buildStaticPrompt(),
+      conversationHistory,
+      dynamicPrompt: dynamicContext,
+      functionDeclarations: getFunctionDeclarations() as any,
+    });
 
-    const candidate = result.response.candidates?.[0];
-    if (candidate?.finishReason === "SAFETY") {
+    if (intentResult.blocked) {
       return { response: "nope. let's keep it chill.", action: "reason" };
     }
 
-    // ── Check for native function call ──
-    const functionCall = result.response.functionCalls()?.[0];
-
-    if (functionCall) {
-      const { name, args } = functionCall;
-      const params = (args ?? {}) as Record<string, string>;
+    if (intentResult.functionCall) {
+      const { name, args } = intentResult.functionCall;
+      const params = args;
       console.log(`[@hello] function call: ${name}`, JSON.stringify(params).slice(0, 120));
 
-      // PRIORITY 9: Realtime thinking update after intent parse
-      if (input.onProgress) {
-        const location = params.location || params.query || input.spaceTitle || "";
-        input.onProgress(`searching ${location.toLowerCase().slice(0, 50)}...`).catch(() => {});
-      }
+      // Choreographed stage 2: show what we're searching for
+      const location = params.location || params.query || input.spaceTitle || "";
+      await progress.stage(`searching ${location.toLowerCase().slice(0, 50)}...`);
 
       // ── Route based on function name ──
       if (name === "respond_to_user") {
@@ -289,6 +222,69 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
           action: "set_dates",
           pendingConfirmation: true,
           payload: { start_date: params.start_date, end_date: params.end_date, label: params.label },
+        };
+      }
+
+      if (name === "generate_itinerary") {
+        await progress.stage(`building ${params.destination || input.spaceTitle || ""} plan...`);
+
+        const { generateItinerary } = await import("./itinerary-generator");
+        const itinerary = await generateItinerary({
+          destination: params.destination || input.spaceTitle || "",
+          startDate: params.start_date,
+          endDate: params.end_date,
+          tripDays: params.trip_days ? parseInt(params.trip_days, 10) : undefined,
+          groupSize: input.tasteContext?.memberCount || 2,
+          constraints: input.tasteContext?.hardConstraints?.join(", ") || "",
+          tasteContext: input.tasteContext?.softPreferences || "",
+          lockedDecisions: input.groundingPrompt,
+        });
+
+        const filledSlots = itinerary.slots.filter((s) => s.title);
+        const isDream = itinerary.isDreamMode;
+        const dayCount = new Set(itinerary.slots.map((s) => s.date)).size;
+
+        // Convert slots to search results for the standard decision_items pipeline
+        const searchResults: ApifyResult[] = itinerary.slots
+          .filter((s) => s.title && s.type !== "travel")
+          .map((s) => ({
+            title: s.title!,
+            price: s.price,
+            imageUrl: s.imageUrl,
+            description: [s.description, s.note].filter(Boolean).join(" — "),
+            externalUrl: s.externalUrl,
+            rating: s.rating,
+            source: s.source || "itinerary",
+          }));
+
+        const msg = isDream
+          ? `mapped out ${dayCount} days in ${params.destination || "your trip"}. ${filledSlots.length} real spots. set dates to unlock prices.`
+          : `your ${params.destination || "trip"} blueprint is ready — ${dayCount} days, ${filledSlots.length} spots. check Plans.`;
+
+        return {
+          response: msg,
+          searchResults,
+          action: "search",
+          tool: "itinerary",
+          payload: { itinerary },
+        };
+      }
+
+      if (name === "modify_itinerary") {
+        // Load existing itinerary items for this group
+        // The actual slot data comes from the decision_items table
+        // For now, respond with instruction to modify — the full implementation
+        // requires loading existing items from DB which happens in the route handler
+        return {
+          response: `got it — "${params.instruction}". updating the plan...`,
+          action: "search",
+          tool: "modify_itinerary",
+          payload: {
+            day: params.day,
+            slot: params.slot || "all",
+            instruction: params.instruction,
+            destination: input.spaceTitle || "",
+          },
         };
       }
 
@@ -312,12 +308,9 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       var searchTool = tool;
       var searchToolName = toolName;
       var searchParams = params;
+    } else if (intentResult.textResponse) {
+      return { response: isGarbageResponse(intentResult.textResponse) ? GARBAGE_FALLBACK : intentResult.textResponse, action: "reason" };
     } else {
-      // No function call — check for text response (fallback)
-      const textResponse = result.response.text();
-      if (textResponse && textResponse.trim().length > 0) {
-        return { response: isGarbageResponse(textResponse) ? GARBAGE_FALLBACK : textResponse.trim().slice(0, MAX_RESPONSE_LENGTH), action: "reason" };
-      }
       return { response: GARBAGE_FALLBACK, action: "reason" };
     }
   } catch (err) {
@@ -335,6 +328,10 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
     const toolName = searchToolName!;
     const params = searchParams!;
 
+    // ── Compute cache key early — used by all tiers ──
+    const cacheKey = [toolName, params.query, params.location, params.origin, params.destination, params.date]
+      .filter(Boolean).join(":").toLowerCase().replace(/\s+/g, "_").slice(0, 120);
+
     // ── Gemini Search grounding tier (fast, 2-3s, full maps integration) ──
     if (tool.tier === "gemini-search") {
       // Combine query + location for a complete search string
@@ -348,12 +345,30 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       // Use extracted location (not space title) for local search context
       const searchLocation = locationPart || input.spaceTitle || "";
 
-      // Try gemini-local first (fastest), escalate to gemini-search if empty
-      let groundedResults = await geminiLocalSearch(model, query, searchLocation);
+      // Race local + grounded search in parallel (was: sequential fallback)
+      const [localResults, groundedSearchResults] = await Promise.all([
+        provider.localSearch(query, searchLocation),
+        provider.groundedSearch(query, searchLocation),
+      ]);
+      // Prefer local (faster, higher quality), fall back to grounded
+      let groundedResults = localResults.length > 0 ? localResults : groundedSearchResults;
+
+      // If both Gemini searches returned 0, try SearchAPI google_local as last resort
       if (groundedResults.length === 0) {
-        // Fallback: escalate to Google Search grounding
-        console.log("[@hello] gemini-local returned 0 results, escalating to gemini-search");
-        groundedResults = await geminiSearchGrounded(model, query, searchLocation);
+        try {
+          const { searchLocal } = await import("./searchapi-client");
+          const searchApiResults = await searchLocal({ query, location: searchLocation });
+          if (searchApiResults.length > 0) {
+            console.log(`[@hello] Gemini search empty, SearchAPI local returned ${searchApiResults.length} results`);
+            groundedResults = searchApiResults.map((r) => ({
+              title: r.title,
+              description: r.description || "",
+              url: r.externalUrl,
+            }));
+          }
+        } catch {
+          // Fall through to empty response
+        }
       }
 
       if (groundedResults.length === 0) {
@@ -367,6 +382,7 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
         source: "gemini-search",
       }));
 
+      await setCachedSearch(cacheKey, toolName, results);
       return {
         response: `found ${results.length} spots. they're in decide now.`,
         searchResults: results,
@@ -375,8 +391,65 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
       };
     }
 
+    // ── fli tier — race fli + SearchAPI in parallel (was: sequential waterfall) ──
+    if (tool.tier === "fli") {
+      const mappedParams = tool.paramMap(params);
+      const origin = String(mappedParams.origin || "");
+      const destination = String(mappedParams.destination || "");
+      const date = String(mappedParams.date || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+
+      if (origin && destination) {
+        console.log(`[@hello] flight race: fli + SearchAPI for ${origin}->${destination} on ${date}`);
+        const { searchFlights: searchFlightsApi } = await import("./searchapi-client");
+
+        // Race both sources simultaneously — first non-empty wins
+        const [fliResults, searchApiResults] = await Promise.allSettled([
+          searchFlightsFli({ origin, destination, date }).catch(() => [] as any[]),
+          searchFlightsApi({ origin, destination, date }).catch(() => [] as ApifyResult[]),
+        ]);
+
+        const fli = fliResults.status === "fulfilled" ? fliResults.value : [];
+        const sapi = searchApiResults.status === "fulfilled" ? searchApiResults.value : [];
+
+        // Prefer fli (richer data, free), fall back to SearchAPI
+        const flightResults: ApifyResult[] = fli.length > 0
+          ? fli.map((f: any) => ({ title: f.title, price: f.price, imageUrl: f.imageUrl, description: f.description, externalUrl: f.bookingUrl, rating: undefined, source: "fli" }))
+          : sapi;
+
+        if (flightResults.length > 0) {
+          return {
+            response: `found ${flightResults.length} flights. they're in decide now.`,
+            searchResults: flightResults,
+            action: "search",
+            tool: toolName,
+          };
+        }
+
+        console.warn("[@hello] both fli and SearchAPI returned 0 flights");
+      }
+      // Fall through to Apify if both returned 0
+    }
+
+    // ── General search cache — check before hitting any API ──
+    if (!input.slotPayload) { // Don't use cache for deterministic bypass (HelloPanel)
+      const cached = await getCachedSearch(cacheKey, toolName);
+      if (cached && cached.results.length > 0) {
+        console.log(`[@hello] Cache hit for ${toolName}:${cacheKey} (${cached.results.length} results, age: ${Math.round((Date.now() - cached.cachedAt) / 60000)}m)`);
+        const searchResults: ApifyResult[] = cached.results.map((r) => ({
+          ...r,
+          source: r.source || cached.tool,
+        }));
+        return {
+          response: `found ${searchResults.length} spots. they're in decide now.`,
+          searchResults,
+          action: "search",
+          tool: toolName,
+        };
+      }
+    }
+
     // ── SearchApi tier (fast, 2-5s, real Google data with images) ──
-    if (tool.tier === "searchapi") {
+    if (tool.tier === "searchapi" || (tool.tier === "fli" && tool.searchApiEngine)) {
       const mappedParams = tool.paramMap(params);
       console.log(`[@hello] SearchApi dispatch: engine=${tool.searchApiEngine}, tier=${tool.tier}, actorId=${tool.actorId}, keys=${Object.keys(tool).join(",")}, params=${JSON.stringify(mappedParams).slice(0, 120)}`);
       try {
@@ -401,6 +474,8 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
         }
 
         if (searchResults.length > 0) {
+          // Cache the results for future requests
+          await setCachedSearch(cacheKey, toolName, searchResults);
           return {
             response: `found ${searchResults.length} spots. they're in decide now.`,
             searchResults,
@@ -476,20 +551,10 @@ export async function orchestrate(input: OrchestratorInput): Promise<Orchestrato
 Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize the category) and return updated params as JSON: {"params": {...}}`;
 
       try {
-        const retryResult = await withTimeout(
-          model.generateContent({
-            contents: [{ role: "user", parts: [{ text: retryPrompt }] }],
-            generationConfig: {
-              responseMimeType: "application/json",
-            },
-          }),
-          GEMINI_TIMEOUT_MS
-        );
-
-        const retryParsed = JSON.parse(retryResult.response.text());
+        const retryParsed = await provider.generateJson(retryPrompt);
         const retryParams = retryParsed.params ?? retryParsed;
         if (retryParams && Object.keys(retryParams).length > 0) {
-          mappedParams = tool.paramMap(retryParams);
+          mappedParams = tool.paramMap(retryParams as Record<string, string>);
           results = await runActor(tool.actorId, mappedParams);
         }
       } catch {
@@ -498,10 +563,10 @@ Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize
     }
 
     if (results.length === 0) {
-      // Automatic fallback: Apify returned nothing → try gemini-search before giving up
-      console.log("[@hello] Apify returned 0 results, falling back to gemini-search");
+      // Automatic fallback: Apify returned nothing → try grounded search before giving up
+      console.log("[@hello] Apify returned 0 results, falling back to grounded search");
       const fallbackQuery = params?.query || params?.location || input.userMessage;
-      const fallbackResults = await geminiSearchGrounded(model, fallbackQuery, input.spaceTitle || "");
+      const fallbackResults = await provider.groundedSearch(fallbackQuery, input.spaceTitle || "");
       if (fallbackResults.length > 0) {
         const fbResults: ApifyResult[] = fallbackResults.map((r) => ({
           title: r.title,
@@ -521,11 +586,8 @@ Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize
 
     // ── Context-aware synthesis ──
     const synthesisPrompt = buildSynthesisPrompt(input, results);
-    const synthesisResult = await withTimeout(
-      model.generateContent(synthesisPrompt),
-      GEMINI_TIMEOUT_MS
-    );
-    const synthesisText = synthesisResult.response.text();
+    const synthesisResult = await provider.synthesize(synthesisPrompt);
+    const synthesisText = synthesisResult.text;
 
     return {
       response: isGarbageResponse(synthesisText)
@@ -539,6 +601,11 @@ Loosen the constraints (e.g., remove maxPrice, widen the search area, generalize
 
   // Dead code guard — should never reach here with function calling
   return { response: GARBAGE_FALLBACK, action: "reason" };
+
+  } finally {
+    // Always release the global concurrency slot
+    await releaseSlot();
+  }
 }
 
 /** Static system prompt — stable across all invocations (~800 tokens).
@@ -660,6 +727,12 @@ ROUTING EXAMPLES:
 - "what day is dec 12?" -> {"_thought_process":"date question.","action":"reason","directResponse":"that's a friday."}
 - "write a python script" -> {"_thought_process":"code request.","action":"reason","directResponse":"not my lane. try chatgpt."}
 - "thank you" -> {"_thought_process":"gratitude.","action":"reason","directResponse":"anytime."}
+- "plan our bali trip for 5 days" -> generate_itinerary (destination="Bali", trip_days=5). ONLY for explicit plan requests.
+- "what would a week in tokyo look like" -> generate_itinerary (destination="Tokyo", trip_days=7). Explicit plan request.
+- "swap tuesday morning for something chill" -> modify_itinerary (day="tuesday", slot="morning", instruction="something chill").
+- "make day 3 a rest day" -> modify_itinerary (day="Day 3", slot="all", instruction="rest day, spa, light meals").
+- "find hotels and flights" -> search_hotel (NOT generate_itinerary — this is a search, not a plan request).
+- emojis only (e.g. "🏨✈️🍕") -> respond_to_user (NOT generate_itinerary — emojis are not a plan request).
 
 JSON SCHEMA:
 {

@@ -15,22 +15,18 @@ function makeItem(overrides: Partial<BookableItem> = {}): BookableItem {
   return {
     id: "item_1",
     groupId: "group_1",
-    groupId: "group_1",
-    title: "Test Hotel",
-    description: "A nice hotel",
-    category: "hotel",
+    ciphertextPayload: "Test Hotel",
+    nonce: "nonce",
     state: BookableItemState.Proposed,
     proposedBy: "user_1",
     proposedAt: 1000,
     reactions: [],
     weightedScore: 0,
-    commitmentProof: null,
-    bookingProof: null,
+    commitmentCiphertext: null,
+    commitmentNonce: null,
     ownership: null,
-    ownershipHistory: [],
     lockedAt: null,
     version: 1,
-    metadata: {},
     ...overrides,
   };
 }
@@ -286,7 +282,7 @@ describe("getRankedSummary", () => {
     const items = [
       makeItem({
         id: "a",
-        title: "Hotel A",
+        ciphertextPayload: "Hotel A",
         reactions: [
           { userId: "u1", itemId: "a", type: ReactionType.WorksForMe, timestamp: 1 },
         ],
@@ -294,7 +290,7 @@ describe("getRankedSummary", () => {
       }),
       makeItem({
         id: "b",
-        title: "Hotel B",
+        ciphertextPayload: "Hotel B",
         reactions: [
           { userId: "u1", itemId: "b", type: ReactionType.LoveIt, timestamp: 1 },
           { userId: "u2", itemId: "b", type: ReactionType.LoveIt, timestamp: 2 },
@@ -305,18 +301,18 @@ describe("getRankedSummary", () => {
     const summary = getRankedSummary(items, 4);
     expect(summary).toHaveLength(2);
     expect(summary[0]!.rank).toBe(1);
-    expect(summary[0]!.title).toBe("Hotel B");
+    expect(summary[0]!.ciphertextPayload).toBe("Hotel B");
     expect(summary[0]!.weightedScore).toBe(10);
     expect(summary[0]!.reactionBreakdown.hearts).toBe(2);
     expect(summary[1]!.rank).toBe(2);
-    expect(summary[1]!.title).toBe("Hotel A");
+    expect(summary[1]!.ciphertextPayload).toBe("Hotel A");
   });
 
   it("includes notForMe count in breakdown", () => {
     const items = [
       makeItem({
         id: "a",
-        title: "Hotel A",
+        ciphertextPayload: "Hotel A",
         reactions: [
           { userId: "u1", itemId: "a", type: ReactionType.LoveIt, timestamp: 1 },
           { userId: "u2", itemId: "a", type: ReactionType.NotForMe, timestamp: 2 },

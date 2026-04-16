@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Cryptographic Primitives
+// hello OS v2.0 — Cryptographic Primitives
 // Wraps libsodium-wrappers-sumo for all E2EE operations.
 // Client-side only — never import on server.
 
@@ -263,7 +263,7 @@ export async function generateWebCryptoIdentityKey(): Promise<{
   } catch (err) {
     // Ed25519 not supported in this browser — fall back to libsodium
     // This is acceptable but logs a warning since keys will be extractable
-    console.warn('[xark-e2ee] WebCrypto Ed25519 not supported, falling back to libsodium (keys will be extractable)');
+    console.warn('[hello-e2ee] WebCrypto Ed25519 not supported, falling back to libsodium (keys will be extractable)');
     throw err;  // Let caller handle fallback
   }
 }

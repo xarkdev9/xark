@@ -1,54 +1,54 @@
-# CLAUDE.md — E2EE Flutter Chat Engine
+# CLAUDE.md — e2ee_chat_sdk
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > Read this file completely before writing a single line of code.
 
+## Package Identity
+
+- **Package name:** `e2ee_chat_sdk` (pubspec.yaml confirms this)
+- **Barrel file:** `engine/lib/e2ee_chat.dart` — the only file external code imports
+- **Backward-compat shim:** `engine/lib/chat_engine.dart` re-exports `e2ee_chat.dart`. **New code must import from `package:e2ee_chat_sdk/e2ee_chat.dart`.**
+- **Concrete entry point:** `ChatEngineImpl.initialize(config)` — `ChatEngineImpl` is the concrete class. The abstract `ChatEngine` class has no `initialize` method.
+- **Version:** 0.1.0 (`publish_to: none` — private SDK)
+
 ## Commands
 
 ```bash
-# Development
-flutter run                          # Run on connected device/emulator
-flutter run -d chrome                # Run on web (Chrome)
-flutter run -d macos                 # Run on macOS desktop
-
 # Testing
-flutter test                         # Run all tests
-flutter test test/crypto/            # Run crypto tests only
-flutter test test/crypto/ratchet_test.dart  # Run single test file
+flutter test                            # Run all 33 test files
+flutter test test/crypto/               # Crypto tests only
+flutter test test/discovery/            # Discovery pipeline tests only
+flutter test test/crypto/ratchet_test.dart  # Single test file
 
-# Code generation (freezed, json_serializable)
+# Code generation (freezed, drift ORM)
 dart run build_runner build --delete-conflicting-outputs
 
 # Analysis & formatting
-dart analyze                         # Lint with very_good_analysis
-dart format .                        # Format all Dart files
+dart analyze                            # Lint with very_good_analysis (0 errors target)
+dart format .
 
 # Dependencies
-flutter pub get                      # Install dependencies
+flutter pub get
 ```
-
-## Project Mission
-
-Production-grade, end-to-end encrypted chat **engine** in Flutter. This is a headless library package (`chat_engine`) — it owns crypto, transport, persistence, and sync. It does **not** own UI. The UI is developed separately in `~/chatF/`.
-
-Portable (embeddable as a package into any Flutter app), scalable (millions of concurrent users), secure by default (no plaintext fallback, ever). Target feature set: WhatsApp parity on the protocol/data side (see FEATURES.md for engine vs UI responsibility split).
 
 ---
 
 ## Architectural Principles
 
 ### 1. Engine, Not an App
-The chat system is a **headless Flutter package** (`chat_engine`). It has zero UI code — no widgets, no themes, no animations. The UI lives in a separate repo (`~/chatF/`).
 
-- Exposes a clean public API surface: `ChatEngine.initialize()`, `ChatSession`, `ChatController` (see Public API Contract below)
+This is a **headless Flutter package** (`e2ee_chat_sdk`). Zero UI code — no widgets, no themes, no animations. The UI lives in `~/hello/app/`.
+
+- Exposes a clean public API surface via `ChatEngineImpl`, `ChatSession`, and the barrel file
 - Host apps inject auth tokens, user identity, device ID, and push token — nothing else
 - Zero dependencies on any UI framework, router, or state manager
 - Must compile and run identically on: iOS, Android, Web (WASM), macOS, Windows, Linux
 - **Do not create any widget, screen, or visual component in this package**
 
 ### 2. Offline-First, Sync-Second
-The engine must function fully offline and sync when connectivity is restored.
+
+The engine functions fully offline and syncs when connectivity is restored.
 
 - All messages written to local encrypted storage first (SQLCipher via drift)
 - Outbox queue with retry logic, deduplication, and ordering guarantees
@@ -58,12 +58,12 @@ The engine must function fully offline and sync when connectivity is restored.
 ### 3. Layered Separation (Strict)
 
 ```
-  ~/chatF/ (EXTERNAL — not this repo)
-  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+  ~/hello/app/ (EXTERNAL — not this repo)
+  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
   UI Layer — widgets, themes, animations
   Consumes ChatEngine via pub dependency
   ═══════════════════════════════════════════
-  THIS REPO (chat_engine package):
+  THIS REPO (e2ee_chat_sdk package):
 ┌───────────────────────────────────────────┐
 │         Public API (barrel file)          │  ← The only thing external code imports.
 ├───────────────────────────────────────────┤
@@ -81,21 +81,283 @@ The engine must function fully offline and sync when connectivity is restored.
 
 ---
 
+## Public API Contract
+
+Everything external code touches is exported from `engine/lib/e2ee_chat.dart`. Nothing else is public.
+
+### Initialization
+
+```dart
+// ChatEngineConfig — all fields:
+class ChatEngineConfig {
+  final String authToken;         // Opaque token from host's auth system
+  final String userId;            // Authenticated user ID (text format, e.g. "name_ram")
+  final int deviceId;             // Unique per-device INTEGER — matches backend schema
+  final String pushToken;         // FCM/APNs token
+  final Uri serverBaseUrl;        // WebSocket + REST base URL
+  final String supabaseAnonKey;   // Required for PostgREST access (defaults to '')
+  final ChatEngineObserver? observer;  // Optional diagnostics hook
+  final BrandConfig brand;        // White-label config (default: hello brand)
+}
+
+// Entry point — call ChatEngineImpl.initialize, NOT ChatEngine.initialize.
+// ChatEngine is abstract and has no static initialize method.
+final engine = await ChatEngineImpl.initialize(ChatEngineConfig(
+  authToken: token,
+  userId: 'name_ram',
+  deviceId: 1,                    // int, not String
+  pushToken: fcmToken,
+  serverBaseUrl: Uri.parse('https://gethello.ai'),
+  supabaseAnonKey: anonKey,
+  brand: BrandConfig(appName: 'hello', aiName: '@hello'),
+));
+```
+
+### ChatEngine (abstract — top-level handle)
+
+```dart
+abstract class ChatEngine {
+  ChatSession getSession(String groupId);
+
+  Stream<List<Conversation>> get conversations;       // Pinned-first, then updatedAt desc
+  Stream<EngineConnectionState> get connectionState;  // NOT ConnectionState — EngineConnectionState
+  Stream<int> get totalUnreadCount;
+  Stream<ChatEngineError> get errors;
+
+  Future<List<ContactMatch>> discoverContacts(List<String> phoneHashes);
+  Future<void> updatePushToken(String newToken);      // FCM/APNs token rotation
+  Future<UserProfile> getProfile(String userId);
+  Future<void> updateProfile({String? displayName, String? photoUrl});
+  Future<List<DeviceInfo>> getDevices();
+  Future<void> unlinkDevice(int deviceId);            // deviceId is int
+  Future<String> getDisplayName(String userId);       // Cached
+  Future<Conversation> createGroup({required String title, String? atmosphere});
+  Future<String> findOrCreateChat(String peerId);     // 1:1 X3DH session
+  Future<InviteLink> generateInvite();
+  Future<JoinResult> claimInvite(String code);
+
+  Stream<HelloResponseChunk> streamHelloResponse({
+    required String prompt,
+    required String groupId,
+  });
+
+  Future<void> suspend();   // App backgrounded
+  Future<void> resume();    // App foregrounded
+  Future<void> dispose();   // Full teardown — zeroes key material in memory
+}
+```
+
+**Push token lifecycle:** The initial push token is provided at init time via `ChatEngineConfig.pushToken`. Host apps MUST call `engine.updatePushToken(newToken)` whenever FCM/APNs rotates the token (typically on app reinstall, OS update, or explicit refresh). Failing to call this method silently breaks push delivery — the engine will continue sending to a stale token.
+
+### ChatSession (per-conversation handle)
+
+```dart
+abstract class ChatSession {
+  Stream<List<Message>> get messages;       // Decrypted, ordered, deduplicated
+  Stream<List<TypingIndicator>> get typing; // Ephemeral, clears after 5s
+  Stream<List<Receipt>> get receipts;       // Delivered + read
+  Stream<PresenceState> get presence;       // Online/last-seen (1:1 only)
+
+  Future<Message> sendText(String plaintext);
+  Future<Message> sendMedia(MediaPayload payload);
+  Future<void> sendTyping();
+  Future<void> markRead(String messageId);
+  Future<void> react(String messageId, String emoji);
+  Future<void> deleteForMe(String messageId);        // Local delete only
+  Future<void> deleteForEveryone(String messageId);  // Revokes for all participants
+  Future<List<Message>> loadMore({int limit = 50});
+  Future<KeyFingerprint> getKeyFingerprint();
+}
+```
+
+### ChatEngineDecisions (optional mixin)
+
+Applied to `ChatEngineImpl` via `with ChatEngineDecisions`. Check before use:
+
+```dart
+if (engine is ChatEngineDecisions) {
+  await engine.getDecisionItems('group_123');   // Future<List<DecisionItem>>
+  await engine.reactToItem('item_1', 'love_it'); // love_it / works_for_me / not_for_me
+  await engine.lockItem('item_1', proof);        // CommitmentProof — Green-Lock
+
+  // E2EE oblivious decision payloads:
+  final encrypted = await engine.encryptPayload(groupId: gid, plaintext: json);
+  // returns Map<String, String> { 'ciphertextPayload': ..., 'nonce': ... }
+  await engine.addDecisionItem(gid, ciphertextPayload: ..., nonce: ...);
+  final plain = await engine.decryptPayload(groupId: gid, ciphertext: ..., nonce: ...);
+}
+```
+
+### AuthService (call BEFORE ChatEngineImpl.initialize)
+
+```dart
+final auth = AuthService(serverBaseUrl);
+final result = await auth.authenticateWithFirebase(firebaseIdToken: token);
+// result.accessToken → feed into ChatEngineConfig.authToken
+```
+
+### Exported Models
+
+`Message`, `Conversation`, `Receipt`, `TypingIndicator`, `PresenceState`, `ContactMatch`, `KeyFingerprint`, `MediaPayload`, `MediaMetadata`, `DecryptedMessage`, `HelloResponseChunk`, `InviteLink`, `JoinResult`, `UserProfile`, `CommitmentProof`, `DecisionItem`, `BrandConfig`, `ChatEngineError`, `EngineConnectionState`, `UploadProgress`, `ChatEngineObserver`.
+
+All models are **freezed** immutable classes. Internal models (`RatchetState`, `SessionKey`, `PreKeyBundle`, etc.) are never exported.
+
+---
+
+## Package & Module Structure
+
+```
+engine/
+├── lib/
+│   ├── e2ee_chat.dart            # Canonical public barrel (import this)
+│   ├── chat_engine.dart          # Backward-compat shim — re-exports e2ee_chat.dart only
+│   └── src/
+│       ├── chat_engine_impl.dart     # ChatEngineImpl (concrete, at src/ root)
+│       ├── chat_session_impl.dart    # ChatSessionImpl (concrete, at src/ root)
+│       ├── adapters/             # Pluggable transport adapter implementations
+│       ├── auth/                 # AuthService, AppLockManager
+│       ├── config/               # BrandConfig
+│       ├── contacts/             # Private contact discovery (truncated SHA-256)
+│       ├── crypto/               # Signal Protocol implementation
+│       │   ├── franking/         # MessageFranking (abstract interface — NO impl yet)
+│       │   ├── keys/             # Key management, hardware key store, DatabaseKeyManager
+│       │   ├── media/            # Streaming AEAD (64KB chunks, up to 2GB)
+│       │   ├── pqxdh/            # Post-quantum hybrid X25519 + Kyber-1024 (STUB — see below)
+│       │   ├── profile/          # Profile key encryption
+│       │   ├── ratchet/          # Double Ratchet with bounded skipped-key dictionary
+│       │   ├── sender_keys/      # Group cipher, SK recovery handler
+│       │   └── x3dh/             # Extended Triple Diffie-Hellman
+│       ├── devices/              # DeviceRegistry + DeviceLinking (abstract — NO Supabase impl yet)
+│       ├── discovery/            # Taste-ranked discovery pipeline (see below)
+│       │   ├── cache/            # DiscoveryCache
+│       │   ├── feedback/         # ErrorCapture, FeedbackCollector
+│       │   ├── models/           # CarouselCard, DiscoveryFilter, DiscoveryItem,
+│       │   │                     #   DiscoveryItemDetail, ErrorReport, TasteProfile
+│       │   └── ranking/          # TasteRanker, TasteSignal
+│       ├── domain/               # Freezed models, repositories, use cases (pure Dart)
+│       ├── extensions/           # ChatEngineDecisions mixin
+│       ├── intelligence/         # OnDeviceSLM abstract + FallbackSLM (regex only — see below)
+│       ├── media/                # BackgroundUploader, link unfurling, UploadProgress
+│       ├── notifications/        # PushDecryptor, PushHandler, PushMethodChannel
+│       ├── observer/             # ChatEngineObserver, E2EE diagnostic events
+│       ├── persistence/          # Drift ORM + SQLCipher, repositories, local feed
+│       ├── ports/                # Transport interfaces (MessageGateway, RealtimeGateway,
+│       │                         #   TransientQueue, PushAdapter, AIAdapter)
+│       ├── public_api/           # ChatEngine (abstract), ChatSession (abstract), ChatEngineConfig
+│       ├── sync/                 # SyncCoordinator, OutboxProcessor, GapDetector,
+│       │                         #   ConflictResolver, WatermarkSync
+│       └── transport/            # SupabaseClientWrapper, RealtimeListener, typing, receipts
+├── test/                         # 33 test files (see Test Infrastructure)
+└── pubspec.yaml                  # name: e2ee_chat_sdk
+```
+
+**No `src/ui/` directory.** Zero Flutter widget code. UI lives in `~/hello/app/`.
+
+**The `crypto/` directory is sacred.** Every function in it has a unit test. No exceptions.
+
+---
+
+## Discovery Pipeline (`engine/lib/src/discovery/`)
+
+Full taste-ranked discovery pipeline. Exports via barrel: `DiscoveryMixin`, `CarouselCard`, `DiscoveryFilter`, `DiscoveryItem`, `DiscoveryItemDetail`, `ErrorReport`, `TasteProfile`.
+
+Ranking is via `TasteRanker` + `TasteSignal` (implicit feedback loop). Caching via `DiscoveryCache`. Error capture via `ErrorCapture` and `FeedbackCollector`. 10 test files under `engine/test/discovery/`.
+
+---
+
+## Critical Stubs and Partial Implementations
+
+**These must be flagged and resolved before any production deployment.**
+
+### PQXDH Kyber-1024 — STUB
+
+The actual `StubKyber` and `DeterministicStubKyber` classes are defined in `engine/lib/src/crypto/pqxdh/pqxdh.dart`. The file `engine/lib/src/crypto/pqxdh/kyber.dart` is a 14-line **re-export barrel** that gives callers a stable `kyber.dart` import path (`export 'pqxdh.dart' show KemAlgorithm, KemKeyPair, KemEncapsulation, StubKyber, DeterministicStubKyber;`). When a production Kyber-1024 library becomes available, add the real implementation either inline in `kyber.dart` or alongside the stubs in `pqxdh.dart`.
+
+Two stub classes are exported:
+- **`StubKyber`** — random-bytes stub for runtime protocol testing
+- **`DeterministicStubKyber`** — deterministic-output stub for reproducible unit tests
+
+From the source comments in `pqxdh.dart`:
+> "Stub Kyber-1024 implementation for protocol testing. Uses random bytes as a placeholder. In production, replace with a real Kyber-1024 implementation (e.g., via FFI to liboqs or a pure-Dart port). Real Kyber-1024 key sizes: 1568B public, 3168B secret, 1568B ciphertext. This stub uses 32-byte keys for simplicity."
+
+**Consequence:** The PQXDH protocol layer (combining DH + KEM via HKDF) is correctly implemented, but the KEM is not real. Any code that checks or persists key material sizes will break when a real Kyber-1024 library is swapped in (32-byte stub keys → 1568-byte real keys). Do not ship post-quantum claims without a real Kyber implementation.
+
+### MessageFranking — NO concrete implementation
+
+`engine/lib/src/crypto/franking/` defines an abstract `MessageFranking` interface. There is no concrete implementation in the engine. E2EE moderation via franking is not yet functional.
+
+### Interactive Notifications — PARTIAL
+
+`notifications/interactive_actions.dart::DefaultInteractiveHandler` is partially implemented:
+- `buildVoteActions({messageId, groupId, options})` — **fully implemented** (lines 55-66). Returns a `List<NotificationAction>` mapping each option string to a `NotificationAction` with a slugified `actionId`.
+- `registerCategories()` — **stub** (comment-only body). Will eventually register iOS `UNNotificationCategory` / Android `NotificationCompat.Action` categories via platform method channel.
+- `handleAction(NotificationAction)` — **stub** (comment-only body). Will eventually decrypt the message, parse options, record the vote locally in Drift, and queue it to the outbox.
+
+Only the two stub methods need to be completed before interactive notifications ship.
+
+### DeviceRegistry / DeviceLinking — Interfaces only
+
+Both are abstract interfaces with no Supabase-backed concrete implementation. Multi-device fan-out is defined at the crypto layer (Sesame protocol) but is not end-to-end wired.
+
+### DatabaseFactory — CRITICAL: Web build hard-crashes at DB init
+
+`engine/lib/src/persistence/database/database_factory_stub.dart` (used when `dart.library.js_interop` is the compilation target, i.e., Web/WASM) **throws `UnsupportedError` on `createDatabase()`**:
+
+```dart
+Future<AppDatabase> createDatabase({List<int>? encryptionKey}) {
+  throw UnsupportedError(
+    'Cannot create database on this platform without dart:io or dart:html',
+  );
+}
+```
+
+The native implementation (`database_factory_native.dart`) correctly uses SQLCipher via drift.
+
+**Consequence for Web:** The web build does NOT silently degrade to unencrypted storage — it hard-crashes at the first database access. `ChatEngineImpl.initialize()` will throw. Any web deployment that needs persistence must supply a custom `createDatabase` implementation (e.g. IndexedDB-backed via `drift/web.dart`) before this exception is reached. Do not assume the web build "just works without encryption."
+
+### OnDeviceSLM — Regex fallback only
+
+`engine/lib/src/intelligence/` defines `OnDeviceSLM` as an abstract interface. The only concrete implementation is `FallbackSLM`, which uses regex-based pattern matching. No CoreML, NNAPI, or real ML inference is connected.
+
+---
+
+## Test Infrastructure
+
+33 test files across 10 categories. Run all with `flutter test` from `engine/`.
+
+| Category | Count | Path |
+|---|---|---|
+| crypto | 10 | `test/crypto/` |
+| discovery | 10 | `test/discovery/` (includes a `scenarios/` subdirectory with 4 pipeline/e2e/feedback/offline tests) |
+| transport | 4 | `test/transport/` |
+| domain | 2 | `test/domain/` |
+| interop | 2 | `test/interop/` |
+| integration | 1 | `test/integration/` |
+| media | 1 | `test/media/` |
+| persistence | 1 | `test/persistence/` |
+| sync | 1 | `test/sync/` |
+| root | 1 | `test/` (public_api_test.dart) |
+
+**Discovery test layout:** `test/discovery/` contains top-level cache/feedback/models/ranking tests PLUS a `scenarios/` subdirectory (`e2e_discovery_pipeline_test.dart`, `feedback_flow_test.dart`, `offline_cache_test.dart`, `personalized_feed_test.dart`) — there is no corresponding `scenarios/` source directory, these are integration scenarios that exercise the full discovery stack end-to-end. New e2e discovery tests go under `test/discovery/scenarios/`.
+
+---
+
 ## Security Requirements (Non-Negotiable)
 
 This section defines hard requirements. They are not suggestions. Do not ship code that violates them.
 
 ### Encryption Protocol
 - **Signal Protocol** (Double Ratchet + X3DH) for 1:1 messaging — use `cryptography` package (pure Dart, works on all platforms including Web/WASM; libsignal FFI does not)
-- **Sender Keys** for group chats
+- **Sender Keys** for group chats (2-15 members)
 - **No server-side key escrow** — the server never sees plaintext, never stores private keys, never has the ability to decrypt messages
-- Keys are generated on-device. Identity keys are backed up only with user-controlled passcodes (not server-synced)
+- Keys are generated on-device. Identity keys are backed up only with user-controlled passcodes
 
 ### Key Management
 - Identity Key Pair: `Ed25519` (signing) + `X25519` (key exchange)
 - Signed PreKeys: rotated every 7 days
 - One-Time PreKeys: 100 uploaded at registration, replenished as consumed
 - Session keys: never written to disk in plaintext
+- **HKDF info strings use `XarkE2EE-*` prefix** — these are cryptographic constants. Do NOT rename them.
 
 ### Transport Security
 - All connections over **TLS 1.3** minimum
@@ -105,73 +367,55 @@ This section defines hard requirements. They are not suggestions. Do not ship co
 ### Local Storage
 - All persisted data encrypted at rest using device-derived keys + user PIN/biometric
 - Secure key storage via platform keychain (iOS Keychain, Android Keystore)
-- Message database encrypted with SQLCipher or equivalent
-- No plaintext logs in production. Log levels enforced by build flavor.
+- Message database encrypted with SQLCipher (**except Web — see DatabaseFactory stub above**)
+- No plaintext logs in production
 
-### Threat Model Awareness
-Claude must understand we defend against:
+### Threat Model
 - Compromised server (server sees only ciphertext)
 - Stolen device (local DB encrypted, keys protected)
 - Network interception (TLS + certificate pinning)
-- Metadata analysis (minimize server-observable metadata where possible)
-- Forward secrecy attacks (Double Ratchet guarantees per-message key derivation)
+- Metadata analysis (minimize server-observable metadata)
+- Forward secrecy attacks (Double Ratchet — per-message key derivation)
 
 ### Multi-Device Architecture
-Sessions are established between **devices**, not users. If Alice has a phone and a laptop, Bob encrypts and sends two distinct ciphertexts — one per device.
+Sessions are established between **devices**, not users.
 
 - Every device gets its own Identity Key Pair, Signed PreKey, and One-Time PreKeys
-- The server maintains a **device registry** per user: `userId → [deviceId1, deviceId2, ...]`
-- When sending a message, the sender fetches PreKey bundles for **all** of the recipient's devices, establishes/reuses a session with each, and sends N ciphertexts (one per device)
-- Linking a new device requires a **device-linking protocol**: the primary device transfers the encrypted message history to the new device over a local encrypted channel (QR code + proximity, like Signal) — the server never mediates this transfer
-- Device limit: 5 linked devices per user (1 primary + 4 linked)
-- Unlinking a device revokes its keys and rotates the Sender Key for all groups the user is in
+- Server maintains a device registry: `userId → [deviceId1, deviceId2, ...]` (max 5 devices)
+- Sender fetches PreKey bundles for **all** recipient devices; sends N ciphertexts (one per device)
+- Device linking: primary device transfers encrypted history over local encrypted channel (QR + proximity)
+- Unlinking a device revokes its keys and rotates the Sender Key for all shared groups
 
 ### Media Encryption Pipeline
-Large files (images, video, documents) do **not** pass through the Double Ratchet. The ratchet is for small message payloads only.
+Large files do not pass through the Double Ratchet.
 
-- Sender generates a one-time random AES-256-GCM key
-- Sender encrypts the file locally with that key
-- Encrypted blob is uploaded to a dumb REST storage bucket (server sees only ciphertext)
-- Sender packages `{ downloadUrl, aesKey, iv, sha256Hash }` into a small JSON payload
-- That JSON payload is sent through the Double Ratchet as a normal E2EE message
-- Recipient decrypts the ratchet message, downloads the blob, verifies the SHA-256 hash, decrypts with the AES key
-- The storage bucket enforces no access control beyond URL — security comes entirely from the AES key being E2EE-protected
-- Thumbnails follow the same pipeline (separate key, separate upload) so the server never sees even a preview
+- Sender generates one-time random AES-256-GCM key
+- Sender encrypts file locally; encrypted blob uploaded to dumb storage bucket
+- Sender sends `{ downloadUrl, aesKey, iv, sha256Hash }` through the ratchet as a normal E2EE message
+- Recipient decrypts ratchet message, downloads blob, verifies SHA-256, decrypts with AES key
+- Thumbnails follow the same pipeline (separate key, separate upload)
 
 ### Push Notification Decryption
-A blank "New Message" push is unacceptable UX. The app must decrypt notifications in the background before the user sees them.
-
-- **iOS**: Build a **Notification Service Extension** (native Swift). When a silent push arrives, the extension wakes a minimal crypto isolate, fetches the encrypted payload from the server, decrypts it using keys from the shared Keychain (App Group), mutates the `UNNotificationContent` to show sender name + message preview, and returns — all within the 30-second iOS budget
-- **Android**: Use a **FirebaseMessagingService** (native Kotlin). On data-message receipt, decrypt in a background worker, then post a local notification with plaintext content
-- **Web**: Service Worker intercepts the push event, decrypts, and shows a `Notification` with the plaintext
-- The server push payload contains only: `{ recipientDeviceId, encryptedPayload }` — no sender name, no message preview, no metadata
-- If decryption fails (e.g., missing session), fall back to a generic "New Message" notification — never expose why it failed
+- **iOS:** Notification Service Extension (Swift) — decrypts within 30-second iOS budget
+- **Android:** FirebaseMessagingService (Kotlin) — decrypts in background worker
+- **Web:** Service Worker intercepts push event, decrypts, shows `Notification`
+- Server push payload contains only: `{ recipientDeviceId, encryptedPayload }` — no plaintext metadata
+- Failed decryption: fall back to "New Message" — never expose failure reason
 
 ### Contact Discovery
-Uploading a raw contact book to the server leaks the user's social graph. Contact discovery must be privacy-preserving.
-
-- Client-side: hash each phone number with a truncated SHA-256 (first 10 bytes) before sending to the server
-- Server: maintains a hash table of registered user hashes — returns only the intersection (which contacts are on the platform)
-- The server never sees full phone numbers during discovery
-- Discovery requests are batched and rate-limited to prevent enumeration attacks
-- The contact hash table is ephemeral — the server does not permanently log discovery queries
-- Phase 1 simplification: hashed phone number lookup is sufficient. SGX/TEE-based private set intersection is a Phase 4 hardening target.
+- Client-side: truncated SHA-256 (first 10 bytes) per phone number before sending to server
+- Server returns only the intersection of registered hashes — never sees full phone numbers
+- Discovery requests are batched and rate-limited
 
 ### Profile Metadata Encryption
-A compromised server should not yield profile pictures, display names, or status text in plaintext.
-
-- Each user has a **Profile Key** (random 32-byte symmetric key)
-- Profile picture, display name, and status are encrypted with the Profile Key before upload
-- The Profile Key is shared only with verified contacts — sent as an E2EE message when a contact is added or when the key rotates
-- When rendering a contact's profile, the client decrypts locally using the stored Profile Key
-- If a Profile Key is not available (e.g., non-contact in a group), show a generic placeholder — never request the server to decrypt
-- Profile Key rotation: whenever the user removes a contact, generate a new Profile Key and re-distribute to remaining contacts
+- Each user has a **Profile Key** (32-byte random symmetric key)
+- Profile picture, display name, status encrypted with Profile Key before upload
+- Profile Key shared only with verified contacts via E2EE message
+- Profile Key rotation: on contact removal, generate new key and re-distribute
 
 ---
 
-## Performance Targets (WhatsApp Parity)
-
-These are benchmarks, not aspirations. Measure against them.
+## Performance Targets
 
 | Metric | Target |
 |---|---|
@@ -187,315 +431,7 @@ These are benchmarks, not aspirations. Measure against them.
 - Crypto operations always run in a separate `Isolate` — never block the calling thread
 - Media compression and encryption happen in background isolates
 - Streams emit immutable snapshots — never mutate a previously emitted list
-- DB queries are batched where possible (e.g., bulk message insert on sync drain)
-
----
-
-## Package & Module Structure
-
-```
-chat_engine/
-├── lib/
-│   ├── chat_engine.dart          # Public API barrel file (ONLY export point)
-│   ├── src/
-│   │   ├── crypto/               # Signal protocol, key management, ratchet, profile keys
-│   │   ├── transport/            # WebSocket client, HTTP client, reconnect logic
-│   │   ├── persistence/          # Encrypted DB (SQLCipher/drift), repositories, migrations
-│   │   ├── sync/                 # Message sync, gap detection, ordering, device fan-out
-│   │   ├── media/                # AES-GCM encrypt → upload → URL+key via ratchet (raw bytes, no UI)
-│   │   ├── notifications/        # Platform-native decrypt (iOS NSE, Android Service, Web SW)
-│   │   ├── contacts/             # Hashed phone discovery, profile key distribution
-│   │   ├── devices/              # Device registry, linking protocol, key rotation
-│   │   ├── domain/               # Entities, value objects, use cases (pure Dart)
-│   │   └── observer/             # ChatEngineObserver interface, diagnostic events
-├── test/
-│   ├── crypto/                   # Unit tests for every crypto operation
-│   ├── transport/                # Mock server tests
-│   ├── persistence/              # DB migration tests
-│   ├── domain/                   # Domain model + use case tests
-│   └── integration/              # Full send/receive flow tests (mock server)
-├── ios/
-│   └── NotificationServiceExtension/  # Native Swift push decryption
-├── android/
-│   └── app/src/.../MessagingService.kt  # Native Kotlin push decryption
-├── example/                      # Minimal CLI/headless integration test app
-└── CLAUDE.md                     # This file
-```
-
-**No `src/ui/` directory. No `src/controllers/` directory.** This package has zero Flutter widget code. UI lives in `~/chatF/`.
-
-**The `crypto/` directory is sacred.** Every function in it has a unit test. No exceptions.
-
----
-
-## Backend Contract
-
-The engine is backend-agnostic but assumes the following server capabilities:
-
-- **WebSocket endpoint** for real-time message delivery (with reconnection + heartbeat)
-- **REST endpoints** for: user registration, PreKey upload/fetch, message history pull, media upload/download
-- **Push notification relay** — server sends FCM/APNs push without message content (content delivered via WS or pull)
-- **Server stores**: encrypted ciphertext blobs, PreKey bundles, delivery receipts, user metadata (no plaintext, no keys)
-
-The server is treated as an **untrusted relay**. All security assumptions are built around this.
-
----
-
-## Public API Contract
-
-Everything external code touches is exported from `chat_engine.dart`. Nothing else is public.
-
-### Initialization
-
-```dart
-/// Host provides these at startup. All required.
-class ChatEngineConfig {
-  final String authToken;       // Opaque token from host's auth system
-  final String userId;          // Authenticated user ID
-  final String deviceId;        // Unique per-device, persisted locally by host
-  final String pushToken;       // FCM/APNs token, updated by host on refresh
-  final Uri serverBaseUrl;      // WebSocket + REST base URL
-  final ChatEngineObserver? observer;  // Optional diagnostics hook
-}
-
-/// Entry point. Call once at app start.
-static Future<ChatEngine> ChatEngine.initialize(ChatEngineConfig config);
-```
-
-### ChatEngine (top-level handle)
-
-```dart
-class ChatEngine {
-  ChatSession getSession(String conversationId);
-  Stream<List<Conversation>> get conversations;       // All conversations, sorted
-  Stream<ConnectionState> get connectionState;         // connected / connecting / disconnected
-  Stream<int> get totalUnreadCount;                    // Badge count across all conversations
-  Future<List<ContactMatch>> discoverContacts(List<String> phoneHashes);
-  Future<void> updatePushToken(String newToken);
-  Future<void> suspend();   // App backgrounded — pause sync, keep push alive
-  Future<void> resume();    // App foregrounded — reconnect, drain queue
-  Future<void> dispose();   // Full teardown
-}
-```
-
-### ChatSession (per-conversation handle)
-
-```dart
-class ChatSession {
-  Stream<List<Message>> get messages;          // Decrypted, ordered, deduplicated
-  Stream<List<TypingIndicator>> get typing;    // Ephemeral, not persisted
-  Stream<List<Receipt>> get receipts;          // Delivered + read
-  Stream<PresenceState> get presence;          // Online / last seen (1:1 only)
-  Future<Message> sendText(String plaintext);
-  Future<Message> sendMedia(MediaPayload payload);  // Raw bytes + mime type
-  Future<void> sendTyping();
-  Future<void> markRead(String messageId);
-  Future<void> react(String messageId, String emoji);
-  Future<void> deleteForMe(String messageId);
-  Future<void> deleteForEveryone(String messageId);
-  Future<List<Message>> loadMore({int limit = 50}); // Pagination
-  Future<KeyFingerprint> getKeyFingerprint();        // For safety number verification
-}
-```
-
-### Exposed Models (public)
-
-`Message`, `Conversation`, `Receipt`, `TypingIndicator`, `PresenceState`, `ContactMatch`, `KeyFingerprint`, `MediaPayload`, `MediaMetadata`, `ConnectionState`.
-
-All models are **freezed** immutable classes. Internal models (`RatchetState`, `SessionKey`, `PreKeyBundle`, etc.) are never exported.
-
----
-
-## Host App Integration Requirements
-
-The host app (or UI package) must provide at init time:
-
-| Requirement | Why | How |
-|---|---|---|
-| `authToken` | Engine authenticates to server | Host's auth system (Firebase, custom, etc.) |
-| `userId` | Identity for key ownership | From host's auth |
-| `deviceId` | Sessions are per-device | Host generates UUID on first launch, persists in secure storage |
-| `pushToken` | Server routes push notifications | Host registers with FCM/APNs, passes token |
-| `serverBaseUrl` | Engine connects to backend | Host provides from config/env |
-
-The engine gives back:
-- **Streams** for the UI to observe (messages, typing, receipts, presence, connection state, unread counts)
-- **Futures** for the UI to trigger actions (send, react, delete, mark read)
-- **Error callbacks** via the error stream and observer (see Error Taxonomy)
-
-The engine does **not** give back:
-- Widgets, themes, or rendered UI of any kind
-- Image/video display components (engine provides raw decrypted bytes via `MediaPayload`)
-- Waveform visualizations (engine provides raw PCM/Opus audio data)
-
----
-
-## Engine-to-UI Event Contract
-
-These are the streams the UI subscribes to. This is the primary interface between `chat_engine` and `~/chatF/`.
-
-| Stream | Type | Description |
-|---|---|---|
-| `engine.conversations` | `Stream<List<Conversation>>` | All conversations with last message, unread count, pinned/muted state |
-| `engine.connectionState` | `Stream<ConnectionState>` | `connected`, `connecting`, `disconnected`, `suspended` |
-| `engine.totalUnreadCount` | `Stream<int>` | Sum of unread across all conversations |
-| `session.messages` | `Stream<List<Message>>` | Decrypted messages for one conversation, ordered |
-| `session.typing` | `Stream<List<TypingIndicator>>` | Who is typing (ephemeral, clears after 5s) |
-| `session.receipts` | `Stream<List<Receipt>>` | Delivered/read per message |
-| `session.presence` | `Stream<PresenceState>` | Online/last-seen for 1:1 conversations |
-| `engine.errors` | `Stream<ChatEngineError>` | All errors (see Error Taxonomy) |
-| `engine.observer` | `ChatEngineObserver` | Diagnostic events for logging/debugging |
-
----
-
-## Error Taxonomy
-
-All errors the engine surfaces. The UI and host must handle these — they are typed, not arbitrary strings.
-
-```dart
-sealed class ChatEngineError {
-  /// Crypto
-  SessionNotFound(String recipientDeviceId);  // No ratchet session — trigger X3DH
-  DecryptionFailed(String messageId);         // Corrupt or out-of-order ratchet
-  PreKeyExhausted(String userId);             // No one-time PreKeys left on server
-  KeyVerificationFailed(String userId);       // Identity key changed (possible MITM)
-
-  /// Transport
-  ConnectionLost();                           // WebSocket dropped
-  ConnectionTimeout();                        // Server unreachable
-  ServerError(int statusCode, String body);   // Non-2xx from REST
-
-  /// Auth
-  AuthTokenExpired();                         // Host must provide a fresh token
-  DeviceRevoked(String deviceId);             // This device was unlinked remotely
-
-  /// Storage
-  DatabaseCorrupted();                        // SQLCipher integrity check failed
-  BiometricUnavailable();                     // Can't unlock DB — PIN/biometric not enrolled
-  StorageFull();                              // Device storage insufficient
-
-  /// Media
-  MediaUploadFailed(String mediaId);          // Upload to bucket failed (retryable)
-  MediaDownloadFailed(String url);            // Download from bucket failed (retryable)
-  MediaDecryptionFailed(String mediaId);      // AES key mismatch or corrupt blob
-
-  /// Sync
-  OutboxFull(int pendingCount);               // Too many queued messages (>500)
-  DuplicateMessage(String messageId);         // Already processed — safe to ignore
-}
-```
-
-The UI decides how to render each error. The engine never shows toasts, dialogs, or snackbars.
-
----
-
-## Session Lifecycle
-
-### `initialize()` — App cold start
-1. Opens the encrypted DB (requires biometric/PIN unlock)
-2. Loads persisted ratchet sessions from secure storage
-3. Connects WebSocket to server
-4. Drains the outbox (sends queued messages)
-5. Pulls any missed messages from server (gap fill)
-6. Emits `ConnectionState.connected`
-7. **If biometric unavailable**: emits `BiometricUnavailable` error — host must handle (show PIN screen, etc.)
-
-### `suspend()` — App backgrounded
-1. Pauses WebSocket heartbeat (server knows device is inactive)
-2. Stops emitting typing/presence updates
-3. Push notifications continue via platform-native path
-4. DB remains locked — no reads/writes until `resume()`
-5. Ratchet state remains in memory (survives backgrounding, not force-kill)
-
-### `resume()` — App foregrounded
-1. Reconnects WebSocket
-2. Drains any messages received via push while suspended
-3. Re-syncs presence state
-4. Emits `ConnectionState.connected`
-
-### `dispose()` — Full teardown
-1. Closes WebSocket
-2. Flushes outbox to DB (persists unsent messages for next `initialize()`)
-3. Zeroes ratchet session keys in memory (secure wipe)
-4. Closes DB connection
-
-### Force-kill / crash recovery
-- On next `initialize()`, the engine detects the unclean shutdown
-- Ratchet state is restored from DB (last persisted checkpoint)
-- Outbox is drained (messages sent before crash are retried with deduplication)
-- Any ratchet chain counter gaps are resolved via the server's stored message queue
-
----
-
-## Message ID & Ordering Strategy
-
-### Message IDs
-- **Client-generated UUID v7** (time-ordered UUID) — generated at send time, before encryption
-- The ID is included inside the encrypted payload (server cannot forge or reorder)
-- Server assigns a monotonically increasing **sequence number** per conversation on receipt
-- Both `clientId` (UUID v7) and `serverSeq` (int64) are stored on the `Message` model
-
-### Ordering
-- **Display order**: `serverSeq` (authoritative, assigned by server on receipt)
-- **Offline fallback**: `clientId` timestamp component (UUID v7 embeds millisecond timestamp) — used when `serverSeq` is not yet assigned (outbox messages)
-- On reconnect, the engine fetches `serverSeq` for any outbox messages that were delivered while offline and reorders
-
-### Deduplication
-- Messages are deduplicated by `clientId` — if the same UUID v7 arrives twice (e.g., retry after timeout), the duplicate is dropped
-- The engine maintains a **seen set** of the last 1000 `clientId`s per conversation in memory, backed by DB index
-- Cross-device: each device generates its own `clientId`, so the same user on two devices never collides
-
----
-
-## Observability & Diagnostics
-
-The engine exposes a `ChatEngineObserver` interface for host apps and the UI team to debug without access to engine internals.
-
-```dart
-abstract class ChatEngineObserver {
-  void onSessionEstablished(String userId, String deviceId);
-  void onSessionFailed(String userId, String deviceId, ChatEngineError error);
-  void onPreKeyReplenishment(int keysUploaded, int keysRemaining);
-  void onSyncCompleted(int messagesPulled, Duration elapsed);
-  void onOutboxDrained(int messagesSent, int messagesFailed);
-  void onRatchetAdvanced(String sessionId, int chainIndex);
-  void onMediaUpload(String mediaId, int bytes, Duration elapsed);
-  void onMediaDownload(String mediaId, int bytes, Duration elapsed);
-  void onWebSocketStateChange(ConnectionState from, ConnectionState to);
-  void onContactDiscovery(int hashesSent, int matchesFound);
-  void onProfileKeyRotation(String userId);
-  void onDeviceLinked(String deviceId);
-  void onDeviceRevoked(String deviceId);
-}
-```
-
-- Pass a `ChatEngineObserver` in `ChatEngineConfig` — all methods have no-op defaults
-- **Never log plaintext, keys, or user content in observer callbacks** — only event names, IDs, counts, and durations
-- In debug builds, the engine logs to `dart:developer` at `Level.FINE` — production builds emit nothing
-
----
-
-## API Stability Policy
-
-This package follows **semver** strictly.
-
-- **Public API** = everything exported from `chat_engine.dart`
-- Breaking changes (removed methods, changed signatures, renamed models) = **major** version bump
-- New methods/streams/models = **minor** version bump
-- Bug fixes, crypto patches, internal refactors = **patch** version bump
-- All `src/` internals are private — changes to them are never breaking
-- Deprecations: mark with `@Deprecated('Use X instead. Will be removed in vN+1')`, remove one major version later
-
----
-
-## Testing Standards
-
-- **Crypto layer**: 100% unit test coverage. Test vectors from Signal spec where available.
-- **Domain layer**: 100% unit test coverage.
-- **Integration tests**: Full message send/receive loop using mock server (multi-device fan-out, media pipeline, outbox drain).
-- **Performance tests**: Encryption throughput, sync drain time, cold-start time.
-
-No golden tests, no widget tests — this package has no UI. Every PR must pass all tests.
+- DB queries are batched where possible
 
 ---
 
@@ -505,14 +441,81 @@ No golden tests, no widget tests — this package has no UI. Every PR must pass 
 |---|---|---|
 | Local DB | **SQLCipher via drift** | SQL-level encryption, migration support |
 | Secure Storage | **flutter_secure_storage** | Platform keychain integration |
-| Networking | **web_socket_channel** + **dio** | Mature, well-tested |
-| Crypto | **cryptography** (pure Dart) | Cross-platform (including Web/WASM), audited |
-| Media | Raw byte streams + **dio** for upload/download | No image/video display libs — UI handles rendering |
+| Networking | **supabase_flutter** + **http** | Realtime + REST via Supabase |
+| Crypto | **cryptography** (pure Dart) | Cross-platform (including Web/WASM) |
+| Media | Raw byte streams + background uploader | No image/video display libs — UI handles rendering |
 | Notifications | **firebase_messaging** (data messages only) | Platform push relay; native extensions handle decrypt |
 | Serialization | **freezed** + **json_serializable** | Immutable models, null-safe |
 | IDs | **UUID v7** via `uuid` package | Time-ordered, client-generated, embeds timestamp |
 
 Do not introduce new dependencies without justification. Every dependency is an attack surface and a maintenance burden.
+
+---
+
+## Error Taxonomy
+
+All errors the engine surfaces. The UI and host must handle these — they are typed, not arbitrary strings.
+
+```dart
+sealed class ChatEngineError {
+  // Crypto
+  SessionNotFound(String recipientDeviceId);
+  DecryptionFailed(String messageId);
+  PreKeyExhausted(String userId);
+  KeyVerificationFailed(String userId);
+
+  // Transport
+  ConnectionLost();
+  ConnectionTimeout();
+  ServerError(int statusCode, String body);
+
+  // Auth
+  AuthTokenExpired();
+  DeviceRevoked(String deviceId);
+
+  // Storage
+  DatabaseCorrupted();
+  BiometricUnavailable();
+  StorageFull();
+
+  // Media
+  MediaUploadFailed(String mediaId);
+  MediaDownloadFailed(String url);
+  MediaDecryptionFailed(String mediaId);
+
+  // Sync
+  OutboxFull(int pendingCount);
+  DuplicateMessage(String messageId);
+}
+```
+
+The UI decides how to render each error. The engine never shows toasts, dialogs, or snackbars.
+
+---
+
+## Observability
+
+```dart
+abstract class ChatEngineObserver {
+  void onSessionEstablished(String userId, int deviceId);
+  void onSessionFailed(String userId, int deviceId, ChatEngineError error);
+  void onPreKeyReplenishment(int keysUploaded, int keysRemaining);
+  void onSyncCompleted(int messagesPulled, Duration elapsed);
+  void onOutboxDrained(int messagesSent, int messagesFailed);
+  void onRatchetAdvanced(String sessionId, int chainIndex);
+  void onMediaUpload(String mediaId, int bytes, Duration elapsed);
+  void onMediaDownload(String mediaId, int bytes, Duration elapsed);
+  void onWebSocketStateChange(EngineConnectionState from, EngineConnectionState to);
+  void onContactDiscovery(int hashesSent, int matchesFound);
+  void onProfileKeyRotation(String userId);
+  void onDeviceLinked(int deviceId);
+  void onDeviceRevoked(int deviceId);
+}
+```
+
+- Pass a `ChatEngineObserver` in `ChatEngineConfig` — all methods have no-op defaults
+- **Never log plaintext, keys, or user content in observer callbacks** — only event names, IDs, counts, and durations
+- In debug builds, the engine logs to `dart:developer` at `Level.FINE` — production builds emit nothing
 
 ---
 
@@ -523,7 +526,18 @@ Do not introduce new dependencies without justification. Every dependency is an 
 3. **Never expose internal implementation details in the public API.** Hide everything behind the barrel file.
 4. **Never assume network availability.** Every operation has an offline path.
 5. **Never write a crypto function without a test.** Security-critical code with no tests is a liability.
-6. **Never create widgets, screens, or any visual code.** This is a headless engine. UI lives in `~/chatF/`.
+6. **Never create widgets, screens, or any visual code.** This is a headless engine. UI lives in `~/hello/app/`.
+
+---
+
+## API Stability Policy
+
+- **Public API** = everything exported from `engine/lib/e2ee_chat.dart`
+- Breaking changes = **major** version bump
+- New methods/streams/models = **minor** version bump
+- Bug fixes, crypto patches, internal refactors = **patch** version bump
+- All `src/` internals are private — changes to them are never breaking
+- Deprecations: mark with `@Deprecated('Use X instead. Will be removed in vN+1')`, remove one major version later
 
 ---
 
@@ -532,19 +546,3 @@ Do not introduce new dependencies without justification. Every dependency is an 
 - Dart analysis: `very_good_analysis` (strict)
 - Commit messages: Conventional Commits (`feat:`, `fix:`, `crypto:`, `perf:`, `test:`)
 - File length soft limit: 300 lines
-
----
-
-## Development Phases
-
-### Phase 1 — Foundation (Current)
-Crypto layer, key management, local encrypted storage, WebSocket transport, basic 1:1 messaging send/receive, delivered receipts.
-
-### Phase 2 — Feature Core
-Group chats, media (images/video/voice), read receipts, typing indicators, push notifications, reply/quote.
-
-### Phase 3 — WhatsApp Parity
-Reactions, disappearing messages, view-once media, search, link previews, key verification UI, app lock, background sync hardening.
-
-### Phase 4 — Portability & Polish
-Package publication, host app integration guide, theming API, accessibility audit, performance profiling and optimization, security audit.

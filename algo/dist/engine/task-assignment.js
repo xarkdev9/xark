@@ -7,20 +7,20 @@
  * State lifecycle: Created → Assigned → Owned
  */
 import { TaskState } from "../models/types.js";
+import { randomUUID } from "node:crypto";
 export class TaskAssignmentError extends Error {
     constructor(message) {
         super(message);
         this.name = "TaskAssignmentError";
     }
 }
-let taskCounter = 0;
 /**
  * Creates a new task for a group.
+ * Uses crypto.randomUUID() for globally unique IDs.
  */
 export function createTask(groupId, title, description, createdBy, timestamp) {
-    taskCounter++;
     return {
-        id: `task_${taskCounter}`,
+        id: `task_${randomUUID()}`,
         groupId,
         title,
         description,
@@ -70,9 +70,10 @@ export function unassignTask(task) {
     };
 }
 /**
- * Resets the task counter (for testing).
+ * No-op for backwards compatibility. Task IDs are now UUIDs.
+ * @deprecated No longer needed — task IDs use crypto.randomUUID()
  */
 export function resetTaskCounter() {
-    taskCounter = 0;
+    // No-op: task IDs are now UUIDs, no counter to reset
 }
 //# sourceMappingURL=task-assignment.js.map

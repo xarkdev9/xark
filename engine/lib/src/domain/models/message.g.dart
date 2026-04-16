@@ -56,7 +56,7 @@ Map<String, dynamic> _$$MessageImplToJson(_$MessageImpl instance) =>
 
 const _$MessageTypeEnumMap = {
   MessageType.e2ee: 'e2ee',
-  MessageType.xark: 'xark',
+  MessageType.ai: 'ai',
   MessageType.system: 'system',
   MessageType.legacy: 'legacy',
   MessageType.senderKeyDist: 'sender_key_dist',

@@ -1,4 +1,4 @@
-// XARK OS v2.0 — SUMMON LINK VALIDATION
+// hello OS v2.0 — SUMMON LINK VALIDATION
 // GET /api/invite/validate?code=<code> — validates a summon link (public, no auth).
 // Returns { valid: true, creatorName } or { valid: false, reason }.
 

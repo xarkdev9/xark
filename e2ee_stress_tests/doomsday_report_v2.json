@@ -1,0 +1,73 @@
+{
+  "phases": [
+    {
+      "phase": "Phase 1: The Swarm",
+      "duration_ms": 987,
+      "tests_run": 205,
+      "tests_passed": 205,
+      "tests_failed": 0,
+      "metrics": {
+        "users_inserted": 100,
+        "avg_user_insert_ms": 0.5,
+        "key_bundles_inserted": 100,
+        "kb_insert_time_ms": 56,
+        "otks_inserted": 1000,
+        "otk_insert_time_ms": 472,
+        "db_connections_active": 13
+      },
+      "failures": []
+    },
+    {
+      "phase": "Phase 2: The Firehose",
+      "duration_ms": 2860,
+      "tests_run": 2551,
+      "tests_passed": 2551,
+      "tests_failed": 0,
+      "metrics": {
+        "messages_written": 2500,
+        "ciphertexts_written": 2500,
+        "total_time_ms": 2835,
+        "throughput_msgs_per_sec": 882,
+        "avg_latency_ms": 1.13,
+        "p95_latency_ms": 2.18,
+        "p99_latency_ms": 3.24,
+        "pending_db_locks": 0
+      },
+      "failures": []
+    },
+    {
+      "phase": "Phase 3: Offline Queue & Sync",
+      "duration_ms": 537,
+      "tests_run": 502,
+      "tests_passed": 502,
+      "tests_failed": 0,
+      "metrics": {
+        "messages_queued": 500,
+        "queue_time_ms": 512,
+        "messages_drained": 500,
+        "drain_time_ms": 19,
+        "drain_rate_per_sec": 26994,
+        "skipped_keys_recovered": 100
+      },
+      "failures": []
+    },
+    {
+      "phase": "Phase 4: Assume Breach",
+      "duration_ms": 491,
+      "tests_run": 8,
+      "tests_passed": 8,
+      "tests_failed": 0,
+      "metrics": {
+        "ciphertext_rows_dumped": 1000,
+        "brute_force_attempts": 1000,
+        "brute_force_successes": 0,
+        "metadata_leaks": 0,
+        "rls_tests_run": 3
+      },
+      "failures": []
+    }
+  ],
+  "started_at": "2026-04-06T02:43:28.746Z",
+  "completed_at": "2026-04-06T02:43:33.730Z",
+  "total_duration_ms": 4965
+}

@@ -61,7 +61,7 @@ class MessageEnvelope with _$MessageEnvelope {
     @Default([])
     List<DistributionCiphertext> distributionCiphertexts,
 
-    /// Wire-level message type (`e2ee`, `xark`, `sender_key_dist`, etc.).
+    /// Wire-level message type (`e2ee`, `hello`, `sender_key_dist`, etc.).
     @JsonKey(name: 'message_type') @Default('e2ee') String messageType,
 
     /// Optional client-generated UUID.

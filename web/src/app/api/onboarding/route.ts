@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { verifyAuth } from "@/lib/auth-verify";
-import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 15;
 
@@ -10,9 +9,7 @@ export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req.headers.get("authorization"));
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!checkRateLimit(`taste:${auth.userId}`, 3, 60_000)) {
-    return NextResponse.json({ error: "Rate limited" }, { status: 429 });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   const { text } = await req.json();
   if (!text || typeof text !== "string" || text.length > 500) {

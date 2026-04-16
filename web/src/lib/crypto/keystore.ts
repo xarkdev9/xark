@@ -1,4 +1,4 @@
-// XARK OS v2.0 — KeyStore (IndexedDB)
+// hello OS v2.0 — KeyStore (IndexedDB)
 // Persistent key storage for E2EE. IndexedDB for PWA.
 // Interface is abstract — swap for native Keychain on iOS/Android.
 // At-rest encryption via Argon2id-derived wrapping key (Signal Desktop approach).
@@ -10,11 +10,10 @@ import {
   decryptFromStorage,
   encryptObjectForStorage,
   decryptObjectFromStorage,
-  isStoreUnlocked,
 } from './encrypted-store';
 
 const DB_NAME = 'xark-keystore';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 const STORES = {
   identity: 'identity',
@@ -48,6 +47,11 @@ function openDB(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name);
         }
+      }
+      // v5: Sender Key ACK cache (compound keyPath)
+      if (!db.objectStoreNames.contains('sk_acks')) {
+        const skAckStore = db.createObjectStore('sk_acks', { keyPath: ['groupId', 'senderId'] });
+        skAckStore.createIndex('groupId', 'groupId', { unique: false });
       }
     };
   });
@@ -123,37 +127,26 @@ export class IndexedDBKeyStore {
     const db = await this.getDB();
     const store = tx(db, STORES.identity, 'readwrite');
 
-    if (isStoreUnlocked()) {
-      // Encrypted mode: serialize key bytes and encrypt.
-      // privateKeyCryptoKey may be Uint8Array (transitional cast from key-manager.ts)
-      // or a real CryptoKey. We can only encrypt raw bytes — true non-extractable
-      // CryptoKey objects cannot be serialized, so they stay as structured clone.
-      const privBytes = privateKeyCryptoKey instanceof Uint8Array
-        ? privateKeyCryptoKey
-        : null;
-      const pubCryptoBytes = publicKeyCryptoKey instanceof Uint8Array
-        ? publicKeyCryptoKey
-        : null;
+    // Encrypt key bytes when available; true non-extractable CryptoKey objects
+    // are stored natively via IndexedDB structured clone (already hardware-protected).
+    const privBytes = privateKeyCryptoKey instanceof Uint8Array
+      ? privateKeyCryptoKey
+      : null;
+    const pubCryptoBytes = publicKeyCryptoKey instanceof Uint8Array
+      ? publicKeyCryptoKey
+      : null;
 
-      if (privBytes && pubCryptoBytes) {
-        // Raw bytes path: encrypt the entire identity object
-        const encrypted = encryptObjectForStorage({
-          publicKeyRaw: toBase64(publicKeyRaw),
-          privateKeyRaw: toBase64(privBytes),
-          publicKeyCryptoRaw: toBase64(pubCryptoBytes),
-        });
-        await idbPut(store, 'identity', { _encrypted: encrypted });
-      } else {
-        // True CryptoKey: cannot serialize for encryption, store natively
-        // (WebCrypto non-extractable keys are already hardware-protected)
-        await idbPut(store, 'identity', {
-          publicKeyRaw: toBase64(publicKeyRaw),
-          privateKeyCryptoKey,
-          publicKeyCryptoKey,
-        });
-      }
+    if (privBytes && pubCryptoBytes) {
+      // Raw bytes path: encrypt the entire identity object
+      const encrypted = await encryptObjectForStorage({
+        publicKeyRaw: toBase64(publicKeyRaw),
+        privateKeyRaw: toBase64(privBytes),
+        publicKeyCryptoRaw: toBase64(pubCryptoBytes),
+      });
+      await idbPut(store, 'identity', { _encrypted: encrypted });
     } else {
-      // Legacy unencrypted mode: CryptoKey objects stored natively by IndexedDB
+      // True CryptoKey: cannot serialize for encryption, store natively
+      // (WebCrypto non-extractable keys are already hardware-protected)
       await idbPut(store, 'identity', {
         publicKeyRaw: toBase64(publicKeyRaw),
         privateKeyCryptoKey,
@@ -175,7 +168,7 @@ export class IndexedDBKeyStore {
 
     // Encrypted format: has _encrypted field
     if (data._encrypted && typeof data._encrypted === 'string') {
-      const decrypted = decryptObjectFromStorage<{
+      const decrypted = await decryptObjectFromStorage<{
         publicKeyRaw: string;
         privateKeyRaw: string;
         publicKeyCryptoRaw: string;
@@ -208,7 +201,7 @@ export class IndexedDBKeyStore {
     // Encrypted format
     if (data._encrypted && typeof data._encrypted === 'string') {
       try {
-        const decrypted = decryptObjectFromStorage<{
+        const decrypted = await decryptObjectFromStorage<{
           publicKeyRaw: string;
           privateKeyRaw: string;
         }>(data._encrypted);
@@ -231,12 +224,8 @@ export class IndexedDBKeyStore {
   async saveSignedPreKey(id: number, keyPair: RawKeyPair): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.signedPreKeys, 'readwrite');
-    if (isStoreUnlocked()) {
-      const encrypted = encryptObjectForStorage(serializeKeyPair(keyPair));
-      await idbPut(store, `spk_${id}`, encrypted);
-    } else {
-      await idbPut(store, `spk_${id}`, serializeKeyPair(keyPair));
-    }
+    const encrypted = await encryptObjectForStorage(serializeKeyPair(keyPair));
+    await idbPut(store, `spk_${id}`, encrypted);
   }
 
   async getSignedPreKey(id: number): Promise<RawKeyPair | null> {
@@ -247,7 +236,7 @@ export class IndexedDBKeyStore {
 
     // Encrypted or plaintext-prefixed string format
     if (typeof data === 'string') {
-      const obj = decryptObjectFromStorage<{ pub: string; priv: string }>(data);
+      const obj = await decryptObjectFromStorage<{ pub: string; priv: string }>(data);
       return deserializeKeyPair(obj);
     }
 
@@ -260,14 +249,9 @@ export class IndexedDBKeyStore {
   async saveOneTimePreKeys(keys: Array<{ id: string; keyPair: RawKeyPair }>): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.oneTimePreKeys, 'readwrite');
-    const encrypt = isStoreUnlocked();
     for (const k of keys) {
-      if (encrypt) {
-        const encrypted = encryptObjectForStorage(serializeKeyPair(k.keyPair));
-        await idbPut(store, k.id, encrypted);
-      } else {
-        await idbPut(store, k.id, serializeKeyPair(k.keyPair));
-      }
+      const encrypted = await encryptObjectForStorage(serializeKeyPair(k.keyPair));
+      await idbPut(store, k.id, encrypted);
     }
   }
 
@@ -279,7 +263,7 @@ export class IndexedDBKeyStore {
 
     // Encrypted or plaintext-prefixed string format
     if (typeof data === 'string') {
-      const obj = decryptObjectFromStorage<{ pub: string; priv: string }>(data);
+      const obj = await decryptObjectFromStorage<{ pub: string; priv: string }>(data);
       return deserializeKeyPair(obj);
     }
 
@@ -304,11 +288,7 @@ export class IndexedDBKeyStore {
   async saveSenderKey(groupId: string, state: Uint8Array): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.senderKeys, 'readwrite');
-    if (isStoreUnlocked()) {
-      await idbPut(store, `active_${groupId}`, encryptForStorage(state));
-    } else {
-      await idbPut(store, `active_${groupId}`, toBase64(state));
-    }
+    await idbPut(store, `active_${groupId}`, await encryptForStorage(state));
   }
 
   async getSenderKey(groupId: string): Promise<Uint8Array | null> {
@@ -317,13 +297,8 @@ export class IndexedDBKeyStore {
     const data = await idbGet<string>(store, `active_${groupId}`);
     if (!data) return null;
 
-    // Encrypted or plaintext-prefixed: decryptFromStorage handles all formats
-    if (data.startsWith('enc:') || data.startsWith('plain:')) {
-      return decryptFromStorage(data);
-    }
-
-    // Legacy raw base64 (no prefix)
-    return fromBase64(data);
+    // decryptFromStorage handles all formats: wcrypt:, plain:, enc:, raw base64
+    return decryptFromStorage(data);
   }
 
   async deleteSenderKey(groupId: string): Promise<void> {
@@ -336,11 +311,7 @@ export class IndexedDBKeyStore {
     const db = await this.getDB();
     const store = tx(db, STORES.senderKeys, 'readwrite');
     const existing = await idbGet<string[]>(store, `hist_${groupId}`) ?? [];
-    if (isStoreUnlocked()) {
-      existing.push(encryptForStorage(state));
-    } else {
-      existing.push(toBase64(state));
-    }
+    existing.push(await encryptForStorage(state));
     await idbPut(store, `hist_${groupId}`, existing);
   }
 
@@ -349,11 +320,7 @@ export class IndexedDBKeyStore {
   async saveSession(userId: string, deviceId: number, state: Uint8Array): Promise<void> {
     const db = await this.getDB();
     const store = tx(db, STORES.sessions, 'readwrite');
-    if (isStoreUnlocked()) {
-      await idbPut(store, `${userId}:${deviceId}`, encryptForStorage(state));
-    } else {
-      await idbPut(store, `${userId}:${deviceId}`, toBase64(state));
-    }
+    await idbPut(store, `${userId}:${deviceId}`, await encryptForStorage(state));
   }
 
   async getSession(userId: string, deviceId: number): Promise<Uint8Array | null> {
@@ -362,13 +329,8 @@ export class IndexedDBKeyStore {
     const data = await idbGet<string>(store, `${userId}:${deviceId}`);
     if (!data) return null;
 
-    // Encrypted or plaintext-prefixed: decryptFromStorage handles all formats
-    if (data.startsWith('enc:') || data.startsWith('plain:')) {
-      return decryptFromStorage(data);
-    }
-
-    // Legacy raw base64 (no prefix)
-    return fromBase64(data);
+    // decryptFromStorage handles all formats: wcrypt:, plain:, enc:, raw base64
+    return decryptFromStorage(data);
   }
 
   async deleteSession(userId: string, deviceId: number): Promise<void> {
@@ -467,7 +429,7 @@ export class IndexedDBKeyStore {
     const db = await this.getDB();
     const store = tx(db, STORES.decryptedMessages, 'readwrite');
     const textBytes = new TextEncoder().encode(text);
-    const secureText = encryptForStorage(textBytes);
+    const secureText = await encryptForStorage(textBytes);
     await idbPut(store, messageId, secureText);
   }
 
@@ -476,7 +438,7 @@ export class IndexedDBKeyStore {
     const store = tx(db, STORES.decryptedMessages, 'readonly');
     const stored = await idbGet<string>(store, messageId);
     if (!stored) return null;
-    const decryptedBytes = decryptFromStorage(stored);
+    const decryptedBytes = await decryptFromStorage(stored);
     return new TextDecoder().decode(decryptedBytes);
   }
 
@@ -496,7 +458,7 @@ export class IndexedDBKeyStore {
     const store = tx(db, STORES.decryptedMessages, 'readwrite');
     const json = JSON.stringify(data);
     const jsonBytes = new TextEncoder().encode(json);
-    const encrypted = encryptForStorage(jsonBytes);
+    const encrypted = await encryptForStorage(jsonBytes);
     await idbPut(store, `media:${messageId}`, encrypted);
   }
 
@@ -514,7 +476,7 @@ export class IndexedDBKeyStore {
     const store = tx(db, STORES.decryptedMessages, 'readonly');
     const stored = await idbGet<string>(store, `media:${messageId}`);
     if (!stored) return null;
-    const decryptedBytes = decryptFromStorage(stored);
+    const decryptedBytes = await decryptFromStorage(stored);
     const json = new TextDecoder().decode(decryptedBytes);
     return JSON.parse(json);
   }
@@ -546,6 +508,45 @@ export class IndexedDBKeyStore {
     const name = await idbGet<string>(store, phone);
     return name ?? null;
   }
+}
+
+// ── Sender Key ACK helpers (O(1) distribution check) ──
+
+export async function getAckedSenders(groupId: string): Promise<Set<string>> {
+  const db = await openDB();
+  const tx = db.transaction('sk_acks', 'readonly');
+  const store = tx.objectStore('sk_acks');
+  const index = store.index('groupId');
+  return new Promise((resolve, reject) => {
+    const req = index.getAll(groupId);
+    req.onsuccess = () => {
+      const entries = (req.result ?? []) as Array<{ groupId: string; senderId: string }>;
+      resolve(new Set(entries.map((e) => e.senderId)));
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function markSkAcked(groupId: string, senderId: string): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction('sk_acks', 'readwrite');
+  const store = tx.objectStore('sk_acks');
+  return new Promise((resolve, reject) => {
+    const req = store.put({ groupId, senderId, ackedAt: Date.now() });
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function clearSkAcks(groupId: string, senderId: string): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction('sk_acks', 'readwrite');
+  const store = tx.objectStore('sk_acks');
+  return new Promise((resolve, reject) => {
+    const req = store.delete([groupId, senderId]);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
 }
 
 /** Singleton keystore instance */

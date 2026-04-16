@@ -1,4 +1,4 @@
-// XARK OS v2.0 — MESSAGE PERSISTENCE
+// hello OS v2.0 — MESSAGE PERSISTENCE
 // Supabase Postgres for chat message storage.
 // Supabase Broadcast for instant delivery (~50ms). DB for durability.
 // Graceful fallback: returns empty / no-ops when Supabase is unreachable.
@@ -6,12 +6,12 @@
 import { supabase, hasSupabaseAuth } from "./supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
-export type MessageType = 'e2ee' | 'e2ee_xark' | 'xark' | 'system' | 'legacy' | 'sender_key_dist';
+export type MessageType = 'e2ee' | 'e2ee_hello' | 'hello' | 'system' | 'legacy' | 'sender_key_dist';
 
 export interface ChatMessage {
   id: string;
   group_id: string;
-  role: "user" | "xark" | "system";
+  role: "user" | "hello" | "system";
   content: string;
   user_id: string | null;
   sender_name: string | null;
@@ -47,7 +47,7 @@ export async function fetchMessages(
   const { data, error } = await query;
 
   if (error) {
-    console.error("[xark] fetchMessages failed:", error.message, { groupId });
+    console.error("[hello] fetchMessages failed:", error.message, { groupId });
     return [];
   }
   if (!data) return [];
@@ -69,7 +69,7 @@ export async function fetchSenderKeyDistributions(
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("[xark] fetchSenderKeyDistributions failed:", error.message);
+    console.error("[hello] fetchSenderKeyDistributions failed:", error.message);
     return [];
   }
   return (data as ChatMessage[]) ?? [];
@@ -79,7 +79,7 @@ export async function fetchSenderKeyDistributions(
 export async function saveMessage(msg: {
   id: string;
   groupId: string;
-  role: "user" | "xark";
+  role: "user" | "hello";
   content: string;
   userId?: string;
   senderName?: string;
@@ -88,7 +88,7 @@ export async function saveMessage(msg: {
 }): Promise<void> {
   const hasJWT = hasSupabaseAuth();
   if (!hasJWT) {
-    console.error("[xark] saveMessage: NO JWT on Supabase client! userId:", msg.userId);
+    console.error("[hello] saveMessage: NO JWT on Supabase client! userId:", msg.userId);
   }
   const row: Record<string, unknown> = {
     id: msg.id,
@@ -100,14 +100,14 @@ export async function saveMessage(msg: {
   };
   // E2EE columns — only include when migration 014 has been applied
   if (msg.messageType && msg.messageType !== 'legacy') {
-    row.content = msg.messageType === 'e2ee' || msg.messageType === 'e2ee_xark' ? null : msg.content;
-    row.sender_name = msg.messageType === 'e2ee' || msg.messageType === 'e2ee_xark' ? null : (msg.senderName ?? null);
+    row.content = msg.messageType === 'e2ee' || msg.messageType === 'e2ee_hello' ? null : msg.content;
+    row.sender_name = msg.messageType === 'e2ee' || msg.messageType === 'e2ee_hello' ? null : (msg.senderName ?? null);
     row.message_type = msg.messageType;
     row.sender_device_id = msg.senderDeviceId ?? null;
   }
   const { error } = await supabase.from("messages").insert(row);
   if (error) {
-    console.error("[xark] saveMessage failed:", error.message, { userId: msg.userId, groupId: msg.groupId, hasJWT });
+    console.error("[hello] saveMessage failed:", error.message, { userId: msg.userId, groupId: msg.groupId, hasJWT });
     throw error;
   }
 }
@@ -137,7 +137,7 @@ export async function fetchCiphertexts(
 
   const { data, error } = await query;
   if (error) {
-    console.error("[xark] fetchCiphertexts failed:", error.message);
+    console.error("[hello] fetchCiphertexts failed:", error.message);
     return [];
   }
   return data ?? [];

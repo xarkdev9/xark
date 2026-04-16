@@ -366,6 +366,30 @@ class SenderKeyDistribution {
       };
 }
 
+/// Kyber pre-key for PQXDH hybrid key exchange.
+///
+/// Contains the Kyber-1024 public/secret key pair and an Ed25519
+/// signature over the public key for authentication.
+class KyberPreKey {
+  /// Creates a [KyberPreKey].
+  const KyberPreKey({
+    required this.publicKey,
+    required this.secretKey,
+    required this.signature,
+  });
+
+  /// Kyber-1024 public key (encapsulation key).
+  /// Real Kyber-1024: 1568 bytes. Stub: 32 bytes.
+  final Uint8List publicKey;
+
+  /// Kyber-1024 secret key (decapsulation key).
+  /// Real Kyber-1024: 3168 bytes. Stub: 32 bytes.
+  final Uint8List secretKey;
+
+  /// Ed25519 signature over [publicKey] (64 bytes).
+  final Uint8List signature;
+}
+
 /// Symmetric key material for media encryption (AES-256-GCM).
 class MediaKey {
   /// Creates a [MediaKey].

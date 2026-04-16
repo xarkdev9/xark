@@ -1,5 +1,5 @@
-// XARK OS v2.0 — Per-User Logistics (Three-Source Passive Assembly)
-// Spec: docs/superpowers/specs/2026-03-13-xark-capabilities-design.md (Section 3)
+// hello OS v2.0 — Per-User Logistics (Three-Source Passive Assembly)
+// Spec: docs/superpowers/specs/2026-03-13-hello-capabilities-design.md (Section 3)
 
 import { supabaseAdmin } from "./supabase-admin";
 

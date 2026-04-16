@@ -2,7 +2,7 @@
 
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/transport/media_upload_client.dart';
+import 'package:e2ee_chat_sdk/src/transport/media_upload_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show SupabaseClient, SupabaseStorageClient, StorageFileApi, FileObject;

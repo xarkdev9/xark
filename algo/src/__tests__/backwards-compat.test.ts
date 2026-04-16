@@ -67,7 +67,6 @@ import type {
   DecisionItem,
   DecisionItemState,
   DecisionSpace,
-  GroupId,
   SpaceConfig,
   GroundingConstraint,
   GroundingContext,
@@ -95,54 +94,23 @@ describe("Backwards Compatibility", () => {
       const item: BookableItem = {
         id: "item_1" as ItemId,
         groupId: "g1" as GroupId,
-        groupId: "g1" as GroupId,
-        title: "Test",
-        description: "",
-        category: "hotel",
+        ciphertextPayload: "Test",
+        nonce: "test-nonce",
         state: BookableItemState.Proposed,
         proposedBy: "u1" as UserId,
         proposedAt: 1000,
         reactions: [],
         weightedScore: 0,
-        commitmentProof: null,
-        bookingProof: null,
+        commitmentCiphertext: null,
+        commitmentNonce: null,
         ownership: null,
-        ownershipHistory: [],
         lockedAt: null,
         version: 1,
-        metadata: {},
       };
       expect(item.version).toBe(1);
-      expect(item.metadata).toEqual({});
     });
 
-    it("BookableItem.category accepts any string", () => {
-      const hotel: BookableItem = {
-        id: "item_1" as ItemId,
-        groupId: "g1" as GroupId,
-        groupId: "g1" as GroupId,
-        title: "Test",
-        description: "",
-        category: "hotel",
-        state: BookableItemState.Proposed,
-        proposedBy: "u1" as UserId,
-        proposedAt: 1000,
-        reactions: [],
-        weightedScore: 0,
-        commitmentProof: null,
-        bookingProof: null,
-        ownership: null,
-        ownershipHistory: [],
-        lockedAt: null,
-        version: 1,
-        metadata: {},
-      };
-      expect(hotel.category).toBe("hotel");
 
-      // New categories also work
-      const sedan: BookableItem = { ...hotel, category: "sedan" };
-      expect(sedan.category).toBe("sedan");
-    });
   });
 
   describe("Old API surface via ConsensusEngine", () => {
@@ -170,8 +138,8 @@ describe("Backwards Compatibility", () => {
         createdAt: 100,
       });
 
-      const item = engine.proposeItem("g1", "Hotel", "Nice hotel", "hotel", "alice", 1000);
-      expect(item.title).toBe("Hotel");
+      const item = engine.proposeItem("g1", "Hotel", "nonce", "alice", 1000);
+      expect(item.ciphertextPayload).toBe("Hotel");
       expect(item.state).toBe("proposed"); // BOOKING_FLOW default
     });
 
@@ -191,23 +159,18 @@ describe("Backwards Compatibility", () => {
       });
 
       // Propose
-      const hotel = engine.proposeItem("trip", "Hilton", "Downtown", "hotel", "alice", 1000);
+      const hotel = engine.proposeItem("trip", "Hilton", "nonce", "alice", 1000);
 
       // React
       engine.react(hotel.id, "alice", ReactionType.LoveIt, 2000);
       engine.react(hotel.id, "bob", ReactionType.WorksForMe, 2001);
 
       // Lock
-      const locked = engine.lock(hotel.id, {
-        type: "confirmation_number",
-        value: "HILTON-123",
-        submittedBy: "alice",
-        submittedAt: 3000,
-      });
+      const locked = engine.lock(hotel.id, "HILTON-123", "nonce", "alice", 3000);
 
       expect(locked.state).toBe(BookableItemState.Locked);
       expect(locked.ownership!.ownerId).toBe("alice");
-      expect(locked.bookingProof!.value).toBe("HILTON-123");
+      expect(locked.commitmentCiphertext).toBe("HILTON-123");
 
       // Transfer
       const transferred = engine.transfer(hotel.id, "bob", 4000);
@@ -226,30 +189,21 @@ describe("Backwards Compatibility", () => {
       const item: BookableItem = {
         id: "item_1" as ItemId,
         groupId: "g1" as GroupId,
-        groupId: "g1" as GroupId,
-        title: "Hotel",
-        description: "",
-        category: "hotel",
-        state: BookableItemState.HeartSorted,
+        ciphertextPayload: "Hotel",
+        nonce: "test-nonce",
+        state: "ranked",
         proposedBy: "u1" as UserId,
         proposedAt: 1000,
         reactions: [],
         weightedScore: 5,
-        commitmentProof: null,
-        bookingProof: null,
+        commitmentCiphertext: null,
+        commitmentNonce: null,
         ownership: null,
-        ownershipHistory: [],
         lockedAt: null,
         version: 1,
-        metadata: {},
       };
 
-      const locked = lockItem(item, {
-        type: "confirmation_number",
-        value: "CONF-123",
-        submittedBy: "u2" as UserId,
-        submittedAt: 2000,
-      });
+      const locked = lockItem(item as any, "CONF-123", "nonce", "u2" as UserId, 2000);
 
       expect(locked.state).toBe(BookableItemState.Locked);
       expect(isLocked(locked)).toBe(true);
@@ -259,22 +213,18 @@ describe("Backwards Compatibility", () => {
       const makeItem = (id: string, score: number): BookableItem => ({
         id: id as ItemId,
         groupId: "g1" as GroupId,
-        groupId: "g1" as GroupId,
-        title: id,
-        description: "",
-        category: "hotel",
+        ciphertextPayload: id,
+        nonce: "test-nonce",
         state: BookableItemState.Proposed,
         proposedBy: "u1" as UserId,
         proposedAt: 1000,
         reactions: [],
         weightedScore: score,
-        commitmentProof: null,
-        bookingProof: null,
+        commitmentCiphertext: null,
+        commitmentNonce: null,
         ownership: null,
-        ownershipHistory: [],
         lockedAt: null,
         version: 1,
-        metadata: {},
       });
 
       const sorted = heartSort([makeItem("a", 3), makeItem("b", 10), makeItem("c", 7)]);
@@ -345,22 +295,18 @@ describe("Backwards Compatibility", () => {
       const item: BookableItem = {
         id: "item_1" as ItemId,
         groupId: "g1" as GroupId,
-        groupId: "g1" as GroupId,
-        title: "Test",
-        description: "",
-        category: "hotel",
+        ciphertextPayload: "Test",
+        nonce: "test-nonce",
         state: BookableItemState.Proposed,
         proposedBy: "u1" as UserId,
         proposedAt: 1000,
         reactions: [],
         weightedScore: 0,
-        commitmentProof: null,
-        bookingProof: null,
+        commitmentCiphertext: null,
+        commitmentNonce: null,
         ownership: null,
-        ownershipHistory: [],
         lockedAt: null,
         version: 1,
-        metadata: {},
       };
 
       await adapter.saveItem(item);
@@ -380,30 +326,21 @@ describe("Backwards Compatibility", () => {
       const item: BookableItem = {
         id: "item_1" as ItemId,
         groupId: "g1" as GroupId,
-        groupId: "g1" as GroupId,
-        title: "Hotel",
-        description: "",
-        category: "hotel",
+        ciphertextPayload: "Hotel",
+        nonce: "test-nonce",
         state: "ranked",
         proposedBy: "u1" as UserId,
         proposedAt: 1000,
         reactions: [],
         weightedScore: 5,
-        commitmentProof: null,
-        bookingProof: null,
+        commitmentCiphertext: null,
+        commitmentNonce: null,
         ownership: null,
-        ownershipHistory: [],
         lockedAt: null,
         version: 1,
-        metadata: {},
       };
 
-      const committed = commitItem(item, {
-        type: "confirmation_number",
-        value: "CONF-123",
-        submittedBy: "u2" as UserId,
-        submittedAt: 2000,
-      }, sm);
+      const committed = commitItem(item as any, "CONF-123", "nonce", "u2" as UserId, 2000, sm);
 
       expect(committed.state).toBe("locked");
       expect(committed.ownership!.ownerId).toBe("u2");

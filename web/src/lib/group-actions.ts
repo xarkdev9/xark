@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Tier 1: Fast-Path Local Router
+// hello OS v2.0 — Tier 1: Fast-Path Local Router
 // Deterministic regex matching for admin commands + state queries.
 // <1ms, zero AI, zero network. First gate in sendMessage().
 

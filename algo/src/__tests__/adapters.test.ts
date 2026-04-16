@@ -13,7 +13,6 @@ import type {
   ItemId,
   GroupId,
   UserId,
-  GroupId,
   Task,
   TaskId,
 } from "../models/types.js";
@@ -22,22 +21,18 @@ function makeItem(overrides: Partial<BookableItem> = {}): BookableItem {
   return {
     id: "item_1" as ItemId,
     groupId: "space_1" as GroupId,
-    groupId: "space_1" as GroupId,
-    title: "Test Item",
-    description: "",
-    category: "hotel",
+    ciphertextPayload: "Test Item",
+    nonce: "nonce",
     state: BookableItemState.Proposed,
     proposedBy: "u1" as UserId,
     proposedAt: 1000,
     reactions: [],
     weightedScore: 0,
-    commitmentProof: null,
-    bookingProof: null,
+    commitmentCiphertext: null,
+    commitmentNonce: null,
     ownership: null,
-    ownershipHistory: [],
     lockedAt: null,
     version: 1,
-    metadata: {},
     ...overrides,
   };
 }
@@ -54,7 +49,7 @@ describe("MemoryPersistenceAdapter", () => {
     await adapter.saveItem(item);
     const retrieved = await adapter.getItem("item_1" as ItemId);
     expect(retrieved).toBeDefined();
-    expect(retrieved!.title).toBe("Test Item");
+    expect(retrieved!.ciphertextPayload).toBe("Test Item");
   });
 
   it("returns undefined for non-existent items", async () => {
@@ -99,10 +94,10 @@ describe("MemoryPersistenceAdapter", () => {
     const item = makeItem();
     await adapter.saveItem(item);
     const retrieved = await adapter.getItem("item_1" as ItemId);
-    retrieved!.title = "Modified";
+    retrieved!.ciphertextPayload = "Modified";
 
     const again = await adapter.getItem("item_1" as ItemId);
-    expect(again!.title).toBe("Test Item");
+    expect(again!.ciphertextPayload).toBe("Test Item");
   });
 
   it("manages spaces", async () => {
@@ -336,7 +331,7 @@ describe("PlaintextMessagingAdapter", () => {
   });
 
   it("formats an item", () => {
-    const item = makeItem({ title: "Hilton SD", weightedScore: 8 });
+    const item = makeItem({ ciphertextPayload: "Hilton SD", weightedScore: 8 });
     const out = msg.formatItem(item);
     expect(out.text).toContain("Hilton SD");
     expect(out.text).toContain("score: 8");
@@ -344,8 +339,8 @@ describe("PlaintextMessagingAdapter", () => {
 
   it("formats a ranked list", () => {
     const out = msg.formatRankedList([
-      { rank: 1, title: "Nobu", weightedScore: 11, agreementScore: 100, isGroupFavorite: true },
-      { rank: 2, title: "Olive", weightedScore: 3, agreementScore: 50, isGroupFavorite: false },
+      { rank: 1, ciphertextPayload: "Nobu", weightedScore: 11, agreementScore: 100, isGroupFavorite: true, reactionBreakdown: { hearts: 0, thumbsUp: 0, notForMe: 0 } },
+      { rank: 2, ciphertextPayload: "Olive", weightedScore: 3, agreementScore: 50, isGroupFavorite: false, reactionBreakdown: { hearts: 0, thumbsUp: 0, notForMe: 0 } },
     ]);
     expect(out.text).toContain("#1 Nobu");
     expect(out.text).toContain("GROUP FAVORITE");
@@ -359,20 +354,15 @@ describe("PlaintextMessagingAdapter", () => {
 
   it("formats lock notification", () => {
     const item = makeItem({
-      title: "Hilton SD",
+      ciphertextPayload: "Hilton SD",
       ownership: { ownerId: "carol" as UserId, assignedAt: 2000, reason: "booker" },
-      commitmentProof: {
-        type: "confirmation_number",
-        value: "HILTON-99",
-        submittedBy: "carol" as UserId,
-        submittedAt: 2000,
-      },
+      commitmentCiphertext: "HILTON-99",
+      commitmentNonce: "nonce",
     });
     const out = msg.formatLockNotification(item);
     expect(out.text).toContain("LOCKED");
     expect(out.text).toContain("Hilton SD");
     expect(out.text).toContain("carol");
-    expect(out.text).toContain("HILTON-99");
   });
 
   it("parses /love command", () => {
@@ -444,13 +434,13 @@ describe("PlaintextMessagingAdapter", () => {
   it("formats event notifications", () => {
     const out = msg.formatEventNotification({
       type: "item_proposed",
-      payload: { title: "Hilton" },
+      payload: { ciphertextPayload: "Hilton" },
     });
     expect(out.text).toContain("Hilton");
 
     const lockNotif = msg.formatEventNotification({
       type: "item_locked",
-      payload: { title: "Hilton", ownerId: "alice" },
+      payload: { ciphertextPayload: "Hilton", ownerId: "alice" },
     });
     expect(lockNotif.text).toContain("locked");
   });

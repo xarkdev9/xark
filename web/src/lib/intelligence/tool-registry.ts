@@ -1,8 +1,8 @@
-// XARK OS v2.0 — Apify Tool Registry
+// hello OS v2.0 — Apify Tool Registry
 // Register Apify actors by category. Orchestrator routes @hello requests here.
 
 export interface ToolDefinition {
-  tier: "gemini-search" | "apify" | "searchapi";
+  tier: "gemini-search" | "apify" | "searchapi" | "fli";
   actorId: string;
   description: string;
   paramMap: (userParams: Record<string, string>) => Record<string, unknown>;
@@ -143,6 +143,33 @@ export function getFunctionDeclarations() {
       },
     },
     {
+      name: "generate_itinerary",
+      description: "Generate a day-by-day trip itinerary. ONLY use when the user EXPLICITLY requests a multi-day plan with words like 'plan our trip', 'make an itinerary', 'build a plan', 'what would 5 days in Bali look like', 'organize our itinerary'. Do NOT use for: emoji-only messages, single-word queries, vague requests like 'find stuff', multi-item searches like 'find hotels and flights', or any query that doesn't explicitly mention planning/itinerary/organizing a trip for a specific duration or destination.",
+      parameters: {
+        type: "OBJECT" as const,
+        properties: {
+          destination: { type: "STRING" as const, description: "Trip destination (city/region)" },
+          start_date: { type: "STRING" as const, description: "Start date YYYY-MM-DD (optional — omit for dream mode)" },
+          end_date: { type: "STRING" as const, description: "End date YYYY-MM-DD (optional — omit for dream mode)" },
+          trip_days: { type: "NUMBER" as const, description: "Number of days (used when no dates, e.g. '5 days in Bali')" },
+        },
+        required: ["destination"],
+      },
+    },
+    {
+      name: "modify_itinerary",
+      description: "Modify a specific day/slot in the existing itinerary. Use when user says 'swap', 'change', 'I'm tired on day 3', 'too touristy', 'something more adventurous', 'make it a rest day'.",
+      parameters: {
+        type: "OBJECT" as const,
+        properties: {
+          day: { type: "STRING" as const, description: "Date YYYY-MM-DD or relative ('Tuesday', 'Day 3')" },
+          slot: { type: "STRING" as const, description: "morning, afternoon, evening, or 'all'" },
+          instruction: { type: "STRING" as const, description: "What to change: 'more adventurous', 'closer to hotel', 'cheaper', 'chill', 'rest day'" },
+        },
+        required: ["instruction"],
+      },
+    },
+    {
       name: "create_poll",
       description: "Create a live poll for group decision. Use when user asks to vote or decide between options.",
       parameters: {
@@ -174,10 +201,10 @@ registerTool("hotel", {
 });
 
 registerTool("flight", {
-  tier: "searchapi",
+  tier: "fli",
   actorId: process.env.APIFY_FLIGHT_ACTOR || "johnvc/Google-Flights-Data-Scraper-Flight-and-Price-Search",
-  searchApiEngine: "google_flights",
-  description: "Search flights via Google Flights API",
+  searchApiEngine: "google_flights", // kept for SearchAPI fallback
+  description: "Search flights via fli (primary) with SearchAPI fallback",
   paramMap: (p) => ({
     origin: p.origin?.toUpperCase(),
     destination: p.destination?.toUpperCase(),

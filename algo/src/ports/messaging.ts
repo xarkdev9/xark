@@ -62,10 +62,17 @@ export interface EngineCommand {
  */
 export interface RankedItemSummary {
   rank: number;
-  title: string;
+  ciphertextPayload: string;
   weightedScore: number;
   agreementScore: number;
   isGroupFavorite: boolean;
+  reactionBreakdown?: {
+    hearts: number;
+    thumbsUp: number;
+    notForMe: number;
+    loveIt?: number;
+    worksForMe?: number;
+  };
 }
 
 export interface MessagingPort {

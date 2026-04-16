@@ -1,4 +1,4 @@
-// XARK OS v2.0 — SETTLEMENT LEDGER
+// hello OS v2.0 — SETTLEMENT LEDGER
 // Calculates financial settlement from locked decision items.
 // Logic: Sum the value of all isLocked items per user.
 // Calculate the "Debt Delta" between members.

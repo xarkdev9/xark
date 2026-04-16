@@ -1,5 +1,5 @@
 /**
- * Core types for Xark's Universal Decision Engine.
+ * Core types for hello's Universal Decision Engine.
  *
  * Two parallel systems:
  * 1. Decision Engine — for any decidable item (hotels, cars, venues, schools…)
@@ -11,7 +11,6 @@
 // --- Identifiers ---
 
 export type UserId = string;
-export type GroupId = string;
 export type GroupId = string;
 export type ItemId = string;
 export type TaskId = string;
@@ -73,35 +72,52 @@ export interface OwnershipRecord {
 
 // --- Decision Item (universal) ---
 
-export interface DecisionItem {
-  id: ItemId;
-  groupId: GroupId;
-  title: string;
-  description: string;
-  category: string; // Open string — "hotel", "sedan", "venue", "daycare", anything
-  state: DecisionItemState;
-  proposedBy: UserId;
+export type OwnershipState = OwnershipRecord;
+
+// The Server-Side Model (What the algo/ folder sees)
+export interface ObliviousDecisionItem {
+  id: string;
+  groupId: string;
+  proposedBy: string;
   proposedAt: number;
-  reactions: Reaction[];
+  
+  // The Cryptographic Envelope (Server cannot read this)
+  ciphertextPayload: string; 
+  nonce: string;
+
+  // The Consensus Math (Server CAN read this to execute Heart-Sort)
+  state: 'proposed' | 'ranked' | 'considering' | 'locked' | 'decided';
+  reactions: Reaction[]; // e.g., { userId: "alice", type: "love_it" }
   weightedScore: number;
-  commitmentProof: CommitmentProof | null;
-  ownership: OwnershipRecord | null;
-  ownershipHistory: OwnershipRecord[];
+  
+  // The Green-Lock Proof (Encrypted)
   lockedAt: number | null;
-  version: number;
-  metadata: Record<string, unknown>;
+  ownership: OwnershipState | null;
+  commitmentCiphertext: string | null;
+  commitmentNonce: string | null;
+  
+  version: number; // For optimistic concurrency locking
 }
 
-/**
- * @deprecated Use DecisionItem. BookableItem extends DecisionItem with
- * legacy field aliases (groupId for groupId, bookingProof for commitmentProof).
- */
-export type BookableItem = DecisionItem & {
-  /** @deprecated Use groupId instead */
-  groupId: GroupId;
-  /** @deprecated Use commitmentProof instead */
-  bookingProof: BookingProof | null;
-};
+// The Decrypted Payload (Only exists in RAM on the Flutter client)
+export interface DecryptedItemPayload {
+  title: string;           // "St. Regis Bali"
+  description: string;     // "$750/night, Ocean View"
+  category: string;        // "hotel"
+  priceCents?: bigint;     // Xpensly financial data
+  customMetadata?: any;    // URLs, map coordinates, etc.
+}
+
+// The Decrypted Commitment (Only exists in RAM on the Flutter client)
+export interface DecryptedCommitmentProof {
+  type: string;            // "booking_ref"
+  value: string;           // "BC-9876543"
+  submittedBy: string;
+}
+
+// Ensure BookableItem and DecisionItem alias the new oblivious model for gradual migration
+export type DecisionItem = ObliviousDecisionItem;
+export type BookableItem = ObliviousDecisionItem;
 
 // --- Task States (Non-bookable items) ---
 

@@ -1,19 +1,16 @@
-// XARK OS v2.0 — POST /api/chat/start
+// hello OS v2.0 — POST /api/chat/start
 // WhatsApp-style find-or-create 1:1 chat.
 // Calls find_or_create_chat RPC atomically.
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { verifyAuth } from "@/lib/auth-verify";
-import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req.headers.get("authorization"));
   if (!auth) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  if (!checkRateLimit(`chat:${auth.userId}`, 20, 60_000)) {
-    return NextResponse.json({ error: "rate limited" }, { status: 429 });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "not configured" }, { status: 500 });

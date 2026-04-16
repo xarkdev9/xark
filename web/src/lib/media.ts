@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Media Service
+// hello OS v2.0 — Media Service
 // Firebase Storage for blobs, Supabase for metadata.
 
 import { storageAdapter } from "@/lib/storage";

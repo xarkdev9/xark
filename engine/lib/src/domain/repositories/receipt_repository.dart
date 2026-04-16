@@ -1,4 +1,4 @@
-import 'package:hello_engine/src/domain/models/receipt.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/receipt.dart';
 
 /// Abstract repository for delivery/read receipt persistence.
 ///

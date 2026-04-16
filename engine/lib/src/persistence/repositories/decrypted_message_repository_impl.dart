@@ -1,5 +1,5 @@
-import 'package:hello_engine/src/persistence/database/app_database.dart';
-import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/decrypted_message_repository.dart';
 import 'package:drift/drift.dart';
 
 /// Drift-backed implementation of [DecryptedMessageRepository].

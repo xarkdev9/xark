@@ -1,19 +1,16 @@
-// XARK OS v2.0 — POST /api/contacts/check
-// Takes an array of phone numbers, returns which ones are registered on Xark.
+// hello OS v2.0 — POST /api/contacts/check
+// Takes an array of phone numbers, returns which ones are registered on hello.
 // Does NOT return display_name — the client has names from the phone's contacts.
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { verifyAuth } from "@/lib/auth-verify";
-import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req.headers.get("authorization"));
   if (!auth) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  if (!checkRateLimit(`contacts:${auth.userId}`, 5, 60_000)) {
-    return NextResponse.json({ error: "rate limited" }, { status: 429 });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "not configured" }, { status: 500 });
@@ -41,7 +38,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ registered: [] });
   }
 
-  // Build user IDs in the format Xark uses: phone_{last10digits}
+  // Build user IDs in the format hello uses: phone_{last10digits}
   const possibleIds = normalized.map((n) => `phone_${n}`);
 
   const { data, error } = await supabaseAdmin

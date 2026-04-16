@@ -1,15 +1,12 @@
-// ignore_for_file: deprecated_member_use
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
 
-import 'package:hello_engine/src/persistence/database/app_database.dart';
-import 'package:drift/web.dart';
+import 'database_factory_stub.dart'
+    if (dart.library.io) 'database_factory_native.dart'
+    if (dart.library.js_interop) 'database_factory_stub.dart'
+    as platform;
 
-/// Factory for creating an [AppDatabase] instance.
-///
-/// Uses drift's WebDatabase for browser environments.
-/// Native SQLCipher encryption is a Phase 2 target.
 class DatabaseFactory {
-  /// Creates and returns an [AppDatabase].
-  static Future<AppDatabase> create() async {
-    return AppDatabase(WebDatabase('chat_engine'));
+  static Future<AppDatabase> create({List<int>? encryptionKey}) {
+    return platform.createDatabase(encryptionKey: encryptionKey);
   }
 }

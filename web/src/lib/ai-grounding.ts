@@ -1,4 +1,4 @@
-// XARK OS v2.0 — AI GROUNDING CONSTRAINT SYSTEM
+// hello OS v2.0 — AI GROUNDING CONSTRAINT SYSTEM
 // Per Section 8 of mar10_algo.md: @hello MUST respect locked decisions.
 // Locked categories become forbidden — @hello will not suggest alternatives.
 // Source of truth: /Users/ramchitturi/algo/src/engine/ai-grounding.ts

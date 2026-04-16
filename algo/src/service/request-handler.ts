@@ -126,9 +126,8 @@ export class RequestHandler {
       const item = await this.service.addItem(
         identity,
         segments[1] as GroupId,
-        body.title as string,
-        (body.description ?? "") as string,
-        (body.category ?? "general") as string
+        body.ciphertextPayload as string,
+        body.nonce as string
       );
       return { status: 201, body: item };
     }
@@ -211,13 +210,12 @@ export class RequestHandler {
       segments[0] === "items" &&
       segments[2] === "lock"
     ) {
-      const proof: CommitmentProof = {
-        type: (body.proofType ?? "confirmation_number") as string,
-        value: body.proofValue as string,
-        submittedBy: identity.userId,
-        submittedAt: Date.now(),
-      };
-      const item = await this.service.lock(identity, segments[1] as ItemId, proof);
+      const item = await this.service.lock(
+        identity,
+        segments[1] as ItemId,
+        body.commitmentCiphertext as string,
+        body.commitmentNonce as string
+      );
       return { status: 200, body: item };
     }
 

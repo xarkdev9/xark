@@ -1,4 +1,4 @@
-// XARK OS v2.0 — SUMMON LINK CLAIM
+// hello OS v2.0 — SUMMON LINK CLAIM
 // POST /api/invite/claim — verifies Firebase token, finds/creates user, claims link, creates space.
 // Body: { code: string, firebaseToken: string }
 // Returns { token, user: { id, displayName }, groupId }
@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { SignJWT } from "jose";
 import { makeUserId } from "@/lib/user-id";
-import { checkRateLimit } from "@/lib/rate-limit";
 
 // Firebase Admin SDK for token verification (matches phone-auth pattern exactly)
 import { initializeApp, getApps, cert, type ServiceAccount } from "firebase-admin/app";
@@ -76,11 +75,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "firebaseToken required" }, { status: 400 });
   }
 
-  // Rate limit by IP before expensive Firebase verification
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (!checkRateLimit(`summon-claim:${ip}`, 10, 60_000)) {
-    return NextResponse.json({ error: "too many attempts" }, { status: 429 });
-  }
+  // Rate limiting moved to edge proxy (BACKEND-03)
 
   // Verify Firebase ID token
   const firebaseAuth = getFirebaseAdmin();

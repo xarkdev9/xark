@@ -1,14 +1,15 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/crypto/keys/key_types.dart';
-import 'package:hello_engine/src/crypto/media/media_crypto.dart';
-import 'package:hello_engine/src/domain/models/chat_engine_error.dart';
-import 'package:hello_engine/src/domain/models/media_metadata.dart';
-import 'package:hello_engine/src/media/media_cache.dart';
-import 'package:hello_engine/src/media/upload_progress.dart';
-import 'package:hello_engine/src/observer/chat_engine_observer.dart';
-import 'package:hello_engine/src/transport/media_upload_client.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/media/media_crypto.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/chat_engine_error.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/media_metadata.dart';
+import 'package:e2ee_chat_sdk/src/media/media_cache.dart';
+import 'package:e2ee_chat_sdk/src/media/upload_progress.dart';
+import 'package:e2ee_chat_sdk/src/observer/chat_engine_observer.dart';
+import 'package:e2ee_chat_sdk/src/transport/media_upload_client.dart';
 
 /// Manages the download-verify-decrypt pipeline for media attachments.
 ///
@@ -100,12 +101,19 @@ class DownloadManager {
       throw MediaDecryptionFailed(mediaId);
     }
 
-    final key = MediaKey(
-      key: Uint8List.fromList(base64Decode(metadata.encryptedKey!)),
-      iv: Uint8List.fromList(base64Decode(metadata.iv!)),
-    );
+    final keyBytes =
+        Uint8List.fromList(base64Decode(metadata.encryptedKey!));
+    final ivBytes =
+        Uint8List.fromList(base64Decode(metadata.iv!));
 
-    final decrypted = await MediaCrypto.decrypt(encryptedBytes, key);
+    // Run heavy symmetric decryption in a fire-and-forget isolate
+    // to keep the main thread free for UI work.
+    final decrypted = await Isolate.run(
+      () => MediaCrypto.decrypt(
+        encryptedBytes,
+        MediaKey(key: keyBytes, iv: ivBytes),
+      ),
+    );
 
     stopwatch.stop();
     observer?.onMediaDownload(mediaId, decrypted.length, stopwatch.elapsed);

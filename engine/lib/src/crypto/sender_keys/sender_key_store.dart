@@ -1,4 +1,4 @@
-import 'package:hello_engine/src/crypto/keys/key_types.dart';
+import 'package:e2ee_chat_sdk/src/crypto/keys/key_types.dart';
 
 /// Abstract interface for persisting Sender Key records.
 ///

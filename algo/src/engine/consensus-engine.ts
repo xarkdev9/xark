@@ -1,5 +1,5 @@
 /**
- * Xark Universal Decision Engine
+ * hello Universal Decision Engine
  *
  * Orchestrates the full decision lifecycle:
  *   Options proposed (by Apify, manually, or any source)
@@ -24,7 +24,6 @@ import type {
   GroupId,
   ItemId,
   SpaceConfig,
-  GroupId,
   Task,
   TaskId,
   UserId,
@@ -182,9 +181,8 @@ export class ConsensusEngine {
    */
   addItem(
     groupId: GroupId,
-    title: string,
-    description: string,
-    category: string,
+    ciphertextPayload: string,
+    nonce: string,
     proposedBy: UserId,
     timestamp: number
   ): BookableItem {
@@ -194,23 +192,19 @@ export class ConsensusEngine {
 
     const item: BookableItem = {
       id,
-      groupId,
       groupId: groupId as GroupId,
-      title,
-      description,
-      category,
+      ciphertextPayload,
+      nonce,
       state: machine.getInitialState() as BookableItem["state"],
       proposedBy,
       proposedAt: timestamp,
       reactions: [],
       weightedScore: 0,
-      commitmentProof: null,
-      bookingProof: null,
+      commitmentCiphertext: null,
+      commitmentNonce: null,
       ownership: null,
-      ownershipHistory: [],
       lockedAt: null,
       version: 1,
-      metadata: {},
     };
 
     this.items.set(item.id, item);
@@ -221,7 +215,7 @@ export class ConsensusEngine {
       timestamp,
       groupId: groupId as GroupId,
       actorId: proposedBy,
-      payload: { itemId: item.id, title, category },
+      payload: { itemId: item.id, ciphertextPayload, nonce },
     });
 
     return item;
@@ -233,13 +227,12 @@ export class ConsensusEngine {
    */
   proposeItem(
     groupId: GroupId,
-    title: string,
-    description: string,
-    category: string,
+    ciphertextPayload: string,
+    nonce: string,
     proposedBy: UserId,
     timestamp: number
   ): BookableItem {
-    return this.addItem(groupId as GroupId, title, description, category, proposedBy, timestamp);
+    return this.addItem(groupId as GroupId, ciphertextPayload, nonce, proposedBy, timestamp);
   }
 
   /**
@@ -256,7 +249,7 @@ export class ConsensusEngine {
     const config = this.getSpaceConfig(item.groupId as GroupId);
 
     if (isLocked(item, machine)) {
-      throw new Error(`Cannot react to locked item "${item.title}".`);
+      throw new Error(`Cannot react to locked item.`);
     }
 
     if (!config.allowSelfReaction && item.proposedBy === userId) {
@@ -295,7 +288,7 @@ export class ConsensusEngine {
     const config = this.getSpaceConfig(item.groupId as GroupId);
 
     if (isLocked(item, machine)) {
-      throw new Error(`Cannot modify reactions on locked item "${item.title}".`);
+      throw new Error(`Cannot modify reactions on locked item.`);
     }
 
     const updated = removeReaction(item, userId, config.reactionWeights);
@@ -316,24 +309,28 @@ export class ConsensusEngine {
    * Locks/commits an item by providing proof.
    * The committer is automatically stamped as the owner.
    */
-  lock(itemId: ItemId, proof: CommitmentProof): BookableItem {
+  lock(
+    itemId: ItemId,
+    commitmentCiphertext: string,
+    commitmentNonce: string,
+    userId: UserId,
+    timestamp: number
+  ): BookableItem {
     const item = this.getItemOrThrow(itemId);
     const machine = this.getStateMachine(item.groupId as GroupId);
     const config = this.getSpaceConfig(item.groupId as GroupId);
 
-    const locked = commitItem(item, proof, machine, config.requireProofForLock);
+    const locked = commitItem(item, commitmentCiphertext, commitmentNonce, userId, timestamp, machine, config.requireProofForLock);
     this.items.set(itemId, locked);
 
     this.emit({
       type: EventType.ItemLocked,
-      timestamp: proof.submittedAt,
+      timestamp: timestamp,
       groupId: item.groupId,
-      actorId: proof.submittedBy,
+      actorId: userId,
       payload: {
         itemId,
-        title: item.title,
-        proofType: proof.type,
-        ownerId: proof.submittedBy,
+        ownerId: userId,
       },
     });
 
@@ -361,7 +358,6 @@ export class ConsensusEngine {
       actorId: newOwnerId,
       payload: {
         itemId,
-        title: item.title,
         previousOwnerId,
         newOwnerId,
       },

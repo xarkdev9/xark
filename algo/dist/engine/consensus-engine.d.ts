@@ -1,39 +1,78 @@
 /**
- * Xark Consensus Engine
+ * hello Universal Decision Engine
  *
  * Orchestrates the full decision lifecycle:
- *   Apify proposes options
- *     → Group reacts (❤️/👍🏻) → Weighted Heart-Sort re-orders in real-time
- *       → Any member books the top choice + provides confirmation
- *         → Green-Lock activates → Booker stamped as owner
- *           → @xark grounds all future suggestions to locked state
+ *   Options proposed (by Apify, manually, or any source)
+ *     → Members react (❤️/👍🏻) → Weighted Heart-Sort re-orders in real-time
+ *       → Any member commits (books, purchases, decides) + provides proof
+ *         → Lock activates → Committer stamped as owner
+ *           → @hello grounds all future suggestions to locked state
  *             → Another member can claim via "I'll take care of this"
+ *
+ * Supports multiple DecisionSpaces — each with its own state machine,
+ * reaction weights, thresholds, and items.
  *
  * No gates. No votes. No clustering. Just signal → act → lock.
  */
-import type { BookableItem, BookingProof, EngineEvent, Group, GroupId, ItemId, Task, TaskId, UserId } from "../models/types.js";
+import type { BookableItem, DecisionSpace, EngineEvent, Group, GroupId, ItemId, SpaceConfig, Task, TaskId, UserId } from "../models/types.js";
 import { ReactionType } from "../models/types.js";
 import { getRankedSummary } from "./heart-sort.js";
 import { type GroundingContext } from "./ai-grounding.js";
+import { StateMachine } from "./state-machine.js";
 export type EventListener = (event: EngineEvent) => void;
+export interface EngineOptions {
+    defaultConfig?: Partial<SpaceConfig>;
+}
 export declare class ConsensusEngine {
     private groups;
+    private spaces;
+    private spaceMachines;
     private items;
     private tasks;
     private groupItems;
     private groupTasks;
     private listeners;
-    private itemCounter;
+    private defaultConfig;
+    constructor(options?: EngineOptions);
     on(listener: EventListener): () => void;
     private emit;
+    /**
+     * Creates a new DecisionSpace with its own config and state machine.
+     */
+    createSpace(space: DecisionSpace): void;
+    /**
+     * Gets a DecisionSpace by ID.
+     */
+    getSpace(groupId: GroupId): DecisionSpace | undefined;
+    /**
+     * Gets the config for a space, falling back to default.
+     */
+    getSpaceConfig(groupId: GroupId): SpaceConfig;
+    /**
+     * Gets the state machine for a space, creating a default if needed.
+     */
+    getStateMachine(groupId: GroupId): StateMachine;
+    /**
+     * Sets a custom state machine for a space.
+     */
+    setStateMachine(groupId: GroupId, machine: StateMachine): void;
+    /**
+     * Registers a group. Alias for createSpace with default config.
+     */
     registerGroup(group: Group): void;
     getGroup(groupId: GroupId): Group | undefined;
     /**
-     * Proposes a new bookable item to a group (typically from Apify agents).
+     * Adds a new decision item to a space/group.
+     * Uses crypto.randomUUID() for globally unique IDs.
      */
-    proposeItem(groupId: GroupId, title: string, description: string, category: BookableItem["category"], proposedBy: UserId, timestamp: number): BookableItem;
+    addItem(groupId: GroupId, ciphertextPayload: string, nonce: string, proposedBy: UserId, timestamp: number): BookableItem;
     /**
-     * Adds a reaction (❤️ or 👍🏻) to an item. Triggers Heart-Sort re-ordering.
+     * Proposes a new bookable item to a group.
+     * Backwards-compatible alias for addItem().
+     */
+    proposeItem(groupId: GroupId, ciphertextPayload: string, nonce: string, proposedBy: UserId, timestamp: number): BookableItem;
+    /**
+     * Adds a reaction to an item. Triggers re-ranking.
      */
     react(itemId: ItemId, userId: UserId, reactionType: ReactionType, timestamp: number): BookableItem;
     /**
@@ -41,33 +80,37 @@ export declare class ConsensusEngine {
      */
     unreact(itemId: ItemId, userId: UserId, timestamp: number): BookableItem;
     /**
-     * Locks an item by providing booking confirmation.
-     * The booker is automatically stamped as the owner.
+     * Locks/commits an item by providing proof.
+     * The committer is automatically stamped as the owner.
      */
-    lock(itemId: ItemId, proof: BookingProof): BookableItem;
+    lock(itemId: ItemId, commitmentCiphertext: string, commitmentNonce: string, userId: UserId, timestamp: number): BookableItem;
     /**
      * Transfers ownership via "I'll take care of this" button.
      */
     transfer(itemId: ItemId, newOwnerId: UserId, timestamp: number): BookableItem;
     addTask(groupId: GroupId, title: string, description: string, createdBy: UserId, timestamp: number): Task;
     claimTask(taskId: TaskId, userId: UserId, timestamp: number): Task;
-    releaseTask(taskId: TaskId): Task;
+    releaseTask(taskId: TaskId, timestamp?: number): Task;
     getItem(itemId: ItemId): BookableItem | undefined;
     getTask(taskId: TaskId): Task | undefined;
     /**
-     * Returns all items for a group, sorted by Heart-Sort (weighted score descending).
+     * Returns all items for a group/space, sorted by Heart-Sort (weighted score descending).
+     * Supports pagination via offset/limit.
      */
-    getGroupItems(groupId: GroupId): BookableItem[];
+    getGroupItems(groupId: GroupId, options?: {
+        offset?: number;
+        limit?: number;
+    }): BookableItem[];
     /**
-     * Returns only locked items for a group.
+     * Returns only locked items for a group/space.
      */
     getLockedItems(groupId: GroupId): BookableItem[];
     /**
-     * Returns only unlocked (active) items for a group, sorted by score.
+     * Returns only unlocked (active) items for a group/space, sorted by score.
      */
     getActiveItems(groupId: GroupId): BookableItem[];
     /**
-     * Returns all tasks for a group.
+     * Returns all tasks for a group/space.
      */
     getGroupTasks(groupId: GroupId): Task[];
     /**
@@ -82,12 +125,22 @@ export declare class ConsensusEngine {
         isGroupFavorite: boolean;
     };
     /**
-     * Builds the grounding context for @xark.
+     * Returns the signal breakdown for an item.
+     * Frontend uses isUnanimousLoveIt to trigger the Social Gold burst.
+     */
+    getSignalBreakdown(itemId: ItemId): {
+        loveIt: number;
+        worksForMe: number;
+        notForMe: number;
+        isUnanimousLoveIt: boolean;
+    };
+    /**
+     * Builds the grounding context for @hello.
      * Returns all locked decisions as hard constraints and active items as context.
      */
     getGroundingContext(groupId: GroupId): GroundingContext;
     /**
-     * Generates the system prompt fragment for @xark.
+     * Generates the system prompt fragment for @hello.
      */
     getGroundingPrompt(groupId: GroupId): string;
     private getItemOrThrow;

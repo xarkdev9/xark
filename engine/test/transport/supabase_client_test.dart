@@ -2,8 +2,8 @@
 
 import 'dart:convert';
 
-import 'package:hello_engine/src/transport/dto/message_envelope.dart';
-import 'package:hello_engine/src/transport/supabase_client.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/message_envelope.dart';
+import 'package:e2ee_chat_sdk/src/transport/supabase_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

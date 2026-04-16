@@ -1,6 +1,6 @@
 // ignore_for_file: prefer_const_constructors
 
-import 'package:hello_engine/chat_engine.dart';
+import 'package:e2ee_chat_sdk/chat_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Concrete no-op observer for testing.

@@ -1,4 +1,4 @@
-// XARK OS v2.0 — Offline Message Outbox Queue
+// hello OS v2.0 — Offline Message Outbox Queue
 // Encrypts locally, retries on reconnect.
 // Prevents message loss on network drops without falling back to plaintext.
 
@@ -26,7 +26,7 @@ export interface OutboxEntry {
   }>;
 }
 
-const DB_NAME = 'xark-outbox';
+const DB_NAME = 'hello-outbox';
 const STORE_NAME = 'pending';
 
 function openOutboxDB(): Promise<IDBDatabase> {

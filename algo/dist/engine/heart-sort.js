@@ -2,19 +2,22 @@
  * Weighted Heart-Sort Algorithm
  *
  * Items are re-ordered in real-time by aggregate group reactions.
- * ❤️ = 5x weight, 👍🏻 = 1x weight.
+ * Default: ❤️ = 5x weight, 👍🏻 = 1x weight. Weights are configurable.
  *
  * Performance: O(1) per reaction update, O(n log n) for full sort.
  *
  * The value is as a pre-commitment alignment tool — it builds social consensus
- * before someone commits real money, reducing the risk of contentious bookings.
+ * before someone commits, reducing the risk of contentious decisions.
  */
 import { ReactionType, REACTION_WEIGHTS } from "../models/types.js";
 /**
  * Calculates the weighted score for an item based on its reactions.
  * Each user's reaction is counted once (last reaction wins if duplicated).
+ *
+ * @param weights Optional custom weights. Defaults to REACTION_WEIGHTS.
  */
-export function calculateWeightedScore(reactions) {
+export function calculateWeightedScore(reactions, weights) {
+    const effectiveWeights = weights ?? REACTION_WEIGHTS;
     // Deduplicate: one reaction per user, last one wins
     const userReactions = new Map();
     for (const reaction of reactions) {
@@ -22,7 +25,7 @@ export function calculateWeightedScore(reactions) {
     }
     let score = 0;
     for (const type of userReactions.values()) {
-        score += REACTION_WEIGHTS[type];
+        score += effectiveWeights[type] ?? 0;
     }
     return score;
 }
@@ -30,7 +33,7 @@ export function calculateWeightedScore(reactions) {
  * Adds a reaction to an item and recalculates its weighted score.
  * Returns the updated item. If the user already reacted, their reaction is replaced.
  */
-export function addReaction(item, userId, reactionType, timestamp) {
+export function addReaction(item, userId, reactionType, timestamp, weights) {
     // Remove any existing reaction from this user
     const filteredReactions = item.reactions.filter((r) => r.userId !== userId);
     const newReaction = {
@@ -40,7 +43,7 @@ export function addReaction(item, userId, reactionType, timestamp) {
         timestamp,
     };
     const reactions = [...filteredReactions, newReaction];
-    const weightedScore = calculateWeightedScore(reactions);
+    const weightedScore = calculateWeightedScore(reactions, weights);
     return {
         ...item,
         reactions,
@@ -50,9 +53,9 @@ export function addReaction(item, userId, reactionType, timestamp) {
 /**
  * Removes a user's reaction from an item and recalculates score.
  */
-export function removeReaction(item, userId) {
+export function removeReaction(item, userId, weights) {
     const reactions = item.reactions.filter((r) => r.userId !== userId);
-    const weightedScore = calculateWeightedScore(reactions);
+    const weightedScore = calculateWeightedScore(reactions, weights);
     return {
         ...item,
         reactions,
@@ -80,33 +83,46 @@ export function getTopItems(items, n) {
 /**
  * Calculates an "Agreement Score" — the percentage of group members
  * who have positively reacted (❤️ or 👍🏻) to an item.
- * Items with >80% get a "Group Favorite" designation.
+ *
+ * @param threshold Custom threshold for "Group Favorite". Default: 80 (strictly >80%).
  */
-export function calculateAgreementScore(item, totalMembers) {
-    const uniqueReactors = new Set(item.reactions.map((r) => r.userId));
-    const percentage = totalMembers > 0 ? (uniqueReactors.size / totalMembers) * 100 : 0;
+export function calculateAgreementScore(item, totalMembers, threshold) {
+    const effectiveThreshold = threshold ?? 80;
+    // Only count positive signals (LoveIt, WorksForMe) as agreement — NotForMe is resistance, not agreement
+    const positiveReactors = new Set(item.reactions
+        .filter((r) => r.type !== ReactionType.NotForMe)
+        .map((r) => r.userId));
+    const percentage = totalMembers > 0 ? (positiveReactors.size / totalMembers) * 100 : 0;
     return {
         percentage,
-        isGroupFavorite: percentage > 80,
+        isGroupFavorite: percentage > effectiveThreshold,
     };
 }
 /**
  * Gets a ranked summary of items with their scores and positions.
  */
-export function getRankedSummary(items, totalMembers) {
+export function getRankedSummary(items, totalMembers, threshold) {
     const sorted = heartSort(items);
     return sorted.map((item, index) => {
-        const agreement = calculateAgreementScore(item, totalMembers);
-        const hearts = item.reactions.filter((r) => r.type === ReactionType.Heart).length;
-        const thumbsUp = item.reactions.filter((r) => r.type === ReactionType.ThumbsUp).length;
+        const agreement = calculateAgreementScore(item, totalMembers, threshold);
+        const loveIt = item.reactions.filter((r) => r.type === ReactionType.LoveIt).length;
+        const worksForMe = item.reactions.filter((r) => r.type === ReactionType.WorksForMe).length;
+        const notForMe = item.reactions.filter((r) => r.type === ReactionType.NotForMe).length;
         return {
             itemId: item.id,
-            title: item.title,
+            ciphertextPayload: item.ciphertextPayload,
+            nonce: item.nonce,
             rank: index + 1,
             weightedScore: item.weightedScore,
             agreementScore: agreement.percentage,
             isGroupFavorite: agreement.isGroupFavorite,
-            reactionBreakdown: { hearts, thumbsUp },
+            reactionBreakdown: {
+                loveIt,
+                worksForMe,
+                notForMe,
+                hearts: loveIt,
+                thumbsUp: worksForMe,
+            },
         };
     });
 }

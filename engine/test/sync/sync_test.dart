@@ -4,24 +4,25 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hello_engine/src/domain/models/message.dart';
-import 'package:hello_engine/src/domain/models/presence_state.dart';
-import 'package:hello_engine/src/domain/models/typing_indicator.dart';
-import 'package:hello_engine/src/domain/repositories/message_repository.dart';
-import 'package:hello_engine/src/domain/repositories/receipt_repository.dart';
-import 'package:hello_engine/src/persistence/database/app_database.dart';
-import 'package:hello_engine/src/persistence/repositories/decrypted_message_repository.dart';
-import 'package:hello_engine/src/persistence/repositories/outbox_repository.dart';
-import 'package:hello_engine/src/sync/deduplication_set.dart';
-import 'package:hello_engine/src/sync/gap_detector.dart';
-import 'package:hello_engine/src/sync/message_processor.dart';
-import 'package:hello_engine/src/sync/outbox_processor.dart';
-import 'package:hello_engine/src/sync/sync_coordinator.dart';
-import 'package:hello_engine/src/sync/sync_observer.dart';
-import 'package:hello_engine/src/transport/dto/message_envelope.dart';
-import 'package:hello_engine/src/transport/dto/realtime_event.dart';
-import 'package:hello_engine/src/transport/realtime_listener.dart';
-import 'package:hello_engine/src/transport/supabase_client.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/message.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/presence_state.dart';
+import 'package:e2ee_chat_sdk/src/domain/models/typing_indicator.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/conversation_repository.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/message_repository.dart';
+import 'package:e2ee_chat_sdk/src/domain/repositories/receipt_repository.dart';
+import 'package:e2ee_chat_sdk/src/persistence/database/app_database.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/decrypted_message_repository.dart';
+import 'package:e2ee_chat_sdk/src/persistence/repositories/outbox_repository.dart';
+import 'package:e2ee_chat_sdk/src/sync/deduplication_set.dart';
+import 'package:e2ee_chat_sdk/src/sync/gap_detector.dart';
+import 'package:e2ee_chat_sdk/src/sync/message_processor.dart';
+import 'package:e2ee_chat_sdk/src/sync/outbox_processor.dart';
+import 'package:e2ee_chat_sdk/src/sync/sync_coordinator.dart';
+import 'package:e2ee_chat_sdk/src/sync/sync_observer.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/message_envelope.dart';
+import 'package:e2ee_chat_sdk/src/transport/dto/realtime_event.dart';
+import 'package:e2ee_chat_sdk/src/transport/realtime_listener.dart';
+import 'package:e2ee_chat_sdk/src/transport/supabase_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -37,6 +38,9 @@ class MockSupabaseClientWrapper extends Mock
 class MockMessageRepository extends Mock implements MessageRepository {}
 
 class MockReceiptRepository extends Mock implements ReceiptRepository {}
+
+class MockConversationRepository extends Mock
+    implements ConversationRepository {}
 
 class MockDecryptedMessageRepository extends Mock
     implements DecryptedMessageRepository {}
@@ -680,6 +684,7 @@ void main() {
     late GapDetector gapDetector;
     late MockRealtimeListener realtimeListener;
     late MockReceiptRepository receiptRepo;
+    late MockConversationRepository conversationRepo;
     late SyncCoordinator coordinator;
 
     // We need real OutboxProcessor and GapDetector with mocked deps.
@@ -692,6 +697,7 @@ void main() {
       api = MockSupabaseClientWrapper();
       messageRepo = MockMessageRepository();
       receiptRepo = MockReceiptRepository();
+      conversationRepo = MockConversationRepository();
       realtimeListener = MockRealtimeListener();
 
       outboxProcessor = OutboxProcessor(
@@ -708,6 +714,7 @@ void main() {
         gapDetector: gapDetector,
         realtimeListener: realtimeListener,
         receiptRepo: receiptRepo,
+        conversationRepo: conversationRepo,
       );
     });
 

@@ -1,0 +1,14 @@
+name: xpensly_demo
+description: Interactive demo of xpensly_ui widgets.
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  xpensly_ui:
+    path: ../
+  xpensly_core:
+    path: ../../xpensly_core

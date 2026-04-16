@@ -4,16 +4,16 @@ async function runTests() {
   console.log("=== Testing Tier 2 E2EE Memory Engine ===\n");
 
   const recallQueries = [
-    "@xark what was that hotel nina mentioned?",
-    "@xark who said they wanted sushi?",
+    "@hello what was that hotel nina mentioned?",
+    "@hello who said they wanted sushi?",
     "remember when we went to tahoe?",
     "what did ram share about the itinerary?",
-    "@xark find that message with the airbnb link",
+    "@hello find that message with the airbnb link",
     "look up the restaurant booking"
   ];
 
   const searchQueries = [
-    "@xark search for hotels in miami",
+    "@hello search for hotels in miami",
     "look up flights to tokyo",
     "what is the weather like in New York?",
     "suggest a good place for dinner tonight"

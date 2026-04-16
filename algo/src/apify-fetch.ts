@@ -1,7 +1,7 @@
 /**
  * Apify Integration — Fetches real hotel data from Booking.com
  * via the Apify voyager~booking-scraper actor, then transforms
- * results into the format consumed by the Xark consensus engine.
+ * results into the format consumed by the hello consensus engine.
  *
  * Usage: npx tsx src/apify-fetch.ts
  */

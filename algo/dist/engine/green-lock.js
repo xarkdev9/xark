@@ -1,14 +1,14 @@
 /**
- * Green-Lock Engine
+ * Green-Lock / Commitment Engine
  *
- * The lock is triggered when a group member actually makes a booking
- * and provides proof (screenshot or confirmation number).
+ * The lock is triggered when a member provides proof of commitment
+ * (confirmation number, receipt, contract, verbal agreement, etc.).
  *
- * Lock = real-world booking confirmation, not a vote or arbitrary decision.
- * This makes anti-chaos natural: you can't argue with "we already booked the Hilton."
+ * Lock = real-world commitment confirmation, not a vote or arbitrary decision.
+ * This makes anti-chaos natural: you can't argue with a confirmed decision.
  *
- * State lifecycle:
- *   Proposed → Heart-Sorted → Booked/Locked (with proof) → Owned → Transferable
+ * State lifecycle (default flow):
+ *   Proposed → Ranked → Committed/Locked (with proof) → Owned → Transferable
  */
 import { BookableItemState } from "../models/types.js";
 export class GreenLockError extends Error {
@@ -18,45 +18,78 @@ export class GreenLockError extends Error {
     }
 }
 /**
- * Locks an item by providing booking confirmation.
- * The booker is automatically stamped as the owner.
+ * Commits/locks an item using a state machine for transitions.
+ * The committer is automatically stamped as the owner.
  *
+ * @throws GreenLockError if item is already in the locked state or proof is empty
+ */
+export function commitItem(item, commitmentCiphertext, commitmentNonce, submittedBy, submittedAt, stateMachine, requireProof = true) {
+    if (stateMachine.isLocked(item.state)) {
+        throw new GreenLockError(`Item is already locked. Cannot re-lock a committed item.`);
+    }
+    if (requireProof && !commitmentCiphertext.trim()) {
+        throw new GreenLockError("Commitment proof cannot be empty. Provide a screenshot, confirmation number, or other proof.");
+    }
+    const now = submittedAt;
+    const ownership = {
+        ownerId: submittedBy,
+        assignedAt: now,
+        reason: "booker",
+    };
+    return {
+        ...item,
+        state: stateMachine.getLockedState(),
+        commitmentCiphertext,
+        commitmentNonce,
+        ownership,
+        lockedAt: now,
+    };
+}
+/**
+ * Locks an item by providing commitment proof.
+ * The committer is automatically stamped as the owner.
+ * Uses the default BOOKING_FLOW state machine.
+ *
+ * @deprecated Use commitItem() with a StateMachine for custom flows.
  * @throws GreenLockError if item is already locked
  */
-export function lockItem(item, bookingProof) {
+export function lockItem(item, commitmentCiphertext, commitmentNonce, submittedBy, submittedAt) {
     if (item.state === BookableItemState.Locked) {
-        throw new GreenLockError(`Item "${item.title}" is already locked. Cannot re-lock a booked item.`);
+        throw new GreenLockError(`Item is already locked. Cannot re-lock a booked item.`);
     }
-    if (!bookingProof.value.trim()) {
-        throw new GreenLockError("Booking proof cannot be empty. Provide a screenshot or confirmation number.");
+    if (!commitmentCiphertext.trim()) {
+        throw new GreenLockError("Commitment proof cannot be empty. Provide a screenshot, confirmation number, or other proof.");
     }
-    const now = bookingProof.submittedAt;
+    const now = submittedAt;
     const ownership = {
-        ownerId: bookingProof.submittedBy,
+        ownerId: submittedBy,
         assignedAt: now,
         reason: "booker",
     };
     return {
         ...item,
         state: BookableItemState.Locked,
-        bookingProof,
+        commitmentCiphertext,
+        commitmentNonce,
         ownership,
-        ownershipHistory: [...item.ownershipHistory, ownership],
         lockedAt: now,
     };
 }
 /**
  * Transfers ownership of a locked item to another member.
- * The new owner takes responsibility for the booking.
+ * The new owner takes responsibility for the commitment.
  *
  * @throws GreenLockError if item is not locked
  */
-export function transferOwnership(item, newOwnerId, timestamp) {
-    if (item.state !== BookableItemState.Locked) {
-        throw new GreenLockError(`Item "${item.title}" is not locked. Only locked items can have ownership transferred.`);
+export function transferOwnership(item, newOwnerId, timestamp, stateMachine) {
+    const isItemLocked = stateMachine
+        ? stateMachine.isLocked(item.state)
+        : item.state === BookableItemState.Locked;
+    if (!isItemLocked) {
+        throw new GreenLockError(`Item is not locked. Only locked items can have ownership transferred.`);
     }
     if (item.ownership?.ownerId === newOwnerId) {
-        throw new GreenLockError(`User is already the owner of "${item.title}".`);
+        throw new GreenLockError(`User is already the owner.`);
     }
     const newOwnership = {
         ownerId: newOwnerId,
@@ -66,13 +99,16 @@ export function transferOwnership(item, newOwnerId, timestamp) {
     return {
         ...item,
         ownership: newOwnership,
-        ownershipHistory: [...item.ownershipHistory, newOwnership],
     };
 }
 /**
- * Checks if an item is locked (has a confirmed booking).
+ * Checks if an item is locked (has a confirmed commitment).
+ * Optionally uses a state machine for custom flows.
  */
-export function isLocked(item) {
+export function isLocked(item, stateMachine) {
+    if (stateMachine) {
+        return stateMachine.isLocked(item.state);
+    }
     return item.state === BookableItemState.Locked;
 }
 /**
@@ -88,16 +124,22 @@ export function getOwner(item) {
 }
 /**
  * Validates whether a user can lock an item.
- * Any group member can lock an item by providing booking proof.
+ * Any member can lock an item by providing commitment proof.
  */
-export function canLock(item) {
+export function canLock(item, stateMachine) {
+    if (stateMachine) {
+        return !stateMachine.isLocked(item.state);
+    }
     return item.state !== BookableItemState.Locked;
 }
 /**
  * Validates whether ownership can be transferred.
  */
-export function canTransferOwnership(item, newOwnerId) {
-    return (item.state === BookableItemState.Locked &&
+export function canTransferOwnership(item, newOwnerId, stateMachine) {
+    const isItemLocked = stateMachine
+        ? stateMachine.isLocked(item.state)
+        : item.state === BookableItemState.Locked;
+    return (isItemLocked &&
         item.ownership !== null &&
         item.ownership.ownerId !== newOwnerId);
 }
