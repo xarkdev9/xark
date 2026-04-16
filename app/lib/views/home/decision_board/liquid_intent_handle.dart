@@ -77,9 +77,6 @@ class _LiquidIntentLayerState extends ConsumerState<LiquidIntentLayer> with Sing
   Widget build(BuildContext context) {
     final phase = PlasmaClockScope.of(context);
     final bottomSafe = MediaQuery.paddingOf(context).bottom;
-    
-    final double currentTabPos = ref.watch(tabAnimationProvider);
-    final double dynamicOpacity = ((currentTabPos - 1.0).abs() * 0.90).clamp(0.0, 0.90);
 
     return Stack(
       children: [
@@ -97,7 +94,7 @@ class _LiquidIntentLayerState extends ConsumerState<LiquidIntentLayer> with Sing
               // Only active/opaque during active phase (>1.0)
               final double opacity = _controller.value > 1.0 ? (_controller.value - 1.0) : 0.0;
               if (opacity == 0.0) return const SizedBox.shrink();
-              
+
               return GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onTap: () => _updateState(IntentState.idle),
@@ -108,31 +105,16 @@ class _LiquidIntentLayerState extends ConsumerState<LiquidIntentLayer> with Sing
             },
           ),
         ),
-          
-        // Layer 0.6: Organic Frost Gradient (Container-less Zero-Box Blur)
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: bottomSafe > 0 ? bottomSafe + 110 : 120, // Expanded slightly to widen the fade zone
-          child: IgnorePointer(
-            child: ShaderMask(
-              shaderCallback: (rect) => const LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter, // Seamless dissolve as it routes up
-                colors: [Colors.black, Colors.transparent],
-                stops: [0.8, 1.0], // 100% solid until the very top 20%, fixing the overlap
-              ).createShader(rect),
-              blendMode: BlendMode.dstIn,
-              child: ClipRect(
-                child: Container(
-                    color: HelloColors.voidBg.withValues(alpha: dynamicOpacity), // Dynamically transparent on Home tab
-                  ),
-                ),
-            ),
-          ),
-        ),
-          
+
+        // NOTE: Layer 0.6 ("Organic Frost Gradient") was deleted
+        // 2026-04-15. It painted a 110-120pt HelloColors.voidBg wash
+        // at the bottom of the screen, keyed to an old 3-tab layout
+        // where Home was at tabAnimationProvider position 1.0. With
+        // the 4-tab scaffold (HOME at position 0.0) and full-bleed
+        // ChromaticAtmosphere, the wash covered the atmosphere with
+        // a solid white gradient on Home. The atmosphere now drenches
+        // to the bottom edge uniformly — no frost layer needed.
+
         // Layer 0.75: Ghost Indicator (Inbox • Home • Plans)
         Positioned(
           left: 0,
