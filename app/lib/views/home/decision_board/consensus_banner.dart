@@ -70,7 +70,7 @@ class _ConsensusBannerState extends State<ConsensusBanner> with SingleTickerProv
             child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A1A).withValues(alpha: 0.6),
+                  color: Color(0xFF1A1A1A).withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(32),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.2),
@@ -87,7 +87,7 @@ class _ConsensusBannerState extends State<ConsensusBanner> with SingleTickerProv
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.check_circle_outline,
                       color: Color(0xFFD4636E), // Liquid Fire Brand
                       size: 20,
@@ -95,7 +95,7 @@ class _ConsensusBannerState extends State<ConsensusBanner> with SingleTickerProv
                     const SizedBox(width: 12),
                     Text(
                       widget.text,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
                         fontWeight: FontWeight.w400,

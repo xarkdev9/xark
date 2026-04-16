@@ -107,7 +107,7 @@ class TripCard extends StatelessWidget {
                 children: [
                   Text(
                     trip.destination,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 22,
                       fontWeight: FontWeight.w400,
@@ -122,7 +122,7 @@ class TripCard extends StatelessWidget {
                       fontFamily: 'Inter',
                       fontSize: 12,
                       fontWeight: FontWeight.w300,
-                      color: const Color(0xFF1A1A1A).withValues(alpha: 0.80),
+                      color: Color(0xFF1A1A1A).withValues(alpha: 0.80),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -130,7 +130,7 @@ class TripCard extends StatelessWidget {
                     children: [
                       Text(
                         '${trip.memberIds.length} members',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 10,
                           fontWeight: FontWeight.w400,
@@ -143,7 +143,7 @@ class TripCard extends StatelessWidget {
                         PlasmaTint(
                           child: Text(
                             '${trip.pendingDecisionCount} pending',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 10,
                               fontWeight: FontWeight.w400,

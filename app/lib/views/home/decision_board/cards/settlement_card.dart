@@ -11,7 +11,7 @@ class SettlementCard extends StatelessWidget {
   final SettlementFeedItem item;
   final VoidCallback onTap;
 
-  const SettlementCard({
+  SettlementCard({
     super.key,
     required this.item,
     required this.onTap,
@@ -31,7 +31,7 @@ class SettlementCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           s.isOwedToYou
-              ? const Text(
+              ? Text(
                   'OWED TO YOU',
                   style: TextStyle(
                     fontFamily: 'Inter',
@@ -42,7 +42,7 @@ class SettlementCard extends StatelessWidget {
                   ),
                 )
               : PlasmaTint(
-                  child: const Text(
+                  child: Text(
                     'YOU OWE',
                     style: TextStyle(
                       fontFamily: 'Inter',
@@ -53,7 +53,7 @@ class SettlementCard extends StatelessWidget {
                     ),
                   ),
                 ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -66,7 +66,7 @@ class SettlementCard extends StatelessWidget {
                   color: HelloColors.inkPrimary.withValues(alpha: 0.7),
                 ),
               ),
-              const SizedBox(width: 2),
+              SizedBox(width: 2),
               Text(
                 abs,
                 style: TextStyle(
@@ -79,7 +79,7 @@ class SettlementCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             s.isOwedToYou
                 ? 'from ${s.counterpartyName}'
@@ -91,7 +91,7 @@ class SettlementCard extends StatelessWidget {
               color: HelloColors.inkSecondary,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             s.reason,
             style: TextStyle(
@@ -103,7 +103,7 @@ class SettlementCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           if (!s.isOwedToYou)
             _PayButton(onTap: () => debugPrint('[mock] pay ${s.id}'))
           else
@@ -116,7 +116,7 @@ class SettlementCard extends StatelessWidget {
 
 class _PayButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _PayButton({required this.onTap});
+  _PayButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +128,7 @@ class _PayButton extends StatelessWidget {
         child: PlasmaFill(
           borderRadius: BorderRadius.circular(8),
           height: 32,
-          child: const Center(
+          child: Center(
             child: Text(
               'PAY',
               style: TextStyle(
@@ -148,7 +148,7 @@ class _PayButton extends StatelessWidget {
 
 class _RequestButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _RequestButton({required this.onTap});
+  _RequestButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +163,7 @@ class _RequestButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         alignment: Alignment.center,
-        child: const Text(
+        child: Text(
           'REMIND',
           style: TextStyle(
             fontFamily: 'Inter',

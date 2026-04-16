@@ -117,7 +117,7 @@ class FocusHeroCard extends StatelessWidget {
                 children: [
                   Text(
                     trip.destination,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 32,
                       fontWeight: FontWeight.w400,
@@ -133,7 +133,7 @@ class FocusHeroCard extends StatelessWidget {
                       fontFamily: 'Inter',
                       fontSize: 14,
                       fontWeight: FontWeight.w300,
-                      color: const Color(0xFF1A1A1A).withValues(alpha: 0.85),
+                      color: Color(0xFF1A1A1A).withValues(alpha: 0.85),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -142,7 +142,7 @@ class FocusHeroCard extends StatelessWidget {
                       if (days > 0) ...[
                         Text(
                           '$days DAYS',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 11,
                             fontWeight: FontWeight.w400,
@@ -159,7 +159,7 @@ class FocusHeroCard extends StatelessWidget {
                           fontSize: 11,
                           fontWeight: FontWeight.w400,
                           letterSpacing: 1.5,
-                          color: const Color(0xFF1A1A1A).withValues(alpha: 0.85),
+                          color: Color(0xFF1A1A1A).withValues(alpha: 0.85),
                         ),
                       ),
                       if (trip.pendingDecisionCount > 0) ...[
@@ -167,7 +167,7 @@ class FocusHeroCard extends StatelessWidget {
                         PlasmaTint(
                           child: Text(
                             '${trip.pendingDecisionCount} PENDING',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
                               fontWeight: FontWeight.w400,

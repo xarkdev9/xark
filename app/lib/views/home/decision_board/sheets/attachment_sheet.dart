@@ -10,17 +10,17 @@ Future<void> openAttachmentSheet(BuildContext context) {
     barrierDismissible: true,
     barrierLabel: 'AttachmentSheet',
     barrierColor: Colors.black.withValues(alpha: 0.28),
-    transitionDuration: const Duration(milliseconds: 320),
+    transitionDuration: Duration(milliseconds: 320),
     pageBuilder: (_, _, _) {
       return Stack(
         children: [
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: const SizedBox.expand(),
+              child: SizedBox.expand(),
             ),
           ),
-          const Align(
+          Align(
             alignment: Alignment.bottomCenter,
             child: _AttachmentSheet(),
           ),
@@ -35,7 +35,7 @@ Future<void> openAttachmentSheet(BuildContext context) {
         ),
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0, 0.06),
+            begin: Offset(0, 0.06),
             end: Offset.zero,
           ).animate(
             CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
@@ -48,9 +48,9 @@ Future<void> openAttachmentSheet(BuildContext context) {
 }
 
 class _AttachmentSheet extends StatelessWidget {
-  const _AttachmentSheet();
+  _AttachmentSheet();
 
-  static const _attachments = [
+  static final _attachments = [
     ('Camera', Icons.photo_camera_rounded, 0xFF8B5CF6),
     ('Photos', Icons.photo_library_rounded, 0xFFFF9B6E),
     ('Location', Icons.location_on_rounded, 0xFF10B981),
@@ -63,7 +63,7 @@ class _AttachmentSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height * 0.5;
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
@@ -81,7 +81,7 @@ class _AttachmentSheet extends StatelessWidget {
             type: MaterialType.transparency,
             child: Column(
             children: [
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
                 width: 44,
                 height: 4,
@@ -90,12 +90,12 @@ class _AttachmentSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'ATTACH',
                         style: TextStyle(
@@ -128,7 +128,7 @@ class _AttachmentSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20),
@@ -168,7 +168,7 @@ class _AttachmentSheet extends StatelessWidget {
                                     color: Color(colorHex),
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                SizedBox(height: 10),
                                 Text(
                                   label,
                                   style: TextStyle(
@@ -186,7 +186,7 @@ class _AttachmentSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
           ),
           ),

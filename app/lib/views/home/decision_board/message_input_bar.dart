@@ -139,7 +139,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
                   key: const ValueKey<String>('send'),
                   icon: Icons.arrow_upward_rounded,
                   onTap: _handleSend,
-                  iconColor: const Color(0xFFF0EFF4),
+                  iconColor: Color(0xFFF0EFF4),
                 )
               : _CircleButton(
                   key: const ValueKey<String>('mic'),

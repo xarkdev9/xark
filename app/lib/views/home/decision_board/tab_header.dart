@@ -7,9 +7,6 @@
 // Crossfades (220ms ease-out) between the two states when the
 // active tab changes, so the header reads as a single living
 // element, not as jumping chrome.
-//
-// The Groups tab was merged into Chats on 2026-04-15 — no
-// separate Groups header remains.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,8 +38,8 @@ class TabHeader extends ConsumerWidget {
         );
       },
       child: tab == HomeTab.home
-          ? const SizedBox(
-              key: ValueKey<String>('header_avatar'),
+          ? SizedBox(
+              key: const ValueKey<String>('header_avatar'),
               height: 36,
               child: Align(
                 alignment: Alignment.centerLeft,

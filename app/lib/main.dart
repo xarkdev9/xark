@@ -27,11 +27,11 @@ final engineProvider = Provider<ChatEngine>((ref) => throw UnimplementedError())
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
 // ─── Environment ────────────────────────────────────────────────────
-const String serverUrl = String.fromEnvironment(
+String serverUrl = String.fromEnvironment(
   'SERVER_URL',
   defaultValue: 'https://ldnsxwkkxwztqyqkyuqa.supabase.co',
 );
-const String _supabaseAnonKey = String.fromEnvironment(
+String _supabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
   defaultValue: '',
 );
@@ -56,7 +56,7 @@ Future<void> initializeEngine({
       pushToken: '',
       serverBaseUrl: Uri.parse(serverUrl),
       supabaseAnonKey: _supabaseAnonKey,
-      brand: const BrandConfig(
+      brand: BrandConfig(
         appName: 'hello',
         aiName: '@hello',
         aiEndpoint: '/api/hello',
@@ -85,7 +85,7 @@ void main() async {
 
   runApp(UncontrolledProviderScope(
     container: _container,
-    child: const HelloApp(),
+    child: HelloApp(),
   ));
 }
 
@@ -94,7 +94,7 @@ void main() async {
 // ═══════════════════════════════════════════════════════════════════
 
 class HelloApp extends ConsumerStatefulWidget {
-  const HelloApp({super.key});
+  HelloApp({super.key});
 
   @override
   ConsumerState<HelloApp> createState() => _HelloAppState();
@@ -147,20 +147,20 @@ class _HelloAppState extends ConsumerState<HelloApp> with WidgetsBindingObserver
         theme: ThemeData(
           scaffoldBackgroundColor: HelloColors.voidBg,
           fontFamily: 'Inter',
-          cardTheme: const CardThemeData(
+          cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           ),
-          appBarTheme: const AppBarTheme(
+          appBarTheme: AppBarTheme(
             elevation: 0,
             scrolledUnderElevation: 0,
           ),
         ),
         routes: {
-          '/home': (context) => const HomeLayout(),
-          '/auth': (context) => const AuthFlowPage(),
+          '/home': (context) => HomeLayout(),
+          '/auth': (context) => AuthFlowPage(),
         },
-        home: const HomeLayout(), // Decision board — Netflix-style decision rails
+        home: HomeLayout(), // Decision board — Netflix-style decision rails
       ),
     );
   }
@@ -170,7 +170,7 @@ class _HelloAppState extends ConsumerState<HelloApp> with WidgetsBindingObserver
 /// Re-exchanges the Firebase token for a fresh Supabase JWT,
 /// boots the engine, then navigates to home.
 class _ResumeSession extends ConsumerStatefulWidget {
-  const _ResumeSession();
+  _ResumeSession();
 
   @override
   ConsumerState<_ResumeSession> createState() => _ResumeSessionState();
@@ -222,7 +222,7 @@ class _ResumeSessionState extends ConsumerState<_ResumeSession> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HelloColors.voidBg,
-      body: const Center(
+      body: Center(
         child: SizedBox(
           width: 24,
           height: 24,

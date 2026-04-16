@@ -11,7 +11,7 @@ class DecisionCardHero extends StatelessWidget {
   final DecisionHeroFeedItem item;
   final VoidCallback onTap;
 
-  const DecisionCardHero({
+  DecisionCardHero({
     super.key,
     required this.item,
     required this.onTap,
@@ -31,15 +31,15 @@ class DecisionCardHero extends StatelessWidget {
             Image.network(
               item.photoUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const ColoredBox(
+              errorBuilder: (_, __, ___) => ColoredBox(
                 color: HelloColors.surfaceDeep,
               ),
               loadingBuilder: (_, child, progress) {
                 if (progress == null) return child;
-                return const ColoredBox(color: HelloColors.surfaceDeep);
+                return ColoredBox(color: HelloColors.surfaceDeep);
               },
             ),
-            const DecoratedBox(
+            DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -68,7 +68,7 @@ class DecisionCardHero extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Text(
                           item.liveTag!,
                           style: TextStyle(
@@ -81,7 +81,7 @@ class DecisionCardHero extends StatelessWidget {
                         ),
                       ],
                     ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     item.title,
                     style: TextStyle(
@@ -94,19 +94,19 @@ class DecisionCardHero extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Text(
                     item.subtitle,
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 12,
                       fontWeight: FontWeight.w300,
-                      color: const Color(0xFF1A1A1A).withValues(alpha: 0.75),
+                      color: Color(0xFF1A1A1A).withValues(alpha: 0.75),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Text(
                     '${item.votedCount} of ${item.totalCount} voted',
                     style: TextStyle(
@@ -117,7 +117,7 @@ class DecisionCardHero extends StatelessWidget {
                       color: Color(0xFF1A1A1A),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   PlasmaProgressBar(
                     value: item.totalCount == 0
                         ? 0

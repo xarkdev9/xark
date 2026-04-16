@@ -61,7 +61,7 @@ extension AmbientSurfaceTierColors on AmbientSurfaceTier {
   Color get fill {
     final base = HelloColors.isDark
         ? const Color(0xFF1C1C1E)
-        : const Color(0xFFFFFFFF);
+        : Color(0xFFFFFFFF);
     final alpha = switch (this) {
       AmbientSurfaceTier.whisper => 0.70,
       AmbientSurfaceTier.veil    => 0.80,

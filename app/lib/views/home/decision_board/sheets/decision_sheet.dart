@@ -12,14 +12,14 @@ Future<void> openDecisionSheet(BuildContext context, FeedItem item) {
     barrierDismissible: true,
     barrierLabel: 'DecisionSheet',
     barrierColor: Colors.black.withValues(alpha: 0.28),
-    transitionDuration: const Duration(milliseconds: 320),
+    transitionDuration: Duration(milliseconds: 320),
     pageBuilder: (_, __, ___) {
       return Stack(
         children: [
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: const SizedBox.expand(),
+              child: SizedBox.expand(),
             ),
           ),
           Align(
@@ -37,7 +37,7 @@ Future<void> openDecisionSheet(BuildContext context, FeedItem item) {
         ),
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0, 0.06),
+            begin: Offset(0, 0.06),
             end: Offset.zero,
           ).animate(
             CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
@@ -51,7 +51,7 @@ Future<void> openDecisionSheet(BuildContext context, FeedItem item) {
 
 class _DecisionSheet extends StatefulWidget {
   final FeedItem item;
-  const _DecisionSheet({required this.item});
+  _DecisionSheet({required this.item});
 
   @override
   State<_DecisionSheet> createState() => _DecisionSheetState();
@@ -102,7 +102,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
     final height = MediaQuery.of(context).size.height * 0.92;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
@@ -120,7 +120,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
             type: MaterialType.transparency,
             child: Column(
             children: [
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
                 width: 44,
                 height: 4,
@@ -129,7 +129,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
@@ -183,19 +183,19 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                           child: Image.network(
                             data.photoUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const ColoredBox(
+                            errorBuilder: (_, _, _) => ColoredBox(
                               color: HelloColors.surfaceDeep,
                             ),
                             loadingBuilder: (_, child, progress) {
                               if (progress == null) return child;
-                              return const ColoredBox(
+                              return ColoredBox(
                                 color: HelloColors.surfaceDeep,
                               );
                             },
                           ),
                         ),
                       ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Text(
                       data.title,
                       style: TextStyle(
@@ -208,7 +208,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                       ),
                     ),
                     if (data.subtitle != null) ...[
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         data.subtitle!,
                         style: TextStyle(
@@ -219,7 +219,7 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     Row(
                       children: [
                         Text(
@@ -232,8 +232,8 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                             color: HelloColors.inkPrimary,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        const Text(
+                        SizedBox(width: 10),
+                        Text(
                           'consensus',
                           style: TextStyle(
                             fontFamily: 'Inter',
@@ -244,24 +244,24 @@ class _DecisionSheetState extends State<_DecisionSheet> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     PlasmaProgressBar(
                       value: data.score.clamp(0.0, 1.0),
                       height: 4,
                     ),
-                    const SizedBox(height: 28),
+                    SizedBox(height: 28),
                     _BigVoteButton(
                       label: 'Love it',
                       active: _vote == 'love_it',
                       onTap: () => setState(() => _vote = 'love_it'),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     _BigVoteButton(
                       label: 'Works for me',
                       active: _vote == 'works_for_me',
                       onTap: () => setState(() => _vote = 'works_for_me'),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     _BigVoteButton(
                       label: 'Not for me',
                       active: _vote == 'not_for_me',
@@ -283,7 +283,7 @@ class _BigVoteButton extends StatelessWidget {
   final String label;
   final bool active;
   final VoidCallback onTap;
-  const _BigVoteButton({
+  _BigVoteButton({
     required this.label,
     required this.active,
     required this.onTap,
@@ -342,9 +342,9 @@ class _BigVoteButton extends StatelessWidget {
 /// in the center, 5 icon nodes orbiting around a radial glow.
 class _ConstellationHero extends StatelessWidget {
   final int score;
-  const _ConstellationHero({required this.score});
+  _ConstellationHero({required this.score});
 
-  static const _nodes = <(String, IconData, Offset)>[
+  static final _nodes = <(String, IconData, Offset)>[
     ('HOTELS', Icons.hotel_rounded, Offset(-100, -70)),
     ('FLIGHTS', Icons.flight_rounded, Offset(92, -80)),
     ('BUDGET', Icons.account_balance_wallet_rounded, Offset(110, 30)),
@@ -375,7 +375,7 @@ class _ConstellationHero extends StatelessWidget {
                       Colors.white.withValues(alpha: 0.03),
                       Colors.transparent,
                     ],
-                    stops: const [0.0, 0.42, 0.72],
+                    stops: [0.0, 0.42, 0.72],
                   ),
                 ),
               ),
@@ -383,7 +383,7 @@ class _ConstellationHero extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'HOTEL VOTE LIVE',
                     style: TextStyle(
                       fontFamily: 'Inter',
@@ -393,7 +393,7 @@ class _ConstellationHero extends StatelessWidget {
                       color: HelloColors.inkTertiary,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     '$score',
                     style: TextStyle(
@@ -424,7 +424,7 @@ class _ConstellationHero extends StatelessWidget {
 class _ConstellationNode extends StatelessWidget {
   final String label;
   final IconData icon;
-  const _ConstellationNode({required this.label, required this.icon});
+  _ConstellationNode({required this.label, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -449,7 +449,7 @@ class _ConstellationNode extends StatelessWidget {
             color: HelloColors.inkPrimary.withValues(alpha: 0.85),
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text(
           label,
           style: TextStyle(

@@ -249,7 +249,7 @@ final List<Trip> mockTrips = <Trip>[
     memberIds: const ['me', 'sarah', 'alex', 'maya', 'priya'],
     pendingDecisionCount: 3,
     phase: 'planning',
-    accentColor: const Color(0xFF4A90E2), // alpine blue
+    accentColor: Color(0xFF4A90E2), // alpine blue
     updatedAt: _ago(const Duration(hours: 2)),
   ),
   Trip(
@@ -262,7 +262,7 @@ final List<Trip> mockTrips = <Trip>[
     memberIds: const ['me', 'mike', 'chris', 'sara', 'dan', 'nat'],
     pendingDecisionCount: 5,
     phase: 'planning',
-    accentColor: const Color(0xFF14B8A6), // ocean teal
+    accentColor: Color(0xFF14B8A6), // ocean teal
     updatedAt: _ago(const Duration(days: 1)),
   ),
   Trip(
@@ -275,7 +275,7 @@ final List<Trip> mockTrips = <Trip>[
     memberIds: const ['me', 'sarah', 'alex', 'maya', 'priya'],
     pendingDecisionCount: 0,
     phase: 'done',
-    accentColor: const Color(0xFFFF9B6E),
+    accentColor: Color(0xFFFF9B6E),
     updatedAt: _ago(const Duration(days: 19)),
   ),
 ];

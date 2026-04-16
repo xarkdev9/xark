@@ -80,7 +80,7 @@ final authFlowProvider = NotifierProvider<AuthFlowNotifier, AuthState>(() {
 
 // --- Page Widget ---
 class AuthFlowPage extends ConsumerStatefulWidget {
-  const AuthFlowPage({super.key});
+  AuthFlowPage({super.key});
 
   @override
   ConsumerState<AuthFlowPage> createState() => _AuthFlowPageState();
@@ -221,7 +221,7 @@ class _AuthFlowPageState extends ConsumerState<AuthFlowPage> {
             children: [
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
+                  duration: Duration(milliseconds: 400),
                   switchInCurve: Curves.easeInOutCubic,
                   switchOutCurve: Curves.easeInOutCubic,
                   layoutBuilder: (currentChild, previousChildren) {
@@ -274,19 +274,19 @@ class _AuthFlowPageState extends ConsumerState<AuthFlowPage> {
     switch (state.step) {
       case AuthStep.phoneEntry:
         return _PhoneEntryView(
-          key: const ValueKey('phone'),
+          key: ValueKey('phone'),
           focusNode: _phoneFocusNode,
           onSubmitted: _onPhoneSubmitted,
         );
       case AuthStep.otpEntry:
         return _OtpEntryView(
-          key: const ValueKey('otp'),
+          key: ValueKey('otp'),
           focusNode: _otpFocusNode,
           otpCode: state.otpCode,
           onChanged: (val) => _onOtpChanged(val, context),
         );
       case AuthStep.verifying:
-        return const _VerifyingView(
+        return _VerifyingView(
           key: ValueKey('verifying'),
         );
     }
@@ -297,7 +297,7 @@ class ImageFilterWidget extends StatelessWidget {
   final double blur;
   final Widget child;
 
-  const ImageFilterWidget({
+  ImageFilterWidget({
     super.key,
     required this.blur,
     required this.child,
@@ -318,7 +318,7 @@ class _PhoneEntryView extends StatelessWidget {
   final FocusNode focusNode;
   final ValueChanged<String> onSubmitted;
 
-  const _PhoneEntryView({
+  _PhoneEntryView({
     super.key,
     required this.focusNode,
     required this.onSubmitted,
@@ -330,18 +330,18 @@ class _PhoneEntryView extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           "What is your number?",
-          style: HelloTypography.hero,
+          style: HelloText.display,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         TextField(
           focusNode: focusNode,
           keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.send,
-          style: HelloTypography.hero,
+          style: HelloText.display,
           cursorColor: HelloColors.accent,
-          decoration: const InputDecoration.collapsed(
+          decoration: InputDecoration.collapsed(
             hintText: "",
             border: InputBorder.none,
           ),
@@ -358,7 +358,7 @@ class _OtpEntryView extends StatefulWidget {
   final String otpCode;
   final ValueChanged<String> onChanged;
 
-  const _OtpEntryView({
+  _OtpEntryView({
     super.key,
     required this.focusNode,
     required this.otpCode,
@@ -400,7 +400,7 @@ class _OtpEntryViewState extends State<_OtpEntryView> {
       final char = hasChar ? widget.otpCode[i] : '\u00B7';
       spans.add(TextSpan(
         text: char + (i < 5 ? '   ' : ''),
-        style: HelloTypography.hero.copyWith(
+        style: HelloText.display.copyWith(
           color: hasChar ? HelloColors.inkPrimary : HelloColors.inkTertiary,
         ),
       ));
@@ -424,7 +424,7 @@ class _OtpEntryViewState extends State<_OtpEntryView> {
               autocorrect: false,
               enableSuggestions: false,
               onChanged: widget.onChanged,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: "",
                 border: InputBorder.none,
               ),
@@ -441,11 +441,11 @@ class _OtpEntryViewState extends State<_OtpEntryView> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   "Enter the code.",
-                  style: HelloTypography.hero,
+                  style: HelloText.display,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 _buildRichText(),
               ],
             ),
@@ -458,17 +458,17 @@ class _OtpEntryViewState extends State<_OtpEntryView> {
 
 // --- Verifying View ---
 class _VerifyingView extends StatelessWidget {
-  const _VerifyingView({super.key});
+  _VerifyingView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           "Verifying...",
-          style: HelloTypography.hero,
+          style: HelloText.display,
         ),
         SizedBox(height: 24),
         Align(

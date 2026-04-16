@@ -22,17 +22,17 @@ Future<void> openSearchSheet(BuildContext context) {
     barrierDismissible: true,
     barrierLabel: 'SearchSheet',
     barrierColor: Colors.black.withValues(alpha: 0.28),
-    transitionDuration: const Duration(milliseconds: 320),
+    transitionDuration: Duration(milliseconds: 320),
     pageBuilder: (_, _, _) {
       return Stack(
         children: [
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: const SizedBox.expand(),
+              child: SizedBox.expand(),
             ),
           ),
-          const Align(
+          Align(
             alignment: Alignment.bottomCenter,
             child: _SearchSheet(),
           ),
@@ -47,7 +47,7 @@ Future<void> openSearchSheet(BuildContext context) {
         ),
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0, 0.06),
+            begin: Offset(0, 0.06),
             end: Offset.zero,
           ).animate(
             CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
@@ -62,14 +62,14 @@ Future<void> openSearchSheet(BuildContext context) {
 class _SearchEntry {
   final Conversation conversation;
   final bool isGroup;
-  const _SearchEntry({required this.conversation, required this.isGroup});
+  _SearchEntry({required this.conversation, required this.isGroup});
 
   DateTime get timestamp =>
       conversation.lastMessageTimestamp ?? conversation.updatedAt;
 }
 
 class _SearchSheet extends ConsumerWidget {
-  const _SearchSheet();
+  _SearchSheet();
 
   String _displayName(Conversation c, {required bool isGroup}) {
     final id = c.id;
@@ -123,7 +123,7 @@ class _SearchSheet extends ConsumerWidget {
     final height = MediaQuery.of(context).size.height * 0.86;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
@@ -141,7 +141,7 @@ class _SearchSheet extends ConsumerWidget {
             type: MaterialType.transparency,
             child: Column(
             children: [
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
                 width: 44,
                 height: 4,
@@ -150,7 +150,7 @@ class _SearchSheet extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
@@ -164,7 +164,7 @@ class _SearchSheet extends ConsumerWidget {
                           color: HelloColors.recessed,
                           borderRadius: BorderRadius.circular(22),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
                             Icon(
                               Icons.search_rounded,
@@ -187,11 +187,11 @@ class _SearchSheet extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () => Navigator.of(context).pop(),
-                      child: const PlasmaTint(
+                      child: PlasmaTint(
                         child: Text(
                           'Cancel',
                           style: TextStyle(
@@ -206,8 +206,8 @@ class _SearchSheet extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              const Padding(
+              SizedBox(height: 20),
+              Padding(
                 padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
                 child: Align(
                   alignment: Alignment.centerLeft,
@@ -265,7 +265,7 @@ class _SearchSheet extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            SizedBox(width: 14),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment:
@@ -282,7 +282,7 @@ class _SearchSheet extends ConsumerWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 2),
+                                  SizedBox(height: 2),
                                   Text(
                                     _eyebrow(entry),
                                     style: TextStyle(
@@ -297,7 +297,7 @@ class _SearchSheet extends ConsumerWidget {
                               ),
                             ),
                             if (isUnread)
-                              const PlasmaFill(
+                              PlasmaFill(
                                 shape: BoxShape.circle,
                                 width: 6,
                                 height: 6,

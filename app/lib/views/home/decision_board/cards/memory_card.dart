@@ -8,7 +8,7 @@ class MemoryCard extends StatelessWidget {
   final MemoryFeedItem item;
   final VoidCallback onTap;
 
-  const MemoryCard({super.key, required this.item, required this.onTap});
+  MemoryCard({super.key, required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -26,12 +26,12 @@ class MemoryCard extends StatelessWidget {
               child: Image.network(
                 item.photoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const ColoredBox(
+                errorBuilder: (_, __, ___) => ColoredBox(
                   color: HelloColors.surfaceDeep,
                 ),
                 loadingBuilder: (_, child, progress) {
                   if (progress == null) return child;
-                  return const ColoredBox(
+                  return ColoredBox(
                     color: HelloColors.surfaceDeep,
                   );
                 },
@@ -53,7 +53,7 @@ class MemoryCard extends StatelessWidget {
                     color: HelloColors.focusSunset,
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Text(
                   item.title,
                   style: TextStyle(
@@ -64,7 +64,7 @@ class MemoryCard extends StatelessWidget {
                     color: HelloColors.inkPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   item.body,
                   style: TextStyle(

@@ -7,7 +7,7 @@ import '../../../theme.dart';
 /// `feed_header.dart` strip — no bar chrome around it, just the
 /// avatar on top of the feed.
 class FloatingAvatar extends StatelessWidget {
-  const FloatingAvatar({super.key});
+  FloatingAvatar({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class FloatingAvatar extends StatelessWidget {
           ),
         ),
         alignment: Alignment.center,
-        child: const Text(
+        child: Text(
           'R',
           style: TextStyle(
             fontFamily: 'Inter',

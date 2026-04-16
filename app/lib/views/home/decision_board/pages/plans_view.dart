@@ -17,7 +17,7 @@ import '../../../../theme.dart';
 // ═══════════════════════════════════════════════════════
 
 /// Category icon map for Tier 2 pills.
-const _categoryIcons = <String, IconData>{
+final _categoryIcons = <String, IconData>{
   'overview': Icons.dashboard_outlined,
   'recommendations': Icons.auto_awesome,
   'hotels': Icons.hotel_outlined,
@@ -39,7 +39,7 @@ IconData _iconFor(String category) =>
 class PlansView extends ConsumerStatefulWidget {
   final String groupId;
 
-  const PlansView({super.key, required this.groupId});
+  PlansView({super.key, required this.groupId});
 
   @override
   ConsumerState<PlansView> createState() => _PlansViewState();
@@ -58,20 +58,20 @@ class _PlansViewState extends ConsumerState<PlansView> {
       future: engineDecisions.getDecisionItems(widget.groupId),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator(color: HelloColors.accent));
+          return Center(child: CircularProgressIndicator(color: HelloColors.accent));
         }
 
         final allItems = snapshot.data!;
         if (allItems.isEmpty) {
-          return const Center(
-            child: Text('No plans yet. Tap + to start.', style: HelloText.hint),
+          return Center(
+            child: Text('No plans yet. Tap + to start.', style: HelloText.caption),
           );
         }
 
         // ── Extract events (unique categories from items) ──
         final eventMap = <String, List<DecisionItem>>{};
         for (final item in allItems) {
-          final event = item.category ?? 'General';
+          final event = item.nonce ?? 'General';
           eventMap.putIfAbsent(event, () => []).add(item);
         }
 
@@ -123,7 +123,7 @@ class _PlansViewState extends ConsumerState<PlansView> {
               },
             ),
 
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
 
             // ═══ TIER 1: Events (bottom — thumb arc) ═══
             _Tier1Events(
@@ -139,7 +139,7 @@ class _PlansViewState extends ConsumerState<PlansView> {
               },
             ),
 
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         );
       },
@@ -165,7 +165,6 @@ class _PlansViewState extends ConsumerState<PlansView> {
     // Dynamic category — show items as hero cards
     return _HeroCardStream(
       items: items,
-      onReact: (item, reaction) => engine.reactToItem(item.id, reaction),
       onLock: (item) => engine.lockItem(
         item.id, CommitmentProof(type: 'mock', value: 'booked', submittedBy: 'me'),
       ),
@@ -183,7 +182,7 @@ class _Tier1Events extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelect;
 
-  const _Tier1Events({
+  _Tier1Events({
     required this.eventNames,
     required this.eventMap,
     required this.selectedIndex,
@@ -204,8 +203,8 @@ class _Tier1Events extends StatelessWidget {
       ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        physics: BouncingScrollPhysics(),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         itemCount: eventNames.length,
         itemBuilder: (context, index) {
           final name = eventNames[index];
@@ -222,8 +221,8 @@ class _Tier1Events extends StatelessWidget {
             child: GestureDetector(
               onTap: () => onSelect(index),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                duration: Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? HelloColors.inkPrimary.withValues(alpha: 0.08)
@@ -238,7 +237,7 @@ class _Tier1Events extends StatelessWidget {
                   children: [
                     // Status dot
                     if (lockedCount == items.length)
-                      Icon(Icons.check_circle, size: 10, color: HelloColors.successGreen)
+                      Icon(Icons.check_circle, size: 10, color: HelloColors.liveGreen)
                     else if (topScore >= 0.7)
                       Container(width: 8, height: 8, decoration: BoxDecoration(
                         color: HelloColors.accent, shape: BoxShape.circle,
@@ -247,7 +246,7 @@ class _Tier1Events extends StatelessWidget {
                       Container(width: 8, height: 8, decoration: BoxDecoration(
                         color: HelloColors.inkTertiary.withValues(alpha: 0.3), shape: BoxShape.circle,
                       )),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     // Event name
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,7 +292,7 @@ class _Tier2Categories extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelect;
 
-  const _Tier2Categories({
+  _Tier2Categories({
     required this.categories,
     required this.selectedIndex,
     required this.onSelect,
@@ -305,8 +304,8 @@ class _Tier2Categories extends StatelessWidget {
       height: 42,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        physics: BouncingScrollPhysics(),
+        padding: EdgeInsets.symmetric(horizontal: 16),
         itemCount: categories.length,
         itemBuilder: (context, index) {
           final cat = categories[index];
@@ -317,8 +316,8 @@ class _Tier2Categories extends StatelessWidget {
             child: GestureDetector(
               onTap: () => onSelect(index),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                duration: Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? HelloColors.accent.withValues(alpha: 0.12)
@@ -333,7 +332,7 @@ class _Tier2Categories extends StatelessWidget {
                       size: 16,
                       color: isSelected ? HelloColors.accent : HelloColors.inkTertiary,
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Text(
                       cat,
                       style: TextStyle(
@@ -363,7 +362,7 @@ class _OverviewPage extends StatelessWidget {
   final String eventName;
   final List<DecisionItem> items;
 
-  const _OverviewPage({required this.eventName, required this.items});
+  _OverviewPage({required this.eventName, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -373,51 +372,51 @@ class _OverviewPage extends StatelessWidget {
     final fresh = items.where((i) => !i.isLocked && i.agreementScore == 0).toList();
 
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      physics: BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Event header
           Text(
             eventName,
-            style: HelloText.hero.copyWith(fontSize: 24),
+            style: HelloText.display.copyWith(fontSize: 24),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             '${items.length} items · ${locked.length} settled · ${active.length} voting · ${fresh.length} new',
-            style: HelloText.hint.copyWith(fontSize: 13),
+            style: HelloText.caption.copyWith(fontSize: 13),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Settled items (green checkmarks)
           if (locked.isNotEmpty) ...[
-            Text('Settled', style: HelloText.label.copyWith(color: HelloColors.successGreen)),
-            const SizedBox(height: 8),
+            Text('Settled', style: HelloText.label.copyWith(color: HelloColors.liveGreen)),
+            SizedBox(height: 8),
             ...locked.map((item) => _OverviewRow(
               item: item,
-              color: HelloColors.successGreen,
+              color: HelloColors.liveGreen,
               trailing: 'done',
             )),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
 
           // Hot items (needs attention)
           if (active.isNotEmpty) ...[
             Text('Needs votes', style: HelloText.label.copyWith(color: HelloColors.accent)),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             ...active.map((item) => _OverviewRow(
               item: item,
               color: HelloColors.accent,
               trailing: '${(item.agreementScore * 100).toInt()}%',
             )),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
 
           // Fresh items (no votes yet)
           if (fresh.isNotEmpty) ...[
             Text('Just added', style: HelloText.label.copyWith(color: HelloColors.inkTertiary)),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             ...fresh.map((item) => _OverviewRow(
               item: item,
               color: HelloColors.inkTertiary,
@@ -435,24 +434,24 @@ class _OverviewRow extends StatelessWidget {
   final Color color;
   final String trailing;
 
-  const _OverviewRow({required this.item, required this.color, required this.trailing});
+  _OverviewRow({required this.item, required this.color, required this.trailing});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
           // Thumbnail
-          if (item.photoUrl != null && item.photoUrl!.isNotEmpty)
+          if (null != null && null!.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: SizedBox(
                 width: 44,
                 height: 44,
-                child: item.photoUrl!.startsWith('assets/')
-                    ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
-                    : Image.network(item.photoUrl!, fit: BoxFit.cover),
+                child: null!.startsWith('assets/')
+                    ? Image.asset(null!, fit: BoxFit.cover)
+                    : Image.network(null!, fit: BoxFit.cover),
               ),
             )
           else
@@ -464,29 +463,29 @@ class _OverviewRow extends StatelessWidget {
               ),
               child: Icon(Icons.image_outlined, size: 20, color: HelloColors.inkTertiary),
             ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Title + description
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.title,
+                  item.ciphertextPayload,
                   style: HelloText.body.copyWith(fontSize: 15),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (item.description != null)
+                if (item.nonce != null)
                   Text(
-                    item.description!.split('\n').first,
-                    style: HelloText.hint.copyWith(fontSize: 12),
+                    item.nonce!.split('\n').first,
+                    style: HelloText.caption.copyWith(fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Score / status
           Text(
             trailing,
@@ -506,7 +505,7 @@ class _RecommendationsPage extends StatelessWidget {
   final String eventName;
   final List<DecisionItem> items;
 
-  const _RecommendationsPage({required this.eventName, required this.items});
+  _RecommendationsPage({required this.eventName, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -516,28 +515,28 @@ class _RecommendationsPage extends StatelessWidget {
     final top3 = sorted.take(3).toList();
 
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      physics: BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Icon(Icons.auto_awesome, size: 18, color: HelloColors.accent),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 'Based on your group\'s votes',
                 style: HelloText.body.copyWith(fontSize: 15, color: HelloColors.inkSecondary),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           if (top3.isEmpty)
             Center(
               child: Padding(
-                padding: const EdgeInsets.only(top: 60),
-                child: Text('Vote on items to see recommendations', style: HelloText.hint),
+                padding: EdgeInsets.only(top: 60),
+                child: Text('Vote on items to see recommendations', style: HelloText.caption),
               ),
             )
           else
@@ -556,15 +555,15 @@ class _RecommendationCard extends StatelessWidget {
   final DecisionItem item;
   final int rank;
 
-  const _RecommendationCard({required this.item, required this.rank});
+  _RecommendationCard({required this.item, required this.rank});
 
   @override
   Widget build(BuildContext context) {
     final pct = (item.agreementScore * 100).toInt();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: rank == 1
             ? HelloColors.accent.withValues(alpha: 0.06)
@@ -579,51 +578,51 @@ class _RecommendationCard extends StatelessWidget {
           // Rank number
           Text(
             '#$rank',
-            style: HelloText.hero.copyWith(
+            style: HelloText.display.copyWith(
               fontSize: 28,
               color: rank == 1 ? HelloColors.accent : HelloColors.inkTertiary,
               height: 1.0,
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           // Photo
-          if (item.photoUrl != null && item.photoUrl!.isNotEmpty)
+          if (null != null && null!.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: SizedBox(
                 width: 56, height: 56,
-                child: item.photoUrl!.startsWith('assets/')
-                    ? Image.asset(item.photoUrl!, fit: BoxFit.cover)
-                    : Image.network(item.photoUrl!, fit: BoxFit.cover),
+                child: null!.startsWith('assets/')
+                    ? Image.asset(null!, fit: BoxFit.cover)
+                    : Image.network(null!, fit: BoxFit.cover),
               ),
             ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.title,
+                  item.ciphertextPayload,
                   style: HelloText.body.copyWith(fontSize: 15),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (item.description != null)
+                if (item.nonce != null)
                   Text(
-                    item.description!.split('\n').first,
-                    style: HelloText.hint.copyWith(fontSize: 12),
+                    item.nonce!.split('\n').first,
+                    style: HelloText.caption.copyWith(fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Score
           Text(
             '$pct%',
-            style: HelloText.hero.copyWith(
+            style: HelloText.display.copyWith(
               fontSize: 22,
               color: pct >= 80 ? HelloColors.accent : HelloColors.inkSecondary,
               height: 1.0,
@@ -642,7 +641,7 @@ class _RecommendationCard extends StatelessWidget {
 class _SplitPage extends StatelessWidget {
   final String eventName;
 
-  const _SplitPage({required this.eventName});
+  _SplitPage({required this.eventName});
 
   @override
   Widget build(BuildContext context) {
@@ -651,10 +650,10 @@ class _SplitPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.receipt_long_outlined, size: 48, color: HelloColors.inkTertiary.withValues(alpha: 0.3)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text('Expenses for $eventName', style: HelloText.body.copyWith(color: HelloColors.inkSecondary)),
-          const SizedBox(height: 8),
-          Text('No expenses yet', style: HelloText.hint),
+          SizedBox(height: 8),
+          Text('No expenses yet', style: HelloText.caption),
         ],
       ),
     );
@@ -667,12 +666,10 @@ class _SplitPage extends StatelessWidget {
 
 class _HeroCardStream extends StatelessWidget {
   final List<DecisionItem> items;
-  final void Function(DecisionItem, String) onReact;
   final void Function(DecisionItem) onLock;
 
-  const _HeroCardStream({
+  _HeroCardStream({
     required this.items,
-    required this.onReact,
     required this.onLock,
   });
 
@@ -694,14 +691,22 @@ class _HeroCardStream extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = sorted[index];
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
-          child: ActionCardWidget(
+          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+          child: _StubActionCard(
             item: item,
-            onReact: () => onReact(item, 'works_for_me'),
-            onPinCommit: () => onLock(item),
           ),
         );
       },
     );
   }
+}
+
+// Stub — ActionCardWidget was removed during restructure.
+// Replace with the real implementation when available.
+class _StubActionCard extends StatelessWidget {
+  _StubActionCard({super.key, this.item, this.onTap});
+  final dynamic item;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) => SizedBox.shrink();
 }

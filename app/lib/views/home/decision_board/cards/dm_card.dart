@@ -11,7 +11,7 @@ class DmCard extends StatelessWidget {
   final DmFeedItem item;
   final VoidCallback onTap;
 
-  const DmCard({super.key, required this.item, required this.onTap});
+  DmCard({super.key, required this.item, required this.onTap});
 
   String _displayName() {
     final id = item.conversation.id;
@@ -47,7 +47,7 @@ class DmCard extends StatelessWidget {
           Row(
             children: [
               _Avatar(initial: initial),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,10 +64,10 @@ class DmCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Row(
                       children: [
-                        const Text(
+                        Text(
                           'DIRECT',
                           style: TextStyle(
                             fontFamily: 'Inter',
@@ -77,7 +77,7 @@ class DmCard extends StatelessWidget {
                             color: HelloColors.inkTertiary,
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Text(
                           _timestamp(),
                           style: TextStyle(
@@ -94,14 +94,14 @@ class DmCard extends StatelessWidget {
                 ),
               ),
               if (isUnread)
-                const PlasmaFill(
+                PlasmaFill(
                   shape: BoxShape.circle,
                   width: 6,
                   height: 6,
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             preview.isEmpty ? 'No messages yet' : preview,
             style: TextStyle(
@@ -122,7 +122,7 @@ class DmCard extends StatelessWidget {
 
 class _Avatar extends StatelessWidget {
   final String initial;
-  const _Avatar({required this.initial});
+  _Avatar({required this.initial});
 
   @override
   Widget build(BuildContext context) {

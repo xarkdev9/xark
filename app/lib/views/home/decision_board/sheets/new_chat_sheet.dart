@@ -10,17 +10,17 @@ Future<void> openNewChatSheet(BuildContext context) {
     barrierDismissible: true,
     barrierLabel: 'NewChatSheet',
     barrierColor: Colors.black.withValues(alpha: 0.28),
-    transitionDuration: const Duration(milliseconds: 320),
+    transitionDuration: Duration(milliseconds: 320),
     pageBuilder: (_, _, _) {
       return Stack(
         children: [
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: const SizedBox.expand(),
+              child: SizedBox.expand(),
             ),
           ),
-          const Align(
+          Align(
             alignment: Alignment.bottomCenter,
             child: _NewChatSheet(),
           ),
@@ -35,7 +35,7 @@ Future<void> openNewChatSheet(BuildContext context) {
         ),
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0, 0.06),
+            begin: Offset(0, 0.06),
             end: Offset.zero,
           ).animate(
             CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
@@ -48,9 +48,9 @@ Future<void> openNewChatSheet(BuildContext context) {
 }
 
 class _NewChatSheet extends StatelessWidget {
-  const _NewChatSheet();
+  _NewChatSheet();
 
-  static const _options = [
+  static final _options = [
     (
       'New Chat',
       'Start a 1:1 conversation',
@@ -75,7 +75,7 @@ class _NewChatSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height * 0.62;
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
@@ -93,7 +93,7 @@ class _NewChatSheet extends StatelessWidget {
             type: MaterialType.transparency,
             child: Column(
             children: [
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
                 width: 44,
                 height: 4,
@@ -102,12 +102,12 @@ class _NewChatSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -156,12 +156,12 @@ class _NewChatSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Expanded(
                 child: ListView.separated(
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   itemCount: _options.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => SizedBox(height: 10),
                   itemBuilder: (context, i) {
                     final (title, subtitle, icon, colorHex) = _options[i];
                     final color = Color(colorHex);
@@ -194,7 +194,7 @@ class _NewChatSheet extends StatelessWidget {
                                 color: color,
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            SizedBox(width: 14),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment:
@@ -209,7 +209,7 @@ class _NewChatSheet extends StatelessWidget {
                                       color: HelloColors.inkPrimary,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  SizedBox(height: 2),
                                   Text(
                                     subtitle,
                                     style: TextStyle(
@@ -234,7 +234,7 @@ class _NewChatSheet extends StatelessWidget {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
           ),
           ),

@@ -15,14 +15,14 @@ Future<void> openSettlementSheet(
     barrierDismissible: true,
     barrierLabel: 'SettlementSheet',
     barrierColor: Colors.black.withValues(alpha: 0.28),
-    transitionDuration: const Duration(milliseconds: 320),
+    transitionDuration: Duration(milliseconds: 320),
     pageBuilder: (_, __, ___) {
       return Stack(
         children: [
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: const SizedBox.expand(),
+              child: SizedBox.expand(),
             ),
           ),
           Align(
@@ -40,7 +40,7 @@ Future<void> openSettlementSheet(
         ),
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0, 0.06),
+            begin: Offset(0, 0.06),
             end: Offset.zero,
           ).animate(
             CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
@@ -54,7 +54,7 @@ Future<void> openSettlementSheet(
 
 class _SettlementSheet extends StatelessWidget {
   final SettlementFeedItem item;
-  const _SettlementSheet({required this.item});
+  _SettlementSheet({required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +64,7 @@ class _SettlementSheet extends StatelessWidget {
     final prefix = s.currency == 'USD' ? '\$' : s.currency;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
@@ -82,7 +82,7 @@ class _SettlementSheet extends StatelessWidget {
             type: MaterialType.transparency,
             child: Column(
             children: [
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
                 width: 44,
                 height: 4,
@@ -91,7 +91,7 @@ class _SettlementSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
@@ -109,7 +109,7 @@ class _SettlementSheet extends StatelessWidget {
                               ),
                             )
                           : PlasmaTint(
-                              child: const Text(
+                              child: Text(
                                 'YOU OWE',
                                 style: TextStyle(
                                   fontFamily: 'Inter',
@@ -142,7 +142,7 @@ class _SettlementSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
@@ -164,7 +164,7 @@ class _SettlementSheet extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           abs,
                           style: TextStyle(
@@ -178,7 +178,7 @@ class _SettlementSheet extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text(
                       s.isOwedToYou
                           ? 'from ${s.counterpartyName}'
@@ -190,7 +190,7 @@ class _SettlementSheet extends StatelessWidget {
                         color: HelloColors.inkSecondary,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
                       s.reason,
                       style: TextStyle(
@@ -203,7 +203,7 @@ class _SettlementSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              const Spacer(),
+              Spacer(),
               Padding(
                 padding: EdgeInsets.fromLTRB(20, 0, 20, 24),
                 child: GestureDetector(
@@ -217,7 +217,7 @@ class _SettlementSheet extends StatelessWidget {
                             borderRadius: BorderRadius.circular(14),
                           ),
                           alignment: Alignment.center,
-                          child: const Text(
+                          child: Text(
                             'REMIND',
                             style: TextStyle(
                               fontFamily: 'Inter',
@@ -232,7 +232,7 @@ class _SettlementSheet extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14),
                           padding: EdgeInsets.symmetric(horizontal: 20),
                           height: 56,
-                          child: const Center(
+                          child: Center(
                             child: Text(
                               'PAY NOW',
                               style: TextStyle(

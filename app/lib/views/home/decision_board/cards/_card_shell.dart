@@ -244,7 +244,7 @@ class _CardShellState extends ConsumerState<CardShell>
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
-                                color: const Color(0xFFFF385C)
+                                color: Color(0xFFFF385C)
                                     .withValues(alpha: _unreadOpacity.value),
                                 width: 1,
                               ),

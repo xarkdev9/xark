@@ -25,13 +25,13 @@ class HelloColors {
 
   // ── Core surfaces (brightness-aware) ──────────────────────────
   static Color get voidBg =>
-      _isDark ? const Color(0xFF111111) : const Color(0xFFFAFAFA);
+      _isDark ? const Color(0xFF111111) : Color(0xFFFAFAFA);
   static Color get surfaceDeep =>
-      _isDark ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
+      _isDark ? const Color(0xFF1C1C1E) : Color(0xFFFFFFFF);
   static Color get recessed =>
-      _isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF0F0F0);
+      _isDark ? const Color(0xFF2C2C2E) : Color(0xFFF0F0F0);
   static Color get chrome =>
-      _isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF0EFF4);
+      _isDark ? const Color(0xFF1C1C1E) : Color(0xFFF0EFF4);
   static const Color white = Color(0xFFFFFFFF);
 
   // Brand / accent — Liquid Plasma representative hue (flat fallback).
@@ -45,13 +45,13 @@ class HelloColors {
 
   // Status
   static Color get liveGreen =>
-      _isDark ? const Color(0xFF34D399) : const Color(0xFF047857);
+      _isDark ? const Color(0xFF34D399) : Color(0xFF047857);
   static Color get gold =>
-      _isDark ? const Color(0xFFFBBF24) : const Color(0xFF8B6914);
+      _isDark ? const Color(0xFFFBBF24) : Color(0xFF8B6914);
   static Color get error =>
-      _isDark ? const Color(0xFFEF4444) : const Color(0xFFC43D08);
+      _isDark ? const Color(0xFFEF4444) : Color(0xFFC43D08);
   static Color get pulse =>
-      _isDark ? const Color(0xFFFF6B6B) : const Color(0xFFFF385C);
+      _isDark ? const Color(0xFFFF6B6B) : Color(0xFFFF385C);
 
   static const Color scoreHigh = Color(0xFF047857);
   static const Color scoreLow = Color(0xFFC43D08);
@@ -59,11 +59,11 @@ class HelloColors {
 
   // Ink (brightness-aware)
   static Color get inkPrimary =>
-      _isDark ? const Color(0xFFF5F5F7) : const Color(0xFF1A1A1A);
+      _isDark ? const Color(0xFFF5F5F7) : Color(0xFF1A1A1A);
   static Color get inkSecondary =>
-      _isDark ? const Color(0xFF98989F) : const Color(0xFF6B6B78);
+      _isDark ? const Color(0xFF98989F) : Color(0xFF6B6B78);
   static Color get inkTertiary =>
-      _isDark ? const Color(0xFF636366) : const Color(0xFF8A8A94);
+      _isDark ? const Color(0xFF636366) : Color(0xFF8A8A94);
 
   // Backward-compat
   static const Color primary = Color(0xFFD4536B);
@@ -175,7 +175,7 @@ class HelloGlass {
   // Tier 1 — navigation chrome, card surfaces
   static const double whisperSigma = 14;
   static Color get whisperFill =>
-      HelloColors.isDark ? const Color(0xB31C1C1E) : const Color(0xB3FFFFFF);
+      HelloColors.isDark ? const Color(0xB31C1C1E) : Color(0xB3FFFFFF);
   static Color get whisperBorder =>
       HelloColors.isDark
           ? Colors.white.withValues(alpha: 0.06)
@@ -184,12 +184,12 @@ class HelloGlass {
   // Tier 2 — sheet headers/footers, popovers
   static const double veilSigma = 20;
   static Color get veilFill =>
-      HelloColors.isDark ? const Color(0xCC1C1C1E) : const Color(0xCCFFFFFF);
+      HelloColors.isDark ? const Color(0xCC1C1C1E) : Color(0xCCFFFFFF);
 
   // Tier 3 — full-attention modals, sheet bodies
   static const double curtainSigma = 24;
   static Color get curtainFill =>
-      HelloColors.isDark ? const Color(0xE61C1C1E) : const Color(0xE6FFFFFF);
+      HelloColors.isDark ? const Color(0xE61C1C1E) : Color(0xE6FFFFFF);
 
   // Chat bubble special case
   static const double bubbleOutboundSigma = 20;

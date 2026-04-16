@@ -12,7 +12,7 @@ import 'oklch.dart';
 /// IMPORTANT (landmine #14): uses Oklch, NOT HSL. HSL has
 /// non-uniform perceived brightness across hues.
 AmbientPalette signaturePalette(String seed) {
-  final crc = Crc32().convert(seed.codeUnits).toInt();
+  final crc = Crc32().convert(seed.codeUnits).hashCode;
 
   // Base hue from CRC, distributed across full circle
   final baseHue = (crc % 360).toDouble();
@@ -22,7 +22,7 @@ AmbientPalette signaturePalette(String seed) {
 
   // Convert Oklch → sRGB for each
   final colors = hues.map((h) {
-    final rgb = oklchToSrgb(0.72, 0.12, h);
+    final rgb = oklchToSrgb(0.72, 0.12, h.toDouble());
     return Color.fromARGB(255, rgb.r, rgb.g, rgb.b);
   }).toList();
 
