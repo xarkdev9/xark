@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 1. **`app/lib/views/home/decision_board/` is the home screen.** `app/lib/demov2/` referenced in older docs no longer exists. The "decide-first group UX with Netflix swim lanes" narrative is superseded.
 
-2. **`kUseMockData = true` is hardcoded** in `app/lib/providers/mock_data.dart`. The Flutter home feed NEVER touches the real engine while this flag is set. Every feed provider has a `if (kUseMockData) return mock...` branch. Flipping to `false` is the only way to get live data.
+2. **`kUseMockData` is DELETED.** The flag no longer exists anywhere in `app/lib`. `app/lib/providers/mock_data.dart` is now a three-line re-export shim pointing at `seed_data.dart`. Feed providers no longer branch on a flag — they read the real engine via `engineOrNull(ref)` in `providers/engine_helpers.dart` and fall back to empty lists pre-auth. Seed/playground data (for demos) is injected explicitly.
 
 3. **Engine bootstrap:** `ChatEngine.initialize(...)` does NOT exist on the abstract class. It is a static factory on `ChatEngineImpl`. Call `ChatEngineImpl.initialize(config)`. The barrel exports `ChatEngineImpl` explicitly for this reason. `deviceId` is `int`, not `String`.
 
@@ -121,7 +121,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Structure
 
 - **engine/** — Headless E2EE chat SDK (package: `e2ee_chat_sdk`). Barrel: `engine/lib/e2ee_chat.dart`. ~150 Dart source files in `engine/lib/src/`. 33 test files across 10 categories. Contains a `discovery/` subsystem (taste-ranked feed pipeline) in addition to crypto/transport/sync.
-- **app/** — Flutter app shell (package: `hello_app`, imports `e2ee_chat_sdk` via path). Light theme. 4-tab home scaffold. Liquid plasma brand system. `kUseMockData = true` hardcoded.
+- **app/** — Flutter app shell (package: `hello_app`, imports `e2ee_chat_sdk` via path). Light theme. 3-tab cosmos home scaffold (Home / Chats / Plans; Chats absorbed Groups 2026-04-15). Liquid plasma brand system. Real-engine-backed providers (mock flag deleted).
 - **web/** — Next.js 16 + React 19 web app. 53 API route handlers (33 non-xpensly + 20 xpensly). Rate limiting in `proxy.ts` (Next.js 16 middleware rename). Xpensly REST API under `api/xpensly/`.
 - **algo/** — Standalone TypeScript decision engine, hexagonal architecture, 232 tests (Vitest). Algorithms are **copy-ported** into `web/src/lib/heart-sort.ts` + `web/src/lib/state-flows.ts` — NOT imported as a live dependency.
 - **xpensly/** — Expense-splitting SDK. Both layers live: `xpensly_core/` (pure Dart, 30 source files, 69 tests) + `xpensly_ui/` (Flutter widgets, 9 components, 16 tests, restored 2026-04-11 from `ui_backup_2026-04-10/flutter/xpensly_ui/`).
@@ -230,34 +230,44 @@ The engine is the API. Supabase and Firebase are implementation details the UI n
 ```
 PlasmaClock
   └── MaterialApp (scrollBehavior: _DragEverywhereScrollBehavior)
-        ├── home: HomeLayout → DecisionBoardPage (4-tab scaffold)
+        ├── home: HomeLayout → DecisionBoardPage (3-tab scaffold)
         └── /auth: AuthFlowPage
 ```
 
-**4-tab home scaffold (`decision_board/decision_board_page.dart`):**
-- HOME · CHATS · GROUPS · PLANS — `TabBarView` driven by `TabController`
-- Full-bleed `AmbientMesh` background (`atmosphere.dart`) — 5 radial blobs on `#FAFAFA` base, primary blob lerps between tab signature colors during swipe
-- `BottomBar` glass pill at bottom: `TabChip` (popover switcher) + search field + mic/send + compose `[+]`
-- `TabHeader` top-left: floating avatar on HOME, large title on others
-- All 4 pages use `AutomaticKeepAliveClientMixin`
+**3-tab home scaffold (`decision_board/decision_board_page.dart`):**
+- Home · Chats · Plans — `TabBarView` driven by `TabController(length: 3)` (Chats absorbed Groups 2026-04-15 — iMessage-style merged DMs + Groups list)
+- Full-bleed `ChromaticAtmosphere` (content-responsive palette drenched by whoever is in focus — replaces the legacy `AmbientMesh` from NS3)
+- **Scaffold-level `LiquidIntentLayer`** wraps the entire `TabBarView` — thin plasma line at idle at the bottom, blooms on tap into a `TextField + mic + +` glass shell. Replaces the deleted `BottomBar`.
+- `TabHeader` top-left: floating avatar on Home, large title on Chats / Plans
+- All 3 pages use `AutomaticKeepAliveClientMixin`
+- Ghost-indicator labels `Home · Chats · Plans` render just above the plasma line; the active one is highlighted
+- `HologramAvatar` (transparent-PNG + ShaderMask guillotine dissolve) is the floating-avatar primitive used on cosmos Home
 
-**Tab signature colors:** HOME `#7C3AED`, CHATS `#8B5CF6`, GROUPS `#F97316`, PLANS `#4A90E2`.
+**Tab signature colors:** Home `#7C3AED`, Chats `#8B5CF6`, Plans `#4A90E2`. (The legacy Groups signature `#F97316` is preserved as `HelloColors.kindGroup` for group-kind card tints, just no longer a tab accent.)
 
 **Decision board structure (`app/lib/views/home/decision_board/`):**
-- `decision_board_page.dart` — 4-tab scaffold root
-- `atmosphere.dart` — `AmbientMesh` tab-color-lerp background
-- `bottom_bar.dart` — glass pill with plasma-migrated send/compose
-- `tab_header.dart`, `tab_chip.dart`, `tab_popover.dart` — tab switcher UI
+- `decision_board_page.dart` — 3-tab scaffold root (TabController + TabBarView wrapped in LiquidIntentLayer)
+- `chromatic_atmosphere.dart` — full-bleed palette renderer + pulse consumer
+- `liquid_intent_handle.dart` — the `LiquidIntentLayer` (scaffold-level bottom handle + ghost indicator)
+- `atmosphere.dart` — legacy `AmbientMesh` (DEAD — no consumers; slated for deletion)
+- `tab_header.dart` — top-left floating avatar / title. `BottomBar` / `TabChip` / `TabPopover` were deleted 2026-04-14.
 - `chat_bubble.dart` — glassmorphic bubble with swipe-to-reply, width-capped via LayoutBuilder
+- `conversation_list_row.dart` — iMessage-style row used by Chats (handles both DM and Group via `isGroup: bool`)
 - `message_input_bar.dart` — in-sheet message input
-- `masonry_grid.dart` — `SliverMasonryGrid.count` (2-col, 12px spacing)
-- `_card_factory.dart` — maps 10 `FeedItem` subtypes to cards + sheet openers
-- `pages/` — 4 tab content widgets
-- `cards/` — 11 card widgets (`_card_shell`, `dm_card`, `group_card`, `decision_card_small`, `decision_card_hero`, `focus_hero_card`, `trip_card`, `settlement_card`, `itinerary_card`, `memory_card`, `ai_nudge_card`)
-- `sheets/` — 7 bottom sheets (`dm_sheet`, `group_sheet`, `new_chat_sheet`, `search_sheet`, `decision_sheet`, `settlement_sheet`, `attachment_sheet`)
+- `floating_avatar.dart` — top-left user avatar on Home
+- `avatar_utils.dart` — `HologramAvatar` + `getAvatarImagePath(name)` router
+- `masonry_grid.dart` — `SliverMasonryGrid.count` — used by the Plans tab only (Home is cosmos, Chats is a ListView)
+- `consensus_watcher.dart` + `consensus_banner.dart` — listen for decision locks, show transient top banner
+- `empty_state.dart` — `HelloEmptyState` shared placeholder
+- `_card_factory.dart` — maps `FeedItem` subtypes to cards + sheet openers (the `DecisionSmallFeedItem` arm returns `SizedBox.shrink()` — sentinel for sealed exhaustiveness post-`DecisionCardSmall` deletion)
+- `pages/` — `home_page.dart` (cosmos), `chats_page.dart` (merged list), `plans_page.dart`, full-screen routes (`dm_page`, `group_page`, `decision_page`, `settlement_page`, `trip_page`, `itinerary_page`), plus older experimental files
+- `pages/home/` — cosmos components (2026-04-14): `cosmos_sender_model`, `foreground_avatar`, `queue_row`, `context_label`, `action_word`, `action_words_row`, `reward_controller`
+- `cards/` — **10 card widgets** (`_card_shell`, `dm_card`, `group_card`, `decision_card_hero`, `focus_hero_card`, `trip_card`, `settlement_card`, `itinerary_card`, `memory_card`, `ai_nudge_card`). `DecisionCardSmall` + `FocusCardWidget` deleted 2026-04-14.
+- `sheets/` — `dm_sheet`, `group_sheet`, `decision_sheet`, `settlement_sheet`, `attachment_sheet`, `new_chat_sheet` (orphaned after BottomBar deletion), `search_sheet` (orphaned)
+- `skeletons/` — `shimmer_card`, `shimmer_row`
 - `plasma/` — 7-file liquid plasma brand system (see next section)
 
-**Unified feed:** `feedProvider` merges DMs, groups, decisions, trips, settlements, itinerary, memories, AI nudges into one `List<FeedItem>`. Tab-filtered projections: `homeFeedProvider`, `chatsFeedProvider`, `groupsFeedProvider`, `plansFeedProvider`. The focus trip is pinned at index 0.
+**Unified feed:** `feedProvider` merges DMs, groups, decisions, trips, settlements, itinerary, memories, AI nudges into one `List<FeedItem>`. Tab-filtered projections: `homeFeedProvider` (deprecated on cosmos Home — use `freshestPendingSenderProvider` / `pendingSendersQueueProvider` instead), `chatsFeedProvider` (merged DMs + Groups sorted by recency), `plansFeedProvider`. No `groupsFeedProvider` — it was deleted when Chats absorbed Groups. The focus trip is pinned at index 0 of the unified feed.
 
 **State (Riverpod 3.3.1):** Providers in `app/lib/providers/`:
 - `engineProvider` (throws until post-auth override)
@@ -265,15 +275,18 @@ PlasmaClock
 - `focusTripProvider`, `focusTripIdProvider` (default: `swiss_jun_2026`)
 - `activeTabIndexProvider`, `activeTabProvider`, `tabAnimationProvider` (updated per-frame during swipe)
 - `centeredFeedItemIdProvider`, `centeredFeedItemKindProvider` (viewport midline winner → drives atmosphere color)
-- `conversationsStreamProvider`, `directMessagesProvider`, `groupChatsProvider` (engine-or-mock)
+- `conversationsStreamProvider`, `directMessagesProvider`, `groupChatsProvider` (real-engine-backed; pre-auth returns empty via `engineOrNull`)
+- `freshestPendingSenderProvider`, `pendingSendersQueueProvider` (cosmos Home foreground + 6-deep queue, recency-sorted)
+- `focusSourcesProvider` (priority stack; priorities 100=sheet, 50=detail, 20=Home foreground, 10=tab feed)
+- `ambientPaletteProvider`, `ambientSurfaceTierProvider`, `ambientPalettePulseProvider` (content-responsive atmosphere + transient 800ms reward pulse)
 - `activeDecisionsProvider` (cross-group merge)
 
 **Dead code flags:**
 - `_ResumeSession` defined in `main.dart` but not in route table.
-- `homeActiveCardIndexProvider` — stale 0–2 relic from pre-4-tab card design.
+- `homeActiveCardIndexProvider` — stale 0–2 relic from an older card-selection design. Not consumed anywhere; safe to delete.
 - `engine_error_listener.dart::setupHeadlessErrorBus` — empty body.
 - `app/lib/views/chat/`, `finance/`, `group/`, `media/`, `plan/`, `settings/` — scaffolded stubs, not in route table. Only `/home` and `/auth` are registered.
-- `HelloGlass.fill = 0x0AFFFFFF` / `border = 0x0FFFFFFF` — white-alpha values, nearly invisible on `#FAFAFA`. `BottomBar` bypasses them with explicit `Colors.white.withValues(alpha: 0.92)` + black border. Holdover from dark era.
+- `HelloGlass.fill = 0x0AFFFFFF` / `border = 0x0FFFFFFF` — white-alpha values, nearly invisible on `#FAFAFA`. Holdover from the dark era; the 3-tier whisper/veil/curtain system (see app/CLAUDE.md landmine #7) is the current source of truth for glass surfaces.
 
 **Theme tokens (`app/lib/theme.dart`):**
 - `voidBg = #FAFAFA` · `surfaceDeep = #FFFFFF` · `recessed = #F0F0F0`
@@ -583,7 +596,7 @@ All theme tokens use `--hello-*` prefix, defined in `web/src/app/globals.css` `:
 ---
 
 ## Design System
-See `DESIGN.md` — refreshed 2026-04-11 to reflect the light theme + Liquid Plasma brand system. Covers aesthetic direction, light color tokens, plasma palette, focus trip + tab signature colors, chat bubble spec, AmbientMesh atmosphere, 4-tab layout, glass hierarchy, and motion/haptic rules. Read DESIGN.md before any visual/UI decision.
+See `DESIGN.md` — originally written 2026-04-11 for the 4-tab `AmbientMesh` layout; the atmosphere + tab content has since moved to `ChromaticAtmosphere` and the scaffold to 3-tabs (2026-04-15). The aesthetic-direction, color tokens, plasma palette, chat bubble spec, glass hierarchy, and motion/haptic rules remain accurate. Treat the layout-diagram / atmosphere-mechanics sections as historical — consult the current spec at `docs/superpowers/specs/2026-04-14-cosmos-home-design.md` for Home, and the chromatic-atmosphere spec (same dir) for the ambient system.
 
 **Enforcement rules (doctrines — non-negotiable):** No-Bold (max weight 400), Zero-Box (no card borders on content; glass only for functional containers), brand color restraint (~28 action surfaces only), plasma wins on action surfaces (overrides trip tint).
 
@@ -608,7 +621,7 @@ Project changelog lives at `docs/CHANGELOG.md`. **Append-only**, newest entries 
 - `PHASE_1_FRONTEND_MANIFEST.md` — Phase 1 UI completion state
 - `crypto.md` — 50-task engineering checklist
 - `docs/4PM_Goal.md` — 42-step planet-scale blueprint
-- `app/CLAUDE.md` — Per-package Flutter app guidance (entry flow, 4-tab scaffold, plasma wiring, providers, dead code inventory)
+- `app/CLAUDE.md` — Per-package Flutter app guidance (entry flow, 3-tab cosmos scaffold, plasma wiring, providers, dead code inventory)
 - `engine/CLAUDE.md` — Per-package E2EE SDK guidance (public API, critical stubs, test infrastructure)
 - `web/CLAUDE.md` — Per-package Next.js 16 web guidance (full 53-route inventory, CSS variable inversion, request flow)
 - `algo/CLAUDE.md` — Per-package TypeScript decision engine guidance (hexagonal architecture, state flows, signal vocabulary)

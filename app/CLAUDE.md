@@ -50,7 +50,7 @@ Per-package guidance for agents working exclusively in `app/`. Read the root
    tint selection has been replaced by the content-responsive focus-source stack.
 
 9. **`AtmosphereDensityScope` gates saturation.** List pages (`HomePage`,
-   `ChatsPage`, `GroupsPage`, `PlansPage`) wrap their body in
+   `ChatsPage`, `PlansPage`) wrap their body in
    `AtmosphereDensityScope(density: AtmosphereDensity.dense, ...)` — 0.6×
    saturation multiplier preserves scan speed. Detail pages use
    `AtmosphereDensity.focus` — 1.0× full saturation. Always wrap page bodies
@@ -196,18 +196,18 @@ on Flutter Web.
 
 ---
 
-## 4-tab home scaffold
+## 3-tab home scaffold (Home / Chats / Plans)
 
 ```
 HomeLayout  (passthrough to DecisionBoardPage)
 └── DecisionBoardPage (ConsumerStatefulWidget + SingleTickerProviderStateMixin)
-    ├── TabController(length: 4)
+    ├── TabController(length: 3)
     └── Scaffold(backgroundColor: HelloColors.voidBg)
         └── Stack(fit: StackFit.expand)
             ├── Positioned.fill ──► ChromaticAtmosphere()   // palette-drenched bg
             ├── SafeArea ──► LiquidIntentLayer(              // scaffold-level handle
             │         child: TabBarView(controller: _tabController,
-            │           children: [HomePage, ChatsPage, GroupsPage, PlansPage])
+            │           children: [HomePage, ChatsPage, PlansPage])
             │       )
             └── Positioned(top, left: 20) ──► TabHeader()    // floating avatar / title
 ```
@@ -216,14 +216,16 @@ HomeLayout  (passthrough to DecisionBoardPage)
 
 | Index | Label | Color | Hex |
 |-------|-------|-------|-----|
-| 0 | HOME | focusViolet | `#7C3AED` |
-| 1 | CHATS | — | `#8B5CF6` |
-| 2 | GROUPS | — | `#F97316` |
-| 3 | PLANS | focusAlpine | `#4A90E2` |
+| 0 | Home  | focusViolet | `#7C3AED` |
+| 1 | Chats | —           | `#8B5CF6` |
+| 2 | Plans | focusAlpine | `#4A90E2` |
 
-- All 4 page widgets use `AutomaticKeepAliveClientMixin` (call `super.build(context)` at top of `build`).
-- `TabHeader`: floating avatar on HOME (index 0), large title on others; 220 ms crossfade.
+(Chats absorbed Groups on 2026-04-15 — iMessage-style merged DMs + Groups list. The legacy Groups signature `#F97316` is preserved as `HelloColors.kindGroup` for group-kind card tints, just no longer a tab accent.)
+
+- All 3 page widgets use `AutomaticKeepAliveClientMixin` (call `super.build(context)` at top of `build`).
+- `TabHeader`: floating avatar on Home (index 0), large title on Chats / Plans; 220 ms crossfade.
 - `LiquidIntentLayer` (scaffold-level as of 2026-04-14): thin plasma line at idle, blooms to `TextField + mic + +` on tap / drag. Replaces the deleted `BottomBar`.
+- Ghost-indicator labels `Home · Chats · Plans` render just above the plasma line; the active one is highlighted via `tabAnimationProvider` (ranges `< 0.5` / `[0.5, 1.5]` / `> 1.5`).
 
 ---
 
@@ -231,7 +233,7 @@ HomeLayout  (passthrough to DecisionBoardPage)
 
 ```
 app/lib/views/home/decision_board/
-├── decision_board_page.dart     # Scaffold root (4-tab controller + LiquidIntentLayer wrap)
+├── decision_board_page.dart     # Scaffold root (3-tab controller + LiquidIntentLayer wrap)
 ├── chromatic_atmosphere.dart    # Full-bleed atmosphere; consumes pulse signal
 ├── liquid_intent_handle.dart    # The LiquidIntentLayer (scaffold-level)
 ├── atmosphere.dart              # DEAD (old AmbientMesh widget)
@@ -239,12 +241,13 @@ app/lib/views/home/decision_board/
 ├── _card_factory.dart           # FeedItem → card mapping (DecisionSmallFeedItem now a shrink sentinel)
 ├── chat_bubble.dart, conversation_list_row.dart, message_input_bar.dart, floating_avatar.dart
 ├── empty_state.dart
-├── masonry_grid.dart            # Used by CHATS/GROUPS/PLANS tabs, NOT HOME
+├── masonry_grid.dart            # Used by the Plans tab only (Home is cosmos, Chats is ListView)
 ├── consensus_watcher.dart       # Banner overlay watching for decision locks
 ├── consensus_banner.dart
 ├── pages/
 │   ├── home_page.dart           # Cosmos Home (2026-04-14)
-│   ├── chats_page.dart, groups_page.dart, plans_page.dart
+│   ├── chats_page.dart          # iMessage-style merged DMs + Groups list (2026-04-15)
+│   ├── plans_page.dart
 │   ├── dm_page.dart, group_page.dart (no local LiquidIntentLayer — scaffold owns it)
 │   ├── decision_page.dart, settlement_page.dart, trip_page.dart, itinerary_page.dart
 │   └── home/                    # Cosmos Home components (2026-04-14)
@@ -330,10 +333,9 @@ contains seed/playground data only — no longer gated by a flag.
 |----------|------|---------|
 | `engineProvider` | `Provider<ChatEngine>` | Throws until `initializeEngine()` runs |
 | `feedProvider` | `Provider<List<FeedItem>>` | Unified feed (DMs + groups + decisions + trips + settlements + itinerary + memories + AI nudges) |
-| `homeFeedProvider` | `Provider<List<FeedItem>>` | HOME tab filtered feed (deprecated for Home — cosmos uses pending-sender providers) |
-| `chatsFeedProvider` | `Provider<List<FeedItem>>` | CHATS tab filtered feed |
-| `groupsFeedProvider` | `Provider<List<FeedItem>>` | GROUPS tab filtered feed |
-| `plansFeedProvider` | `Provider<List<FeedItem>>` | PLANS tab filtered feed |
+| `homeFeedProvider` | `Provider<List<FeedItem>>` | Home tab filtered feed (deprecated on cosmos Home — uses the pending-sender providers below instead) |
+| `chatsFeedProvider` | `Provider<List<FeedItem>>` | Chats tab filtered feed — iMessage-style merged DMs + Groups, sorted by recency (2026-04-15) |
+| `plansFeedProvider` | `Provider<List<FeedItem>>` | Plans tab filtered feed |
 | `freshestPendingSenderProvider` | `Provider<PendingSender?>` | Cosmos Home foreground — newest pending item's sender |
 | `pendingSendersQueueProvider` | `Provider<List<PendingSender>>` | Cosmos Home queue — next 6 pending senders by recency |
 | `focusTripIdProvider` | `StateProvider<String>` | Default: `kMockFocusTripId = 'swiss_jun_2026'` |
@@ -372,8 +374,8 @@ From `app/lib/theme.dart` — `HelloColors` class:
 | `inkPrimary` | `#1A1A1A` | Near-black text |
 | `inkSecondary` | `#6B6B78` | Medium gray text |
 | `inkTertiary` | `#8A8A94` | Light gray text |
-| `focusViolet` | `#7C3AED` | HOME tab + Swiss trip accent |
-| `focusAlpine` | `#4A90E2` | PLANS tab + Alpine trip accent |
+| `focusViolet` | `#7C3AED` | Home tab + Swiss trip accent |
+| `focusAlpine` | `#4A90E2` | Plans tab + Alpine trip accent |
 | `focusOcean` | `#14B8A6` | Goa trip accent |
 | `focusSunset` | `#FF9B6E` | Bali trip accent |
 | `liveGreen` | `#047857` | Online presence, live indicators |
@@ -394,7 +396,7 @@ Weights 500–900 are forbidden.
 | Symbol | File | Status |
 |--------|------|--------|
 | `_ResumeSession` | `main.dart` | Defined but not registered in route table. Dead. |
-| `homeActiveCardIndexProvider` | `home_state_provider.dart` | Stale 0–2 relic from pre-4-tab design. Not consumed. Delete when convenient. |
+| `homeActiveCardIndexProvider` | `home_state_provider.dart` | Stale 0–2 relic from an older card-selection design. Not consumed anywhere. Delete when convenient. |
 | `setupHeadlessErrorBus` | `engine_error_listener.dart` | Defined but no longer called from `main.dart`. Re-add call site when a real consumer is wired. |
 | `mock_data.dart` | `providers/mock_data.dart` | Now a 3-line re-export shim pointing to `seed_data.dart`. Safe to delete once all stale imports are updated. |
 | `AmbientMesh` | `views/home/decision_board/atmosphere.dart` | Replaced by `ChromaticAtmosphere` in NS3. `decision_board_page.dart` now mounts `ChromaticAtmosphere()` — the `AmbientMesh` widget is no longer referenced anywhere. File can be deleted in a future cleanup pass. |
