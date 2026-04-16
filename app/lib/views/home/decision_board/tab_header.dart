@@ -1,13 +1,15 @@
 // Contextual top-left header.
 //
-// HOME tab  → floating user avatar ("R")
-// CHATS tab → "Chats" large title
-// GROUPS    → "Groups"
-// PLANS     → "Plans"
+// Home tab  → floating user avatar ("R")
+// Chats tab → "Chats" large title
+// Plans tab → "Plans" large title
 //
 // Crossfades (220ms ease-out) between the two states when the
 // active tab changes, so the header reads as a single living
 // element, not as jumping chrome.
+//
+// The Groups tab was merged into Chats on 2026-04-15 — no
+// separate Groups header remains.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,7 +56,7 @@ class TabHeader extends ConsumerWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   tab.titleCase,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 26,
                     fontWeight: FontWeight.w400,

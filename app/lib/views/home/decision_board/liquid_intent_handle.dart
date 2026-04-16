@@ -108,12 +108,13 @@ class _LiquidIntentLayerState extends ConsumerState<LiquidIntentLayer> with Sing
 
         // NOTE: Layer 0.6 ("Organic Frost Gradient") was deleted
         // 2026-04-15. It painted a 110-120pt HelloColors.voidBg wash
-        // at the bottom of the screen, keyed to an old 3-tab layout
-        // where Home was at tabAnimationProvider position 1.0. With
-        // the 4-tab scaffold (HOME at position 0.0) and full-bleed
-        // ChromaticAtmosphere, the wash covered the atmosphere with
-        // a solid white gradient on Home. The atmosphere now drenches
-        // to the bottom edge uniformly — no frost layer needed.
+        // at the bottom of the screen, keyed to a legacy 3-tab layout
+        // (Inbox/Home/Plans) where Home was at tabAnimationProvider
+        // position 1.0. After the NS3 4-tab scaffold and then the
+        // 2026-04-15 Chats+Groups merge (back to a 3-tab Home/Chats/
+        // Plans), Home sits at position 0.0 — the formula painted a
+        // full-opacity white wash over the ChromaticAtmosphere. The
+        // atmosphere now drenches to the bottom edge uniformly.
 
         // Layer 0.75: Ghost Indicator (Inbox • Home • Plans)
         Positioned(

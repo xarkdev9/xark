@@ -4,7 +4,10 @@ import '../models/feed_item.dart';
 import '../views/home/decision_board/pages/home/cosmos_sender_model.dart';
 import 'feed_provider.dart';
 
-/// HOME tab feed — the full unified feed, unchanged.
+/// Home tab feed — the full unified feed, unchanged. Deprecated for
+/// the cosmos Home surface (which uses freshestPendingSenderProvider
+/// + pendingSendersQueueProvider below); retained for any non-cosmos
+/// consumers.
 final homeFeedProvider = Provider<List<FeedItem>>((ref) {
   return ref.watch(feedProvider);
 });
@@ -22,7 +25,7 @@ final chatsFeedProvider = Provider<List<FeedItem>>((ref) {
   return merged;
 });
 
-/// PLANS tab feed — focus hero + trips + itinerary events.
+/// Plans tab feed — focus hero + trips + itinerary events.
 final plansFeedProvider = Provider<List<FeedItem>>((ref) {
   final feed = ref.watch(feedProvider);
   final items = <FeedItem>[];
