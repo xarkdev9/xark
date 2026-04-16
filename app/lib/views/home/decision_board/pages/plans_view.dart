@@ -71,7 +71,7 @@ class _PlansViewState extends ConsumerState<PlansView> {
         // ── Extract events (unique categories from items) ──
         final eventMap = <String, List<DecisionItem>>{};
         for (final item in allItems) {
-          final event = item.nonce ?? 'General';
+          final event = item.nonce;
           eventMap.putIfAbsent(event, () => []).add(item);
         }
 
@@ -442,27 +442,15 @@ class _OverviewRow extends StatelessWidget {
       padding: EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          // Thumbnail
-          if (null != null && null!.isNotEmpty)
-            ClipRRect(
+          // Thumbnail placeholder (DecisionItem has no photoUrl field)
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: HelloColors.recessed,
               borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: null!.startsWith('assets/')
-                    ? Image.asset(null!, fit: BoxFit.cover)
-                    : Image.network(null!, fit: BoxFit.cover),
-              ),
-            )
-          else
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: HelloColors.recessed,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.image_outlined, size: 20, color: HelloColors.inkTertiary),
             ),
+            child: Icon(Icons.image_outlined, size: 20, color: HelloColors.inkTertiary),
+          ),
           SizedBox(width: 12),
           // Title + description
           Expanded(
@@ -475,13 +463,12 @@ class _OverviewRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (item.nonce != null)
-                  Text(
-                    item.nonce!.split('\n').first,
-                    style: HelloText.caption.copyWith(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                Text(
+                  item.nonce.split('\n').first,
+                  style: HelloText.caption.copyWith(fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -585,17 +572,15 @@ class _RecommendationCard extends StatelessWidget {
             ),
           ),
           SizedBox(width: 16),
-          // Photo
-          if (null != null && null!.isNotEmpty)
-            ClipRRect(
+          // Photo placeholder (DecisionItem has no photoUrl field)
+          Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(
+              color: HelloColors.recessed,
               borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 56, height: 56,
-                child: null!.startsWith('assets/')
-                    ? Image.asset(null!, fit: BoxFit.cover)
-                    : Image.network(null!, fit: BoxFit.cover),
-              ),
             ),
+            child: Icon(Icons.image_outlined, size: 24, color: HelloColors.inkTertiary),
+          ),
           SizedBox(width: 12),
           // Details
           Expanded(
@@ -608,13 +593,12 @@ class _RecommendationCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (item.nonce != null)
-                  Text(
-                    item.nonce!.split('\n').first,
-                    style: HelloText.caption.copyWith(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                Text(
+                  item.nonce.split('\n').first,
+                  style: HelloText.caption.copyWith(fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -682,8 +666,6 @@ class _HeroCardStream extends StatelessWidget {
         return b.agreementScore.compareTo(a.agreementScore);
       });
 
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return PageView.builder(
       clipBehavior: Clip.none,
       controller: PageController(viewportFraction: 0.88),
@@ -692,9 +674,7 @@ class _HeroCardStream extends StatelessWidget {
         final item = sorted[index];
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: 6, vertical: 12),
-          child: _StubActionCard(
-            item: item,
-          ),
+          child: _StubActionCard(item: item),
         );
       },
     );
@@ -704,9 +684,8 @@ class _HeroCardStream extends StatelessWidget {
 // Stub — ActionCardWidget was removed during restructure.
 // Replace with the real implementation when available.
 class _StubActionCard extends StatelessWidget {
-  _StubActionCard({super.key, this.item, this.onTap});
+  _StubActionCard({this.item});
   final dynamic item;
-  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) => SizedBox.shrink();
 }

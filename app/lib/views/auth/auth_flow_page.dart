@@ -258,7 +258,7 @@ class _AuthFlowPageState extends ConsumerState<AuthFlowPage> {
                   padding: EdgeInsets.only(bottom: 32.0),
                   child: Text(
                     authState.error!,
-                    style: HelloTypography.body.copyWith(
+                    style: HelloText.body.copyWith(
                       color: HelloColors.accent,
                     ),
                   ),

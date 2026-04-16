@@ -146,7 +146,7 @@ final List<MemoryFeedItem> mockMemoryFeedItems = [
     eyebrow: '3 MONTHS AGO',
     title: 'That sunset in Interlaken',
     body: 'Remember when we almost missed the last train back?',
-    photoUrl: 'assets/memories/swiss_sunset.jpg',
+    photoUrl: 'assets/memories/swiss_1.jpg',
     occurredAt: DateTime(2026, 1, 15),
     updatedAt: DateTime.now().subtract(const Duration(days: 2)),
   ),

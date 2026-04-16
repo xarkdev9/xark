@@ -94,10 +94,6 @@ class HelloColors {
   static const Color kindBookmark = Color(0x0A8B6914);
 }
 
-/// Backward-compat alias for auth_flow_page.dart which uses the
-/// old name. New code should use [HelloText] directly.
-typedef HelloTypography = HelloText;
-
 class HelloText {
   static TextStyle get display => TextStyle(
         fontFamily: 'Inter',
