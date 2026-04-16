@@ -626,3 +626,6 @@ Project changelog lives at `docs/CHANGELOG.md`. **Append-only**, newest entries 
 - `web/CLAUDE.md` — Per-package Next.js 16 web guidance (full 53-route inventory, CSS variable inversion, request flow)
 - `algo/CLAUDE.md` — Per-package TypeScript decision engine guidance (hexagonal architecture, state flows, signal vocabulary)
 - `xpensly/CLAUDE.md`, `xpensly/xpensly_core/CLAUDE.md`, `xpensly/xpensly_ui/CLAUDE.md` — Per-package Xpensly SDK guidance
+
+## CRITICAL LANDMINE
+NEVER run `git filter-repo` without first running `git stash push --include-untracked`. The app/lib/ directory contains untracked files that will be permanently destroyed by git tree resets.

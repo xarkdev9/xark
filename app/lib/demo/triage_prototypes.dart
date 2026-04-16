@@ -152,117 +152,129 @@ class _ZStackRolodexDemoState extends State<ZStackRolodexDemo> {
   }
 
   Widget _buildMorphCard(_ZItem item) {
-    final bool isActive = item.distance < 0.5;
-
-    // Y-Axis Compression Math (Apple Wallet style stack)
+    // Apple Wallet Spatial Y-Axis Math
     double translationY;
     if (item.offset == 0) {
-      translationY = 0;
+      translationY = 0; 
+    } else if (item.offset > 0) {
+      // Future queue: Space identically rendered cards upwards
+      translationY = -(item.offset * 90); 
     } else {
-      // Base jump pushes the inactive items out from behind the active 460px card 
-      // Then stack them tightly with a 50px gap so 4-5 titles are easily visible
-      final double sign = item.offset.sign;
-      final double stretch = item.offset.abs();
-      translationY = sign * (250 + (stretch * 50)); 
+      // Past items: Track finger 1:1 downwards into abyss (PageView height is 520)
+      translationY = item.distance * 520;
     }
 
-    final double scale = (1 - (item.distance * 0.05)).clamp(0.8, 1.0);
-    final double blurSigma = (item.distance * 1.5).clamp(0.0, 3.0); // Little blur
-    final double opacity = isActive ? 1.0 : (1 - (item.distance * 0.25)).clamp(0.2, 1.0);
+    final double scale = (1 - (item.distance * 0.04)).clamp(0.85, 1.0); // Slight 3D inward depth
+    final double opacity = item.distance < 0.2 ? 1.0 : (1 - (item.distance * 0.15)).clamp(0.4, 1.0);
 
     final transform = Matrix4.identity()
       ..translate(0.0, translationY, 0.0)
       ..scale(scale);
 
-    Widget content;
-
-    if (isActive) {
-      // 1. ACTIVE: Tall Vertical Squircle directly honoring instruction
-      content = Container(
-        width: MediaQuery.of(context).size.width - 48,
-        height: 480, // TALL VERTICAL SQUIRCLE
+    // Apple Wallet Stack requires ALL cards to maintain structural dimensions
+    // so they physically occlude the cards behind them perfectly.
+    Widget content = Align(
+      alignment: Alignment.bottomCenter,
+      child: Container(
+        width: MediaQuery.of(context).size.width - 72, // Narrowed from 40 for a much vertically-taller squircle proportion
+        height: 380, // Reduced from 480 to leave room for the top stack
         decoration: BoxDecoration(
-           color: item.pulse.ambientColor.withValues(alpha: 0.8),
-           borderRadius: BorderRadius.circular(48),
-           border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+           color: item.pulse.ambientColor.withValues(alpha: 0.95), // Thicker color for occlusion
+           borderRadius: BorderRadius.circular(44),
+           border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+           // Project shadow upwards instead of downwards, giving thick volume to the stack
            boxShadow: [
-             BoxShadow(color: item.pulse.ambientColor.withValues(alpha: 0.4), blurRadius: 40, offset: const Offset(0, 15))
+             BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 30, offset: const Offset(0, -15))
            ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(48),
+          borderRadius: BorderRadius.circular(44),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Padding(
-              padding: const EdgeInsets.all(32.0),
+              padding: const EdgeInsets.fromLTRB(28, 28, 28, 28),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Fills the spatial bounds
                 children: [
-                  // Top Title
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Top Edge Title (This precisely peeks out from behind the active card)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(item.pulse.title, style: HelloText.display.copyWith(fontSize: 32, color: Colors.white)),
-                      const SizedBox(height: 8),
-                      Text(item.pulse.subtitle, style: HelloText.title.copyWith(color: Colors.white.withValues(alpha: 0.7))),
+                      Expanded(
+                        child: Text(item.pulse.title, style: HelloText.display.copyWith(fontSize: 28, color: Colors.white, height: 1.1), overflow: TextOverflow.ellipsis),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Opacity(
+                          opacity: (1 - (item.distance * 2)).clamp(0.0, 1.0),
+                          child: Text(item.pulse.subtitle, style: HelloText.caption.copyWith(color: Colors.white.withValues(alpha: 0.7)), overflow: TextOverflow.ellipsis, textAlign: TextAlign.right),
+                        ),
+                      ),
                     ],
                   ),
                   
-                  // Rich Icon / Graphic
-                  Center(
-                    child: Icon(
-                      item.pulse.kind == TriageKind.pay ? Icons.apple 
-                      : item.pulse.kind == TriageKind.call ? Icons.phone 
-                      : Icons.dashboard_customize_outlined,
-                      color: Colors.white.withValues(alpha: 0.2),
-                      size: 80,
+                  // Internal Content: Smoothly fades in/out as it slides between Active/Queue states
+                  Expanded(
+                    child: Opacity(
+                      opacity: (1 - (item.distance * 1.5)).clamp(0.0, 1.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Spacer(),
+                          // Rich Icon suspending in the center void
+                          Center(
+                            child: Icon(
+                              item.pulse.kind == TriageKind.pay ? Icons.apple 
+                              : item.pulse.kind == TriageKind.call ? Icons.phone 
+                              : Icons.dashboard_customize_outlined,
+                              color: Colors.white.withValues(alpha: 0.15),
+                              size: 96,
+                            ),
+                          ),
+                          const Spacer(),
+
+                          // ACTION BOUNDARY: Perfectly locked to bottom margin for thumb physics
+                          _buildActionPills(item.pulse),
+                        ],
+                      ),
                     ),
                   ),
-
-                  // ANY ACTION IN USER THUMB REACH (Strictly confined to bottom of card)
-                  _buildActionPills(item.pulse),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+
+    // Progressive Physics Drop Zone filter
+    Widget physicsBody = content;
+    if (item.offset < 0) {
+      // Discarding into the abyss. It must aggressively dissolve and blur to protect the visual hierarchy of the Plasma Handle.
+      final double abyssDepth = item.offset.abs();
+      final double plasmaFade = (1.0 - (abyssDepth * 2.5)).clamp(0.0, 1.0);
+      final double plasmaBlur = (abyssDepth * 15.0).clamp(0.0, 15.0); // Safety limit cap at 15 to prevent WebGL Context Loss
+
+      physicsBody = Opacity(
+        opacity: plasmaFade,
+        child: plasmaBlur > 0 ? ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: plasmaBlur, sigmaY: plasmaBlur),
+          child: physicsBody,
+        ) : physicsBody,
       );
     } else {
-      // 2. INACTIVE: "User should see titles" + little blur
-      content = SizedBox(
-        width: MediaQuery.of(context).size.width - 48,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              item.pulse.title.toUpperCase(),
-              style: HelloText.title.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 2,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (blurSigma > 0.1) {
-      content = ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-        child: content,
+      // Standard queue render
+      physicsBody = Opacity(
+        opacity: opacity,
+        child: physicsBody,
       );
     }
 
     return Transform(
       alignment: Alignment.center,
       transform: transform,
-      child: Opacity(
-        opacity: opacity,
-        child: content,
-      ),
+      child: physicsBody,
     );
   }
 
@@ -283,7 +295,7 @@ class _ZStackRolodexDemoState extends State<ZStackRolodexDemo> {
             animation: _verticalController,
             builder: (context, _) {
               double page = _currentIndex.toDouble();
-              if (_verticalController.position.haveDimensions) {
+              if (_verticalController.hasClients && _verticalController.position.haveDimensions) {
                 page = _verticalController.page!;
               }
 
@@ -306,13 +318,14 @@ class _ZStackRolodexDemoState extends State<ZStackRolodexDemo> {
           ),
         ),
 
-        // Invisible scroll physics layer
+        // Native PageView Physics for pure Apple 1:1 Butter Scroll
         Positioned(
           bottom: 120, left: 0, right: 0, height: 520,
           child: PageView.builder(
             scrollDirection: Axis.vertical,
+            reverse: true, // Swiping DOWN pulls from the TOP stack
             controller: _verticalController,
-            physics: const BouncingScrollPhysics(),
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()), // Unlock 120hz velocity
             onPageChanged: (idx) => setState(() => _currentIndex = idx),
             itemCount: _pulses.length,
             itemBuilder: (context, index) => const SizedBox.expand(),
